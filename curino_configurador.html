@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Maestro — Configurador · Curino</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#C9A84C;--gold-lt:#E8C97A;--gold-dim:#8B6914;
+  --black:#080808;--panel:#111;--card:#181818;--border:#2a2a2a;
+  --mid:#666;--light:#aaa;--off:#f4f2ee;--white:#ffffff;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'DM Sans',system-ui,sans-serif;
+  /* wardrobe colors */
+  --mat-color:#f0ede8;--mat-dark:#2a2520;--mat-edge:#c8c0b4;
+  --interior:#faf8f5;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--off);font-family:var(--sans);font-weight:300;color:var(--black);display:flex;flex-direction:column}
+
+/* NAV */
+nav{height:56px;min-height:56px;background:rgba(244,242,238,0.97);border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;backdrop-filter:blur(6px);z-index:50}
+.nav-logo{font-family:var(--serif);font-size:1.3rem;font-weight:300;letter-spacing:.2em;text-transform:uppercase}
+.nav-logo span{color:var(--gold)}
+.nav-breadcrumb{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mid)}
+.nav-breadcrumb span{color:var(--black)}
+.nav-save{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;border:1px solid #ddd;padding:.35rem 1rem;transition:all .2s}
+.nav-save:hover{border-color:var(--gold);color:var(--gold)}
+
+/* MAIN */
+.main{flex:1;display:grid;grid-template-columns:1fr 360px;overflow:hidden}
+
+/* ── VIEWER ── */
+.viewer{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#e8e5df 0%,#d8d4cc 100%);overflow:hidden;padding:2rem}
+
+.viewer-label{position:absolute;top:1.2rem;left:1.5rem;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(0,0,0,.3)}
+.viewer-dims{position:absolute;top:1.2rem;right:1.5rem;font-size:.68rem;color:rgba(0,0,0,.4);text-align:right;line-height:1.6}
+
+/* 3D WARDROBE */
+.scene{perspective:1200px;perspective-origin:50% 40%}
+.wardrobe-3d{
+  transform-style:preserve-3d;
+  transform:rotateX(4deg) rotateY(-22deg);
+  transition:all .45s cubic-bezier(.25,.8,.25,1);
+  position:relative;
+}
+
+/* FACES */
+.face{position:absolute;backface-visibility:hidden}
+
+/* Top face */
+.face-top{
+  background:linear-gradient(135deg,var(--mat-color) 0%,color-mix(in srgb,var(--mat-color) 85%,#fff) 100%);
+  transform-origin:top center;
+}
+/* Left face */
+.face-left{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--mat-color) 70%,#000) 0%,color-mix(in srgb,var(--mat-color) 80%,#000) 100%);
+  transform-origin:left center;
+}
+/* Front face — the main one with doors */
+.face-front{
+  background:var(--mat-color);
+  display:flex;align-items:stretch;
+}
+
+/* Door panels */
+.door-panel{
+  flex:1;border-right:2px solid var(--mat-edge);position:relative;overflow:hidden;
+  cursor:pointer;transition:filter .2s;
+}
+.door-panel:last-child{border-right:none}
+.door-panel:hover{filter:brightness(1.03)}
+
+/* Door handle */
+.door-handle{
+  position:absolute;top:50%;width:4px;height:60px;background:var(--gold);
+  transform:translateY(-50%);border-radius:2px;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+
+/* Door grain lines */
+.door-grain{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(180deg,transparent 0px,transparent 18px,rgba(0,0,0,.025) 18px,rgba(0,0,0,.025) 19px);
+}
+
+/* Interior visible (open door) */
+.door-interior{
+  position:absolute;inset:0;
+  background:var(--interior);
+  display:flex;flex-direction:column;justify-content:space-around;padding:.8rem .5rem;
+  opacity:0;transition:opacity .4s;pointer-events:none;
+}
+.door-panel.open .door-interior{opacity:1}
+.door-panel.open .door-grain{opacity:0}
+.shelf{height:2px;background:#e0dbd4;width:100%;border-radius:1px}
+.hanging-bar{height:3px;background:#ccc;width:80%;margin:0 auto;border-radius:1px;position:relative}
+.hanging-bar::after{content:'';position:absolute;top:3px;left:10%;right:10%;height:30px;background:repeating-linear-gradient(90deg,transparent 0,transparent 8px,#ddd 8px,#ddd 9px);opacity:.5}
+
+/* Bottom face */
+.face-bottom{background:color-mix(in srgb,var(--mat-color) 60%,#888)}
+
+/* Right face */
+.face-right{background:color-mix(in srgb,var(--mat-color) 55%,#000)}
+
+/* Dimension arrows */
+.dim-arrow{position:absolute;display:flex;align-items:center;gap:4px;font-size:.6rem;color:rgba(0,0,0,.4);letter-spacing:.05em;white-space:nowrap;transition:all .4s}
+.dim-arrow::before,.dim-arrow::after{content:'';display:block;background:rgba(0,0,0,.3)}
+
+/* Floor shadow */
+.floor-shadow{
+  position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.18) 0%,transparent 70%);
+  transition:all .45s;
+}
+
+/* Controls bar */
+.viewer-controls{position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);display:flex;gap:.5rem}
+.ctrl-btn{background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.12);padding:.45rem 1rem;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(4px);transition:all .2s;color:var(--black)}
+.ctrl-btn:hover{background:rgba(255,255,255,.95);border-color:var(--gold);color:var(--gold)}
+.ctrl-btn.active{background:var(--gold);border-color:var(--gold);color:var(--black)}
+
+/* ── PANEL ── */
+.config-panel{background:var(--white);border-left:1px solid #e5e2dc;overflow-y:auto;display:flex;flex-direction:column}
+
+.panel-header{padding:1.5rem 1.5rem 1rem;border-bottom:1px solid #eee;position:sticky;top:0;background:var(--white);z-index:10}
+.panel-title{font-family:var(--serif);font-size:1.6rem;font-weight:300;line-height:1.1;margin-bottom:.2rem}
+.panel-sub{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mid)}
+
+/* Price */
+.price-block{padding:1rem 1.5rem;background:#faf9f7;border-bottom:1px solid #eee;display:flex;align-items:baseline;justify-content:space-between}
+.price-num{font-family:var(--serif);font-size:2rem;font-weight:300;color:var(--black)}
+.price-label{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mid)}
+.price-vat{font-size:.68rem;color:var(--mid)}
+
+/* Section */
+.config-section{padding:1.2rem 1.5rem;border-bottom:1px solid #f0ede8}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;cursor:pointer}
+.section-name{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--black);font-weight:500}
+.section-val{font-size:.75rem;color:var(--gold)}
+.section-arrow{font-size:.7rem;color:var(--mid);transition:transform .2s}
+.section-arrow.open{transform:rotate(180deg)}
+.section-body{overflow:hidden;transition:max-height .3s ease}
+
+/* Dimension slider */
+.dim-row{display:flex;align-items:center;gap:1rem;margin-bottom:.8rem}
+.dim-label{font-size:.72rem;color:var(--mid);width:70px;flex-shrink:0}
+.dim-slider{flex:1;-webkit-appearance:none;height:2px;background:#e0dbd4;outline:none;border-radius:1px}
+.dim-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid var(--white);box-shadow:0 0 0 1px var(--gold)}
+.dim-val{font-size:.75rem;color:var(--black);width:48px;text-align:right;flex-shrink:0}
+
+/* Presets */
+.presets{display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap}
+.preset-btn{font-size:.65rem;letter-spacing:.05em;border:1px solid #ddd;padding:.3rem .7rem;cursor:pointer;background:transparent;color:var(--mid);transition:all .2s;border-radius:2px}
+.preset-btn:hover{border-color:var(--gold);color:var(--gold)}
+.preset-btn.active{background:var(--black);border-color:var(--black);color:var(--white)}
+
+/* Finish swatches */
+.swatches-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;margin-bottom:.5rem}
+.swatch{aspect-ratio:1;cursor:pointer;border:2px solid transparent;border-radius:2px;transition:transform .15s,border-color .2s;position:relative}
+.swatch:hover{transform:scale(1.08)}
+.swatch.active{border-color:var(--black)}
+.swatch.active::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.swatch-name{font-size:.65rem;color:var(--mid);margin-top:.3rem;text-align:center;grid-column:1/-1}
+
+/* Module selector */
+.modules-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.module-opt{border:1px solid #e0dbd4;padding:.7rem;cursor:pointer;text-align:center;transition:all .2s;border-radius:2px}
+.module-opt:hover{border-color:var(--gold)}
+.module-opt.active{border-color:var(--black);background:#faf9f7}
+.module-icon{font-size:1.4rem;margin-bottom:.3rem}
+.module-label{font-size:.65rem;letter-spacing:.05em;text-transform:uppercase;color:var(--mid)}
+
+/* Interior options */
+.interior-opts{display:flex;flex-direction:column;gap:.4rem}
+.interior-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid #f5f3f0}
+.interior-row:last-child{border-bottom:none}
+.interior-label{font-size:.78rem;color:var(--black)}
+.interior-sub{font-size:.65rem;color:var(--mid)}
+.toggle{width:36px;height:20px;background:#ddd;border-radius:10px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--gold)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:white;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{transform:translateX(16px)}
+
+/* Doors selector */
+.door-count-btns{display:flex;gap:.4rem}
+.count-btn{width:40px;height:40px;border:1px solid #ddd;background:transparent;cursor:pointer;font-size:.9rem;font-family:var(--serif);color:var(--mid);transition:all .2s;border-radius:2px}
+.count-btn:hover{border-color:var(--gold);color:var(--gold)}
+.count-btn.active{background:var(--black);border-color:var(--black);color:var(--white)}
+
+/* CTA */
+.panel-cta{padding:1.2rem 1.5rem;margin-top:auto;position:sticky;bottom:0;background:var(--white);border-top:1px solid #eee}
+.btn-primary{width:100%;background:var(--gold);color:var(--black);border:none;padding:.9rem;font-family:var(--sans);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:background .2s;margin-bottom:.5rem}
+.btn-primary:hover{background:var(--gold-lt)}
+.btn-secondary-sm{width:100%;background:transparent;color:var(--mid);border:1px solid #ddd;padding:.7rem;font-family:var(--sans);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.btn-secondary-sm:hover{border-color:var(--black);color:var(--black)}
+
+/* Summary tag */
+.summary-tag{display:inline-flex;align-items:center;gap:.3rem;background:#f0ede8;padding:.25rem .6rem;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);border-radius:2px;margin:.2rem}
+.summary-tags{display:flex;flex-wrap:wrap;padding:.5rem 1.5rem;border-bottom:1px solid #f0ede8}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.updating{animation:pulse .4s ease}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCADwA+gDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AIyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//Z" alt="Curino" style="height:26px;filter:invert(1)"></div>
+  <div class="nav-breadcrumb">Sistema <span>Maestro</span> — Configurador</div>
+  <div class="nav-save" id="saveBtn">Guardar diseño ↗</div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ── VIEWER ── -->
+  <div class="viewer" id="viewer">
+    <div class="viewer-label">Vista previa en tiempo real</div>
+    <div class="viewer-dims" id="viewerDims">240 × 200 × 60 cm<br><span style="font-size:.6rem;opacity:.6">Alto · Ancho · Prof.</span></div>
+
+    <div class="scene" id="scene">
+      <div class="wardrobe-3d" id="wardrobe3d">
+        <!-- Faces injected by JS -->
+      </div>
+    </div>
+
+    <div class="floor-shadow" id="floorShadow"></div>
+
+    <div class="viewer-controls">
+      <button class="ctrl-btn active" id="btnFront" onclick="setView('front')">Frontal</button>
+      <button class="ctrl-btn" id="btnAngle" onclick="setView('angle')">Ángulo</button>
+      <button class="ctrl-btn" id="btnSide" onclick="setView('side')">Lateral</button>
+      <button class="ctrl-btn" id="btnOpen" onclick="toggleDoors()">Abrir puertas</button>
+    </div>
+  </div>
+
+  <!-- ── CONFIG PANEL ── -->
+  <div class="config-panel">
+    <div class="panel-header">
+      <div class="panel-title">Sistema Maestro</div>
+      <div class="panel-sub">Armario a medida · Configuración personalizada</div>
+    </div>
+
+    <!-- PRICE -->
+    <div class="price-block">
+      <div>
+        <div class="price-label">Precio estimado</div>
+        <div class="price-num" id="priceDisplay">€ 2.840</div>
+        <div class="price-vat">IVA incluido · Instalación incluida</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.65rem;color:var(--mid);letter-spacing:.08em">Entrega</div>
+        <div style="font-size:.85rem;font-weight:400;color:var(--black)" id="leadTime">6–8 semanas</div>
+      </div>
+    </div>
+
+    <!-- SUMMARY TAGS -->
+    <div class="summary-tags" id="summaryTags"></div>
+
+    <!-- SECTION: DIMENSIONES -->
+    <div class="config-section">
+      <div class="section-head" onclick="toggleSection('dims')">
+        <div class="section-name">Dimensiones</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="section-val" id="dimsVal">200 × 240 × 60 cm</div>
+          <div class="section-arrow open" id="arrow-dims">▾</div>
+        </div>
+      </div>
+      <div class="section-body" id="body-dims">
+        <div class="presets">
+          <button class="preset-btn" onclick="applyPreset('s')">S · 90cm</button>
+          <button class="preset-btn active" onclick="applyPreset('m')">M · 150cm</button>
+          <button class="preset-btn" onclick="applyPreset('l')">L · 200cm</button>
+          <button class="preset-btn" onclick="applyPreset('xl')">XL · 250cm</button>
+          <button class="preset-btn" onclick="applyPreset('xxl')">XXL · 300cm</button>
+        </div>
+        <div class="dim-row">
+          <div class="dim-label">Ancho</div>
+          <input type="range" class="dim-slider" id="sliderW" min="60" max="360" value="200" step="10" oninput="updateDim('w',this.value)">
+          <div class="dim-val" id="valW">200 cm</div>
+        </div>
+        <div class="dim-row">
+          <div class="dim-label">Alto</div>
+          <input type="range" class="dim-slider" id="sliderH" min="200" max="310" value="240" step="5" oninput="updateDim('h',this.value)">
+          <div class="dim-val" id="valH">240 cm</div>
+        </div>
+        <div class="dim-row">
+          <div class="dim-label">Profundidad</div>
+          <input type="range" class="dim-slider" id="sliderD" min="40" max="70" value="60" step="10" oninput="updateDim('d',this.value)">
+          <div class="dim-val" id="valD">60 cm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: ACABADO -->
+    <div class="config-section">
+      <div class="section-head" onclick="toggleSection('finish')">
+        <div class="section-name">Acabado exterior</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="section-val" id="finishVal">Blanco Mate</div>
+          <div class="section-arrow open" id="arrow-finish">▾</div>
+        </div>
+      </div>
+      <div class="section-body" id="body-finish">
+        <div class="swatches-grid" id="finishSwatches"></div>
+      </div>
+    </div>
+
+    <!-- SECTION: PUERTAS -->
+    <div class="config-section">
+      <div class="section-head" onclick="toggleSection('doors')">
+        <div class="section-name">Puertas</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="section-val" id="doorsVal">Correderas · 2 hojas</div>
+          <div class="section-arrow open" id="arrow-doors">▾</div>
+        </div>
+      </div>
+      <div class="section-body" id="body-doors">
+        <div style="font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:.5rem">Tipo de apertura</div>
+        <div class="modules-grid" style="margin-bottom:1rem">
+          <div class="module-opt active" onclick="setDoorType('sliding',this)">
+            <div class="module-icon">⬌</div>
+            <div class="module-label">Correderas</div>
+          </div>
+          <div class="module-opt" onclick="setDoorType('hinged',this)">
+            <div class="module-icon">↩</div>
+            <div class="module-label">Abatibles</div>
+          </div>
+          <div class="module-opt" onclick="setDoorType('coplanar',this)">
+            <div class="module-icon">⬛</div>
+            <div class="module-label">Coplanares</div>
+          </div>
+          <div class="module-opt" onclick="setDoorType('none',this)">
+            <div class="module-icon">□</div>
+            <div class="module-label">Sin puertas</div>
+          </div>
+        </div>
+        <div style="font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:.5rem">Número de hojas</div>
+        <div class="door-count-btns" id="doorCountBtns">
+          <button class="count-btn" onclick="setDoorCount(2,this)">2</button>
+          <button class="count-btn active" onclick="setDoorCount(3,this)">3</button>
+          <button class="count-btn" onclick="setDoorCount(4,this)">4</button>
+          <button class="count-btn" onclick="setDoorCount(5,this)">5</button>
+          <button class="count-btn" onclick="setDoorCount(6,this)">6</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: INTERIOR -->
+    <div class="config-section">
+      <div class="section-head" onclick="toggleSection('interior')">
+        <div class="section-name">Interior</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="section-val" id="interiorVal">Estándar</div>
+          <div class="section-arrow" id="arrow-interior">▾</div>
+        </div>
+      </div>
+      <div class="section-body" id="body-interior" style="max-height:0">
+        <div class="interior-opts">
+          <div class="interior-row">
+            <div><div class="interior-label">Barra colgador</div><div class="interior-sub">Tubo en acero inox · aluminio</div></div>
+            <div class="toggle on" id="tog-bar" onclick="toggleInterior('bar',this)"></div>
+          </div>
+          <div class="interior-row">
+            <div><div class="interior-label">Estantes fijos</div><div class="interior-sub">Tablero lacado · ajustables en altura</div></div>
+            <div class="toggle on" id="tog-shelves" onclick="toggleInterior('shelves',this)"></div>
+          </div>
+          <div class="interior-row">
+            <div><div class="interior-label">Cajones suaves</div><div class="interior-sub">Cierre automático · guías telescópicas</div></div>
+            <div class="toggle" id="tog-drawers" onclick="toggleInterior('drawers',this)"></div>
+          </div>
+          <div class="interior-row">
+            <div><div class="interior-label">Iluminación LED</div><div class="interior-sub">Sensor de apertura · luz cálida</div></div>
+            <div class="toggle" id="tog-led" onclick="toggleInterior('led',this)"></div>
+          </div>
+          <div class="interior-row">
+            <div><div class="interior-label">Espejo interior</div><div class="interior-sub">Luna plateada de cuerpo entero</div></div>
+            <div class="toggle" id="tog-mirror" onclick="toggleInterior('mirror',this)"></div>
+          </div>
+          <div class="interior-row">
+            <div><div class="interior-label">Zapatero extraíble</div><div class="interior-sub">Inclinado · 3 niveles</div></div>
+            <div class="toggle" id="tog-shoes" onclick="toggleInterior('shoes',this)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: TIRADOR -->
+    <div class="config-section">
+      <div class="section-head" onclick="toggleSection('handle')">
+        <div class="section-name">Tirador</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="section-val" id="handleVal">Dorado cepillado</div>
+          <div class="section-arrow" id="arrow-handle">▾</div>
+        </div>
+      </div>
+      <div class="section-body" id="body-handle" style="max-height:0">
+        <div class="modules-grid">
+          <div class="module-opt active" onclick="setHandle('gold',this,'Dorado cepillado')">
+            <div style="width:24px;height:4px;background:var(--gold);margin:0 auto .4rem;border-radius:2px"></div>
+            <div class="module-label">Dorado</div>
+          </div>
+          <div class="module-opt" onclick="setHandle('chrome',this,'Cromado')">
+            <div style="width:24px;height:4px;background:#c0c0c0;margin:0 auto .4rem;border-radius:2px"></div>
+            <div class="module-label">Cromado</div>
+          </div>
+          <div class="module-opt" onclick="setHandle('black',this,'Negro mate')">
+            <div style="width:24px;height:4px;background:#222;margin:0 auto .4rem;border-radius:2px"></div>
+            <div class="module-label">Negro mate</div>
+          </div>
+          <div class="module-opt" onclick="setHandle('none',this,'Sin tirador')">
+            <div style="width:24px;height:4px;background:transparent;border:1px solid #ddd;margin:0 auto .4rem;border-radius:2px"></div>
+            <div class="module-label">Sin tirador</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="panel-cta">
+      <button class="btn-primary" onclick="requestQuote()">Solicitar presupuesto · <span id="ctaPrice">€ 2.840</span></button>
+      <button class="btn-secondary-sm" onclick="saveDesign()">Guardar configuración</button>
+    </div>
+
+  </div><!-- end config-panel -->
+</div><!-- end main -->
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const state = {
+  w: 200, h: 240, d: 60,
+  finish: 'white',
+  doorType: 'sliding',
+  doorCount: 3,
+  handle: 'gold',
+  doorsOpen: false,
+  view: 'angle',
+  interior: { bar: true, shelves: true, drawers: false, led: false, mirror: false, shoes: false }
+};
+
+const finishes = [
+  { id:'white',    name:'Blanco Mate',    color:'#f0ede8', edge:'#c8c0b4', dark:'#2a2520', price:0 },
+  { id:'graphite', name:'Grafito',        color:'#2d2d2d', edge:'#1a1a1a', dark:'#111',    price:120 },
+  { id:'oak',      name:'Roble Natural',  color:'#a07850', edge:'#7a5c38', dark:'#5c4028', price:180 },
+  { id:'ash',      name:'Fresno Arena',   color:'#c8a87a', edge:'#a07850', dark:'#7a5c38', price:180 },
+  { id:'sage',     name:'Verde Salvia',   color:'#6b7c6b', edge:'#4a5a4a', dark:'#3a4a3a', price:120 },
+  { id:'navy',     name:'Azul Noche',     color:'#1e2a3a', edge:'#0f1820', dark:'#080e14', price:120 },
+  { id:'dusty',    name:'Rosa Empolvado', color:'#c8a090', edge:'#a07870', dark:'#7a5858', price:120 },
+  { id:'concrete', name:'Cemento',        color:'#888880', edge:'#606058', dark:'#404038', price:80  },
+  { id:'ivory',    name:'Marfil',         color:'#f0e8d0', edge:'#d0c8a8', dark:'#a8a088', price:60  },
+  { id:'black',    name:'Negro Intenso',  color:'#181818', edge:'#0a0a0a', dark:'#050505', price:100 },
+];
+
+const handleColors = { gold:'#C9A84C', chrome:'#c0c0c8', black:'#222222', none:'transparent' };
+
+// BASE PRICE LOGIC
+function calcPrice() {
+  const area = (state.w/100) * (state.h/100);
+  const base = 1200 + area * 320;
+  const fExtra = finishes.find(f=>f.id===state.finish)?.price || 0;
+  const doorExtra = state.doorCount * 85;
+  const dTypeExtra = state.doorType === 'coplanar' ? 180 : state.doorType === 'hinged' ? 60 : 0;
+  const intExtras =
+    (state.interior.bar ? 0 : 0) +
+    (state.interior.drawers ? 240 : 0) +
+    (state.interior.led ? 180 : 0) +
+    (state.interior.mirror ? 220 : 0) +
+    (state.interior.shoes ? 130 : 0);
+  const handleExtra = state.handle === 'none' ? 0 : state.handle === 'gold' ? 60 : 30;
+  const total = Math.round(base + fExtra + doorExtra + dTypeExtra + intExtras + handleExtra);
+  return total;
+}
+
+function updatePrice() {
+  const p = calcPrice();
+  const fmt = new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(p);
+  document.getElementById('priceDisplay').textContent = fmt;
+  document.getElementById('ctaPrice').textContent = fmt;
+  document.getElementById('priceDisplay').classList.add('updating');
+  setTimeout(()=>document.getElementById('priceDisplay').classList.remove('updating'),400);
+}
+
+// ═══════════════════════════════════════════
+// 3D WARDROBE RENDERER
+// ═══════════════════════════════════════════
+function renderWardrobe() {
+  const fin = finishes.find(f=>f.id===state.finish);
+  const col = fin.color;
+  const edgeCol = fin.edge;
+  const darkCol = fin.dark;
+
+  // Pixel scale — use viewport
+  const vw = document.getElementById('viewer').clientWidth;
+  const vh = document.getElementById('viewer').clientHeight - 140;
+
+  const maxPx = Math.min(vw * 0.55, vh * 0.75);
+  const scaleH = maxPx;
+  const scaleW = (state.w / state.h) * scaleH;
+  const scaleD = (state.d / state.h) * scaleH * 0.38;
+
+  const wEl = document.getElementById('wardrobe3d');
+
+  // Build doors HTML
+  const hColor = handleColors[state.handle];
+  let doorsHTML = '';
+  for (let i = 0; i < state.doorCount; i++) {
+    const handlePos = i % 2 === 0 ? 'right:10px' : 'left:10px';
+    const isOpen = state.doorsOpen && (i === 0);
+    const openClass = isOpen ? ' open' : '';
+    doorsHTML += `
+      <div class="door-panel${openClass}" onclick="clickDoor(${i})" style="border-right-color:${edgeCol}">
+        <div class="door-grain"></div>
+        <div class="door-handle" style="background:${hColor};${handlePos};display:${hColor==='transparent'?'none':'block'}"></div>
+        <div class="door-interior">
+          <div class="shelf"></div>
+          <div class="hanging-bar"></div>
+          <div class="shelf"></div>
+          <div class="shelf"></div>
+        </div>
+      </div>`;
+  }
+
+  wEl.innerHTML = `
+    <!-- Top -->
+    <div class="face face-top" style="
+      width:${scaleW}px;height:${scaleD}px;
+      background:linear-gradient(135deg,${lighten(col,15)} 0%,${col} 100%);
+      transform:rotateX(90deg) translateZ(0px);
+      top:0;left:0;
+    "></div>
+    <!-- Front -->
+    <div class="face face-front" style="
+      width:${scaleW}px;height:${scaleH}px;
+      background:${col};
+      top:0;left:0;
+      transform:translateZ(0px);
+    ">${doorsHTML}</div>
+    <!-- Left side -->
+    <div class="face face-left" style="
+      width:${scaleD}px;height:${scaleH}px;
+      background:linear-gradient(90deg,${darkCol} 0%,${darken(col,20)} 100%);
+      top:0;left:0;
+      transform:rotateY(-90deg) translateZ(0px);
+    "></div>
+    <!-- Right side -->
+    <div class="face face-right" style="
+      width:${scaleD}px;height:${scaleH}px;
+      background:${darken(col,30)};
+      top:0;left:${scaleW}px;
+      transform:rotateY(90deg) translateZ(0px);
+    "></div>
+    <!-- Bottom -->
+    <div class="face face-bottom" style="
+      width:${scaleW}px;height:${scaleD}px;
+      background:${darken(col,15)};
+      top:${scaleH}px;left:0;
+      transform:rotateX(-90deg) translateZ(0px);
+    "></div>
+  `;
+
+  // Proper 3D positioning using translateZ
+  wEl.style.width = scaleW + 'px';
+  wEl.style.height = scaleH + 'px';
+  wEl.style.marginTop = -(scaleH/2) + 'px';
+  wEl.style.marginLeft = -(scaleW/2) + 'px';
+  wEl.style.position = 'relative';
+
+  // Fix face positions with transform origins
+  const top = wEl.querySelector('.face-top');
+  const front = wEl.querySelector('.face-front');
+  const left = wEl.querySelector('.face-left');
+  const right = wEl.querySelector('.face-right');
+  const bottom = wEl.querySelector('.face-bottom');
+
+  if(top){top.style.transform=`rotateX(90deg) translateZ(${-scaleD}px) translateY(${-scaleD}px)`;top.style.transformOrigin='top center'}
+  if(front){front.style.transform=`translateZ(0)`;front.style.top='0';front.style.left='0';front.style.position='absolute'}
+  if(left){left.style.transform=`rotateY(-90deg) translateZ(0)`;left.style.top='0';left.style.left='0';left.style.position='absolute';left.style.transformOrigin='left center'}
+  if(right){right.style.transform=`rotateY(90deg) translateZ(${scaleW}px)`;right.style.top='0';right.style.left='0';right.style.position='absolute'}
+  if(bottom){bottom.style.transform=`rotateX(-90deg) translateZ(${scaleH}px)`;bottom.style.top='0';bottom.style.left='0';bottom.style.position='absolute';bottom.style.transformOrigin='bottom center'}
+
+  // Floor shadow
+  const sh = document.getElementById('floorShadow');
+  sh.style.width = (scaleW * 0.9) + 'px';
+  sh.style.height = (scaleD * 1.2) + 'px';
+
+  // Update dims display
+  document.getElementById('viewerDims').innerHTML = `${state.h} × ${state.w} × ${state.d} cm<br><span style="font-size:.6rem;opacity:.6">Alto · Ancho · Prof.</span>`;
+  document.getElementById('dimsVal').textContent = `${state.w} × ${state.h} × ${state.d} cm`;
+  updateSummary();
+  updatePrice();
+}
+
+// Color utils
+function lighten(hex, pct) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  const f = 1 + pct/100;
+  return '#'+[Math.min(255,Math.round(r*f)),Math.min(255,Math.round(g*f)),Math.min(255,Math.round(b*f))].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function darken(hex, pct) {
+  if(!hex||hex.length<7) return '#888';
+  const r = parseInt(hex.slice(1,3),16)||0, g = parseInt(hex.slice(3,5),16)||0, b = parseInt(hex.slice(5,7),16)||0;
+  const f = 1 - pct/100;
+  return '#'+[Math.max(0,Math.round(r*f)),Math.max(0,Math.round(g*f)),Math.max(0,Math.round(b*f))].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+// ═══════════════════════════════════════════
+// VIEW CONTROLS
+// ═══════════════════════════════════════════
+const views = {
+  front: 'rotateX(2deg) rotateY(0deg)',
+  angle: 'rotateX(4deg) rotateY(-22deg)',
+  side:  'rotateX(4deg) rotateY(-70deg)',
+};
+function setView(v) {
+  state.view = v;
+  document.getElementById('wardrobe3d').style.transform = views[v];
+  ['Front','Angle','Side'].forEach(n => {
+    const btn = document.getElementById('btn'+n);
+    if(btn) btn.classList.toggle('active', n.toLowerCase()===v);
+  });
+}
+
+let doorsCurrentlyOpen = false;
+function toggleDoors() {
+  doorsCurrentlyOpen = !doorsCurrentlyOpen;
+  state.doorsOpen = doorsCurrentlyOpen;
+  document.getElementById('btnOpen').classList.toggle('active', doorsCurrentlyOpen);
+  document.getElementById('btnOpen').textContent = doorsCurrentlyOpen ? 'Cerrar puertas' : 'Abrir puertas';
+  renderWardrobe();
+}
+function clickDoor(i) {
+  // toggle individual door open on click
+  const doors = document.querySelectorAll('.door-panel');
+  if(doors[i]) doors[i].classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════
+function updateDim(dim, val) {
+  state[dim] = parseInt(val);
+  document.getElementById('val'+dim.toUpperCase()).textContent = val+' cm';
+  // auto door count
+  if(dim==='w') {
+    const suggested = Math.max(2, Math.min(6, Math.round(parseInt(val)/70)));
+    setDoorCount(suggested);
+    document.querySelectorAll('.count-btn').forEach(b=>{
+      b.classList.toggle('active', parseInt(b.textContent)===suggested);
+    });
+  }
+  renderWardrobe();
+}
+
+function applyPreset(size) {
+  const presets = {
+    s:  {w:90,  h:240, d:60, doors:2},
+    m:  {w:150, h:240, d:60, doors:3},
+    l:  {w:200, h:240, d:60, doors:4},
+    xl: {w:250, h:250, d:60, doors:4},
+    xxl:{w:300, h:260, d:60, doors:6},
+  };
+  const p = presets[size];
+  state.w = p.w; state.h = p.h; state.d = p.d; state.doorCount = p.doors;
+  document.getElementById('sliderW').value = p.w;
+  document.getElementById('sliderH').value = p.h;
+  document.getElementById('sliderD').value = p.d;
+  document.getElementById('valW').textContent = p.w+' cm';
+  document.getElementById('valH').textContent = p.h+' cm';
+  document.getElementById('valD').textContent = p.d+' cm';
+  document.querySelectorAll('.count-btn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent)===p.doors));
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active',b.textContent.includes(size.toUpperCase())));
+  renderWardrobe();
+}
+
+// Finish swatches
+function buildSwatches() {
+  const container = document.getElementById('finishSwatches');
+  finishes.forEach(f => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (f.id===state.finish?' active':'');
+    sw.style.background = f.color;
+    sw.style.border = `2px solid ${f.id===state.finish?'#222':'#ddd'}`;
+    sw.title = f.name;
+    sw.dataset.id = f.id;
+    sw.onclick = () => setFinish(f.id, sw);
+    container.appendChild(sw);
+    const lbl = document.createElement('div');
+    lbl.style.cssText='font-size:.6rem;color:var(--mid);text-align:center;margin-top:.15rem;grid-column:auto';
+  });
+}
+
+function setFinish(id, el) {
+  state.finish = id;
+  document.querySelectorAll('#finishSwatches .swatch').forEach(s=>{ s.classList.remove('active'); s.style.borderColor='#ddd'; });
+  el.classList.add('active'); el.style.borderColor='#222';
+  document.getElementById('finishVal').textContent = finishes.find(f=>f.id===id).name;
+  renderWardrobe();
+}
+
+function setDoorType(type, el) {
+  state.doorType = type;
+  document.querySelectorAll('.config-section .module-opt').forEach(o=>{
+    if(o.onclick && o.onclick.toString().includes('setDoorType')) o.classList.remove('active');
+  });
+  el.classList.add('active');
+  const typeNames = {sliding:'Correderas',hinged:'Abatibles',coplanar:'Coplanares',none:'Sin puertas'};
+  document.getElementById('doorsVal').textContent = typeNames[type]+' · '+state.doorCount+' hojas';
+  renderWardrobe();
+}
+
+function setDoorCount(n, el) {
+  state.doorCount = n;
+  if(el){ document.querySelectorAll('.count-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); }
+  const typeNames = {sliding:'Correderas',hinged:'Abatibles',coplanar:'Coplanares',none:'Sin puertas'};
+  document.getElementById('doorsVal').textContent = (typeNames[state.doorType]||'Correderas')+' · '+n+' hojas';
+  renderWardrobe();
+}
+
+function setHandle(type, el, name) {
+  state.handle = type;
+  document.querySelectorAll('[onclick*="setHandle"]').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('handleVal').textContent = name;
+  renderWardrobe();
+}
+
+function toggleInterior(key, el) {
+  state.interior[key] = !state.interior[key];
+  el.classList.toggle('on');
+  const count = Object.values(state.interior).filter(Boolean).length;
+  document.getElementById('interiorVal').textContent = count <= 2 ? 'Estándar' : count <= 4 ? 'Completo' : 'Premium';
+  updatePrice();
+  updateSummary();
+}
+
+// ═══════════════════════════════════════════
+// SECTIONS ACCORDION
+// ═══════════════════════════════════════════
+const openSections = new Set(['dims','finish','doors']);
+function toggleSection(id) {
+  const body = document.getElementById('body-'+id);
+  const arrow = document.getElementById('arrow-'+id);
+  if(openSections.has(id)) {
+    openSections.delete(id);
+    body.style.maxHeight = '0';
+    arrow.classList.remove('open');
+  } else {
+    openSections.add(id);
+    body.style.maxHeight = body.scrollHeight + 400 + 'px';
+    arrow.classList.add('open');
+  }
+}
+function initSections() {
+  document.querySelectorAll('.section-body').forEach(b => {
+    const id = b.id.replace('body-','');
+    if(openSections.has(id)) b.style.maxHeight = '9999px';
+    else b.style.maxHeight = '0';
+  });
+}
+
+// ═══════════════════════════════════════════
+// SUMMARY TAGS
+// ═══════════════════════════════════════════
+function updateSummary() {
+  const fin = finishes.find(f=>f.id===state.finish);
+  const extras = [];
+  if(state.interior.led) extras.push('LED');
+  if(state.interior.mirror) extras.push('Espejo');
+  if(state.interior.drawers) extras.push('Cajones');
+  if(state.interior.shoes) extras.push('Zapatero');
+  const tags = [
+    fin.name,
+    `${state.w}×${state.h}cm`,
+    state.doorCount+' puertas',
+    ...(extras.length ? extras : [])
+  ];
+  document.getElementById('summaryTags').innerHTML = tags.map(t=>`<span class="summary-tag">${t}</span>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// CTA ACTIONS
+// ═══════════════════════════════════════════
+function requestQuote() {
+  const fin = finishes.find(f=>f.id===state.finish);
+  alert(`✅ Solicitud enviada\n\nConfiguración:\n• ${state.w}×${state.h}×${state.d} cm\n• Acabado: ${fin.name}\n• ${state.doorCount} puertas ${state.doorType}\n• Precio: ${new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(calcPrice())}\n\nNuestro equipo te contactará en menos de 24h.`);
+}
+function saveDesign() {
+  const code = btoa(JSON.stringify({w:state.w,h:state.h,d:state.d,f:state.finish,dt:state.doorType,dc:state.doorCount}));
+  alert('Diseño guardado ✓\nCódigo: CUR-'+code.slice(0,8).toUpperCase()+'\n\nGuarda este código para recuperar tu configuración.');
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  buildSwatches();
+  initSections();
+  renderWardrobe();
+  setView('angle');
+  // init door count UI
+  document.querySelectorAll('.count-btn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent)===state.doorCount));
+});
+window.addEventListener('resize', renderWardrobe);
+</script>
+</body>
+</html>
