@@ -335,15 +335,12 @@ footer{
 
 /* ── RESPONSIVE MOBILE ── */
 @media(max-width:768px){
-  nav{padding:1.2rem 1.5rem}
+  nav{padding:0 16px;height:60px}
   .nav-links{display:none}
   .nav-hamburger{display:flex}
 
-  .hero-wrapper{padding:1rem 1rem 0}
-  .hero{height:70vw;min-height:300px;max-height:500px}
-  .hero-content{left:1.5rem;right:1.5rem;bottom:1.5rem}
-  .hero-title{font-size:clamp(1.5rem,7vw,2.5rem)}
-  .hero-meta{display:none}
+  .hero-wrapper{margin-top:60px;padding:0 16px}
+  .hero{height:75vh;min-height:auto;max-height:none}
 
   .intro{grid-template-columns:1fr;gap:0;padding:3rem 1.5rem}
   .intro-body{padding-top:1.5rem}
