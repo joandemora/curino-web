@@ -26,8 +26,8 @@ nav{
   padding:0 32px;height:80px;
   background:var(--white);
 }
-.nav-logo{font-size:18px;font-weight:700;letter-spacing:.08em;color:#000;text-decoration:none}
-.nav-logo span{font-weight:300;margin-right:2px}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
 .nav-links{display:flex;gap:1.8rem;align-items:center}
 .nav-links a{
   font-size:12px;letter-spacing:.05em;text-transform:uppercase;
@@ -385,7 +385,7 @@ footer{
 /* ── RESPONSIVE MOBILE ── */
 @media(max-width:768px){
   nav{padding:0 16px;height:60px}
-  .nav-logo{font-size:15px}
+  .nav-logo img{height:20px}
   .nav-links{display:none}
   .nav-icons{display:none}
   .nav-hamburger{display:flex}
@@ -445,7 +445,7 @@ footer{
 
 <!-- NAV -->
 <nav id="nav">
-  <a href="/" class="nav-logo"><span>&</span> CURINO</a>
+  <a href="/" class="nav-logo"><img src="assets/imagenes/logo-curino.svg" alt="Curino" height="28"></a>
   <div class="nav-links">
     <div class="mega-trigger">
       <a href="#">Alta Carpinteria</a>
