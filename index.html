@@ -202,8 +202,7 @@ nav{
   position:relative;overflow:hidden;
   height:85vh;min-height:380px;
   background:var(--black) center/cover no-repeat;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;cursor:pointer;padding:60px 80px;
+  text-align:center;cursor:pointer;
 }
 .sys-card::after{
   content:'';position:absolute;inset:0;
@@ -212,10 +211,14 @@ nav{
 .sys-card:hover::after{background:rgba(0,0,0,.35)}
 .sys-card-title,.sys-card-cta{position:relative;z-index:1}
 .sys-card-title{
+  position:absolute;bottom:100px;left:0;right:0;
   font-size:22px;letter-spacing:normal;text-transform:uppercase;
-  color:var(--white);font-weight:400;margin-bottom:32px;
+  color:var(--white);font-weight:400;text-align:center;
+  transform:translateY(0);transition:transform .4s ease;
 }
+.sys-card:hover .sys-card-title{transform:translateY(-8px)}
 .sys-card-cta{
+  position:absolute;bottom:60px;left:50%;transform:translateX(-50%);
   font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;
   color:#ffffff;text-decoration:none;
   border-bottom:1px solid #ffffff;padding-bottom:3px;
