@@ -555,7 +555,7 @@ footer{
     <video class="hero-video" autoplay muted loop playsinline>
       <source src="assets/video/hero.mp4" type="video/mp4">
     </video>
-    <a href="#intro" class="hero-cta">Descubrir</a>
+    <a href="#intro" class="hero-cta" onclick="event.preventDefault();window.scrollTo({top:document.getElementById('intro').offsetTop-80,behavior:'smooth'})">Descubrir</a>
   </div>
   <div class="hero-scroll-arrow" onclick="window.scrollTo({top:document.getElementById('intro').offsetTop-80,behavior:'smooth'})">
     <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
