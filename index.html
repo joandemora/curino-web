@@ -210,14 +210,18 @@ nav{
   background:rgba(0,0,0,.35);transition:background .3s;
 }
 .sys-card:hover::after{background:rgba(0,0,0,.2)}
-.sys-card-title,.sys-card-desc{position:relative;z-index:1}
+.sys-card-title,.sys-card-cta{position:relative;z-index:1}
 .sys-card-title{
   font-size:22px;letter-spacing:normal;text-transform:uppercase;
   color:var(--white);font-weight:400;margin-bottom:32px;
 }
-.sys-card-desc{
-  font-size:14px;color:var(--white);font-weight:400;
-  letter-spacing:0.14px;line-height:19.88px;
+.sys-card-cta{
+  font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;
+  color:#ffffff;text-decoration:none;
+  border-bottom:1px solid #ffffff;padding-bottom:3px;
+  transition:opacity .2s;
+}
+.sys-card-cta:hover{opacity:.7
 }
 
 /* ── FULL IMAGE ── */
@@ -553,7 +557,7 @@ footer{
   <div class="sys-col">
     <div class="sys-card" style="background-image:url(assets/imagenes/landing/MAESTRO.jpg)">
       <div class="sys-card-title">Sistema Maestro</div>
-      <div class="sys-card-desc">El espacio que siempre imaginaste, por fin existe. Armarios y vestidores diseñados y fabricados al milímetro para tu vida, tu ropa y tu manera de estar en casa.</div>
+      <a href="#" class="sys-card-cta">Armarios y vestidores</a>
     </div>
     <div class="sys-text">
       <p>El espacio que siempre imaginaste, por fin existe. Armarios y vestidores diseñados y fabricados al milímetro para tu vida, tu ropa y tu manera de estar en casa.</p>
@@ -562,7 +566,7 @@ footer{
   <div class="sys-col">
     <div class="sys-card" style="background-image:url(assets/imagenes/landing/FINA.jpg)">
       <div class="sys-card-title">Sistema Fina</div>
-      <div class="sys-card-desc">Una puerta no separa estancias — define atmósferas. Puertas y paneles de alta carpintería que transforman cada paso en una experiencia.</div>
+      <a href="#" class="sys-card-cta">Puertas y paneles</a>
     </div>
     <div class="sys-text">
       <p>Una puerta no separa estancias — define atmósferas. Puertas y paneles de alta carpintería que transforman cada paso en una experiencia.</p>
@@ -571,7 +575,7 @@ footer{
   <div class="sys-col">
     <div class="sys-card" style="background-image:url(assets/imagenes/landing/AUTOR.jpg)">
       <div class="sys-card-title">Sistema Autor</div>
-      <div class="sys-card-desc">La cocina de antes vuelve. Diseñada para quienes cocinan, viven y comparten con la misma exigencia con la que eligen cada detalle de su hogar.</div>
+      <a href="#" class="sys-card-cta">Cocinas</a>
     </div>
     <div class="sys-text">
       <p>La cocina de antes vuelve. Diseñada para quienes cocinan, viven y comparten con la misma exigencia con la que eligen cada detalle de su hogar.</p>
