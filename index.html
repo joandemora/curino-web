@@ -117,32 +117,50 @@ nav{
 
 /* ── INTRO ── */
 .intro{
-  padding:6rem 3rem 5rem;
-  display:grid;grid-template-columns:1fr 1fr;gap:5rem;
-  border-bottom:1px solid var(--border);
+  padding:7rem 3rem 6rem;
+  text-align:center;
+  max-width:720px;margin:0 auto;
 }
-.intro-label{
-  font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--mid);margin-bottom:2rem;font-weight:400;
-}
-.intro-h2{
-  font-size:clamp(1.6rem,2.8vw,2.5rem);
-  font-weight:700;line-height:1.2;color:var(--black);
-  letter-spacing:-.01em;
+.intro-title{
+  font-size:clamp(1.8rem,3vw,2.8rem);
+  font-weight:300;line-height:1.25;color:var(--black);
+  letter-spacing:-.01em;margin-bottom:2rem;
 }
 .intro-body{
-  padding-top:3rem;
-  font-size:.8rem;color:var(--mid);line-height:2;font-weight:300;
+  font-size:.85rem;color:var(--mid);line-height:2;font-weight:300;
+  margin-bottom:2.5rem;
 }
-.intro-body p+p{margin-top:1.5rem}
 .link-arrow{
-  display:inline-block;margin-top:2rem;
-  font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;
+  display:inline-block;
+  font-size:12px;letter-spacing:.05em;text-transform:uppercase;
   color:var(--black);text-decoration:none;font-weight:400;
-  border-bottom:1px solid var(--black);padding-bottom:2px;
-  transition:opacity .2s;
+  border-bottom:1px solid var(--black);padding-bottom:3px;
+  transition:color .2s;
 }
-.link-arrow:hover{opacity:.4}
+.link-arrow:hover{color:#999}
+
+/* ── SYSTEMS GRID ── */
+.sys-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:0;padding:0 32px 32px;
+}
+.sys-card{
+  position:relative;overflow:hidden;
+  height:55vh;min-height:380px;
+  background:var(--black);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;cursor:pointer;
+  transition:background .3s;
+}
+.sys-card:hover{background:#1a1a1a}
+.sys-card-title{
+  font-size:14px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--white);font-weight:600;margin-bottom:.6rem;
+}
+.sys-card-desc{
+  font-size:13px;color:rgba(255,255,255,.5);font-weight:300;
+  letter-spacing:.02em;
+}
 
 /* ── FULL IMAGE ── */
 .full-img{
@@ -343,8 +361,9 @@ footer{
   .hero-wrapper{margin-top:60px;padding:0 16px}
   .hero{height:75vh;min-height:auto;max-height:none}
 
-  .intro{grid-template-columns:1fr;gap:0;padding:3rem 1.5rem}
-  .intro-body{padding-top:1.5rem}
+  .intro{padding:4rem 1.5rem 3rem}
+  .sys-grid{grid-template-columns:1fr;padding:0 16px 16px}
+  .sys-card{height:40vh;min-height:260px}
 
   .full-img{height:55vw;min-height:220px}
 
@@ -428,14 +447,24 @@ footer{
 
 <!-- INTRO -->
 <div class="intro" id="intro">
-  <div>
-    <p class="intro-label reveal">Sobre Curino</p>
-    <h2 class="intro-h2 reveal">El primer modelo que entrega<br>diseño libre y resultado garantizado.</h2>
+  <h2 class="intro-title">Mueble a medida.<br>Sin concesiones.</h2>
+  <p class="intro-body">Curino diseña y fabrica cada pieza para un espacio concreto y una persona concreta. Precisión industrial, resultado garantizado.</p>
+  <a href="#sistemas" class="link-arrow">Descubrir</a>
+</div>
+
+<!-- SYSTEMS -->
+<div class="sys-grid" id="sistemas">
+  <div class="sys-card">
+    <div class="sys-card-title">Maestro</div>
+    <div class="sys-card-desc">Armarios y vestidores</div>
   </div>
-  <div class="intro-body reveal">
-    <p>Curino nació para llevar el mueble a medida a un nuevo nivel: el de la precisión industrial aplicada a proyectos únicos. Cada pieza, diseñada para un espacio concreto y una persona concreta.</p>
-    <p>Somos la primera empresa de mueble a medida con ejecución respaldada por SLA — coordinamos diseño, producción e instalación con plazos garantizados y responsabilidad total de principio a fin.</p>
-    <a href="#sistemas" class="link-arrow">Descubrir los sistemas</a>
+  <div class="sys-card">
+    <div class="sys-card-title">Fina</div>
+    <div class="sys-card-desc">Cocinas</div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-title">Autor</div>
+    <div class="sys-card-desc">Puertas</div>
   </div>
 </div>
 
