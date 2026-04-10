@@ -62,9 +62,15 @@ nav{
 }
 .hero{
   position:relative;overflow:hidden;
-  height:calc(100vh - 80px);
+  height:calc(100vh - 80px - 70px);
   max-height:none;
 }
+.hero-scroll-arrow{
+  display:flex;align-items:center;justify-content:center;
+  height:70px;background:var(--white);cursor:pointer;
+}
+.hero-scroll-arrow svg{width:20px;height:20px;opacity:.35;transition:opacity .2s}
+.hero-scroll-arrow:hover svg{opacity:.7}
 .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hero-overlay{
   position:absolute;inset:0;
@@ -417,10 +423,13 @@ footer{
       <source src="assets/video/hero.mp4" type="video/mp4">
     </video>
   </div>
+  <div class="hero-scroll-arrow" onclick="document.getElementById('intro').scrollIntoView({behavior:'smooth'})">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
 </div>
 
 <!-- INTRO -->
-<div class="intro">
+<div class="intro" id="intro">
   <div>
     <p class="intro-label reveal">Sobre Curino</p>
     <h2 class="intro-h2 reveal">El primer modelo que entrega<br>diseño libre y resultado garantizado.</h2>
