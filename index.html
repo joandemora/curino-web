@@ -178,18 +178,22 @@ nav{
 .sys-card{
   position:relative;overflow:hidden;
   height:85vh;min-height:380px;
-  background:var(--black);
+  background:var(--black) center/cover no-repeat;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   text-align:center;cursor:pointer;
-  transition:background .3s;
 }
-.sys-card:hover{background:#1a1a1a}
+.sys-card::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(0,0,0,.35);transition:background .3s;
+}
+.sys-card:hover::after{background:rgba(0,0,0,.2)}
+.sys-card-title,.sys-card-desc{position:relative;z-index:1}
 .sys-card-title{
   font-size:14px;letter-spacing:.15em;text-transform:uppercase;
   color:var(--white);font-weight:600;margin-bottom:.6rem;
 }
 .sys-card-desc{
-  font-size:13px;color:rgba(255,255,255,.5);font-weight:300;
+  font-size:13px;color:rgba(255,255,255,.7);font-weight:300;
   letter-spacing:.02em;
 }
 
@@ -523,15 +527,15 @@ footer{
 
 <!-- SYSTEMS -->
 <div class="sys-grid" id="sistemas">
-  <div class="sys-card">
+  <div class="sys-card" style="background-image:url(assets/imagenes/landing/MAESTRO.jpg)">
     <div class="sys-card-title">Maestro</div>
     <div class="sys-card-desc">Armarios y vestidores</div>
   </div>
-  <div class="sys-card">
+  <div class="sys-card" style="background-image:url(assets/imagenes/landing/FINA.jpg)">
     <div class="sys-card-title">Fina</div>
     <div class="sys-card-desc">Cocinas</div>
   </div>
-  <div class="sys-card">
+  <div class="sys-card" style="background-image:url(assets/imagenes/landing/AUTOR.jpg)">
     <div class="sys-card-title">Autor</div>
     <div class="sys-card-desc">Puertas</div>
   </div>
