@@ -120,7 +120,9 @@ nav{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-family:var(--font);font-size:22px;font-weight:400;
   letter-spacing:normal;text-transform:uppercase;color:#ffffff;z-index:1;
-  text-align:center;
+  text-align:center;transition:transform .4s ease;
+}
+.video-block:hover .video-title{transform:translate(-50%,-50%) translateY(-8px)
 }
 .hero-scroll-arrow svg{width:20px;height:20px;stroke:#000000;transition:stroke .2s}
 .hero-scroll-arrow:hover svg{stroke:#999999}
