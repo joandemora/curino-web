@@ -215,6 +215,7 @@ nav{
   position:relative;overflow:hidden;
   height:85vh;min-height:380px;
   background:var(--black) center/cover no-repeat;
+  display:flex;align-items:center;justify-content:center;
   text-align:center;cursor:pointer;
 }
 .sys-card::after{
@@ -239,6 +240,8 @@ nav{
 }
 .sys-card-cta:hover{opacity:.7}
 .sys-card-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.sys-card-content{position:relative;z-index:1;text-align:center;padding:0 60px}
+.sys-card-subtitle{font-size:14px;color:var(--white);font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
 /* ── FULL IMAGE ── */
 .full-img{
@@ -619,8 +622,10 @@ footer{
 <!-- SECONDARY CARDS -->
 <div class="sys-grid" id="secondary" style="grid-template-columns:1fr 1fr;padding-top:0">
   <div class="sys-card" style="background-image:url(assets/imagenes/landing/designers-hero.png)">
-    <div class="sys-card-title">Estudio</div>
-    <div class="sys-card-desc">Conoce el espacio donde nace cada pieza. Visita nuestro estudio y descubre cómo la tecnología y el oficio se dan la mano.</div>
+    <div class="sys-card-content">
+      <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">Estudio</div>
+      <div class="sys-card-subtitle">Conoce el espacio donde nace cada pieza. Visita nuestro estudio y descubre cómo la tecnología y el oficio se dan la mano.</div>
+    </div>
   </div>
   <div class="sys-card">
     <video class="sys-card-bg" autoplay muted loop playsinline>
