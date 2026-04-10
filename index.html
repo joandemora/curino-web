@@ -115,7 +115,8 @@ nav{
 }
 .video-cta:hover{opacity:.7}
 .video-block{position:relative;overflow:hidden;height:85vh}
-.video-block::after{content:'';position:absolute;inset:0;background:rgba(10,10,10,.25)}
+.video-block::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.2);transition:background .3s}
+.video-block:hover::after{background:rgba(0,0,0,.35)}
 .video-title{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-family:var(--font);font-size:22px;font-weight:400;
