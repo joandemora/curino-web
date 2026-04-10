@@ -28,6 +28,7 @@ nav{
 }
 .nav-logo{text-decoration:none;display:flex;align-items:center}
 .nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
 .nav-links{display:flex;gap:1.8rem;align-items:center}
 .nav-links a{
   font-size:12px;letter-spacing:.05em;text-transform:uppercase;
@@ -386,8 +387,7 @@ footer{
 @media(max-width:768px){
   nav{padding:0 16px;height:60px}
   .nav-logo img{height:20px}
-  .nav-links{display:none}
-  .nav-icons{display:none}
+  .nav-right{display:none}
   .nav-hamburger{display:flex}
 
   .hero-wrapper{margin-top:60px;padding:0 16px}
@@ -446,6 +446,7 @@ footer{
 <!-- NAV -->
 <nav id="nav">
   <a href="/" class="nav-logo"><img src="assets/imagenes/logo-curino.svg" alt="Curino" height="28"></a>
+  <div class="nav-right">
   <div class="nav-links">
     <div class="mega-trigger">
       <a href="#">Alta Carpinteria</a>
@@ -491,6 +492,7 @@ footer{
   <div class="nav-icons">
     <a href="#">ES</a>
     <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </div>
   </div>
   <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
     <span></span><span></span>
