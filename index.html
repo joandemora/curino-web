@@ -77,10 +77,6 @@ nav{
   display:flex;flex-direction:column;align-items:center;flex-shrink:0;
 }
 .mega-img img{width:300px;height:300px;object-fit:cover;display:block}
-.mega-video-slot{width:300px;height:300px;background:#000}
-.mega-persistent-video{position:fixed;width:300px;height:300px;object-fit:cover;z-index:100;
-  pointer-events:none;opacity:0;transition:opacity .25s}
-.mega-trigger:hover~.mega-persistent-video,.mega-persistent-video.visible{opacity:1}
 .mega-img a{
   display:inline-block;margin-top:12px;
   font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;
@@ -548,7 +544,7 @@ footer{
           <a href="#">Couture</a>
         </div>
         <div class="mega-imgs">
-          <div class="mega-img"><div class="mega-video-slot" id="megaVideoSlot"></div><a href="#">Proyecto a medida</a></div>
+          <div class="mega-img"><img src="assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"><a href="#">Proyecto a medida</a></div>
           <div class="mega-img"><img src="assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"><a href="configurador-armarios-vestidores/">Configurador</a></div>
         </div>
       </div>
@@ -570,7 +566,6 @@ footer{
     <span></span><span></span>
   </div>
 </nav>
-<video id="megaVideo" class="mega-persistent-video" autoplay muted loop playsinline preload="auto"><source src="assets/video/fina-hero.mp4" type="video/mp4"></video>
 <div class="mobile-menu" id="mobileMenu">
   <a href="#" onclick="toggleMenu()">Alta Carpinteria</a>
   <a href="#" onclick="toggleMenu()">Diseñadores</a>
@@ -759,23 +754,6 @@ footer{
 </div>
 
 <script>
-// Mega video positioning
-(function(){
-  var video=document.getElementById('megaVideo');
-  var slot=document.getElementById('megaVideoSlot');
-  var trigger=document.querySelector('.mega-trigger');
-  if(!video||!slot||!trigger)return;
-  function positionVideo(){
-    var r=slot.getBoundingClientRect();
-    video.style.top=r.top+'px';video.style.left=r.left+'px';
-  }
-  trigger.addEventListener('mouseenter',function(){positionVideo();video.classList.add('visible');});
-  document.querySelector('.megamenu').addEventListener('mouseenter',function(){positionVideo();video.classList.add('visible');});
-  trigger.addEventListener('mouseleave',function(){setTimeout(function(){if(!document.querySelector('.megamenu:hover'))video.classList.remove('visible');},200);});
-  document.querySelector('.megamenu').addEventListener('mouseleave',function(){video.classList.remove('visible');});
-  window.addEventListener('resize',positionVideo);
-})();
-
 // Slideshow card
 (function(){
   var slides=document.querySelectorAll('#slideCard .sys-card-slide');
