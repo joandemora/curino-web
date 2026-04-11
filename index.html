@@ -52,8 +52,9 @@ nav{
 .megamenu{
   position:fixed;top:80px;left:0;right:0;z-index:99;
   background:var(--white);
+  left:0;right:auto;
   padding:3rem 32px 2.5rem;
-  display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.5fr;gap:2rem;
+  display:flex;justify-content:flex-start;align-items:flex-start;gap:3rem;
   opacity:0;visibility:hidden;transform:translateY(-8px);
   transition:opacity .25s,visibility .25s,transform .25s;
   border-top:1px solid var(--border);
