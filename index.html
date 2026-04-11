@@ -247,6 +247,9 @@ nav{
 #slideCard .sys-card-slide{background-size:cover;background-position:center center}
 #slideCard::after{background:rgba(0,0,0,.2)}
 #slideCard:hover::after{background:rgba(0,0,0,.35)}
+#partnersCard::before{content:'';position:absolute;inset:0;background:url(assets/imagenes/landing/partners-hero.jpg) center/cover no-repeat;filter:grayscale(100%);z-index:0}
+#partnersCard::after{background:rgba(0,0,0,.2)}
+#partnersCard:hover::after{background:rgba(0,0,0,.35)}
 .sys-card-content{position:relative;z-index:1;text-align:center;padding:160px}
 .sys-card-subtitle{font-size:14px;color:var(--white);font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
@@ -689,7 +692,7 @@ footer{
     </div>
     <a href="configurador-armarios-vestidores/" class="sys-card-cta">Configurar</a>
   </div>
-  <div class="sys-card" style="background-image:url(assets/imagenes/landing/partners-hero.jpg);background-size:cover;background-position:center center">
+  <div class="sys-card" id="partnersCard">
     <div class="sys-card-content">
       <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">Partners</div>
       <div class="sys-card-subtitle">Vende proyectos Curino desde cualquier lugar del mundo. Sin stock, sin obra, sin límites. Tú generas el proyecto, nosotros lo fabricamos e instalamos. Tú cobras.</div>
