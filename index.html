@@ -423,7 +423,10 @@ nav{
 footer{
   background:var(--black);color:#ffffff;
   padding:4rem 32px 3rem;
-  display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr 1fr 1.2fr;gap:2rem;
+  display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem 2rem;
+  grid-template-areas:
+    "logo alta corp empleo contacto"
+    "logo alta corp prensa newsletter";
   font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;
 }
 .footer-logo{height:18px;margin-bottom:1.5rem;display:block;filter:invert(1);opacity:.7}
@@ -743,11 +746,11 @@ footer{
 
 <!-- FOOTER -->
 <footer>
-  <div>
+  <div style="grid-area:logo">
     <img src="assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
     <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpintería a medida — armarios, vestidores, cocinas y puertas con garantía de 25 años.</p>
   </div>
-  <div class="footer-col">
+  <div class="footer-col" style="grid-area:alta">
     <h4>Alta Carpintería</h4>
     <a href="configurador-armarios-vestidores/">Configurador de armarios</a>
     <a href="#">Proyecto a medida en Barcelona</a>
@@ -756,7 +759,7 @@ footer{
     <a href="#">Proyecto a medida en Marbella</a>
     <a href="#">Proyecto a medida en Bilbao</a>
   </div>
-  <div class="footer-col">
+  <div class="footer-col" style="grid-area:corp">
     <h4>Corporativo</h4>
     <a href="#">Sobre nosotros</a>
     <a href="#">I+D e Innovación</a>
@@ -764,23 +767,23 @@ footer{
     <a href="#">Ética Corporativa</a>
     <a href="#">Proveedores</a>
   </div>
-  <div class="footer-col">
+  <div class="footer-col" style="grid-area:empleo">
     <h4>Empleo</h4>
     <a href="#">Únete a Curino</a>
     <a href="#">Curino Partners</a>
   </div>
-  <div class="footer-col">
+  <div class="footer-col" style="grid-area:prensa">
     <h4>Sala de Prensa</h4>
     <a href="#">Magazine</a>
     <a href="#">Contacto Prensa</a>
   </div>
-  <div class="footer-col">
+  <div class="footer-col" style="grid-area:contacto">
     <h4>Contacto</h4>
     <a href="#">Cuéntanos tu proyecto</a>
     <a href="#">WhatsApp</a>
     <a href="mailto:info@casacurino.com">info@casacurino.com</a>
   </div>
-  <div class="footer-col footer-newsletter">
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter">
     <h4>Newsletter</h4>
     <input type="email" placeholder="Tu email">
     <button type="button">Suscribirse</button>
