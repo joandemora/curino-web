@@ -421,24 +421,40 @@ nav{
 
 /* ── FOOTER ── */
 footer{
-  background:var(--black);color:rgba(255,255,255,.6);
-  padding:4rem 3rem 3rem;
-  display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4rem;
+  background:var(--black);color:#ffffff;
+  padding:4rem 32px 3rem;
+  display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.5fr;gap:3rem;
+  font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;
 }
 .footer-logo{height:18px;margin-bottom:1.5rem;display:block;filter:invert(1);opacity:.7}
 .footer-tagline{
-  font-size:.72rem;line-height:2;font-weight:300;max-width:28ch;
+  font-size:14px;line-height:19.88px;font-weight:400;max-width:28ch;color:#ffffff;
 }
 .footer-col h4{
-  font-size:.52rem;letter-spacing:.22em;text-transform:uppercase;
-  color:rgba(255,255,255,.35);margin-bottom:1.5rem;font-weight:400;
+  font-size:14px;letter-spacing:0.14px;text-transform:uppercase;
+  color:#ffffff;margin-bottom:1.5rem;font-weight:600;
 }
 .footer-col a{
-  display:block;font-size:.72rem;color:rgba(255,255,255,.5);
-  text-decoration:none;margin-bottom:.6rem;font-weight:300;
+  display:block;font-size:14px;color:#ffffff;letter-spacing:0.14px;line-height:19.88px;
+  text-decoration:none;margin-bottom:.6rem;font-weight:400;
   transition:color .2s;
 }
-.footer-col a:hover{color:var(--white)}
+.footer-col a:hover{color:#999999}
+.footer-newsletter input{
+  background:transparent;border:none;border-bottom:1px solid #ffffff;
+  color:#ffffff;font-family:var(--font);font-size:14px;font-weight:400;
+  letter-spacing:0.14px;padding:.5rem 0;width:100%;outline:none;
+  margin-bottom:1rem;
+}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{
+  background:transparent;border:none;color:#ffffff;
+  font-family:var(--font);font-size:12px;font-weight:400;
+  letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;
+  border-bottom:1px solid #ffffff;padding-bottom:3px;
+  transition:color .2s,border-color .2s;
+}
+.footer-newsletter button:hover{color:#999999;border-color:#999999}
 .footer-bottom{
   background:var(--black);
   padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);
@@ -750,6 +766,11 @@ footer{
     <a href="mailto:info@casacurino.com">info@casacurino.com</a>
     <a href="configurador-armarios-vestidores/">Configurador</a>
     <a href="#">B2B · Diseñadores</a>
+  </div>
+  <div class="footer-col footer-newsletter">
+    <h4>Newsletter</h4>
+    <input type="email" placeholder="Tu email">
+    <button type="button">Suscribirse</button>
   </div>
 </footer>
 <div class="footer-bottom">
