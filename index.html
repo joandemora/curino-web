@@ -53,7 +53,7 @@ nav{
   position:fixed;top:80px;left:0;right:0;z-index:99;
   width:100%;background:var(--white);
   padding:32px;
-  display:flex;justify-content:flex-start;gap:120px;
+  display:flex;justify-content:flex-start;gap:180px;
   opacity:0;visibility:hidden;transform:translateY(-8px);
   transition:opacity .25s,visibility .25s,transform .25s;
   border-top:1px solid var(--border);
@@ -71,11 +71,15 @@ nav{
 }
 .mega-col a:hover{color:#000}
 .mega-img{
-  background:#111;min-height:200px;min-width:250px;
-  margin-left:auto;
-  display:flex;align-items:center;justify-content:center;
-  color:rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.1em;
+  margin-left:auto;display:flex;flex-direction:column;align-items:center;flex-shrink:0;
 }
+.mega-img img{width:300px;height:400px;object-fit:cover;display:block}
+.mega-img a{
+  display:block;margin-top:12px;
+  font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;
+  color:#000000;text-decoration:none;transition:color .2s;
+}
+.mega-img a:hover{color:#999999}
 
 /* ── MOBILE MENU ── */
 .mobile-menu{
@@ -534,7 +538,7 @@ footer{
           <a href="#">Contract</a>
           <a href="#">Couture</a>
         </div>
-        <div class="mega-img">Imagen</div>
+        <div class="mega-img"><img src="assets/imagenes/landing/hero mega config armarios.jpeg" alt="Configurador"><a href="configurador-armarios-vestidores/">Configurador</a></div>
       </div>
     </div>
     <a href="#">Diseñadores</a>
