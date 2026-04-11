@@ -242,6 +242,8 @@ nav{
 .sys-card-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .sys-card-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1s ease;z-index:0}
 .sys-card-slide.active{opacity:1}
+.sys-card-slide-zoom{background-position:left center;animation:zoomIn 8s ease-in-out infinite alternate}
+@keyframes zoomIn{from{background-size:100% auto}to{background-size:115% auto}}
 .sys-card-content{position:relative;z-index:1;text-align:center;padding:160px}
 .sys-card-subtitle{font-size:14px;color:var(--white);font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
@@ -676,7 +678,7 @@ footer{
 <!-- TERTIARY CARDS 2 -->
 <div class="sys-grid" style="grid-template-columns:1fr 1fr;padding-top:0">
   <div class="sys-card" id="slideCard">
-    <div class="sys-card-slide active" style="background-image:url('assets/imagenes/landing/vestidor total.png')"></div>
+    <div class="sys-card-slide sys-card-slide-zoom active" style="background-image:url('assets/imagenes/landing/vestidor total.png')"></div>
     <div class="sys-card-slide" style="background-image:url('assets/imagenes/landing/armario total.jpg')"></div>
     <div class="sys-card-content">
       <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">Materiales</div>
