@@ -48,17 +48,19 @@ nav{
 .nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s}
 
 /* ── MEGAMENU ── */
-.mega-trigger:hover .megamenu{opacity:1;visibility:visible;transform:translateY(0)}
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
 .megamenu{
   position:fixed;top:80px;left:0;right:0;z-index:99;
   width:100%;background:var(--white);
   padding:32px;
   display:flex;justify-content:flex-start;gap:180px;
   opacity:0;visibility:hidden;transform:translateY(-8px);
-  transition:opacity .25s,visibility .25s,transform .25s;
+  transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;
   border-top:1px solid var(--border);
 }
-.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
 .mega-col{margin-bottom:32px}
 .mega-col-title{
   font-size:12px;letter-spacing:0.24px;text-transform:uppercase;
