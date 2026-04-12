@@ -104,6 +104,25 @@ nav{
   padding:.8rem 0;border-bottom:1px solid var(--border);
 }
 .mobile-menu a:last-child{border-bottom:none}
+.mobile-accordion{border-bottom:1px solid var(--border)}
+.mobile-accordion-title{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.8rem 0;cursor:pointer;
+  font-size:13px;letter-spacing:.05em;text-transform:uppercase;
+  color:#000;font-weight:400;
+}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'−'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:600px}
+.mobile-accordion-body .mobile-sub-title{
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:#000;font-weight:600;padding:.6rem 0 .3rem;
+}
+.mobile-accordion-body a{
+  display:block;font-size:13px;color:#000;text-decoration:none;
+  font-weight:400;padding:.4rem 0 .4rem 12px;border-bottom:none!important;
+}
 
 /* ── HERO con marco blanco ── */
 .hero-wrapper{
@@ -632,7 +651,31 @@ footer{
   </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
-  <a href="#" onclick="toggleMenu()">Alta Carpinteria</a>
+  <div class="mobile-accordion" id="mobileAccordion">
+    <div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div>
+    <div class="mobile-accordion-body">
+      <div class="mobile-sub-title">Sistemas</div>
+      <a href="#">Maestro</a>
+      <a href="#">Fina</a>
+      <a href="#">Autor</a>
+      <div class="mobile-sub-title">Estancias</div>
+      <a href="#">Dormitorio</a>
+      <a href="#">Cocina</a>
+      <a href="#">Salon</a>
+      <a href="#">Comedor</a>
+      <a href="#">Bano</a>
+      <div class="mobile-sub-title">Productos</div>
+      <a href="#">Armarios</a>
+      <a href="#">Vestidores</a>
+      <a href="#">Puertas</a>
+      <a href="#">Paneles</a>
+      <a href="#">Cocinas</a>
+      <div class="mobile-sub-title">Proyectos Integrales</div>
+      <a href="#">Residencial</a>
+      <a href="#">Contract</a>
+      <a href="#">Couture</a>
+    </div>
+  </div>
   <a href="#" onclick="toggleMenu()">Diseñadores</a>
   <a href="#" onclick="toggleMenu()">Lab Work</a>
   <a href="#" onclick="toggleMenu()">Materiales</a>
