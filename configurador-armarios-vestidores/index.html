@@ -28,10 +28,11 @@ nav.config-nav{height:80px;min-height:80px;flex-shrink:0;background:var(--white)
 .nav-step.done span{background:var(--mid)}
 .nav-save{display:none!important}
 
-.main{height:calc(100vh - 140px);display:grid;grid-template-columns:3fr 2fr;min-height:0;overflow:hidden}
+.main{height:calc(100vh - 140px);display:grid;grid-template-columns:3fr 2fr;overflow:hidden}
+.main>.viewer,.main>.config-panel{height:100%}
 
 /* VIEWER */
-.viewer{position:relative;background:#f2ede8;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:2rem}
+.viewer{position:relative;background:#f2ede8;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:2rem;height:100%}
 .viewer-top{position:absolute;top:1rem;left:0;right:0;display:flex;justify-content:space-between;padding:0 1.5rem;pointer-events:none}
 .viewer-label{font-size:.5rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,0,0,.3)}
 .viewer-dims{font-size:.58rem;color:rgba(0,0,0,.32);text-align:right;line-height:1.7;font-weight:300}
@@ -59,7 +60,7 @@ nav.config-nav{height:80px;min-height:80px;flex-shrink:0;background:var(--white)
 }
 
 /* CONFIG PANEL */
-.config-panel{background:var(--white);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+.config-panel{background:var(--white);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;height:100%}
 .step-panel{display:none;flex-direction:column;flex:1}
 .step-panel.active{display:flex;overflow-y:auto}
 
@@ -127,7 +128,8 @@ nav.config-nav{height:80px;min-height:80px;flex-shrink:0;background:var(--white)
 /* MOBILE */
 @media(max-width:1200px){
   html,body{height:auto;overflow:auto}
-  .main{grid-template-columns:1fr;grid-template-rows:auto auto;min-height:auto;height:auto;overflow:visible}
+  .main{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto;overflow:visible}
+  .main>.viewer,.main>.config-panel{height:auto}
   nav.config-nav{padding:.6rem 1.2rem;height:auto;min-height:56px;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:60px}
   .nav-save{display:none}
   .nav-steps{width:100%;justify-content:center;padding:.1rem 0;position:static;transform:none}
