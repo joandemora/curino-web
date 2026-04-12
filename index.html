@@ -45,7 +45,10 @@ nav{
 .nav-icons svg{width:16px;height:16px;stroke:#000000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
 .nav-icons svg:hover{stroke:#999999}
 .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
-.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s}
+.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 
 /* ── MEGAMENU ── */
 .mega-trigger{position:relative}
@@ -660,7 +663,7 @@ footer{
   </div>
   </div>
   <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
-    <span></span><span></span>
+    <span></span><span></span><span></span>
   </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
@@ -923,7 +926,9 @@ window.addEventListener('scroll',()=>{});
 // Mobile menu
 function toggleMenu(){
   const m=document.getElementById('mobileMenu');
+  const h=document.getElementById('hamburger');
   m.classList.toggle('open');
+  h.classList.toggle('open');
 }
 
 // Hero slideshow
