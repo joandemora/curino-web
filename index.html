@@ -126,8 +126,10 @@ nav{
   padding:.4rem 0 .4rem 12px;border-bottom:none!important;
 }
 .mobile-imgs{display:flex;flex-direction:column;gap:16px;padding:1rem 0;border-bottom:none!important}
+.mobile-imgs .mega-img{position:static}
+.mobile-imgs .mega-img::before{display:none}
 .mobile-imgs .mega-img img{width:100%;aspect-ratio:1/1;height:auto;object-fit:cover;display:block}
-.mobile-imgs .mega-img a:first-child{display:block;line-height:0;border:none;padding:0;margin:0}
+.mobile-imgs .mega-img a:first-child{display:block;line-height:0;border:none;padding:0;margin:0;outline:none;box-shadow:none}
 .mobile-imgs .mega-img a:last-child{margin-top:8px;font-size:12px}
 
 /* ── HERO con marco blanco ── */
