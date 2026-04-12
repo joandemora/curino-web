@@ -495,7 +495,7 @@ footer{
   #secondary .sys-card{
     flex:0 0 calc(100vw - 32px);width:calc(100vw - 32px);scroll-snap-align:start;
   }
-  #secondary .sys-card:first-child{margin-left:32px}
+  #secondary .sys-card{margin-left:32px}
   .sys-card{height:70vh;min-height:260px}
   .video-block{height:70vh}
 
@@ -824,7 +824,7 @@ footer{
     idx=(idx+1)%cards.length;
     cards[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'});
   }
-  timer=setInterval(go,4000);
+  timer=setInterval(go,2000);
   el.addEventListener('touchstart',function(){clearInterval(timer);},{passive:true});
   el.addEventListener('wheel',function(){clearInterval(timer);},{passive:true});
 })();
