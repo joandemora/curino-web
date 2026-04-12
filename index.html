@@ -489,12 +489,11 @@ footer{
   #secondary{
     display:flex;overflow-x:scroll;scroll-snap-type:x mandatory;
     scrollbar-width:none;-ms-overflow-style:none;
-    padding:0 32px;gap:0;
+    gap:16px;padding:0 32px;
   }
   #secondary::-webkit-scrollbar{display:none}
   #secondary .sys-card{
-    flex:0 0 100%;width:100%;scroll-snap-align:start;
-    margin:0;
+    min-width:calc(100vw - 64px);scroll-snap-align:start;flex-shrink:0;
   }
   .sys-card{height:70vh;min-height:260px}
   .video-block{height:70vh}
