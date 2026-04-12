@@ -451,6 +451,49 @@ footer{
   .footer-legal{align-items:center;text-align:center}
 }
 
+/* ── CART DRAWER ── */
+.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
+.cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
+.cart-badge{position:absolute;top:-6px;right:-8px;background:var(--black);color:#fff;
+  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;line-height:1}
+.cart-badge.visible{display:flex}
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;
+  opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+.cart-overlay.open{opacity:1;visibility:visible}
+.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:420px;background:#fff;z-index:301;
+  transform:translateX(100%);transition:transform .35s ease;
+  display:flex;flex-direction:column;overflow:hidden}
+.cart-drawer.open{transform:translateX(0)}
+.cart-header{display:flex;align-items:center;justify-content:space-between;
+  padding:1.5rem 2rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.cart-title{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.cart-close{cursor:pointer;font-size:20px;color:var(--mid);transition:color .2s;background:none;border:none;font-family:var(--font)}
+.cart-close:hover{color:#000}
+.cart-items{flex:1;overflow-y:auto;padding:0}
+.cart-empty{padding:3rem 2rem;text-align:center;color:var(--mid);font-size:14px}
+.cart-item{display:flex;gap:1rem;padding:1.2rem 2rem;border-bottom:1px solid var(--border)}
+.cart-item-img{width:80px;height:80px;background:#f2ede8;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.cart-item-img img{max-width:100%;max-height:100%;object-fit:contain}
+.cart-item-info{flex:1;min-width:0}
+.cart-item-name{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase}
+.cart-item-desc{font-size:12px;color:var(--mid);line-height:1.6}
+.cart-item-price{font-size:14px;font-weight:700;margin-top:6px}
+.cart-item-remove{background:none;border:none;color:var(--light);cursor:pointer;
+  font-size:18px;font-family:var(--font);transition:color .2s;flex-shrink:0;align-self:flex-start}
+.cart-item-remove:hover{color:#000}
+.cart-footer{padding:1.5rem 2rem;border-top:1px solid var(--border);flex-shrink:0}
+.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem;font-size:14px}
+.cart-subtotal-label{font-weight:400;text-transform:uppercase;letter-spacing:.05em}
+.cart-subtotal-price{font-weight:700}
+.cart-checkout{width:100%;background:var(--black);color:#fff;border:none;padding:1rem;
+  font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;transition:background .2s;font-weight:400}
+.cart-checkout:hover{background:#333}
+.cart-checkout:disabled{background:var(--mid);cursor:not-allowed}
+@media(max-width:1200px){
+  .cart-drawer{width:100%}
+}
 </style>
 </head>
 <body>
@@ -507,6 +550,10 @@ footer{
   <div class="nav-icons">
     <a href="#">ES</a>
     <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <div class="cart-icon" onclick="toggleCart()">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      <div class="cart-badge" id="cartBadge">0</div>
+    </div>
   </div>
   </div>
   <div class="nav-hamburger" onclick="toggleSiteMenu()" id="siteHamburger">
@@ -658,7 +705,7 @@ footer{
       <div class="p3s" id="p3ms"><div class="p3l" id="p3msTitle">Marco y travesaño</div><div class="p3tg" id="p3travTg"><button class="p3tb p3ma" data-trav="1" onclick="p3ToggleTrav(true)">Con travesaño</button><button class="p3tb" data-trav="0" onclick="p3ToggleTrav(false)">Sin travesaño</button></div><div class="p3tg" id="p3mt" style="margin-top:.5rem"><button class="p3tb p3ma" data-tipo="madera">Madera Natural</button><button class="p3tb" data-tipo="ral">Lacado RAL</button></div><div class="p3mg" id="p3mg"><div class="p3mi p3ma" data-mat="mad_wengue"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/img_001_tile.png);background-size:cover;background-position:center"></div><div class="p3mn">Wengue</div></div><div class="p3mi" data-mat="lam_nogal"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/img_002_tile.png);background-size:cover;background-position:center"></div><div class="p3mn">Nogal</div></div><div class="p3mi" data-mat="mad_cerezo"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/img_003_tile.png);background-size:cover;background-position:center"></div><div class="p3mn">Cerezo</div></div><div class="p3mi" data-mat="mad_roble"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/img_001.jpg);background-size:cover;background-position:center"></div><div class="p3mn">Roble</div></div></div><div class="p3rg" id="p3mral" style="display:none"><div class="p3ri p3ma" data-idx="0"><div class="p3rs" style="background:#F4F0E6"></div><div class="p3mn">RAL 9010</div></div><div class="p3ri" data-idx="1"><div class="p3rs" style="background:#F1F0EA"></div><div class="p3mn">RAL 9016</div></div><div class="p3ri" data-idx="2"><div class="p3rs" style="background:#ECECE7"></div><div class="p3mn">RAL 9003</div></div><div class="p3ri" data-idx="3"><div class="p3rs" style="background:#E8E0D0"></div><div class="p3mn">RAL 9001</div></div><div class="p3ri" data-idx="4"><div class="p3rs" style="background:#EDE0C4"></div><div class="p3mn">RAL 1013</div></div><div class="p3ri" data-idx="5"><div class="p3rs" style="background:#E9D8B4"></div><div class="p3mn">RAL 1015</div></div><div class="p3ri" data-idx="6"><div class="p3rs" style="background:#DFD1A0"></div><div class="p3mn">RAL 1014</div></div><div class="p3ri" data-idx="7"><div class="p3rs" style="background:#C4B08C"></div><div class="p3mn">RAL 1019</div></div><div class="p3ri" data-idx="8"><div class="p3rs" style="background:#D6D6D0"></div><div class="p3mn">RAL 7047</div></div><div class="p3ri" data-idx="9"><div class="p3rs" style="background:#C4C4BC"></div><div class="p3mn">RAL 7035</div></div><div class="p3ri" data-idx="10"><div class="p3rs" style="background:#B8B4A8"></div><div class="p3mn">RAL 7044</div></div><div class="p3ri" data-idx="11"><div class="p3rs" style="background:#9C9490"></div><div class="p3mn">RAL 7036</div></div><div class="p3ri" data-idx="12"><div class="p3rs" style="background:#817A72"></div><div class="p3mn">RAL 7039</div></div><div class="p3ri" data-idx="13"><div class="p3rs" style="background:#6C6560"></div><div class="p3mn">RAL 7022</div></div><div class="p3ri" data-idx="14"><div class="p3rs" style="background:#424B4C"></div><div class="p3mn">RAL 7016</div></div><div class="p3ri" data-idx="15"><div class="p3rs" style="background:#6E8FA5"></div><div class="p3mn">RAL 5014</div></div><div class="p3ri" data-idx="16"><div class="p3rs" style="background:#7BAAB9"></div><div class="p3mn">RAL 5024</div></div><div class="p3ri" data-idx="17"><div class="p3rs" style="background:#2A80B9"></div><div class="p3mn">RAL 5015</div></div><div class="p3ri" data-idx="18"><div class="p3rs" style="background:#8DAE9A"></div><div class="p3mn">RAL 6021</div></div><div class="p3ri" data-idx="19"><div class="p3rs" style="background:#B5CEAB"></div><div class="p3mn">RAL 6019</div></div><div class="p3ri" data-idx="20"><div class="p3rs" style="background:#6E8C68"></div><div class="p3mn">RAL 6011</div></div><div class="p3ri" data-idx="21"><div class="p3rs" style="background:#C48070"></div><div class="p3mn">RAL 3012</div></div><div class="p3ri" data-idx="22"><div class="p3rs" style="background:#CF7C72"></div><div class="p3mn">RAL 3014</div></div><div class="p3ri" data-idx="23"><div class="p3rs" style="background:#DEA8A0"></div><div class="p3mn">RAL 3015</div></div><div class="p3ri" data-idx="24"><div class="p3rs" style="background:#58342A"></div><div class="p3mn">RAL 8017</div></div><div class="p3ri" data-idx="25"><div class="p3rs" style="background:#6E4C34"></div><div class="p3mn">RAL 8014</div></div><div class="p3ri" data-idx="26"><div class="p3rs" style="background:#3D302A"></div><div class="p3mn">RAL 8019</div></div><div class="p3ri" data-idx="27"><div class="p3rs" style="background:#E3A020"></div><div class="p3mn">RAL 1007</div></div><div class="p3ri" data-idx="28"><div class="p3rs" style="background:#E06428"></div><div class="p3mn">RAL 2011</div></div><div class="p3ri" data-idx="29"><div class="p3rs" style="background:#3B6230"></div><div class="p3mn">RAL 6002</div></div></div><div class="p3l" style="margin-top:.9rem">Panel textil</div><div class="p3mg" id="p3tg"><div class="p3ti" data-idx="0"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/15-Blanco-scaled_tile.jpg);background-size:200px 200px"></div><div class="p3mn">Snow</div></div><div class="p3ti p3ma" data-idx="1"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/img_006.jpg);background-size:200px 200px"></div><div class="p3mn">Dune</div></div><div class="p3ti" data-idx="2"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/12-Rojo-scaled_tile.jpg);background-size:200px 200px;background-position:center 20%"></div><div class="p3mn">Ruby</div></div><div class="p3ti" data-idx="3"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/14-Cobre-scaled_tile.jpg);background-size:200px 200px"></div><div class="p3mn">Copper</div></div><div class="p3ti" data-idx="4"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/50-Wengue-scaled_tile.jpg);background-size:200px 200px"></div><div class="p3mn">Tobacco</div></div><div class="p3ti" data-idx="5"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/99-Negro-scaled_tile.jpg);background-size:200px 200px"></div><div class="p3mn">Onyx</div></div><div class="p3ti" data-idx="6"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/18-Verde-scaled_tile.jpg);background-size:200px 200px"></div><div class="p3mn">Sage</div></div><div class="p3ti" data-idx="7"><div class="p3ms" style="background:url(../assets/imagenes/configurador-armarios-vestidores/17-Azul-scaled_tile.jpg);background-size:200px 200px"></div><div class="p3mn">Midnight</div></div></div></div>
       <div class="p3s" id="p3ls" style="display:none"><div class="p3l">Color lacado RAL</div><div class="p3rg" id="p3rg"><div class="p3ri p3ma" data-idx="0"><div class="p3rs" style="background:#F4F0E6"></div><div class="p3mn">RAL 9010</div></div><div class="p3ri" data-idx="1"><div class="p3rs" style="background:#F1F0EA"></div><div class="p3mn">RAL 9016</div></div><div class="p3ri" data-idx="2"><div class="p3rs" style="background:#ECECE7"></div><div class="p3mn">RAL 9003</div></div><div class="p3ri" data-idx="3"><div class="p3rs" style="background:#E8E0D0"></div><div class="p3mn">RAL 9001</div></div><div class="p3ri" data-idx="4"><div class="p3rs" style="background:#EDE0C4"></div><div class="p3mn">RAL 1013</div></div><div class="p3ri" data-idx="5"><div class="p3rs" style="background:#E9D8B4"></div><div class="p3mn">RAL 1015</div></div><div class="p3ri" data-idx="6"><div class="p3rs" style="background:#DFD1A0"></div><div class="p3mn">RAL 1014</div></div><div class="p3ri" data-idx="7"><div class="p3rs" style="background:#C4B08C"></div><div class="p3mn">RAL 1019</div></div><div class="p3ri" data-idx="8"><div class="p3rs" style="background:#D6D6D0"></div><div class="p3mn">RAL 7047</div></div><div class="p3ri" data-idx="9"><div class="p3rs" style="background:#C4C4BC"></div><div class="p3mn">RAL 7035</div></div><div class="p3ri" data-idx="10"><div class="p3rs" style="background:#B8B4A8"></div><div class="p3mn">RAL 7044</div></div><div class="p3ri" data-idx="11"><div class="p3rs" style="background:#9C9490"></div><div class="p3mn">RAL 7036</div></div><div class="p3ri" data-idx="12"><div class="p3rs" style="background:#817A72"></div><div class="p3mn">RAL 7039</div></div><div class="p3ri" data-idx="13"><div class="p3rs" style="background:#6C6560"></div><div class="p3mn">RAL 7022</div></div><div class="p3ri" data-idx="14"><div class="p3rs" style="background:#424B4C"></div><div class="p3mn">RAL 7016</div></div><div class="p3ri" data-idx="15"><div class="p3rs" style="background:#6E8FA5"></div><div class="p3mn">RAL 5014</div></div><div class="p3ri" data-idx="16"><div class="p3rs" style="background:#7BAAB9"></div><div class="p3mn">RAL 5024</div></div><div class="p3ri" data-idx="17"><div class="p3rs" style="background:#2A80B9"></div><div class="p3mn">RAL 5015</div></div><div class="p3ri" data-idx="18"><div class="p3rs" style="background:#8DAE9A"></div><div class="p3mn">RAL 6021</div></div><div class="p3ri" data-idx="19"><div class="p3rs" style="background:#B5CEAB"></div><div class="p3mn">RAL 6019</div></div><div class="p3ri" data-idx="20"><div class="p3rs" style="background:#6E8C68"></div><div class="p3mn">RAL 6011</div></div><div class="p3ri" data-idx="21"><div class="p3rs" style="background:#C48070"></div><div class="p3mn">RAL 3012</div></div><div class="p3ri" data-idx="22"><div class="p3rs" style="background:#CF7C72"></div><div class="p3mn">RAL 3014</div></div><div class="p3ri" data-idx="23"><div class="p3rs" style="background:#DEA8A0"></div><div class="p3mn">RAL 3015</div></div><div class="p3ri" data-idx="24"><div class="p3rs" style="background:#58342A"></div><div class="p3mn">RAL 8017</div></div><div class="p3ri" data-idx="25"><div class="p3rs" style="background:#6E4C34"></div><div class="p3mn">RAL 8014</div></div><div class="p3ri" data-idx="26"><div class="p3rs" style="background:#3D302A"></div><div class="p3mn">RAL 8019</div></div><div class="p3ri" data-idx="27"><div class="p3rs" style="background:#E3A020"></div><div class="p3mn">RAL 1007</div></div><div class="p3ri" data-idx="28"><div class="p3rs" style="background:#E06428"></div><div class="p3mn">RAL 2011</div></div><div class="p3ri" data-idx="29"><div class="p3rs" style="background:#3B6230"></div><div class="p3mn">RAL 6002</div></div></div></div>
       <div class="p3s" style="border-bottom:none"><div class="p3l">Por módulo</div><div id="p3mc"></div></div>
-      <div class="step-nav"><button class="btn-back" onclick="goStep(2)">← Atrás</button><button class="btn-next" onclick="iniciarCompra()" id="btnComprar">Comprar · <span id="ctaPrice">€ 0</span></button></div>
+      <div class="step-nav"><button class="btn-back" onclick="goStep(2)">← Atrás</button><button class="btn-next" onclick="addToCart()" id="btnAddCart">Añadir al carrito · <span id="ctaPrice">€ 0</span></button></div>
       <div class="asesoria-bar"><span>¿No se decide? </span><a onclick="requestAsesoria()">Solicite su proyecto a medida</a></div>
     </div>
 
@@ -1070,47 +1117,7 @@ function goStep(n){window._curStep=n;
   buildComposite();
   document.querySelector('.config-panel')?.scrollTo(0,0);
 }
-async function iniciarCompra(){
-  const btn=document.getElementById('btnComprar');
-  const originalText=btn.innerHTML;
-  btn.disabled=true;
-  btn.innerHTML='Procesando...';
-
-  const allM=MAT_DATA;
-  const mat=allM.find(m=>m.id===curMatId)||{name:'Wengue'};
-  const mods=ST.modules.map((m,i)=>'M'+(i+1)+'('+m.width+'cm):'+
-    (INTERIORS.find(x=>x.id===m.interiorId)?.name||m.interiorId)).join(', ');
-  const puertaInfo=_P3.gama==='sinpuertas'?'Sin puertas':
-    _P3.gama==='molduras'?'Puertas Fina ('+_P3.mat+')':'Puertas Lisas (RAL)';
-
-  try{
-    const res=await fetch('/api/checkout',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        ancho:ST.w,
-        alto:ST.h,
-        fondo:ST.d,
-        material:mat.name,
-        interior:mods,
-        puertas:puertaInfo,
-        precio:calcPrice()
-      })
-    });
-    const data=await res.json();
-    if(data.url){
-      window.location.href=data.url;
-    } else {
-      alert('Error: '+(data.error||'No se pudo crear la sesión de pago'));
-      btn.disabled=false;
-      btn.innerHTML=originalText;
-    }
-  }catch(err){
-    alert('Error de conexión. Inténtalo de nuevo.');
-    btn.disabled=false;
-    btn.innerHTML=originalText;
-  }
-}
+// iniciarCompra replaced by addToCart + cartCheckout
 function saveDesign(){const code=btoa(JSON.stringify({w:ST.w,h:ST.h,d:ST.d,mat:curMatId,mods:ST.modules}));alert('Diseño guardado ✓\nCódigo: CUR-'+code.slice(0,10).toUpperCase());}
 function requestAsesoria(){window.location.href='mailto:info@casacurino.com?subject=Asesor%C3%ADa%20armario';}
 function syncMatStep3(){buildMatSwatches();}
@@ -2167,6 +2174,185 @@ function p3DrawLisaOpen(ctx, x, y, doorW, doorH, color, ap){
 
 <script>
 function toggleSiteMenu(){var m=document.getElementById("siteMobileMenu");var h=document.getElementById("siteHamburger");m.classList.toggle("open");h.classList.toggle("open");}
+</script>
+
+<!-- CART DRAWER -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <div class="cart-title">Carrito</div>
+    <button class="cart-close" onclick="toggleCart()">×</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty" id="cartEmpty">Tu carrito está vacío</div>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-subtotal">
+      <span class="cart-subtotal-label">Subtotal</span>
+      <span class="cart-subtotal-price" id="cartSubtotal">€ 0</span>
+    </div>
+    <button class="cart-checkout" onclick="cartCheckout()" id="btnCheckout">Tramitar pedido</button>
+  </div>
+</div>
+
+<script>
+// Cart state
+var _cart = JSON.parse(localStorage.getItem('curino_cart') || '[]');
+
+function saveCart(){
+  localStorage.setItem('curino_cart', JSON.stringify(_cart));
+  renderCart();
+}
+
+function toggleCart(){
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.getElementById('cartDrawer').classList.toggle('open');
+}
+
+function addToCart(){
+  var allM = MAT_DATA;
+  var mat = allM.find(function(m){return m.id===curMatId}) || {name:'Wengue'};
+  var mods = ST.modules.map(function(m,i){
+    return 'M'+(i+1)+' ('+m.width+'cm): '+(INTERIORS.find(function(x){return x.id===m.interiorId})?.name||m.interiorId);
+  }).join(', ');
+  var puertaInfo = _P3.gama==='sinpuertas'?'Sin puertas':
+    _P3.gama==='molduras'?'Puertas Fina ('+(_P3.trav?'con':'sin')+' travesaño)':'Puertas Lisas (RAL)';
+
+  // Capture canvas thumbnail
+  var thumb = '';
+  var cImg = document.getElementById('compositeImg');
+  if(cImg && cImg.src) thumb = cImg.src;
+
+  var item = {
+    id: Date.now(),
+    ancho: ST.w,
+    alto: ST.h,
+    fondo: ST.d,
+    material: mat.name,
+    interior: mods,
+    puertas: puertaInfo,
+    precio: calcPrice(),
+    thumb: thumb
+  };
+
+  _cart.push(item);
+  saveCart();
+  toggleCart();
+}
+
+function removeFromCart(id){
+  _cart = _cart.filter(function(item){return item.id !== id});
+  saveCart();
+}
+
+function renderCart(){
+  var container = document.getElementById('cartItems');
+  var empty = document.getElementById('cartEmpty');
+  var footer = document.getElementById('cartFooter');
+  var badge = document.getElementById('cartBadge');
+
+  // Badge
+  if(_cart.length > 0){
+    badge.textContent = _cart.length;
+    badge.classList.add('visible');
+  } else {
+    badge.classList.remove('visible');
+  }
+
+  // Empty state
+  if(_cart.length === 0){
+    empty.style.display = 'block';
+    footer.style.display = 'none';
+    // Clear item elements but keep empty div
+    var items = container.querySelectorAll('.cart-item');
+    items.forEach(function(el){el.remove()});
+    return;
+  }
+
+  empty.style.display = 'none';
+  footer.style.display = 'block';
+
+  // Remove existing items
+  var existing = container.querySelectorAll('.cart-item');
+  existing.forEach(function(el){el.remove()});
+
+  // Render items
+  var subtotal = 0;
+  _cart.forEach(function(item){
+    subtotal += item.precio;
+    var div = document.createElement('div');
+    div.className = 'cart-item';
+    div.innerHTML =
+      '<div class="cart-item-img">'+(item.thumb ? '<img src="'+item.thumb+'" alt="Armario">' : '')+'</div>'+
+      '<div class="cart-item-info">'+
+        '<div class="cart-item-name">Armario '+item.ancho+'×'+item.alto+'×'+item.fondo+' cm</div>'+
+        '<div class="cart-item-desc">'+item.material+' · '+item.puertas+'</div>'+
+        '<div class="cart-item-price">€ '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div>'+
+      '</div>'+
+      '<button class="cart-item-remove" onclick="removeFromCart('+item.id+')">×</button>';
+    container.insertBefore(div, empty);
+  });
+
+  // Subtotal
+  document.getElementById('cartSubtotal').textContent = '€ ' + new Intl.NumberFormat('es-ES').format(subtotal);
+}
+
+async function cartCheckout(){
+  if(_cart.length === 0) return;
+  var btn = document.getElementById('btnCheckout');
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+
+  // For now, checkout with first item (extend to multi-item later)
+  var items = _cart.map(function(item){
+    return {
+      ancho: item.ancho,
+      alto: item.alto,
+      fondo: item.fondo,
+      material: item.material,
+      interior: item.interior,
+      puertas: item.puertas,
+      precio: item.precio
+    };
+  });
+
+  // Send total order
+  var total = _cart.reduce(function(s,i){return s+i.precio},0);
+  var desc = _cart.map(function(i){return i.ancho+'×'+i.alto+'×'+i.fondo+'cm '+i.material}).join(' + ');
+
+  try{
+    var res = await fetch('/api/checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        ancho: _cart[0].ancho,
+        alto: _cart[0].alto,
+        fondo: _cart[0].fondo,
+        material: desc,
+        interior: _cart.length + ' armario(s)',
+        puertas: _cart.map(function(i){return i.puertas}).join(', '),
+        precio: total
+      })
+    });
+    var data = await res.json();
+    if(data.url){
+      // Clear cart on successful redirect
+      localStorage.removeItem('curino_cart');
+      window.location.href = data.url;
+    } else {
+      alert('Error: '+(data.error||'No se pudo crear la sesión de pago'));
+      btn.disabled = false;
+      btn.textContent = 'Tramitar pedido';
+    }
+  }catch(err){
+    alert('Error de conexión. Inténtalo de nuevo.');
+    btn.disabled = false;
+    btn.textContent = 'Tramitar pedido';
+  }
+}
+
+// Init cart on load
+renderCart();
 </script>
 
 <!-- FOOTER -->
