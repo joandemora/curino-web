@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autenticando... — Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:'Open Sans',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;color:#888}
+</style>
+</head>
+<body>
+<p>Autenticando...</p>
+<script>
+(async function(){
+  try{
+    // Load Supabase config
+    var r = await fetch('/api/config', {redirect:'follow'});
+    var c = await r.json();
+    var supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
+
+    // Supabase JS SDK automatically picks up the token from the URL hash
+    // Wait for session to be established
+    var session = await supabase.auth.getSession();
+
+    // If no session yet, the hash fragment might need processing
+    // Listen for auth state change
+    if(!session.data.session){
+      await new Promise(function(resolve){
+        supabase.auth.onAuthStateChange(function(event, session){
+          if(event === 'SIGNED_IN' && session) resolve(session);
+        });
+        // Timeout after 5s
+        setTimeout(resolve, 5000);
+      });
+    }
+
+    // Clean the token from the URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    // Determine redirect destination
+    var params = new URLSearchParams(window.location.search);
+    var redirect = params.get('redirect') || '/configurador-armarios-vestidores/';
+
+    window.location.href = redirect;
+
+  }catch(e){
+    console.error('Auth callback error:', e);
+    window.location.href = '/configurador-armarios-vestidores/';
+  }
+})();
+</script>
+</body>
+</html>

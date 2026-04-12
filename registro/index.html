@@ -118,7 +118,7 @@ async function registerWithGoogle(){
   if(!supabase){alert('Cargando... Inténtalo de nuevo.');return;}
   await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: {redirectTo: window.location.origin + '/api/auth/callback'}
+    options: {redirectTo: window.location.origin + '/api/auth/callback?redirect=/configurador-armarios-vestidores/'}
   });
 }
 
@@ -126,7 +126,7 @@ async function registerWithApple(){
   if(!supabase){alert('Cargando... Inténtalo de nuevo.');return;}
   await supabase.auth.signInWithOAuth({
     provider: 'apple',
-    options: {redirectTo: window.location.origin + '/api/auth/callback'}
+    options: {redirectTo: window.location.origin + '/api/auth/callback?redirect=/configurador-armarios-vestidores/'}
   });
 }
 

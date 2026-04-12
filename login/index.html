@@ -104,22 +104,24 @@ async function handleLogin(e){
   window.location.href = redirect;
 }
 
+function getCallbackUrl(){
+  var redirect = new URLSearchParams(window.location.search).get('redirect') || '/configurador-armarios-vestidores/';
+  return window.location.origin + '/api/auth/callback?redirect=' + encodeURIComponent(redirect);
+}
+
 async function loginWithGoogle(){
-  console.log('loginWithGoogle called, supabase:', !!supabase);
   if(!supabase){alert('Cargando... Inténtalo de nuevo en un momento.');return;}
-  var result = await supabase.auth.signInWithOAuth({
+  await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: {redirectTo: window.location.origin + '/api/auth/callback'}
+    options: {redirectTo: getCallbackUrl()}
   });
-  console.log('Google OAuth result:', result);
-  if(result.error) console.error('Google OAuth error:', result.error);
 }
 
 async function loginWithApple(){
   if(!supabase){alert('Cargando... Inténtalo de nuevo en un momento.');return;}
   await supabase.auth.signInWithOAuth({
     provider: 'apple',
-    options: {redirectTo: window.location.origin + '/api/auth/callback'}
+    options: {redirectTo: getCallbackUrl()}
   });
 }
 
