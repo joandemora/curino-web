@@ -512,6 +512,32 @@ footer{
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .8s ease,transform .8s ease}
 .reveal.visible{opacity:1;transform:none}
 
+/* ── RESPONSIVE TABLET ── */
+@media(min-width:769px) and (max-width:1024px){
+  nav{padding:0 24px;height:70px}
+  .nav-logo img{height:24px}
+  .nav-right{gap:1rem}
+  .nav-links{gap:1rem}
+  .nav-links a{font-size:10px;letter-spacing:0.12px}
+  .nav-icons a{font-size:10px}
+  .nav-icons svg{width:14px;height:14px}
+  .hero-wrapper{margin-top:70px;padding:0 24px}
+  .hero{height:calc(100vh - 70px - 60px)}
+  .intro{padding:32px 24px}
+  .intro-title{font-size:18px}
+  .sys-grid{padding:60px 24px 24px;gap:24px}
+  .sys-card{height:75vh}
+  .sys-text{padding:60px 24px 60px}
+  .video-section{padding:0 24px}
+  .video-block{height:75vh}
+  .sys-card-content{padding:80px}
+  .megamenu{padding:24px;gap:80px}
+  .mega-img img{width:200px;height:200px}
+  footer{padding:3rem 24px 2rem;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:1.5rem}
+  .footer-bottom{padding:1.2rem 24px}
+  .quotes{padding:4rem 24px}
+}
+
 /* ── RESPONSIVE MOBILE ── */
 @media(max-width:768px){
   nav{padding:0 16px;height:60px}
