@@ -487,13 +487,10 @@ footer{
   .intro{padding:4rem 1.5rem 3rem}
   .sys-grid{grid-template-columns:1fr;padding:0 16px 16px}
   #secondary{
-    display:flex;overflow-x:scroll;scroll-snap-type:x mandatory;
-    scrollbar-width:none;-ms-overflow-style:none;
-    padding:0 0 0 32px;gap:16px;
+    display:flex;flex-direction:column;padding:0;
   }
-  #secondary::-webkit-scrollbar{display:none}
   #secondary .sys-card{
-    min-width:calc(100vw - 80px);height:70vh;flex-shrink:0;scroll-snap-align:start;
+    margin:0 32px 16px;height:70vh;
   }
   .sys-card{height:70vh;min-height:260px}
   .video-block{height:70vh}
@@ -811,23 +808,6 @@ footer{
 </div>
 
 <script>
-// Auto-scroll carousel #secondary (mobile)
-(function(){
-  if(window.innerWidth>768)return;
-  var el=document.getElementById('secondary');
-  if(!el)return;
-  var cards=el.querySelectorAll('.sys-card');
-  if(cards.length<2)return;
-  var idx=0,timer;
-  function go(){
-    idx=(idx+1)%cards.length;
-    cards[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'});
-  }
-  timer=setInterval(go,2000);
-  el.addEventListener('touchstart',function(){clearInterval(timer);},{passive:true});
-  el.addEventListener('wheel',function(){clearInterval(timer);},{passive:true});
-})();
-
 // Slideshow card
 (function(){
   var slides=document.querySelectorAll('#slideCard .sys-card-slide');
