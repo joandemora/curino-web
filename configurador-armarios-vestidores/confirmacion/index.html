@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedido confirmado — Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--mid:#888;--white:#ffffff;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.confirm-box{text-align:center;max-width:560px}
+.confirm-icon{font-size:48px;margin-bottom:1.5rem}
+.confirm-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:normal;margin-bottom:1rem}
+.confirm-body{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;color:var(--mid);margin-bottom:2rem}
+.confirm-details{text-align:left;border:1px solid #e5e5e5;padding:1.5rem;margin-bottom:2rem;font-size:13px;line-height:1.8}
+.confirm-details dt{font-weight:600;display:inline}
+.confirm-details dd{display:inline;margin:0}
+.confirm-details .row{margin-bottom:.5rem}
+.confirm-price{font-size:1.6rem;font-weight:700;margin:1rem 0}
+.confirm-link{
+  display:inline-block;font-size:12px;font-weight:400;letter-spacing:0.24px;
+  text-transform:uppercase;color:var(--black);text-decoration:none;
+  border-bottom:1px solid var(--black);padding-bottom:3px;transition:color .2s;
+}
+.confirm-link:hover{color:#999}
+.loading{color:var(--mid);font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="confirm-box" id="content">
+  <p class="loading">Cargando confirmación...</p>
+</div>
+
+<script>
+(async function(){
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  const box = document.getElementById('content');
+
+  if (!sessionId) {
+    box.innerHTML = `
+      <div class="confirm-icon">⚠️</div>
+      <h1 class="confirm-title">Sesión no encontrada</h1>
+      <p class="confirm-body">No se ha encontrado información del pedido. Si has completado un pago, contacta con nosotros.</p>
+      <a href="/" class="confirm-link">Volver al inicio</a>
+    `;
+    return;
+  }
+
+  // In production, you'd fetch session details from your API
+  // For now, show a generic confirmation
+  box.innerHTML = `
+    <div class="confirm-icon">✓</div>
+    <h1 class="confirm-title">Pedido confirmado</h1>
+    <p class="confirm-body">
+      Gracias por tu pedido. Hemos recibido tu configuración y pago correctamente.<br><br>
+      En las próximas 24 horas recibirás un email con el resumen completo de tu armario a medida,
+      las especificaciones técnicas y el calendario de producción e instalación.
+    </p>
+    <div class="confirm-details">
+      <div class="row"><dt>Referencia: </dt><dd>${sessionId.slice(0, 20)}...</dd></div>
+      <div class="row"><dt>Estado: </dt><dd>Pago recibido ✓</dd></div>
+      <div class="row"><dt>Próximo paso: </dt><dd>Validación técnica por nuestro equipo</dd></div>
+      <div class="row"><dt>Plazo estimado: </dt><dd>3–4 semanas (fabricación + instalación)</dd></div>
+    </div>
+    <p class="confirm-body" style="margin-bottom:1rem">
+      ¿Tienes alguna duda? Escríbenos a <a href="mailto:info@casacurino.com" style="color:var(--black)">info@casacurino.com</a>
+    </p>
+    <a href="/" class="confirm-link">Volver al inicio</a>
+  `;
+})();
+</script>
+
+</body>
+</html>
