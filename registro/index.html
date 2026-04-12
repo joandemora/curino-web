@@ -67,11 +67,13 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 <script>
 var supabase;
 (async function(){
-  var r = await fetch('/api/config');
-  var c = await r.json();
-  supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
-  var s = await supabase.auth.getSession();
-  if(s.data.session) window.location.href = '/configurador-armarios-vestidores/';
+  try{
+    var r = await fetch('/api/config', {redirect:'follow'});
+    var c = await r.json();
+    supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
+    var s = await supabase.auth.getSession();
+    if(s.data.session) window.location.href = '/configurador-armarios-vestidores/';
+  }catch(e){console.error('Failed to init Supabase:', e);}
 })();
 
 async function handleRegister(e){
@@ -113,6 +115,7 @@ async function handleRegister(e){
 }
 
 async function registerWithGoogle(){
+  if(!supabase){alert('Cargando... Inténtalo de nuevo.');return;}
   await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {redirectTo: window.location.origin + '/api/auth/callback'}
@@ -120,6 +123,7 @@ async function registerWithGoogle(){
 }
 
 async function registerWithApple(){
+  if(!supabase){alert('Cargando... Inténtalo de nuevo.');return;}
   await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {redirectTo: window.location.origin + '/api/auth/callback'}

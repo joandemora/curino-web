@@ -66,14 +66,17 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 <script>
 var supabase;
 (async function(){
-  var r = await fetch('/api/config');
-  var c = await r.json();
-  supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
-  var s = await supabase.auth.getSession();
-  if(s.data.session){
-    var redirect = new URLSearchParams(window.location.search).get('redirect') || '/configurador-armarios-vestidores/';
-    window.location.href = redirect;
-  }
+  try{
+    var r = await fetch('/api/config', {redirect:'follow'});
+    var c = await r.json();
+    console.log('Supabase config loaded:', c.supabaseUrl);
+    supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
+    var s = await supabase.auth.getSession();
+    if(s.data.session){
+      var redirect = new URLSearchParams(window.location.search).get('redirect') || '/configurador-armarios-vestidores/';
+      window.location.href = redirect;
+    }
+  }catch(e){console.error('Failed to init Supabase:', e);}
 })();
 
 async function handleLogin(e){
@@ -102,13 +105,18 @@ async function handleLogin(e){
 }
 
 async function loginWithGoogle(){
-  await supabase.auth.signInWithOAuth({
+  console.log('loginWithGoogle called, supabase:', !!supabase);
+  if(!supabase){alert('Cargando... Inténtalo de nuevo en un momento.');return;}
+  var result = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {redirectTo: window.location.origin + '/api/auth/callback'}
   });
+  console.log('Google OAuth result:', result);
+  if(result.error) console.error('Google OAuth error:', result.error);
 }
 
 async function loginWithApple(){
+  if(!supabase){alert('Cargando... Inténtalo de nuevo en un momento.');return;}
   await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {redirectTo: window.location.origin + '/api/auth/callback'}
