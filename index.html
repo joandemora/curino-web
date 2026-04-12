@@ -603,7 +603,60 @@ footer{
   .process-item{border-right:none!important;padding-right:0!important}
   footer{grid-template-columns:1fr}
 }
+
+/* ── USER MENU ── */
+.user-menu{position:relative;display:flex;align-items:center}
+.user-menu>svg{cursor:pointer}
+.user-dropdown{position:absolute;top:100%;right:0;background:#fff;border:1px solid var(--border);
+  padding:.5rem 0;min-width:160px;display:none;z-index:210;margin-top:.5rem}
+.user-menu:hover .user-dropdown{display:block}
+.user-dropdown a,.user-dropdown button{display:block;width:100%;text-align:left;padding:.5rem 1rem;
+  font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+  color:#000;text-decoration:none;background:none;border:none;cursor:pointer;transition:background .2s}
+.user-dropdown a:hover,.user-dropdown button:hover{background:#f5f5f5}
+.user-login-link{cursor:pointer;display:flex;align-items:center}
+.user-login-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
+
+/* ── CART ── */
+.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
+.cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
+.cart-badge{position:absolute;top:-6px;right:-8px;background:#0a0a0a;color:#fff;
+  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;line-height:1}
+.cart-badge.visible{display:flex}
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;
+  opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+.cart-overlay.open{opacity:1;visibility:visible}
+.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:420px;background:#fff;z-index:301;
+  transform:translateX(100%);transition:transform .35s ease;
+  display:flex;flex-direction:column;overflow:hidden}
+.cart-drawer.open{transform:translateX(0)}
+.cart-header{display:flex;align-items:center;justify-content:space-between;
+  padding:1.5rem 2rem;border-bottom:1px solid #e5e5e5;flex-shrink:0}
+.cart-title{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.cart-close{cursor:pointer;font-size:20px;color:#888;background:none;border:none;font-family:var(--font)}
+.cart-close:hover{color:#000}
+.cart-items{flex:1;overflow-y:auto}
+.cart-empty{padding:3rem 2rem;text-align:center;color:#888;font-size:14px}
+.cart-item{display:flex;gap:1rem;padding:1.2rem 2rem;border-bottom:1px solid #e5e5e5}
+.cart-item-img{width:80px;height:80px;background:#f2ede8;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.cart-item-img img{max-width:100%;max-height:100%;object-fit:contain}
+.cart-item-info{flex:1;min-width:0}
+.cart-item-name{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase}
+.cart-item-desc{font-size:12px;color:#888;line-height:1.6}
+.cart-item-price{font-size:14px;font-weight:700;margin-top:6px}
+.cart-item-remove{background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;font-family:var(--font);flex-shrink:0;align-self:flex-start}
+.cart-item-remove:hover{color:#000}
+.cart-footer{padding:1.5rem 2rem;border-top:1px solid #e5e5e5;flex-shrink:0}
+.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem;font-size:14px}
+.cart-subtotal-label{font-weight:400;text-transform:uppercase;letter-spacing:.05em}
+.cart-subtotal-price{font-weight:700}
+.cart-checkout{width:100%;background:#0a0a0a;color:#fff;border:none;padding:1rem;
+  font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.cart-checkout:hover{background:#333}
+@media(max-width:1200px){.cart-drawer{width:100%}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -660,6 +713,11 @@ footer{
   <div class="nav-icons">
     <a href="#">ES</a>
     <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <div id="userArea">
+      <a href="/login/" class="user-login-link" id="userLoginLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+      <div class="user-menu" id="userMenu" style="display:none"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div class="user-dropdown"><a href="#">Mi cuenta</a><button onclick="logoutUser()">Cerrar sesión</button></div></div>
+    </div>
+    <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge" id="cartBadge">0</div></div>
   </div>
   </div>
   <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
@@ -954,6 +1012,91 @@ const io=new IntersectionObserver((entries)=>{
   });
 },{threshold:0.07});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+
+<!-- CART DRAWER -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <div class="cart-title">Carrito</div>
+    <button class="cart-close" onclick="toggleCart()">×</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty" id="cartEmpty">Tu carrito está vacío</div>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-subtotal">
+      <span class="cart-subtotal-label">Subtotal</span>
+      <span class="cart-subtotal-price" id="cartSubtotal">€ 0</span>
+    </div>
+    <a href="/configurador-armarios-vestidores/" class="cart-checkout" style="display:block;text-align:center;text-decoration:none">Tramitar pedido</a>
+  </div>
+</div>
+
+<script>
+// ── CART ──
+var _cart = JSON.parse(localStorage.getItem('curino_cart') || '[]');
+
+function toggleCart(){
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.getElementById('cartDrawer').classList.toggle('open');
+}
+
+function removeFromCart(id){
+  _cart = _cart.filter(function(item){return item.id !== id});
+  localStorage.setItem('curino_cart', JSON.stringify(_cart));
+  renderCart();
+}
+
+function renderCart(){
+  var container = document.getElementById('cartItems');
+  var empty = document.getElementById('cartEmpty');
+  var footer = document.getElementById('cartFooter');
+  var badge = document.getElementById('cartBadge');
+  if(_cart.length > 0){badge.textContent=_cart.length;badge.classList.add('visible');}
+  else{badge.classList.remove('visible');}
+  if(_cart.length === 0){empty.style.display='block';footer.style.display='none';
+    container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});return;}
+  empty.style.display='none';footer.style.display='block';
+  container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
+  var subtotal=0;
+  _cart.forEach(function(item){
+    subtotal+=item.precio;
+    var div=document.createElement('div');div.className='cart-item';
+    div.innerHTML='<div class="cart-item-img">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
+      '<div class="cart-item-info"><div class="cart-item-name">Armario '+item.ancho+'×'+item.alto+'×'+item.fondo+' cm</div>'+
+      '<div class="cart-item-desc">'+item.material+' · '+item.puertas+'</div>'+
+      '<div class="cart-item-price">€ '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div></div>'+
+      '<button class="cart-item-remove" onclick="removeFromCart('+item.id+')">×</button>';
+    container.insertBefore(div,empty);
+  });
+  document.getElementById('cartSubtotal').textContent='€ '+new Intl.NumberFormat('es-ES').format(subtotal);
+}
+renderCart();
+
+// ── AUTH ──
+var _supabase=null,_currentUser=null;
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
+      _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+      var s=await _supabase.auth.getSession();
+      if(s.data.session){
+        _currentUser=s.data.session.user;
+        document.getElementById('userLoginLink').style.display='none';
+        document.getElementById('userMenu').style.display='flex';
+      }
+    }
+  }catch(e){}
+})();
+async function logoutUser(){
+  if(_supabase) await _supabase.auth.signOut();
+  _currentUser=null;
+  document.getElementById('userLoginLink').style.display='flex';
+  document.getElementById('userMenu').style.display='none';
+}
 </script>
 </body>
 </html>
