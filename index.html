@@ -536,9 +536,10 @@ footer{
   .cta-section{padding:4rem 1.5rem}
 
   footer{
-    grid-template-columns:1fr;gap:0;
+    display:flex!important;flex-direction:column;gap:0;
     padding:2rem 16px 1.5rem;
   }
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
   .footer-col h4{
     display:flex;justify-content:space-between;align-items:center;
     cursor:pointer;padding:.8rem 0;margin-bottom:0;
