@@ -462,6 +462,7 @@ footer{
   transition:color .2s,border-color .2s;
 }
 .footer-newsletter button:hover{color:#999999;border-color:#999999}
+.footer-links{display:block}
 .footer-bottom{
   background:var(--black);
   padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);
@@ -535,13 +536,26 @@ footer{
   .cta-section{padding:4rem 1.5rem}
 
   footer{
-    grid-template-columns:1fr 1fr;gap:2.5rem;
-    padding:3rem 1.5rem 2rem;
+    grid-template-columns:1fr;gap:0;
+    padding:2rem 16px 1.5rem;
   }
+  .footer-col h4{
+    display:flex;justify-content:space-between;align-items:center;
+    cursor:pointer;padding:.8rem 0;margin-bottom:0;
+    border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300;transition:transform .3s}
+  .footer-col.open h4::after{content:'−'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
   .footer-bottom{
     flex-direction:column;gap:.5rem;
-    padding:1.2rem 1.5rem;
+    padding:1.2rem 16px;
   }
+  .footer-legal{align-items:flex-start}
 }
 
 @media(max-width:480px){
@@ -769,41 +783,53 @@ footer{
     <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpintería a medida — armarios, vestidores, cocinas y puertas con garantía de 25 años.</p>
   </div>
   <div class="footer-col" style="grid-area:alta">
-    <h4>Alta Carpintería</h4>
-    <a href="configurador-armarios-vestidores/">Configurador de armarios</a>
-    <a href="#">Proyecto a medida en Barcelona</a>
-    <a href="#">Proyecto a medida en Madrid</a>
-    <a href="#">Proyecto a medida en Valencia</a>
-    <a href="#">Proyecto a medida en Marbella</a>
-    <a href="#">Proyecto a medida en Bilbao</a>
+    <h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpintería</h4>
+    <div class="footer-links">
+      <a href="configurador-armarios-vestidores/">Configurador de armarios</a>
+      <a href="#">Proyecto a medida en Barcelona</a>
+      <a href="#">Proyecto a medida en Madrid</a>
+      <a href="#">Proyecto a medida en Valencia</a>
+      <a href="#">Proyecto a medida en Marbella</a>
+      <a href="#">Proyecto a medida en Bilbao</a>
+    </div>
   </div>
   <div class="footer-col" style="grid-area:corp">
-    <h4>Corporativo</h4>
-    <a href="#">Sobre nosotros</a>
-    <a href="#">I+D e Innovación</a>
-    <a href="#">Seguridad en Curino</a>
-    <a href="#">Ética Corporativa</a>
-    <a href="#">Proveedores</a>
+    <h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4>
+    <div class="footer-links">
+      <a href="#">Sobre nosotros</a>
+      <a href="#">I+D e Innovación</a>
+      <a href="#">Seguridad en Curino</a>
+      <a href="#">Ética Corporativa</a>
+      <a href="#">Proveedores</a>
+    </div>
   </div>
   <div class="footer-col" style="grid-area:empleo">
-    <h4>Empleo</h4>
-    <a href="#">Únete a Curino</a>
-    <a href="#">Curino Partners</a>
+    <h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4>
+    <div class="footer-links">
+      <a href="#">Únete a Curino</a>
+      <a href="#">Curino Partners</a>
+    </div>
   </div>
   <div class="footer-col" style="grid-area:prensa">
-    <h4>Sala de Prensa</h4>
-    <a href="#">Magazine</a>
-    <a href="#">Contacto Prensa</a>
+    <h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4>
+    <div class="footer-links">
+      <a href="#">Magazine</a>
+      <a href="#">Contacto Prensa</a>
+    </div>
   </div>
   <div class="footer-col" style="grid-area:contacto">
-    <h4>Contacto</h4>
-    <a href="#">WhatsApp</a>
-    <a href="mailto:info@casacurino.com">info@casacurino.com</a>
+    <h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4>
+    <div class="footer-links">
+      <a href="#">WhatsApp</a>
+      <a href="mailto:info@casacurino.com">info@casacurino.com</a>
+    </div>
   </div>
   <div class="footer-col footer-newsletter" style="grid-area:newsletter">
     <h4>Newsletter</h4>
-    <input type="email" placeholder="Tu email">
-    <button type="button">Suscribirse</button>
+    <div class="footer-links">
+      <input type="email" placeholder="Tu email">
+      <button type="button">Suscribirse</button>
+    </div>
   </div>
 </footer>
 <div class="footer-bottom">
