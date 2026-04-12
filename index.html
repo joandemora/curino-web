@@ -125,6 +125,10 @@ nav{
   font-weight:400;text-transform:none;letter-spacing:0.14px;line-height:19.88px;
   padding:.4rem 0 .4rem 12px;border-bottom:none!important;
 }
+.mobile-imgs{display:flex;gap:16px;padding:1rem 0;border-bottom:none!important}
+.mobile-imgs .mega-img img{width:calc(50vw - 32px);height:calc(50vw - 32px);object-fit:cover}
+.mobile-imgs .mega-img a:first-child{display:block;line-height:0;border:none;padding:0;margin:0}
+.mobile-imgs .mega-img a:last-child{margin-top:8px;font-size:12px}
 
 /* ── HERO con marco blanco ── */
 .hero-wrapper{
@@ -685,6 +689,10 @@ footer{
   <a href="#" onclick="toggleMenu()">Magazine</a>
   <a href="#" onclick="toggleMenu()">Partners</a>
   <a href="#" onclick="toggleMenu()">Contacto</a>
+  <div class="mobile-imgs">
+    <div class="mega-img"><a href="configurador-armarios-vestidores/"><img src="assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="configurador-armarios-vestidores/">Proyecto a medida</a></div>
+    <div class="mega-img"><a href="configurador-armarios-vestidores/"><img src="assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="configurador-armarios-vestidores/">Configurador</a></div>
+  </div>
 </div>
 
 <!-- HERO con marco -->
