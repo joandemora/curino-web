@@ -2381,10 +2381,18 @@ async function cartCheckout(){
 renderCart();
 
 // ── AUTH ──
-var SUPABASE_URL = 'https://psjzqabgvjbokmwtdxnz.supabase.co';
-var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzanpxYWJndmpib2ttd3RkeG56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NTcwODMsImV4cCI6MjA2MDEzMzA4M30.ym9mKIVwVrnI1AGXZQ33y46TEKgp4yMWLMBRc2lpu3o';
-var _supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+var _supabase = null;
 var _currentUser = null;
+(async function(){
+  try{
+    var r = await fetch('/api/config');
+    var c = await r.json();
+    if(c.supabaseUrl && c.supabaseAnonKey && window.supabase){
+      _supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
+      checkAuth();
+    }
+  }catch(e){console.warn('Supabase config not available');}
+})();
 
 async function checkAuth(){
   if(!_supabase) return;
@@ -2418,7 +2426,7 @@ cartCheckout = async function(){
   return _origCartCheckout();
 };
 
-checkAuth();
+// checkAuth called from init above
 </script>
 
 <!-- FOOTER -->

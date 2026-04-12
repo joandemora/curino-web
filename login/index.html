@@ -64,9 +64,17 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 </div>
 
 <script>
-var SUPABASE_URL = 'https://psjzqabgvjbokmwtdxnz.supabase.co';
-var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzanpxYWJndmpib2ttd3RkeG56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NTcwODMsImV4cCI6MjA2MDEzMzA4M30.ym9mKIVwVrnI1AGXZQ33y46TEKgp4yMWLMBRc2lpu3o';
-var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var supabase;
+(async function(){
+  var r = await fetch('/api/config');
+  var c = await r.json();
+  supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
+  var s = await supabase.auth.getSession();
+  if(s.data.session){
+    var redirect = new URLSearchParams(window.location.search).get('redirect') || '/configurador-armarios-vestidores/';
+    window.location.href = redirect;
+  }
+})();
 
 async function handleLogin(e){
   e.preventDefault();
@@ -107,11 +115,7 @@ async function loginWithApple(){
   });
 }
 
-// Check if already logged in
-supabase.auth.getSession().then(function(r){
-  if(r.data.session){
-    var redirect = new URLSearchParams(window.location.search).get('redirect') || '/configurador-armarios-vestidores/';
-    window.location.href = redirect;
+// Session check moved to init above
   }
 });
 </script>
