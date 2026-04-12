@@ -486,6 +486,15 @@ footer{
 
   .intro{padding:4rem 1.5rem 3rem}
   .sys-grid{grid-template-columns:1fr;padding:0 16px 16px}
+  .sys-grid[style*="1fr 1fr"]{
+    display:flex;overflow-x:scroll;scroll-snap-type:x mandatory;
+    scrollbar-width:none;-ms-overflow-style:none;
+    padding:0;gap:0;
+  }
+  .sys-grid[style*="1fr 1fr"]::-webkit-scrollbar{display:none}
+  .sys-grid[style*="1fr 1fr"] .sys-card{
+    flex:0 0 100vw;width:100vw;scroll-snap-align:start;
+  }
   .sys-card{height:70vh;min-height:260px}
   .video-block{height:70vh}
 
