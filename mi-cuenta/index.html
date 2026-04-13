@@ -761,18 +761,39 @@ window.initGooglePlaces=function(){
 
     el.addEventListener('gmp-placeselect',async function(ev){
       var place=ev.place;
+      console.log('=== gmp-placeselect fired ===');
+      console.log('place object:', place);
+      console.log('place keys:', place ? Object.keys(place) : 'null');
+      console.log('addressComponents BEFORE fetch:', place.addressComponents);
+      console.log('formattedAddress BEFORE fetch:', place.formattedAddress);
+
       if(!place) return;
 
-      // Try fetchFields if addressComponents not already present
-      var comps=place.addressComponents;
-      if(!comps){
-        try{await place.fetchFields({fields:['addressComponents']});}catch(e){}
-        comps=place.addressComponents;
+      // Always fetch to ensure data is populated
+      try{
+        await place.fetchFields({fields:['addressComponents','formattedAddress']});
+      }catch(e){
+        console.error('fetchFields error:', e);
       }
+
+      console.log('addressComponents AFTER fetch:', place.addressComponents);
+      console.log('formattedAddress AFTER fetch:', place.formattedAddress);
+
+      var comps=place.addressComponents;
+      if(comps&&comps.length){
+        console.log('Components count:', comps.length);
+        comps.forEach(function(c,i){
+          console.log('  ['+i+']', JSON.stringify({types:c.types, longText:c.longText, long_name:c.long_name, shortText:c.shortText, short_name:c.short_name}));
+        });
+      }else{
+        console.warn('No addressComponents found');
+      }
+
       if(!comps||!comps.length) return;
 
       var fields={street:'',number:'',city:'',postal:'',province:''};
       extractAddressComponents(comps,fields);
+      console.log('Extracted fields:', JSON.stringify(fields));
       fillAddressFields('addr',fields);
     });
   }catch(err){
