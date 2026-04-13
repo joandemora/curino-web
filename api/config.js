@@ -4,6 +4,7 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({
     supabaseUrl: process.env.SUPABASE_URL || '',
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
   });
 };
