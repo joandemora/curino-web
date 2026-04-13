@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;
+  --mid:#888;
+  --light:#c0c0c0;
+  --border:#e5e5e5;
+  --bg:#f8f8f6;
+  --white:#ffffff;
+  --font:'Open Sans',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
+p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;height:80px;
+  background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
+.nav-links{display:flex;gap:1.8rem;align-items:center}
+.nav-links a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s;position:relative}
+.nav-links a:hover{color:#999}
+.nav-icons{display:flex;gap:1.2rem;align-items:center}
+.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-icons a:hover{color:#999}
+.nav-icons svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
+.nav-icons svg:hover{stroke:#999}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+/* ── MEGAMENU ── */
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.megamenu{
+  position:fixed;top:80px;left:0;right:0;z-index:99;width:100%;background:var(--white);padding:32px;
+  display:flex;justify-content:flex-start;gap:180px;
+  opacity:0;visibility:hidden;transform:translateY(-8px);
+  transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;border-top:1px solid var(--border);
+}
+.mega-col{margin-bottom:32px}
+.mega-col-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
+.mega-col a{display:block;font-size:14px;letter-spacing:0.14px;line-height:19.88px;color:#000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px;transition:color .2s}
+.mega-col a:hover{color:#999}
+.mega-imgs{margin-left:auto;display:flex;gap:16px;flex-shrink:0}
+.mega-img{display:flex;flex-direction:column;align-items:center;flex-shrink:0;position:relative}
+.mega-img::before{content:'';position:absolute;top:0;left:0;width:300px;height:300px;background:rgba(0,0,0,0);transition:background .3s;z-index:1;pointer-events:none}
+.mega-img:hover::before{background:rgba(0,0,0,.2)}
+.mega-img img{width:300px;height:300px;object-fit:cover;display:block}
+.mega-img>a:first-child{display:block;line-height:0;border:none;padding:0;margin:0}
+.mega-img a{display:inline-block;margin-top:12px;font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1px solid #000;padding-bottom:3px;transition:color .2s,border-color .2s}
+.mega-img a:hover{color:#999;border-color:#999}
+
+/* ── MOBILE MENU ── */
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:var(--white);padding:1.5rem 2rem;z-index:99;flex-direction:column;gap:0;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.mobile-menu a:last-child{border-bottom:none}
+.mobile-accordion{border-bottom:1px solid var(--border)}
+.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;font-weight:400}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'\2212'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:800px}
+.mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
+.mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;letter-spacing:0.14px;line-height:19.88px;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+
+/* ── USER ICON ── */
+.user-icon-link{display:flex;align-items:center}
+.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+
+/* ── CHECKOUT ── */
+.checkout{max-width:960px;margin:120px auto 4rem;padding:0 32px;display:grid;grid-template-columns:1fr 380px;gap:3rem;align-items:start}
+.checkout-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:normal;margin-bottom:2rem;grid-column:1/-1}
+.checkout-main{min-width:0}
+.checkout-sidebar{position:sticky;top:120px}
+
+/* Shipping */
+.section-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.address-saved{border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem}
+.address-saved p{font-size:13px;line-height:1.6;text-align:left}
+.address-saved-actions{display:flex;gap:1rem;margin-top:.75rem}
+.address-saved-actions button{background:none;border:none;font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;transition:color .2s}
+.address-saved-actions button:hover{color:var(--black)}
+.ship-form input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:.75rem;transition:border-color .2s}
+.ship-form input:focus{border-color:var(--black)}
+.ship-form input::placeholder{color:var(--mid)}
+.ship-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
+
+/* Summary sidebar */
+.summary-box{border:1px solid var(--border);padding:1.5rem}
+.summary-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
+.summary-item{display:flex;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border)}
+.summary-item:last-of-type{border-bottom:none}
+.summary-thumb{width:64px;height:64px;background:var(--bg);flex-shrink:0;overflow:hidden}
+.summary-thumb img{width:100%;height:100%;object-fit:contain}
+.summary-info{flex:1;min-width:0}
+.summary-name{font-size:13px;font-weight:600;margin-bottom:.15rem}
+.summary-desc{font-size:12px;color:var(--mid);line-height:1.5}
+.summary-price{font-size:13px;white-space:nowrap}
+.summary-total{display:flex;justify-content:space-between;padding:1rem 0 0;margin-top:.5rem;border-top:2px solid var(--black);font-size:14px;font-weight:600}
+.summary-total-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.btn-pay{display:block;width:100%;padding:1rem;margin-top:1.25rem;background:var(--black);color:var(--white);
+  font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;
+  border:none;cursor:pointer;transition:background .2s;text-align:center}
+.btn-pay:hover{background:#333}
+.btn-pay:disabled{background:var(--mid);cursor:not-allowed}
+.checkout-error{background:#fef2f2;color:#dc2626;padding:.75rem;font-size:13px;margin-top:.75rem;display:none}
+.checkout-empty{text-align:center;color:var(--mid);font-size:14px;padding:3rem 0;grid-column:1/-1}
+.checkout-empty a{color:var(--black);border-bottom:1px solid var(--black);text-decoration:none;padding-bottom:1px}
+
+/* Google Places */
+.pac-container{font-family:var(--font);font-size:13px;border:1px solid var(--border);border-top:none;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:9999}
+.pac-item{padding:.5rem .75rem;cursor:pointer;border-top:1px solid var(--border)}
+.pac-item:hover{background:var(--bg)}
+.pac-item-query{font-size:13px;color:var(--black)}
+.pac-icon{display:none}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--black);color:#fff;padding:4rem 32px 3rem;
+  display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;
+  grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";
+  font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;
+}
+.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
+.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
+.footer-col a:hover{color:#999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.14px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px;transition:color .2s,border-color .2s}
+.footer-newsletter button:hover{color:#999;border-color:#999}
+.footer-links{display:block}
+.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){
+  nav{padding:0 16px;height:60px}
+  .nav-logo img{height:20px}
+  .nav-right{display:none}
+  .nav-hamburger{display:flex}
+  .checkout{margin-top:80px;padding:0 16px;grid-template-columns:1fr;gap:2rem}
+  .checkout-sidebar{position:static}
+  .ship-form-row{grid-template-columns:1fr}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  footer img[alt="Curino"]{height:20px!important}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
+  .footer-col.open h4::after{content:'\2212'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+  .footer-legal{align-items:center;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <div class="nav-right">
+  <div class="nav-links">
+    <div class="mega-trigger">
+      <a href="#">Alta Carpinteria</a>
+      <div class="megamenu">
+        <div class="mega-col">
+          <div class="mega-col-title">Sistemas</div>
+          <a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a>
+        </div>
+        <div class="mega-col">
+          <div class="mega-col-title">Estancias</div>
+          <a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a>
+        </div>
+        <div class="mega-col">
+          <div class="mega-col-title">Productos</div>
+          <a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a>
+        </div>
+        <div class="mega-col">
+          <div class="mega-col-title">Proyectos Integrales</div>
+          <a href="#">Residencial</a><a href="#">Contract</a><a href="#">Couture</a>
+        </div>
+        <div class="mega-imgs">
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="/configurador-armarios-vestidores/">Proyecto a medida</a></div>
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="/configurador-armarios-vestidores/">Configurador</a></div>
+        </div>
+      </div>
+    </div>
+    <a href="#">Disenadores</a>
+    <a href="#">Lab Work</a>
+    <a href="#">Materiales</a>
+    <a href="#">Estudio</a>
+    <a href="#">Magazine</a>
+    <a href="#">Partners</a>
+    <a href="#">Contacto</a>
+  </div>
+  <div class="nav-icons">
+    <a href="#">ES</a>
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <a href="/mi-cuenta/" class="user-icon-link" id="userIconLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+  </div>
+  </div>
+  <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-accordion">
+    <div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div>
+    <div class="mobile-accordion-body">
+      <div class="mobile-sub-title">Sistemas</div>
+      <a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a>
+      <div class="mobile-sub-title">Estancias</div>
+      <a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a>
+      <div class="mobile-sub-title">Productos</div>
+      <a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a>
+    </div>
+  </div>
+  <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
+</div>
+
+<!-- CHECKOUT -->
+<div class="checkout" id="checkoutPage" style="display:none">
+  <h1 class="checkout-title">Checkout</h1>
+
+  <!-- Left: shipping -->
+  <div class="checkout-main">
+    <div class="section-title">Direccion de envio</div>
+
+    <!-- Saved address (pre-filled) -->
+    <div id="savedAddress" style="display:none">
+      <div class="address-saved">
+        <p id="savedAddressText"></p>
+        <div class="address-saved-actions">
+          <button onclick="changeAddress()">Cambiar direccion</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Address form -->
+    <div class="ship-form" id="shipForm">
+      <input type="text" id="shipName" placeholder="Nombre completo" autocomplete="name" required>
+      <input type="text" id="shipLine" placeholder="Direccion (calle, numero, piso)" autocomplete="off" required>
+      <div class="ship-form-row">
+        <input type="text" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required>
+        <input type="text" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
+      </div>
+      <div class="ship-form-row">
+        <input type="text" id="shipProvince" placeholder="Provincia" autocomplete="address-level1" required>
+        <input type="text" id="shipCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
+      </div>
+      <input type="tel" id="shipPhone" placeholder="Telefono" autocomplete="tel" required>
+    </div>
+  </div>
+
+  <!-- Right: summary -->
+  <div class="checkout-sidebar">
+    <div class="summary-box">
+      <div class="summary-title">Resumen del pedido</div>
+      <div id="summaryItems"></div>
+      <div class="summary-total">
+        <span class="summary-total-label">Total</span>
+        <span id="summaryTotal">&euro; 0</span>
+      </div>
+      <button class="btn-pay" id="btnPay" onclick="handlePay()">Ir al pago</button>
+      <div class="checkout-error" id="checkoutError"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Empty cart state -->
+<div class="checkout" id="checkoutEmpty" style="display:none">
+  <div class="checkout-empty">
+    Tu carrito esta vacio.<br><br>
+    <a href="/configurador-armarios-vestidores/">Ir al configurador</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinteria a medida — armarios, vestidores, cocinas y puertas con garantia de 25 anos.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</h4>
+    <div class="footer-links">
+      <a href="/configurador-armarios-vestidores/">Configurador de armarios</a>
+      <a href="#">Proyecto a medida en Barcelona</a><a href="#">Proyecto a medida en Madrid</a>
+      <a href="#">Proyecto a medida en Valencia</a><a href="#">Proyecto a medida en Marbella</a><a href="#">Proyecto a medida en Bilbao</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:corp">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4>
+    <div class="footer-links">
+      <a href="#">Sobre nosotros</a><a href="#">I+D e Innovacion</a><a href="#">Seguridad en Curino</a><a href="#">Etica Corporativa</a><a href="#">Proveedores</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:empleo">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4>
+    <div class="footer-links"><a href="#">Unete a Curino</a><a href="#">Curino Partners</a></div>
+  </div>
+  <div class="footer-col" style="grid-area:prensa">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4>
+    <div class="footer-links"><a href="#">Magazine</a><a href="#">Contacto Prensa</a></div>
+  </div>
+  <div class="footer-col" style="grid-area:contacto">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4>
+    <div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div>
+  </div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter">
+    <h4>Newsletter</h4>
+    <div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>&copy; 2026 Curino &middot; Mueble a medida &middot; Espana &middot; Europa &middot; EEUU</span>
+  <div class="footer-legal">
+    <span>Sistema & Curino, S.L.U.</span>
+    <span>Terminos y Condiciones | Politica de Privacidad | Politica de Cookies</span>
+  </div>
+  <span>casacurino.com</span>
+</div>
+
+<script>
+// ── MOBILE MENU ──
+function toggleMenu(){
+  document.getElementById('mobileMenu').classList.toggle('open');
+  document.getElementById('hamburger').classList.toggle('open');
+}
+
+// ── CART (read-only for summary) ──
+var _cart=JSON.parse(localStorage.getItem('curino_cart')||'[]');
+
+// ── AUTH + INIT ──
+var _supabase=null,_currentUser=null;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/checkout/';
+      return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/checkout/';
+      return;
+    }
+    _currentUser=s.data.session.user;
+    document.getElementById('userIconLink').href='/mi-cuenta/';
+
+    if(c.googleMapsApiKey) loadGoogleMaps(c.googleMapsApiKey);
+
+    initCheckout();
+  }catch(e){
+    window.location.href='/login/?redirect=/checkout/';
+  }
+})();
+
+function initCheckout(){
+  // Empty cart?
+  if(_cart.length===0){
+    document.getElementById('checkoutEmpty').style.display='grid';
+    return;
+  }
+
+  document.getElementById('checkoutPage').style.display='grid';
+  renderSummary();
+  loadSavedAddress();
+}
+
+// ── SUMMARY ──
+function renderSummary(){
+  var container=document.getElementById('summaryItems');
+  container.innerHTML='';
+  var total=0;
+  _cart.forEach(function(item){
+    total+=item.precio;
+    var div=document.createElement('div');
+    div.className='summary-item';
+    div.innerHTML='<div class="summary-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
+      '<div class="summary-info"><div class="summary-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
+      '<div class="summary-desc">'+item.material+' \u00B7 '+item.puertas+'</div></div>'+
+      '<div class="summary-price">\u20AC '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div>';
+    container.appendChild(div);
+  });
+  document.getElementById('summaryTotal').textContent='\u20AC '+new Intl.NumberFormat('es-ES').format(total);
+}
+
+// ── SAVED ADDRESS ──
+function loadSavedAddress(){
+  var addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
+  if(addresses.length===0) return;
+
+  var addr=addresses[0]; // use first saved address
+  document.getElementById('savedAddressText').innerHTML=
+    '<strong>'+addr.name+'</strong><br>'+addr.line+'<br>'+
+    addr.postal+' '+addr.city+', '+addr.province+'<br>'+
+    addr.country+(addr.phone?'<br>'+addr.phone:'');
+
+  // Pre-fill hidden form
+  document.getElementById('shipName').value=addr.name;
+  document.getElementById('shipLine').value=addr.line;
+  document.getElementById('shipCity').value=addr.city;
+  document.getElementById('shipPostal').value=addr.postal;
+  document.getElementById('shipProvince').value=addr.province;
+  document.getElementById('shipCountry').value=addr.country;
+  document.getElementById('shipPhone').value=addr.phone||'';
+
+  document.getElementById('savedAddress').style.display='block';
+  document.getElementById('shipForm').style.display='none';
+}
+
+function changeAddress(){
+  document.getElementById('savedAddress').style.display='none';
+  document.getElementById('shipForm').style.display='block';
+}
+
+// ── GET SHIPPING DATA ──
+function getShippingAddress(){
+  return{
+    name:document.getElementById('shipName').value.trim(),
+    line:document.getElementById('shipLine').value.trim(),
+    city:document.getElementById('shipCity').value.trim(),
+    postal:document.getElementById('shipPostal').value.trim(),
+    province:document.getElementById('shipProvince').value.trim(),
+    country:document.getElementById('shipCountry').value.trim(),
+    phone:document.getElementById('shipPhone').value.trim()
+  };
+}
+
+function validateShipping(addr){
+  return addr.name&&addr.line&&addr.city&&addr.postal&&addr.province&&addr.country&&addr.phone;
+}
+
+// ── PAY ──
+async function handlePay(){
+  var addr=getShippingAddress();
+  var errEl=document.getElementById('checkoutError');
+  errEl.style.display='none';
+
+  if(!validateShipping(addr)){
+    errEl.textContent='Completa todos los campos de la direccion de envio.';
+    errEl.style.display='block';
+    // Show form if saved address was displayed
+    if(document.getElementById('shipForm').style.display==='none') changeAddress();
+    return;
+  }
+
+  var btn=document.getElementById('btnPay');
+  btn.disabled=true;
+  btn.textContent='Procesando...';
+
+  var total=_cart.reduce(function(s,i){return s+i.precio},0);
+  var desc=_cart.map(function(i){return i.ancho+'\u00D7'+i.alto+'\u00D7'+i.fondo+'cm '+i.material}).join(' + ');
+
+  try{
+    var res=await fetch('/api/checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        ancho:_cart[0].ancho,
+        alto:_cart[0].alto,
+        fondo:_cart[0].fondo,
+        material:desc,
+        interior:_cart.length+' armario(s)',
+        puertas:_cart.map(function(i){return i.puertas}).join(', '),
+        precio:total,
+        user_id:_currentUser?_currentUser.id:'',
+        shipping_name:addr.name,
+        shipping_line:addr.line,
+        shipping_city:addr.city,
+        shipping_postal:addr.postal,
+        shipping_province:addr.province,
+        shipping_country:addr.country,
+        shipping_phone:addr.phone
+      })
+    });
+    var data=await res.json();
+    if(data.url){
+      // Save address for future use
+      var addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
+      var exists=addresses.some(function(a){return a.line===addr.line&&a.postal===addr.postal});
+      if(!exists){
+        addresses.unshift(addr);
+        localStorage.setItem('curino_addresses',JSON.stringify(addresses));
+      }
+      localStorage.removeItem('curino_cart');
+      window.location.href=data.url;
+    }else{
+      errEl.textContent=data.error||'No se pudo crear la sesion de pago';
+      errEl.style.display='block';
+      btn.disabled=false;
+      btn.textContent='Ir al pago';
+    }
+  }catch(err){
+    errEl.textContent='Error de conexion. Intentalo de nuevo.';
+    errEl.style.display='block';
+    btn.disabled=false;
+    btn.textContent='Ir al pago';
+  }
+}
+
+// ── GOOGLE PLACES AUTOCOMPLETE ──
+function loadGoogleMaps(key){
+  var s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es';
+  s.async=true;
+  s.onload=initPlacesAutocomplete;
+  document.head.appendChild(s);
+}
+
+function initPlacesAutocomplete(){
+  var input=document.getElementById('shipLine');
+  if(!input||!window.google||!google.maps||!google.maps.places) return;
+
+  var ac=new google.maps.places.Autocomplete(input,{
+    types:['address'],
+    componentRestrictions:{country:'es'},
+    fields:['address_components','formatted_address']
+  });
+
+  ac.addListener('place_changed',function(){
+    var place=ac.getPlace();
+    if(!place.address_components) return;
+
+    var street='',number='',city='',postal='',province='';
+
+    place.address_components.forEach(function(c){
+      var t=c.types;
+      if(t.indexOf('route')!==-1) street=c.long_name;
+      if(t.indexOf('street_number')!==-1) number=c.long_name;
+      if(t.indexOf('locality')!==-1) city=c.long_name;
+      if(t.indexOf('postal_code')!==-1) postal=c.long_name;
+      if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
+      if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
+    });
+
+    input.value=street+(number?' '+number:'');
+    document.getElementById('shipCity').value=city;
+    document.getElementById('shipPostal').value=postal;
+    document.getElementById('shipProvince').value=province;
+    document.getElementById('shipCountry').value='Espana';
+  });
+
+  input.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&document.querySelector('.pac-container:not([style*="display: none"])')) e.preventDefault();
+  });
+}
+</script>
+
+</body>
+</html>

@@ -2199,7 +2199,7 @@ function toggleSiteMenu(){var m=document.getElementById("siteMobileMenu");var h=
       <span class="cart-subtotal-label">Subtotal</span>
       <span class="cart-subtotal-price" id="cartSubtotal">€ 0</span>
     </div>
-    <button class="cart-checkout" onclick="cartCheckout()" id="btnCheckout">Tramitar pedido</button>
+    <a href="/checkout/" class="cart-checkout" style="display:block;text-align:center;text-decoration:none">Tramitar pedido</a>
   </div>
 </div>
 
@@ -2305,61 +2305,6 @@ function renderCart(){
   document.getElementById('cartSubtotal').textContent = '€ ' + new Intl.NumberFormat('es-ES').format(subtotal);
 }
 
-async function cartCheckout(){
-  if(_cart.length === 0) return;
-  var btn = document.getElementById('btnCheckout');
-  btn.disabled = true;
-  btn.textContent = 'Procesando...';
-
-  // For now, checkout with first item (extend to multi-item later)
-  var items = _cart.map(function(item){
-    return {
-      ancho: item.ancho,
-      alto: item.alto,
-      fondo: item.fondo,
-      material: item.material,
-      interior: item.interior,
-      puertas: item.puertas,
-      precio: item.precio
-    };
-  });
-
-  // Send total order
-  var total = _cart.reduce(function(s,i){return s+i.precio},0);
-  var desc = _cart.map(function(i){return i.ancho+'×'+i.alto+'×'+i.fondo+'cm '+i.material}).join(' + ');
-
-  try{
-    var res = await fetch('/api/checkout',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        ancho: _cart[0].ancho,
-        alto: _cart[0].alto,
-        fondo: _cart[0].fondo,
-        material: desc,
-        interior: _cart.length + ' armario(s)',
-        puertas: _cart.map(function(i){return i.puertas}).join(', '),
-        precio: total,
-        user_id: _currentUser ? _currentUser.id : ''
-      })
-    });
-    var data = await res.json();
-    if(data.url){
-      // Clear cart on successful redirect
-      localStorage.removeItem('curino_cart');
-      window.location.href = data.url;
-    } else {
-      alert('Error: '+(data.error||'No se pudo crear la sesión de pago'));
-      btn.disabled = false;
-      btn.textContent = 'Tramitar pedido';
-    }
-  }catch(err){
-    alert('Error de conexión. Inténtalo de nuevo.');
-    btn.disabled = false;
-    btn.textContent = 'Tramitar pedido';
-  }
-}
-
 // Init cart on load
 renderCart();
 
@@ -2389,15 +2334,6 @@ async function checkAuth(){
   }
 }
 
-// Override cartCheckout to require auth
-var _origCartCheckout = cartCheckout;
-cartCheckout = async function(){
-  if(!_currentUser){
-    window.location.href = '/login/?redirect=' + encodeURIComponent(window.location.pathname);
-    return;
-  }
-  return _origCartCheckout();
-};
 </script>
 
 <!-- FOOTER -->
