@@ -181,10 +181,22 @@ nav{
 
 /* ── GOOGLE PLACES AUTOCOMPLETE ── */
 #addrPlaceWrap{margin-bottom:.75rem}
-#addrPlaceWrap gmp-place-autocomplete{width:100%;--gmpac-color-surface:transparent;--gmpac-color-on-surface:var(--black);--gmpac-color-on-surface-variant:var(--mid);--gmpac-color-outline:var(--border);--gmpac-color-primary:var(--black)}
-#addrPlaceWrap gmp-place-autocomplete::part(input){width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);border-radius:0;outline:none;background:transparent;transition:border-color .2s}
-#addrPlaceWrap gmp-place-autocomplete::part(input):focus{border-color:var(--black)}
-#addrPlaceWrap gmp-place-autocomplete::part(predictions-list){font-family:var(--font);font-size:13px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+#addrPlaceWrap gmp-place-autocomplete{
+  width:100%;display:block;
+  --gmpx-color-surface:white;--gmpx-color-on-surface:#000;--gmpx-font-family-base:var(--font);
+  border:none;border-bottom:1px solid var(--border);outline:none;border-radius:0;
+  transition:border-color .2s;
+}
+#addrPlaceWrap gmp-place-autocomplete:focus-within{border-color:var(--black)}
+#addrPlaceWrap gmp-place-autocomplete::part(input){
+  border:none;outline:none;box-shadow:none;
+  font-family:var(--font);font-size:14px;
+  padding:.6rem 0;background:transparent;width:100%;border-radius:0;
+}
+#addrPlaceWrap gmp-place-autocomplete::part(predictions-list){
+  font-family:var(--font);font-size:13px;border:1px solid var(--border);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);border-radius:0;
+}
 
 /* ── FOOTER ── */
 footer{
@@ -705,9 +717,40 @@ function loadGoogleMaps(key){
   document.head.appendChild(s);
 }
 
+function extractAddressComponents(comps,fields){
+  comps.forEach(function(c){
+    // longText is the new API, long_name is legacy — handle both
+    var name=c.longText||c.long_name||'';
+    var t=c.types||[];
+    if(t.includes('route')) fields.street=name;
+    if(t.includes('street_number')) fields.number=name;
+    if(t.includes('locality')) fields.city=name;
+    if(t.includes('postal_code')) fields.postal=name;
+    if(t.includes('administrative_area_level_2')) fields.province=name;
+    if(!fields.province&&t.includes('administrative_area_level_1')) fields.province=name;
+  });
+}
+
+function fillAddressFields(prefix,fields){
+  var fullLine=fields.street+(fields.number?' '+fields.number:'');
+  document.getElementById(prefix+'Line').value=fullLine;
+  document.getElementById(prefix+'City').value=fields.city||'';
+  document.getElementById(prefix+'Postal').value=fields.postal||'';
+  document.getElementById(prefix+'Province').value=fields.province||'';
+  document.getElementById(prefix+'Country').value='Espana';
+}
+
 window.initGooglePlaces=function(){
   var wrap=document.getElementById('addrPlaceWrap');
-  if(!wrap||!google.maps.places.PlaceAutocompleteElement) return;
+  if(!wrap) return;
+
+  // Check if PlaceAutocompleteElement exists
+  if(!google.maps.places.PlaceAutocompleteElement){
+    console.warn('PlaceAutocompleteElement not available');
+    showFallbackInput(wrap,'addr');
+    return;
+  }
+
   try{
     var el=new google.maps.places.PlaceAutocompleteElement({
       componentRestrictions:{country:'es'},
@@ -719,35 +762,30 @@ window.initGooglePlaces=function(){
     el.addEventListener('gmp-placeselect',async function(ev){
       var place=ev.place;
       if(!place) return;
-      await place.fetchFields({fields:['addressComponents']});
+
+      // Try fetchFields if addressComponents not already present
       var comps=place.addressComponents;
-      if(!comps) return;
+      if(!comps){
+        try{await place.fetchFields({fields:['addressComponents']});}catch(e){}
+        comps=place.addressComponents;
+      }
+      if(!comps||!comps.length) return;
 
-      var street='',number='',city='',postal='',province='';
-      comps.forEach(function(c){
-        var t=c.types;
-        if(t.includes('route')) street=c.longText;
-        if(t.includes('street_number')) number=c.longText;
-        if(t.includes('locality')) city=c.longText;
-        if(t.includes('postal_code')) postal=c.longText;
-        if(t.includes('administrative_area_level_2')) province=c.longText;
-        if(!province&&t.includes('administrative_area_level_1')) province=c.longText;
-      });
-
-      var fullLine=street+(number?' '+number:'');
-      document.getElementById('addrLine').value=fullLine;
-      document.getElementById('addrCity').value=city;
-      document.getElementById('addrPostal').value=postal;
-      document.getElementById('addrProvince').value=province;
-      document.getElementById('addrCountry').value='Espana';
+      var fields={street:'',number:'',city:'',postal:'',province:''};
+      extractAddressComponents(comps,fields);
+      fillAddressFields('addr',fields);
     });
   }catch(err){
-    console.warn('PlaceAutocompleteElement not supported, falling back to input');
-    wrap.innerHTML='<input type="text" id="addrLineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
-    var fb=document.getElementById('addrLineFallback');
-    fb.addEventListener('input',function(){document.getElementById('addrLine').value=fb.value;});
+    console.warn('PlaceAutocompleteElement error:',err);
+    showFallbackInput(wrap,'addr');
   }
 };
+
+function showFallbackInput(wrap,prefix){
+  wrap.innerHTML='<input type="text" id="'+prefix+'LineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
+  var fb=document.getElementById(prefix+'LineFallback');
+  fb.addEventListener('input',function(){document.getElementById(prefix+'Line').value=fb.value;});
+}
 
 // ── LOGOUT ──
 async function logoutUser(){

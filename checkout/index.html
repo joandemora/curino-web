@@ -130,10 +130,22 @@ nav{
 
 /* Google Places */
 #shipPlaceWrap{margin-bottom:.75rem}
-#shipPlaceWrap gmp-place-autocomplete{width:100%;--gmpac-color-surface:transparent;--gmpac-color-on-surface:var(--black);--gmpac-color-on-surface-variant:var(--mid);--gmpac-color-outline:var(--border);--gmpac-color-primary:var(--black)}
-#shipPlaceWrap gmp-place-autocomplete::part(input){width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);border-radius:0;outline:none;background:transparent;transition:border-color .2s}
-#shipPlaceWrap gmp-place-autocomplete::part(input):focus{border-color:var(--black)}
-#shipPlaceWrap gmp-place-autocomplete::part(predictions-list){font-family:var(--font);font-size:13px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+#shipPlaceWrap gmp-place-autocomplete{
+  width:100%;display:block;
+  --gmpx-color-surface:white;--gmpx-color-on-surface:#000;--gmpx-font-family-base:var(--font);
+  border:none;border-bottom:1px solid var(--border);outline:none;border-radius:0;
+  transition:border-color .2s;
+}
+#shipPlaceWrap gmp-place-autocomplete:focus-within{border-color:var(--black)}
+#shipPlaceWrap gmp-place-autocomplete::part(input){
+  border:none;outline:none;box-shadow:none;
+  font-family:var(--font);font-size:14px;
+  padding:.6rem 0;background:transparent;width:100%;border-radius:0;
+}
+#shipPlaceWrap gmp-place-autocomplete::part(predictions-list){
+  font-family:var(--font);font-size:13px;border:1px solid var(--border);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);border-radius:0;
+}
 
 /* ── FOOTER ── */
 footer{
@@ -539,6 +551,19 @@ function loadGoogleMaps(key){
   document.head.appendChild(s);
 }
 
+function extractAddressComponents(comps,fields){
+  comps.forEach(function(c){
+    var name=c.longText||c.long_name||'';
+    var t=c.types||[];
+    if(t.includes('route')) fields.street=name;
+    if(t.includes('street_number')) fields.number=name;
+    if(t.includes('locality')) fields.city=name;
+    if(t.includes('postal_code')) fields.postal=name;
+    if(t.includes('administrative_area_level_2')) fields.province=name;
+    if(!fields.province&&t.includes('administrative_area_level_1')) fields.province=name;
+  });
+}
+
 function setShipPlaceInput(val){
   var gmp=document.querySelector('#shipPlaceWrap gmp-place-autocomplete');
   if(gmp&&gmp.value!==undefined) gmp.value=val;
@@ -548,7 +573,14 @@ function setShipPlaceInput(val){
 
 window.initGooglePlaces=function(){
   var wrap=document.getElementById('shipPlaceWrap');
-  if(!wrap||!google.maps.places.PlaceAutocompleteElement) return;
+  if(!wrap) return;
+
+  if(!google.maps.places.PlaceAutocompleteElement){
+    console.warn('PlaceAutocompleteElement not available');
+    showFallbackInput(wrap,'ship');
+    return;
+  }
+
   try{
     var el=new google.maps.places.PlaceAutocompleteElement({
       componentRestrictions:{country:'es'},
@@ -557,42 +589,41 @@ window.initGooglePlaces=function(){
     el.setAttribute('placeholder','Direccion (calle, numero, piso)');
     wrap.appendChild(el);
 
-    // Pre-fill from saved address if form is hidden
+    // Pre-fill from saved address
     var hidden=document.getElementById('shipLine');
     if(hidden&&hidden.value) el.value=hidden.value;
 
     el.addEventListener('gmp-placeselect',async function(ev){
       var place=ev.place;
       if(!place) return;
-      await place.fetchFields({fields:['addressComponents']});
+
       var comps=place.addressComponents;
-      if(!comps) return;
+      if(!comps){
+        try{await place.fetchFields({fields:['addressComponents']});}catch(e){}
+        comps=place.addressComponents;
+      }
+      if(!comps||!comps.length) return;
 
-      var street='',number='',city='',postal='',province='';
-      comps.forEach(function(c){
-        var t=c.types;
-        if(t.includes('route')) street=c.longText;
-        if(t.includes('street_number')) number=c.longText;
-        if(t.includes('locality')) city=c.longText;
-        if(t.includes('postal_code')) postal=c.longText;
-        if(t.includes('administrative_area_level_2')) province=c.longText;
-        if(!province&&t.includes('administrative_area_level_1')) province=c.longText;
-      });
-
-      var fullLine=street+(number?' '+number:'');
+      var fields={street:'',number:'',city:'',postal:'',province:''};
+      extractAddressComponents(comps,fields);
+      var fullLine=fields.street+(fields.number?' '+fields.number:'');
       document.getElementById('shipLine').value=fullLine;
-      document.getElementById('shipCity').value=city;
-      document.getElementById('shipPostal').value=postal;
-      document.getElementById('shipProvince').value=province;
+      document.getElementById('shipCity').value=fields.city||'';
+      document.getElementById('shipPostal').value=fields.postal||'';
+      document.getElementById('shipProvince').value=fields.province||'';
       document.getElementById('shipCountry').value='Espana';
     });
   }catch(err){
-    console.warn('PlaceAutocompleteElement not supported, falling back to input');
-    wrap.innerHTML='<input type="text" id="shipLineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
-    var fb=document.getElementById('shipLineFallback');
-    fb.addEventListener('input',function(){document.getElementById('shipLine').value=fb.value;});
+    console.warn('PlaceAutocompleteElement error:',err);
+    showFallbackInput(wrap,'ship');
   }
 };
+
+function showFallbackInput(wrap,prefix){
+  wrap.innerHTML='<input type="text" id="'+prefix+'LineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
+  var fb=document.getElementById(prefix+'LineFallback');
+  fb.addEventListener('input',function(){document.getElementById(prefix+'Line').value=fb.value;});
+}
 </script>
 
 </body>
