@@ -50,8 +50,9 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
     return;
   }
 
-  // In production, you'd fetch session details from your API
-  // For now, show a generic confirmation
+  // Clear cart on confirmed payment
+  localStorage.removeItem('curino_cart');
+
   box.innerHTML = `
     <div class="confirm-icon">✓</div>
     <h1 class="confirm-title">Pedido confirmado</h1>

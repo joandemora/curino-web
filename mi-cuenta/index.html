@@ -687,52 +687,47 @@ function deleteAddress(i){
 }
 
 // ── GOOGLE PLACES AUTOCOMPLETE ──
+// Use callback-based loading (recommended by Google)
+window.initGooglePlaces=function(){
+  var input=document.getElementById('addrLine');
+  if(!input) return;
+  try{
+    var ac=new google.maps.places.Autocomplete(input,{
+      types:['address'],
+      componentRestrictions:{country:'es'},
+      fields:['address_components']
+    });
+    ac.addListener('place_changed',function(){
+      var place=ac.getPlace();
+      if(!place||!place.address_components) return;
+      var street='',number='',city='',postal='',province='';
+      place.address_components.forEach(function(c){
+        var t=c.types;
+        if(t.indexOf('route')!==-1) street=c.long_name;
+        if(t.indexOf('street_number')!==-1) number=c.long_name;
+        if(t.indexOf('locality')!==-1) city=c.long_name;
+        if(t.indexOf('postal_code')!==-1) postal=c.long_name;
+        if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
+        if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
+      });
+      input.value=street+(number?' '+number:'');
+      document.getElementById('addrCity').value=city;
+      document.getElementById('addrPostal').value=postal;
+      document.getElementById('addrProvince').value=province;
+      document.getElementById('addrCountry').value='Espana';
+    });
+    input.addEventListener('keydown',function(e){
+      if(e.key==='Enter'&&document.querySelector('.pac-container:not([style*="display: none"])')) e.preventDefault();
+    });
+  }catch(err){console.warn('Places Autocomplete init error:',err);}
+};
+
 function loadGoogleMaps(key){
   var s=document.createElement('script');
-  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es';
+  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es&callback=initGooglePlaces';
   s.async=true;
-  s.onload=initPlacesAutocomplete;
+  s.defer=true;
   document.head.appendChild(s);
-}
-
-var _placesAutocomplete=null;
-function initPlacesAutocomplete(){
-  var input=document.getElementById('addrLine');
-  if(!input||!window.google||!google.maps||!google.maps.places) return;
-
-  _placesAutocomplete=new google.maps.places.Autocomplete(input,{
-    types:['address'],
-    componentRestrictions:{country:'es'},
-    fields:['address_components','formatted_address']
-  });
-
-  _placesAutocomplete.addListener('place_changed',function(){
-    var place=_placesAutocomplete.getPlace();
-    if(!place.address_components) return;
-
-    var street='',number='',city='',postal='',province='';
-
-    place.address_components.forEach(function(c){
-      var t=c.types;
-      if(t.indexOf('route')!==-1) street=c.long_name;
-      if(t.indexOf('street_number')!==-1) number=c.long_name;
-      if(t.indexOf('locality')!==-1) city=c.long_name;
-      if(t.indexOf('postal_code')!==-1) postal=c.long_name;
-      if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
-      if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
-    });
-
-    input.value=street+(number?' '+number:'');
-    document.getElementById('addrCity').value=city;
-    document.getElementById('addrPostal').value=postal;
-    document.getElementById('addrProvince').value=province;
-    document.getElementById('addrCountry').value='Espana';
-  });
-
-  // Prevent form submit on Enter when selecting from dropdown
-  input.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&document.querySelector('.pac-container:not([style*="display: none"])')) e.preventDefault();
-  });
 }
 
 // ── LOGOUT ──
