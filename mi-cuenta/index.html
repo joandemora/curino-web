@@ -759,43 +759,55 @@ window.initGooglePlaces=function(){
     el.setAttribute('placeholder','Direccion (calle, numero, piso)');
     wrap.appendChild(el);
 
-    el.addEventListener('gmp-placeselect',async function(ev){
-      var place=ev.place;
-      console.log('=== gmp-placeselect fired ===');
-      console.log('place object:', place);
-      console.log('place keys:', place ? Object.keys(place) : 'null');
-      console.log('addressComponents BEFORE fetch:', place.addressComponents);
-      console.log('formattedAddress BEFORE fetch:', place.formattedAddress);
+    console.log('=== PlaceAutocompleteElement created ===');
+    console.log('element:', el);
+    console.log('tagName:', el.tagName);
+    console.log('is in DOM:', document.contains(el));
 
-      if(!place) return;
+    // Try all possible event names
+    var handler=async function(ev){
+      console.log('=== PLACE EVENT FIRED ===', ev.type);
+      console.log('event:', ev);
+      console.log('event.detail:', ev.detail);
+      console.log('ev.place:', ev.place);
 
-      // Always fetch to ensure data is populated
+      var place=ev.place||ev.detail?.place;
+      if(!place){console.warn('No place in event');return;}
+
+      console.log('place:', place);
+      console.log('place constructor:', place.constructor?.name);
+
       try{
         await place.fetchFields({fields:['addressComponents','formattedAddress']});
       }catch(e){
         console.error('fetchFields error:', e);
       }
 
-      console.log('addressComponents AFTER fetch:', place.addressComponents);
-      console.log('formattedAddress AFTER fetch:', place.formattedAddress);
+      console.log('addressComponents:', place.addressComponents);
+      console.log('formattedAddress:', place.formattedAddress);
 
       var comps=place.addressComponents;
       if(comps&&comps.length){
-        console.log('Components count:', comps.length);
         comps.forEach(function(c,i){
-          console.log('  ['+i+']', JSON.stringify({types:c.types, longText:c.longText, long_name:c.long_name, shortText:c.shortText, short_name:c.short_name}));
+          console.log('  ['+i+']', JSON.stringify(c));
         });
+        var fields={street:'',number:'',city:'',postal:'',province:''};
+        extractAddressComponents(comps,fields);
+        console.log('Extracted:', JSON.stringify(fields));
+        fillAddressFields('addr',fields);
       }else{
-        console.warn('No addressComponents found');
+        console.warn('No addressComponents');
       }
+    };
 
-      if(!comps||!comps.length) return;
+    el.addEventListener('gmp-placeselect',handler);
+    el.addEventListener('gmp-select',handler);
+    el.addEventListener('placechange',handler);
+    console.log('Listeners added: gmp-placeselect, gmp-select, placechange');
 
-      var fields={street:'',number:'',city:'',postal:'',province:''};
-      extractAddressComponents(comps,fields);
-      console.log('Extracted fields:', JSON.stringify(fields));
-      fillAddressFields('addr',fields);
-    });
+    // Also listen on document for bubbling
+    document.addEventListener('gmp-placeselect',function(e){console.log('BUBBLE gmp-placeselect on document',e);});
+    document.addEventListener('gmp-select',function(e){console.log('BUBBLE gmp-select on document',e);});
   }catch(err){
     console.warn('PlaceAutocompleteElement error:',err);
     showFallbackInput(wrap,'addr');
