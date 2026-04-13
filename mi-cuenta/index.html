@@ -180,11 +180,11 @@ nav{
 .btn-add{margin-top:.5rem}
 
 /* ── GOOGLE PLACES AUTOCOMPLETE ── */
-.pac-container{font-family:var(--font);font-size:13px;border:1px solid var(--border);border-top:none;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:9999}
-.pac-item{padding:.5rem .75rem;cursor:pointer;border-top:1px solid var(--border)}
-.pac-item:hover{background:var(--bg)}
-.pac-item-query{font-size:13px;color:var(--black)}
-.pac-icon{display:none}
+#addrPlaceWrap{margin-bottom:.75rem}
+#addrPlaceWrap gmp-place-autocomplete{width:100%;--gmpac-color-surface:transparent;--gmpac-color-on-surface:var(--black);--gmpac-color-on-surface-variant:var(--mid);--gmpac-color-outline:var(--border);--gmpac-color-primary:var(--black)}
+#addrPlaceWrap gmp-place-autocomplete::part(input){width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);border-radius:0;outline:none;background:transparent;transition:border-color .2s}
+#addrPlaceWrap gmp-place-autocomplete::part(input):focus{border-color:var(--black)}
+#addrPlaceWrap gmp-place-autocomplete::part(predictions-list){font-family:var(--font);font-size:13px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.08)}
 
 /* ── FOOTER ── */
 footer{
@@ -373,7 +373,8 @@ footer{
 
     <div class="address-form" id="addressForm">
       <input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required>
-      <input type="text" id="addrLine" placeholder="Direccion (calle, numero, piso)" autocomplete="off" required>
+      <div id="addrPlaceWrap"></div>
+      <input type="hidden" id="addrLine">
       <div class="address-form-row">
         <input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required>
         <input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
@@ -638,12 +639,20 @@ function cancelAddress(){
   _editingIdx=-1;
 }
 
+function setPlaceInput(val){
+  var gmp=document.querySelector('#addrPlaceWrap gmp-place-autocomplete');
+  if(gmp&&gmp.value!==undefined) gmp.value=val;
+  var fb=document.getElementById('addrLineFallback');
+  if(fb) fb.value=val;
+}
+
 function clearAddressForm(){
   ['addrName','addrLine','addrCity','addrPostal','addrProvince','addrCountry','addrPhone'].forEach(function(id){
     var el=document.getElementById(id);
     if(id==='addrCountry') el.value='Espana';
     else el.value='';
   });
+  setPlaceInput('');
 }
 
 function saveAddress(){
@@ -671,6 +680,7 @@ function editAddress(i){
   var addr=_addresses[i];
   document.getElementById('addrName').value=addr.name;
   document.getElementById('addrLine').value=addr.line;
+  setPlaceInput(addr.line);
   document.getElementById('addrCity').value=addr.city;
   document.getElementById('addrPostal').value=addr.postal;
   document.getElementById('addrProvince').value=addr.province;
@@ -686,49 +696,58 @@ function deleteAddress(i){
   loadAddresses();
 }
 
-// ── GOOGLE PLACES AUTOCOMPLETE ──
-// Use callback-based loading (recommended by Google)
+// ── GOOGLE PLACES AUTOCOMPLETE (PlaceAutocompleteElement) ──
+function loadGoogleMaps(key){
+  var s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&v=weekly&language=es&callback=initGooglePlaces';
+  s.async=true;
+  s.defer=true;
+  document.head.appendChild(s);
+}
+
 window.initGooglePlaces=function(){
-  var input=document.getElementById('addrLine');
-  if(!input) return;
+  var wrap=document.getElementById('addrPlaceWrap');
+  if(!wrap||!google.maps.places.PlaceAutocompleteElement) return;
   try{
-    var ac=new google.maps.places.Autocomplete(input,{
-      types:['address'],
+    var el=new google.maps.places.PlaceAutocompleteElement({
       componentRestrictions:{country:'es'},
-      fields:['address_components']
+      types:['address']
     });
-    ac.addListener('place_changed',function(){
-      var place=ac.getPlace();
-      if(!place||!place.address_components) return;
+    el.setAttribute('placeholder','Direccion (calle, numero, piso)');
+    wrap.appendChild(el);
+
+    el.addEventListener('gmp-placeselect',async function(ev){
+      var place=ev.place;
+      if(!place) return;
+      await place.fetchFields({fields:['addressComponents']});
+      var comps=place.addressComponents;
+      if(!comps) return;
+
       var street='',number='',city='',postal='',province='';
-      place.address_components.forEach(function(c){
+      comps.forEach(function(c){
         var t=c.types;
-        if(t.indexOf('route')!==-1) street=c.long_name;
-        if(t.indexOf('street_number')!==-1) number=c.long_name;
-        if(t.indexOf('locality')!==-1) city=c.long_name;
-        if(t.indexOf('postal_code')!==-1) postal=c.long_name;
-        if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
-        if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
+        if(t.includes('route')) street=c.longText;
+        if(t.includes('street_number')) number=c.longText;
+        if(t.includes('locality')) city=c.longText;
+        if(t.includes('postal_code')) postal=c.longText;
+        if(t.includes('administrative_area_level_2')) province=c.longText;
+        if(!province&&t.includes('administrative_area_level_1')) province=c.longText;
       });
-      input.value=street+(number?' '+number:'');
+
+      var fullLine=street+(number?' '+number:'');
+      document.getElementById('addrLine').value=fullLine;
       document.getElementById('addrCity').value=city;
       document.getElementById('addrPostal').value=postal;
       document.getElementById('addrProvince').value=province;
       document.getElementById('addrCountry').value='Espana';
     });
-    input.addEventListener('keydown',function(e){
-      if(e.key==='Enter'&&document.querySelector('.pac-container:not([style*="display: none"])')) e.preventDefault();
-    });
-  }catch(err){console.warn('Places Autocomplete init error:',err);}
+  }catch(err){
+    console.warn('PlaceAutocompleteElement not supported, falling back to input');
+    wrap.innerHTML='<input type="text" id="addrLineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
+    var fb=document.getElementById('addrLineFallback');
+    fb.addEventListener('input',function(){document.getElementById('addrLine').value=fb.value;});
+  }
 };
-
-function loadGoogleMaps(key){
-  var s=document.createElement('script');
-  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es&callback=initGooglePlaces';
-  s.async=true;
-  s.defer=true;
-  document.head.appendChild(s);
-}
 
 // ── LOGOUT ──
 async function logoutUser(){
