@@ -593,15 +593,15 @@ window.initGooglePlaces=function(){
     var hidden=document.getElementById('shipLine');
     if(hidden&&hidden.value) el.value=hidden.value;
 
-    el.addEventListener('gmp-placeselect',async function(ev){
-      var place=ev.place;
+    el.addEventListener('gmp-select',async function(ev){
+      var place=null;
+      try{place=ev.placePrediction.toPlace();}catch(e){}
+      if(!place){place=ev.place||ev.detail?.place;}
       if(!place) return;
 
+      try{await place.fetchFields({fields:['addressComponents','formattedAddress']});}catch(e){}
+
       var comps=place.addressComponents;
-      if(!comps){
-        try{await place.fetchFields({fields:['addressComponents']});}catch(e){}
-        comps=place.addressComponents;
-      }
       if(!comps||!comps.length) return;
 
       var fields={street:'',number:'',city:'',postal:'',province:''};
