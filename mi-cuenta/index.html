@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi cuenta — Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;
+  --mid:#888;
+  --light:#c0c0c0;
+  --border:#e5e5e5;
+  --bg:#f8f8f6;
+  --white:#ffffff;
+  --font:'Open Sans',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
+h1,h2,h3{font-size:22px;font-weight:400;letter-spacing:normal;text-align:center;text-transform:uppercase;line-height:1.4;margin:0}
+p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;height:80px;
+  background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
+.nav-links{display:flex;gap:1.8rem;align-items:center}
+.nav-links a{
+  font-size:12px;letter-spacing:0.24px;text-transform:uppercase;
+  color:#000000;text-decoration:none;font-weight:400;transition:color .2s;position:relative;
+}
+.nav-links a:hover{color:#999999}
+.nav-icons{display:flex;gap:1.2rem;align-items:center}
+.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-icons a:hover{color:#999999}
+.nav-icons svg{width:16px;height:16px;stroke:#000000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
+.nav-icons svg:hover{stroke:#999999}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+/* ── MEGAMENU ── */
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.megamenu{
+  position:fixed;top:80px;left:0;right:0;z-index:99;
+  width:100%;background:var(--white);padding:32px;
+  display:flex;justify-content:flex-start;gap:180px;
+  opacity:0;visibility:hidden;transform:translateY(-8px);
+  transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;
+  border-top:1px solid var(--border);
+}
+.mega-col{margin-bottom:32px}
+.mega-col-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
+.mega-col a{display:block;font-size:14px;letter-spacing:0.14px;line-height:19.88px;color:#000000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px;transition:color .2s}
+.mega-col a:hover{color:#999999}
+.mega-imgs{margin-left:auto;display:flex;gap:16px;flex-shrink:0}
+.mega-img{display:flex;flex-direction:column;align-items:center;flex-shrink:0;position:relative}
+.mega-img::before{content:'';position:absolute;top:0;left:0;width:300px;height:300px;background:rgba(0,0,0,0);transition:background .3s;z-index:1;pointer-events:none}
+.mega-img:hover::before{background:rgba(0,0,0,.2)}
+.mega-img img{width:300px;height:300px;object-fit:cover;display:block}
+.mega-img>a:first-child{display:block;line-height:0;border:none;padding:0;margin:0;outline:none;box-shadow:none}
+.mega-img>a:first-child:hover{border:none;outline:none;box-shadow:none}
+.mega-img a{display:inline-block;margin-top:12px;font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;color:#000000;text-decoration:none;border-bottom:1px solid #000000;padding-bottom:3px;transition:color .2s,border-color .2s}
+.mega-img a:hover{color:#999999;border-color:#999999}
+
+/* ── MOBILE MENU ── */
+.mobile-menu{
+  display:none;position:fixed;top:60px;left:0;right:0;bottom:0;
+  background:var(--white);padding:1.5rem 2rem;z-index:99;flex-direction:column;gap:0;overflow-y:auto;
+}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.mobile-menu a:last-child{border-bottom:none}
+.mobile-accordion{border-bottom:1px solid var(--border)}
+.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;font-weight:400}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'\2212'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:800px}
+.mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000000;font-weight:600;padding:.6rem 0 .3rem}
+.mobile-accordion-body a{display:block;font-size:14px;color:#000000;text-decoration:none;font-weight:400;text-transform:none;letter-spacing:0.14px;line-height:19.88px;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+
+/* ── USER ICON ── */
+.user-icon-link{display:flex;align-items:center}
+.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+
+/* ── CART ── */
+.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
+.cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
+.cart-badge{position:absolute;top:-6px;right:-8px;background:#0a0a0a;color:#fff;
+  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+.cart-badge.visible{opacity:1}
+.cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:300}
+.cart-overlay.open{display:block}
+.cart-drawer{position:fixed;top:0;right:-420px;width:420px;max-width:100vw;height:100vh;
+  background:var(--white);z-index:301;display:flex;flex-direction:column;transition:right .3s ease;box-shadow:-2px 0 12px rgba(0,0,0,.08)}
+.cart-drawer.open{right:0}
+.cart-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 2rem;border-bottom:1px solid var(--border)}
+.cart-title{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:400}
+.cart-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--black);line-height:1}
+.cart-items{flex:1;overflow-y:auto;padding:1.5rem 2rem}
+.cart-empty{text-align:center;color:var(--mid);font-size:13px;padding:3rem 0}
+.cart-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border)}
+.cart-item-img{width:80px;height:80px;background:var(--bg);flex-shrink:0;overflow:hidden}
+.cart-item-img img{width:100%;height:100%;object-fit:contain}
+.cart-item-info{flex:1}
+.cart-item-name{font-size:13px;font-weight:600;margin-bottom:.25rem}
+.cart-item-desc{font-size:12px;color:var(--mid);margin-bottom:.25rem}
+.cart-item-price{font-size:13px}
+.cart-item-remove{background:none;border:none;font-size:18px;cursor:pointer;color:var(--mid);padding:0 .25rem;align-self:flex-start}
+.cart-footer{padding:1.5rem 2rem;border-top:1px solid var(--border)}
+.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem}
+.cart-subtotal-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.cart-subtotal-price{font-size:14px;font-weight:600}
+.cart-checkout{display:block;width:100%;padding:.85rem;background:var(--black);color:var(--white);
+  text-align:center;text-decoration:none;font-family:var(--font);font-size:12px;
+  letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s}
+.cart-checkout:hover{background:#333}
+
+/* ── MI CUENTA ── */
+.account{max-width:860px;margin:120px auto 4rem;padding:0 32px}
+.account-title{font-size:22px;font-weight:400;text-transform:uppercase;text-align:left;margin-bottom:2.5rem;letter-spacing:normal}
+.account-section{margin-bottom:3rem}
+.account-section-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.account-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;font-size:14px}
+.account-row-label{color:var(--mid);font-size:12px;letter-spacing:.05em;text-transform:uppercase;min-width:120px}
+.account-row-value{text-align:right}
+
+/* Orders table */
+.orders-table{width:100%;border-collapse:collapse;font-size:13px}
+.orders-table th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;text-align:left;padding:.75rem 0;border-bottom:2px solid var(--black)}
+.orders-table td{padding:.75rem 0;border-bottom:1px solid var(--border);vertical-align:top}
+.orders-table .order-config{font-size:12px;color:var(--mid);line-height:1.6}
+.order-status{display:inline-block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:.25rem .6rem}
+.order-status.pagado{background:#f0fdf4;color:#16a34a}
+.order-status.produccion{background:#fffbeb;color:#d97706}
+.order-status.enviado{background:#eff6ff;color:#2563eb}
+.orders-empty{color:var(--mid);font-size:13px;padding:2rem 0;text-align:center}
+
+/* Addresses */
+.address-card{border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem;position:relative}
+.address-card p{font-size:13px;line-height:1.6;text-align:left}
+.address-actions{display:flex;gap:1rem;margin-top:.75rem}
+.address-actions button{background:none;border:none;font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;transition:color .2s}
+.address-actions button:hover{color:var(--black)}
+.address-empty{color:var(--mid);font-size:13px}
+
+/* Address form */
+.address-form{display:none;margin-top:1rem}
+.address-form.open{display:block}
+.address-form input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:.75rem;transition:border-color .2s}
+.address-form input:focus{border-color:var(--black)}
+.address-form input::placeholder{color:var(--mid)}
+.address-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
+
+/* Buttons */
+.btn{padding:.75rem 1.5rem;font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s,color .2s;font-weight:400}
+.btn-primary{background:var(--black);color:var(--white)}
+.btn-primary:hover{background:#333}
+.btn-outline{background:transparent;color:var(--black);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--black)}
+.btn-danger{background:transparent;color:#dc2626;border:1px solid #fecaca}
+.btn-danger:hover{background:#fef2f2}
+.btn-small{padding:.5rem 1rem;font-size:11px}
+.btn-add{margin-top:.5rem}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--black);color:#ffffff;
+  padding:4rem 32px 3rem;
+  display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem 2rem;
+  grid-template-areas:
+    "logo alta corp empleo contacto"
+    "logo alta corp prensa newsletter";
+  font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;
+}
+.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#ffffff;text-align:left}
+.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#ffffff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#ffffff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
+.footer-col a:hover{color:#999999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #ffffff;color:#ffffff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.14px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#ffffff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #ffffff;padding-bottom:3px;transition:color .2s,border-color .2s}
+.footer-newsletter button:hover{color:#999999;border-color:#999999}
+.footer-links{display:block}
+.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#ffffff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#ffffff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){
+  nav{padding:0 16px;height:60px}
+  .nav-logo img{height:20px}
+  .nav-right{display:none}
+  .nav-hamburger{display:flex}
+  .account{margin-top:80px;padding:0 16px}
+  .account-title{font-size:16px}
+  .account-row{flex-direction:column;align-items:flex-start;gap:.25rem}
+  .account-row-value{text-align:left}
+  .orders-table{font-size:12px}
+  .orders-table th,.orders-table td{padding:.5rem .5rem .5rem 0}
+  .address-form-row{grid-template-columns:1fr}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  footer img[alt="Curino"]{height:20px!important}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300;transition:transform .3s}
+  .footer-col.open h4::after{content:'\2212'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+  .footer-legal{align-items:center;text-align:center}
+}
+@media(max-width:480px){
+  .orders-scroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
+  .orders-table{min-width:560px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <div class="nav-right">
+  <div class="nav-links">
+    <div class="mega-trigger">
+      <a href="#">Alta Carpinteria</a>
+      <div class="megamenu">
+        <div class="mega-col">
+          <div class="mega-col-title">Sistemas</div>
+          <a href="#">Maestro</a>
+          <a href="#">Fina</a>
+          <a href="#">Autor</a>
+        </div>
+        <div class="mega-col">
+          <div class="mega-col-title">Estancias</div>
+          <a href="#">Dormitorio</a>
+          <a href="#">Cocina</a>
+          <a href="#">Salon</a>
+          <a href="#">Comedor</a>
+          <a href="#">Bano</a>
+        </div>
+        <div class="mega-col">
+          <div class="mega-col-title">Productos</div>
+          <a href="#">Armarios</a>
+          <a href="#">Vestidores</a>
+          <a href="#">Puertas</a>
+          <a href="#">Paneles</a>
+          <a href="#">Cocinas</a>
+        </div>
+        <div class="mega-col">
+          <div class="mega-col-title">Proyectos Integrales</div>
+          <a href="#">Residencial</a>
+          <a href="#">Contract</a>
+          <a href="#">Couture</a>
+        </div>
+        <div class="mega-imgs">
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="/configurador-armarios-vestidores/">Proyecto a medida</a></div>
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="/configurador-armarios-vestidores/">Configurador</a></div>
+        </div>
+      </div>
+    </div>
+    <a href="#">Disenadores</a>
+    <a href="#">Lab Work</a>
+    <a href="#">Materiales</a>
+    <a href="#">Estudio</a>
+    <a href="#">Magazine</a>
+    <a href="#">Partners</a>
+    <a href="#">Contacto</a>
+  </div>
+  <div class="nav-icons">
+    <a href="#">ES</a>
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <a href="/mi-cuenta/" class="user-icon-link" id="userIconLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+    <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge" id="cartBadge">0</div></div>
+  </div>
+  </div>
+  <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-accordion" id="mobileAccordion">
+    <div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div>
+    <div class="mobile-accordion-body">
+      <div class="mobile-sub-title">Sistemas</div>
+      <a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a>
+      <div class="mobile-sub-title">Estancias</div>
+      <a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a>
+      <div class="mobile-sub-title">Productos</div>
+      <a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a>
+    </div>
+  </div>
+  <a href="#">Disenadores</a>
+  <a href="#">Lab Work</a>
+  <a href="#">Materiales</a>
+  <a href="#">Estudio</a>
+  <a href="#">Magazine</a>
+  <a href="#">Partners</a>
+  <a href="#">Contacto</a>
+</div>
+
+<!-- MI CUENTA -->
+<div class="account" id="accountPage" style="display:none">
+  <h1 class="account-title" id="accountGreeting">Mi cuenta</h1>
+
+  <!-- Datos del usuario -->
+  <div class="account-section">
+    <div class="account-section-title">Datos personales</div>
+    <div class="account-row">
+      <span class="account-row-label">Nombre</span>
+      <span class="account-row-value" id="userName">—</span>
+    </div>
+    <div class="account-row">
+      <span class="account-row-label">Email</span>
+      <span class="account-row-value" id="userEmail">—</span>
+    </div>
+  </div>
+
+  <!-- Historial de pedidos -->
+  <div class="account-section">
+    <div class="account-section-title">Historial de pedidos</div>
+    <div id="ordersContainer">
+      <div class="orders-empty" id="ordersEmpty">No tienes pedidos todavia.</div>
+      <div class="orders-scroll" id="ordersScroll" style="display:none">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Configuracion</th>
+              <th>Precio</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Direcciones -->
+  <div class="account-section">
+    <div class="account-section-title">Direcciones de envio</div>
+    <div id="addressList"></div>
+    <div class="address-empty" id="addressEmpty">No tienes direcciones guardadas.</div>
+    <button class="btn btn-outline btn-small btn-add" id="btnAddAddress" onclick="showAddressForm()">+ Anadir direccion</button>
+
+    <div class="address-form" id="addressForm">
+      <input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name">
+      <input type="text" id="addrLine" placeholder="Direccion (calle, numero, piso)" autocomplete="street-address">
+      <div class="address-form-row">
+        <input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2">
+        <input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code">
+      </div>
+      <div class="address-form-row">
+        <input type="text" id="addrProvince" placeholder="Provincia" autocomplete="address-level1">
+        <input type="text" id="addrCountry" placeholder="Pais" value="Espana" autocomplete="country-name">
+      </div>
+      <input type="tel" id="addrPhone" placeholder="Telefono" autocomplete="tel">
+      <div style="display:flex;gap:.75rem;margin-top:.5rem">
+        <button class="btn btn-primary btn-small" onclick="saveAddress()">Guardar</button>
+        <button class="btn btn-outline btn-small" onclick="cancelAddress()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cerrar sesion -->
+  <div class="account-section" style="padding-top:1rem;border-top:1px solid var(--border)">
+    <button class="btn btn-danger" onclick="logoutUser()">Cerrar sesion</button>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinteria a medida — armarios, vestidores, cocinas y puertas con garantia de 25 anos.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</h4>
+    <div class="footer-links">
+      <a href="/configurador-armarios-vestidores/">Configurador de armarios</a>
+      <a href="#">Proyecto a medida en Barcelona</a>
+      <a href="#">Proyecto a medida en Madrid</a>
+      <a href="#">Proyecto a medida en Valencia</a>
+      <a href="#">Proyecto a medida en Marbella</a>
+      <a href="#">Proyecto a medida en Bilbao</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:corp">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4>
+    <div class="footer-links">
+      <a href="#">Sobre nosotros</a>
+      <a href="#">I+D e Innovacion</a>
+      <a href="#">Seguridad en Curino</a>
+      <a href="#">Etica Corporativa</a>
+      <a href="#">Proveedores</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:empleo">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4>
+    <div class="footer-links">
+      <a href="#">Unete a Curino</a>
+      <a href="#">Curino Partners</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:prensa">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4>
+    <div class="footer-links">
+      <a href="#">Magazine</a>
+      <a href="#">Contacto Prensa</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:contacto">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4>
+    <div class="footer-links">
+      <a href="#">WhatsApp</a>
+      <a href="mailto:info@casacurino.com">info@casacurino.com</a>
+    </div>
+  </div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter">
+    <h4>Newsletter</h4>
+    <div class="footer-links">
+      <input type="email" placeholder="Tu email">
+      <button type="button">Suscribirse</button>
+    </div>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>&copy; 2026 Curino &middot; Mueble a medida &middot; Espana &middot; Europa &middot; EEUU</span>
+  <div class="footer-legal">
+    <span>Sistema & Curino, S.L.U.</span>
+    <span>Terminos y Condiciones | Politica de Privacidad | Politica de Cookies</span>
+  </div>
+  <span>casacurino.com</span>
+</div>
+
+<!-- CART DRAWER -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <div class="cart-title">Carrito</div>
+    <button class="cart-close" onclick="toggleCart()">&times;</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty" id="cartEmpty">Tu carrito esta vacio</div>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-subtotal">
+      <span class="cart-subtotal-label">Subtotal</span>
+      <span class="cart-subtotal-price" id="cartSubtotal">&euro; 0</span>
+    </div>
+    <a href="/configurador-armarios-vestidores/" class="cart-checkout" style="display:block;text-align:center;text-decoration:none">Tramitar pedido</a>
+  </div>
+</div>
+
+<script>
+// ── MOBILE MENU ──
+function toggleMenu(){
+  document.getElementById('mobileMenu').classList.toggle('open');
+  document.getElementById('hamburger').classList.toggle('open');
+}
+
+// ── CART ──
+var _cart = JSON.parse(localStorage.getItem('curino_cart') || '[]');
+function toggleCart(){
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.getElementById('cartDrawer').classList.toggle('open');
+}
+function removeFromCart(id){
+  _cart = _cart.filter(function(item){return item.id !== id});
+  localStorage.setItem('curino_cart', JSON.stringify(_cart));
+  renderCart();
+}
+function renderCart(){
+  var container = document.getElementById('cartItems');
+  var empty = document.getElementById('cartEmpty');
+  var footer = document.getElementById('cartFooter');
+  var badge = document.getElementById('cartBadge');
+  if(_cart.length > 0){badge.textContent=_cart.length;badge.classList.add('visible');}
+  else{badge.classList.remove('visible');}
+  if(_cart.length === 0){empty.style.display='block';footer.style.display='none';
+    container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});return;}
+  empty.style.display='none';footer.style.display='block';
+  container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
+  var subtotal=0;
+  _cart.forEach(function(item){
+    subtotal+=item.precio;
+    var div=document.createElement('div');div.className='cart-item';
+    div.innerHTML='<div class="cart-item-img">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
+      '<div class="cart-item-info"><div class="cart-item-name">Armario '+item.ancho+'&times;'+item.alto+'&times;'+item.fondo+' cm</div>'+
+      '<div class="cart-item-desc">'+item.material+' &middot; '+item.puertas+'</div>'+
+      '<div class="cart-item-price">&euro; '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div></div>'+
+      '<button class="cart-item-remove" onclick="removeFromCart('+item.id+')">&times;</button>';
+    container.insertBefore(div,empty);
+  });
+  document.getElementById('cartSubtotal').textContent='\u20AC '+new Intl.NumberFormat('es-ES').format(subtotal);
+}
+renderCart();
+
+// ── AUTH & ACCOUNT ──
+var _supabase=null,_currentUser=null;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/mi-cuenta/';
+      return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/mi-cuenta/';
+      return;
+    }
+    _currentUser=s.data.session.user;
+    initAccount();
+  }catch(e){
+    window.location.href='/login/?redirect=/mi-cuenta/';
+  }
+})();
+
+function initAccount(){
+  var meta=_currentUser.user_metadata||{};
+  var name=meta.full_name||meta.name||'';
+  var email=_currentUser.email||'';
+
+  document.getElementById('userName').textContent=name||'—';
+  document.getElementById('userEmail').textContent=email;
+  if(name) document.getElementById('accountGreeting').textContent='Hola, '+name.split(' ')[0];
+
+  document.getElementById('accountPage').style.display='block';
+
+  loadOrders();
+  loadAddresses();
+}
+
+// ── ORDERS ──
+async function loadOrders(){
+  var result=await _supabase
+    .from('orders')
+    .select('*')
+    .eq('user_id',_currentUser.id)
+    .order('created_at',{ascending:false});
+
+  if(result.error||!result.data||result.data.length===0) return;
+
+  document.getElementById('ordersEmpty').style.display='none';
+  document.getElementById('ordersScroll').style.display='block';
+  var tbody=document.getElementById('ordersBody');
+  tbody.innerHTML='';
+
+  result.data.forEach(function(order){
+    var tr=document.createElement('tr');
+    var fecha=new Date(order.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
+    var config=order.configuracion||{};
+    var configStr='';
+    if(config.ancho) configStr+=config.ancho+'\u00D7'+config.alto+'\u00D7'+config.fondo+' cm<br>';
+    if(config.material) configStr+=config.material;
+    if(config.puertas) configStr+=' \u00B7 '+config.puertas;
+
+    var estadoClass='pagado';
+    var estadoLabel=order.estado||'pagado';
+    if(estadoLabel==='en_produccion'){estadoClass='produccion';estadoLabel='En producci\u00F3n';}
+    else if(estadoLabel==='enviado'){estadoClass='enviado';estadoLabel='Enviado';}
+    else{estadoLabel='Pagado';}
+
+    tr.innerHTML='<td>'+fecha+'</td>'+
+      '<td><div class="order-config">'+configStr+'</div></td>'+
+      '<td>\u20AC '+new Intl.NumberFormat('es-ES').format(order.precio)+'</td>'+
+      '<td><span class="order-status '+estadoClass+'">'+estadoLabel+'</span></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+// ── ADDRESSES (localStorage) ──
+var _addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
+var _editingIdx=-1;
+
+function loadAddresses(){
+  var list=document.getElementById('addressList');
+  var empty=document.getElementById('addressEmpty');
+  list.innerHTML='';
+  if(_addresses.length===0){empty.style.display='block';return;}
+  empty.style.display='none';
+  _addresses.forEach(function(addr,i){
+    var card=document.createElement('div');card.className='address-card';
+    card.innerHTML='<p><strong>'+addr.name+'</strong><br>'+
+      addr.line+'<br>'+addr.postal+' '+addr.city+', '+addr.province+'<br>'+
+      addr.country+(addr.phone?'<br>'+addr.phone:'')+'</p>'+
+      '<div class="address-actions">'+
+      '<button onclick="editAddress('+i+')">Editar</button>'+
+      '<button onclick="deleteAddress('+i+')">Eliminar</button>'+
+      '</div>';
+    list.appendChild(card);
+  });
+}
+
+function showAddressForm(){
+  _editingIdx=-1;
+  clearAddressForm();
+  document.getElementById('addressForm').classList.add('open');
+  document.getElementById('btnAddAddress').style.display='none';
+}
+
+function cancelAddress(){
+  document.getElementById('addressForm').classList.remove('open');
+  document.getElementById('btnAddAddress').style.display='';
+  _editingIdx=-1;
+}
+
+function clearAddressForm(){
+  ['addrName','addrLine','addrCity','addrPostal','addrProvince','addrCountry','addrPhone'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(id==='addrCountry') el.value='Espana';
+    else el.value='';
+  });
+}
+
+function saveAddress(){
+  var addr={
+    name:document.getElementById('addrName').value.trim(),
+    line:document.getElementById('addrLine').value.trim(),
+    city:document.getElementById('addrCity').value.trim(),
+    postal:document.getElementById('addrPostal').value.trim(),
+    province:document.getElementById('addrProvince').value.trim(),
+    country:document.getElementById('addrCountry').value.trim(),
+    phone:document.getElementById('addrPhone').value.trim()
+  };
+  if(!addr.name||!addr.line||!addr.city||!addr.postal) return;
+
+  if(_editingIdx>=0) _addresses[_editingIdx]=addr;
+  else _addresses.push(addr);
+
+  localStorage.setItem('curino_addresses',JSON.stringify(_addresses));
+  cancelAddress();
+  loadAddresses();
+}
+
+function editAddress(i){
+  _editingIdx=i;
+  var addr=_addresses[i];
+  document.getElementById('addrName').value=addr.name;
+  document.getElementById('addrLine').value=addr.line;
+  document.getElementById('addrCity').value=addr.city;
+  document.getElementById('addrPostal').value=addr.postal;
+  document.getElementById('addrProvince').value=addr.province;
+  document.getElementById('addrCountry').value=addr.country;
+  document.getElementById('addrPhone').value=addr.phone||'';
+  document.getElementById('addressForm').classList.add('open');
+  document.getElementById('btnAddAddress').style.display='none';
+}
+
+function deleteAddress(i){
+  _addresses.splice(i,1);
+  localStorage.setItem('curino_addresses',JSON.stringify(_addresses));
+  loadAddresses();
+}
+
+// ── LOGOUT ──
+async function logoutUser(){
+  if(_supabase) await _supabase.auth.signOut();
+  window.location.href='/login/';
+}
+</script>
+
+</body>
+</html>

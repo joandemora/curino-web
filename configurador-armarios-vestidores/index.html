@@ -452,18 +452,9 @@ footer{
   .footer-legal{align-items:center;text-align:center}
 }
 
-/* ── USER MENU ── */
-.user-menu{position:relative;display:flex;align-items:center}
-.user-menu svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
-.user-dropdown{position:absolute;top:100%;right:0;background:#fff;border:1px solid var(--border);
-  padding:.5rem 0;min-width:160px;display:none;z-index:210;margin-top:.5rem}
-.user-menu:hover .user-dropdown{display:block}
-.user-dropdown a,.user-dropdown button{display:block;width:100%;text-align:left;padding:.5rem 1rem;
-  font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;
-  color:#000;text-decoration:none;background:none;border:none;cursor:pointer;transition:background .2s}
-.user-dropdown a:hover,.user-dropdown button:hover{background:#f5f5f5}
-.user-login-link{cursor:pointer;display:flex;align-items:center}
-.user-login-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
+/* ── USER ICON ── */
+.user-icon-link{display:flex;align-items:center}
+.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
 
 /* ── CART DRAWER ── */
 .cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
@@ -564,18 +555,9 @@ footer{
   <div class="nav-icons">
     <a href="#">ES</a>
     <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <div id="userArea">
-      <a href="/login/" class="user-login-link" id="userLoginLink">
-        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </a>
-      <div class="user-menu" id="userMenu" style="display:none">
-        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <div class="user-dropdown">
-          <a href="#">Mi cuenta</a>
-          <button onclick="logoutUser()">Cerrar sesión</button>
-        </div>
-      </div>
-    </div>
+    <a href="/login/" class="user-icon-link" id="userIconLink">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </a>
     <div class="cart-icon" onclick="toggleCart()">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       <div class="cart-badge" id="cartBadge">0</div>
@@ -2357,7 +2339,8 @@ async function cartCheckout(){
         material: desc,
         interior: _cart.length + ' armario(s)',
         puertas: _cart.map(function(i){return i.puertas}).join(', '),
-        precio: total
+        precio: total,
+        user_id: _currentUser ? _currentUser.id : ''
       })
     });
     var data = await res.json();
@@ -2399,21 +2382,11 @@ async function checkAuth(){
   var r = await _supabase.auth.getSession();
   if(r.data.session){
     _currentUser = r.data.session.user;
-    document.getElementById('userLoginLink').style.display = 'none';
-    document.getElementById('userMenu').style.display = 'flex';
+    document.getElementById('userIconLink').href = '/mi-cuenta/';
   } else {
     _currentUser = null;
-    document.getElementById('userLoginLink').style.display = 'flex';
-    document.getElementById('userMenu').style.display = 'none';
+    document.getElementById('userIconLink').href = '/login/';
   }
-}
-
-async function logoutUser(){
-  if(!_supabase) return;
-  await _supabase.auth.signOut();
-  _currentUser = null;
-  document.getElementById('userLoginLink').style.display = 'flex';
-  document.getElementById('userMenu').style.display = 'none';
 }
 
 // Override cartCheckout to require auth
@@ -2425,8 +2398,6 @@ cartCheckout = async function(){
   }
   return _origCartCheckout();
 };
-
-// checkAuth called from init above
 </script>
 
 <!-- FOOTER -->

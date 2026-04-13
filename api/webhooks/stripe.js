@@ -1,4 +1,5 @@
 const Stripe = require('stripe');
+const { createClient } = require('@supabase/supabase-js');
 
 // Disable body parsing — Stripe needs the raw body for signature verification
 module.exports.config = { api: { bodyParser: false } };
@@ -41,25 +42,48 @@ module.exports = async function handler(req, res) {
   // Handle the event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
+    const meta = session.metadata || {};
 
-    const order = {
-      id: session.id,
-      email: session.customer_details?.email,
-      amount: session.amount_total / 100,
-      currency: session.currency,
-      status: session.payment_status,
-      metadata: session.metadata,
-      created: new Date(session.created * 1000).toISOString(),
-    };
-
-    // Log the order (replace with database insert in production)
     console.log('=== NUEVO PEDIDO CURINO ===');
-    console.log(JSON.stringify(order, null, 2));
-    console.log('==========================');
+    console.log('Session ID:', session.id);
+    console.log('Email:', session.customer_details?.email);
+    console.log('Metadata:', JSON.stringify(meta));
 
-    // TODO: Send confirmation email
-    // TODO: Save to database
-    // TODO: Notify admin via Slack/email
+    // Save order to Supabase
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+
+    if (supabaseUrl && supabaseKey && meta.user_id) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const { error } = await supabase.from('orders').insert({
+          user_id: meta.user_id,
+          configuracion: {
+            ancho: meta.ancho ? Number(meta.ancho) : null,
+            alto: meta.alto ? Number(meta.alto) : null,
+            fondo: meta.fondo ? Number(meta.fondo) : null,
+            material: meta.material || null,
+            interior: meta.interior || null,
+            puertas: meta.puertas || null,
+          },
+          precio: session.amount_total / 100,
+          estado: 'pagado',
+        });
+
+        if (error) {
+          console.error('Supabase insert error:', error.message);
+        } else {
+          console.log('Order saved to Supabase for user:', meta.user_id);
+        }
+      } catch (dbErr) {
+        console.error('Supabase connection error:', dbErr.message);
+      }
+    } else {
+      console.log('Order not saved to DB —', !supabaseUrl ? 'missing SUPABASE_URL' : !supabaseKey ? 'missing SUPABASE_SECRET_KEY' : 'missing user_id in metadata');
+    }
+
+    console.log('==========================');
   }
 
   return res.status(200).json({ received: true });

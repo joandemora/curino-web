@@ -49,7 +49,7 @@ module.exports = async function handler(req, res) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   try {
-    const { ancho, alto, fondo, material, interior, puertas, precio } = body;
+    const { ancho, alto, fondo, material, interior, puertas, precio, user_id } = body;
 
     // Validate required fields
     if (!ancho || !alto || !fondo || !precio) {
@@ -108,6 +108,7 @@ module.exports = async function handler(req, res) {
         interior: interior || '',
         puertas: puertas || '',
         precio_eur: String(precioNum),
+        user_id: user_id || '',
       },
       success_url: `${origin}/configurador-armarios-vestidores/confirmacion/?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/configurador-armarios-vestidores/`,
