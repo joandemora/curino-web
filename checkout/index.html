@@ -591,6 +591,15 @@ window.initGooglePlaces=function(){
     el.setAttribute('placeholder','Direccion (calle, numero, piso)');
     wrap.appendChild(el);
 
+    // Inject styles into shadow DOM to kill blue focus border
+    customElements.whenDefined('gmp-place-autocomplete').then(function(){
+      if(el.shadowRoot){
+        var s=document.createElement('style');
+        s.textContent='input{outline:none!important;box-shadow:none!important;border:none!important}*{outline:none!important;box-shadow:none!important}';
+        el.shadowRoot.appendChild(s);
+      }
+    });
+
     // Pre-fill from saved address
     var hidden=document.getElementById('shipLine');
     if(hidden&&hidden.value) el.value=hidden.value;
