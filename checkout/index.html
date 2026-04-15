@@ -105,6 +105,8 @@ nav{
 .ship-form input:focus{border-color:var(--black)}
 .ship-form input::placeholder{color:var(--mid)}
 .ship-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
+.billing-same-label{display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;margin-bottom:1rem}
+.billing-same-label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--black);cursor:pointer}
 
 /* Summary sidebar */
 .summary-box{border:1px solid var(--border);padding:1.5rem}
@@ -270,9 +272,12 @@ footer{
     <div class="ship-form" id="shipForm">
       <input type="text" id="shipName" placeholder="Nombre completo" autocomplete="name" required>
       <div class="places-wrap">
-        <input type="text" id="shipLine" placeholder="Direccion (calle, numero, piso)" autocomplete="off" required>
+        <input type="text" id="shipLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
         <div class="places-dd" id="shipDD"></div>
       </div>
+      <input type="text" id="shipLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
+      <input type="text" id="shipCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
+      <input type="text" id="shipNif" placeholder="DNI / CIF / NIF" required>
       <div class="ship-form-row">
         <input type="text" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required>
         <input type="text" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
@@ -282,6 +287,32 @@ footer{
         <input type="text" id="shipCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
       </div>
       <input type="tel" id="shipPhone" placeholder="Telefono" autocomplete="tel" required>
+    </div>
+
+    <!-- Billing address -->
+    <div class="section-title" style="margin-top:2rem">Direccion de facturacion</div>
+    <label class="billing-same-label">
+      <input type="checkbox" id="billingSame" checked onchange="toggleBilling()">
+      <span>Misma que la direccion de envio</span>
+    </label>
+    <div class="ship-form" id="billForm" style="display:none">
+      <input type="text" id="billName" placeholder="Nombre completo" autocomplete="name" required>
+      <div class="places-wrap">
+        <input type="text" id="billLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
+        <div class="places-dd" id="billDD"></div>
+      </div>
+      <input type="text" id="billLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
+      <input type="text" id="billCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
+      <input type="text" id="billNif" placeholder="DNI / CIF / NIF" required>
+      <div class="ship-form-row">
+        <input type="text" id="billCity" placeholder="Ciudad" autocomplete="address-level2" required>
+        <input type="text" id="billPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
+      </div>
+      <div class="ship-form-row">
+        <input type="text" id="billProvince" placeholder="Provincia" autocomplete="address-level1" required>
+        <input type="text" id="billCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
+      </div>
+      <input type="tel" id="billPhone" placeholder="Telefono" autocomplete="tel" required>
     </div>
   </div>
 
@@ -428,14 +459,18 @@ function loadSavedAddress(){
   if(addresses.length===0) return;
 
   var addr=addresses[0]; // use first saved address
+  var lines=addr.line+(addr.line2?' '+addr.line2:'');
   document.getElementById('savedAddressText').innerHTML=
-    '<strong>'+addr.name+'</strong><br>'+addr.line+'<br>'+
-    addr.postal+' '+addr.city+', '+addr.province+'<br>'+
-    addr.country+(addr.phone?'<br>'+addr.phone:'');
+    '<strong>'+addr.name+'</strong>'+(addr.company?' &middot; '+addr.company:'')+'<br>'+
+    lines+'<br>'+addr.postal+' '+addr.city+', '+addr.province+'<br>'+
+    addr.country+(addr.nif?' &middot; '+addr.nif:'')+(addr.phone?'<br>'+addr.phone:'');
 
   // Pre-fill hidden form
   document.getElementById('shipName').value=addr.name;
   document.getElementById('shipLine').value=addr.line;
+  document.getElementById('shipLine2').value=addr.line2||'';
+  document.getElementById('shipCompany').value=addr.company||'';
+  document.getElementById('shipNif').value=addr.nif||'';
   document.getElementById('shipCity').value=addr.city;
   document.getElementById('shipPostal').value=addr.postal;
   document.getElementById('shipProvince').value=addr.province;
@@ -456,6 +491,9 @@ function getShippingAddress(){
   return{
     name:document.getElementById('shipName').value.trim(),
     line:document.getElementById('shipLine').value.trim(),
+    line2:document.getElementById('shipLine2').value.trim(),
+    company:document.getElementById('shipCompany').value.trim(),
+    nif:document.getElementById('shipNif').value.trim(),
     city:document.getElementById('shipCity').value.trim(),
     postal:document.getElementById('shipPostal').value.trim(),
     province:document.getElementById('shipProvince').value.trim(),
@@ -464,8 +502,28 @@ function getShippingAddress(){
   };
 }
 
-function validateShipping(addr){
-  return addr.name&&addr.line&&addr.city&&addr.postal&&addr.province&&addr.country&&addr.phone;
+function getBillingAddress(){
+  if(document.getElementById('billingSame').checked) return null;
+  return{
+    name:document.getElementById('billName').value.trim(),
+    line:document.getElementById('billLine').value.trim(),
+    line2:document.getElementById('billLine2').value.trim(),
+    company:document.getElementById('billCompany').value.trim(),
+    nif:document.getElementById('billNif').value.trim(),
+    city:document.getElementById('billCity').value.trim(),
+    postal:document.getElementById('billPostal').value.trim(),
+    province:document.getElementById('billProvince').value.trim(),
+    country:document.getElementById('billCountry').value.trim(),
+    phone:document.getElementById('billPhone').value.trim()
+  };
+}
+
+function validateAddress(addr){
+  return addr.name&&addr.line&&addr.nif&&addr.city&&addr.postal&&addr.province&&addr.country&&addr.phone;
+}
+
+function toggleBilling(){
+  document.getElementById('billForm').style.display=document.getElementById('billingSame').checked?'none':'block';
 }
 
 // ── PAY ──
@@ -474,11 +532,17 @@ async function handlePay(){
   var errEl=document.getElementById('checkoutError');
   errEl.style.display='none';
 
-  if(!validateShipping(addr)){
-    errEl.textContent='Completa todos los campos de la direccion de envio.';
+  if(!validateAddress(addr)){
+    errEl.textContent='Completa todos los campos obligatorios de la direccion de envio.';
     errEl.style.display='block';
-    // Show form if saved address was displayed
     if(document.getElementById('shipForm').style.display==='none') changeAddress();
+    return;
+  }
+
+  var billing=getBillingAddress();
+  if(billing&&!validateAddress(billing)){
+    errEl.textContent='Completa todos los campos obligatorios de la direccion de facturacion.';
+    errEl.style.display='block';
     return;
   }
 
@@ -488,6 +552,9 @@ async function handlePay(){
 
   var total=_cart.reduce(function(s,i){return s+i.precio},0);
   var desc=_cart.map(function(i){return i.ancho+'\u00D7'+i.alto+'\u00D7'+i.fondo+'cm '+i.material}).join(' + ');
+  var shipFull=addr.line+(addr.line2?' '+addr.line2:'');
+  var billAddr=billing||addr;
+  var billFull=billAddr.line+(billAddr.line2?' '+billAddr.line2:'');
 
   try{
     var res=await fetch('/api/checkout',{
@@ -503,12 +570,18 @@ async function handlePay(){
         precio:total,
         user_id:_currentUser?_currentUser.id:'',
         shipping_name:addr.name,
-        shipping_line:addr.line,
+        shipping_line:shipFull,
         shipping_city:addr.city,
         shipping_postal:addr.postal,
         shipping_province:addr.province,
         shipping_country:addr.country,
-        shipping_phone:addr.phone
+        shipping_phone:addr.phone,
+        shipping_nif:addr.nif,
+        billing_name:billAddr.name,
+        billing_line:billFull,
+        billing_city:billAddr.city,
+        billing_postal:billAddr.postal,
+        billing_nif:billAddr.nif
       })
     });
     var data=await res.json();
@@ -535,7 +608,7 @@ async function handlePay(){
   }
 }
 
-// ── GOOGLE PLACES AUTOCOMPLETE (PlaceAutocompleteElement) ──
+// ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 function loadGoogleMaps(key){
   var s=document.createElement('script');
   s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es&callback=initGooglePlaces';
@@ -547,6 +620,7 @@ function loadGoogleMaps(key){
 // ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 window.initGooglePlaces=function(){
   initPlacesInput('shipLine','shipDD','shipCity','shipPostal','shipProvince','shipCountry');
+  initPlacesInput('billLine','billDD','billCity','billPostal','billProvince','billCountry');
 };
 
 function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){

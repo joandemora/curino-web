@@ -378,9 +378,12 @@ footer{
     <div class="address-form" id="addressForm">
       <input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required>
       <div class="places-wrap">
-        <input type="text" id="addrLine" placeholder="Direccion (calle, numero, piso)" autocomplete="off" required>
+        <input type="text" id="addrLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
         <div class="places-dd" id="addrDD"></div>
       </div>
+      <input type="text" id="addrLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
+      <input type="text" id="addrCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
+      <input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required>
       <div class="address-form-row">
         <input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required>
         <input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
@@ -621,9 +624,11 @@ function loadAddresses(){
   empty.style.display='none';
   _addresses.forEach(function(addr,i){
     var card=document.createElement('div');card.className='address-card';
-    card.innerHTML='<p><strong>'+addr.name+'</strong><br>'+
-      addr.line+'<br>'+addr.postal+' '+addr.city+', '+addr.province+'<br>'+
-      addr.country+(addr.phone?'<br>'+addr.phone:'')+'</p>'+
+    var lines=addr.line+(addr.line2?' '+addr.line2:'');
+    card.innerHTML='<p><strong>'+addr.name+'</strong>'+
+      (addr.company?' &middot; '+addr.company:'')+'<br>'+
+      lines+'<br>'+addr.postal+' '+addr.city+', '+addr.province+'<br>'+
+      addr.country+(addr.nif?' &middot; '+addr.nif:'')+(addr.phone?'<br>'+addr.phone:'')+'</p>'+
       '<div class="address-actions">'+
       '<button onclick="editAddress('+i+')">Editar</button>'+
       '<button onclick="deleteAddress('+i+')">Eliminar</button>'+
@@ -646,7 +651,7 @@ function cancelAddress(){
 }
 
 function clearAddressForm(){
-  ['addrName','addrLine','addrCity','addrPostal','addrProvince','addrCountry','addrPhone'].forEach(function(id){
+  ['addrName','addrLine','addrLine2','addrCompany','addrNif','addrCity','addrPostal','addrProvince','addrCountry','addrPhone'].forEach(function(id){
     var el=document.getElementById(id);
     if(id==='addrCountry') el.value='Espana';
     else el.value='';
@@ -657,13 +662,16 @@ function saveAddress(){
   var addr={
     name:document.getElementById('addrName').value.trim(),
     line:document.getElementById('addrLine').value.trim(),
+    line2:document.getElementById('addrLine2').value.trim(),
+    company:document.getElementById('addrCompany').value.trim(),
+    nif:document.getElementById('addrNif').value.trim(),
     city:document.getElementById('addrCity').value.trim(),
     postal:document.getElementById('addrPostal').value.trim(),
     province:document.getElementById('addrProvince').value.trim(),
     country:document.getElementById('addrCountry').value.trim(),
     phone:document.getElementById('addrPhone').value.trim()
   };
-  if(!addr.name||!addr.line||!addr.city||!addr.postal||!addr.province||!addr.country||!addr.phone) return;
+  if(!addr.name||!addr.line||!addr.nif||!addr.city||!addr.postal||!addr.province||!addr.country||!addr.phone) return;
 
   if(_editingIdx>=0) _addresses[_editingIdx]=addr;
   else _addresses.push(addr);
@@ -678,6 +686,9 @@ function editAddress(i){
   var addr=_addresses[i];
   document.getElementById('addrName').value=addr.name;
   document.getElementById('addrLine').value=addr.line;
+  document.getElementById('addrLine2').value=addr.line2||'';
+  document.getElementById('addrCompany').value=addr.company||'';
+  document.getElementById('addrNif').value=addr.nif||'';
   document.getElementById('addrCity').value=addr.city;
   document.getElementById('addrPostal').value=addr.postal;
   document.getElementById('addrProvince').value=addr.province;
