@@ -746,10 +746,26 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
   input.addEventListener('blur',function(){setTimeout(function(){dd.classList.remove('open');},150);});
   input.addEventListener('focus',function(){if(dd.children.length>0) dd.classList.add('open');});
 
+  function extractExtra(typed,street,number){
+    // Find what the user typed after the street number (piso, puerta, etc.)
+    var base=(street+' '+number).toLowerCase().replace(/[,.\s]+/g,' ').trim();
+    var norm=typed.toLowerCase().replace(/[,.\s]+/g,' ').trim();
+    // Try to find the number in what the user typed
+    if(number){
+      var numIdx=norm.indexOf(number.toLowerCase());
+      if(numIdx!==-1){
+        var after=typed.substring(numIdx+number.length).replace(/^[\s,]+/,'');
+        return after;
+      }
+    }
+    return '';
+  }
+
   function selectPrediction(idx){
     var p=predictions[idx];
     if(!p) return;
     dd.classList.remove('open');
+    var userText=input.value;
 
     placesService.getDetails({placeId:p.place_id,fields:['address_components']},function(place,status){
       if(status!=='OK'||!place||!place.address_components) return;
@@ -763,6 +779,10 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
         if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
         if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
       });
+      var addr=street+(number?', '+number:'');
+      var extra=extractExtra(userText,street,number);
+      if(extra) addr+=', '+extra;
+      input.value=addr;
       document.getElementById(cityId).value=city;
       document.getElementById(postalId).value=postal;
       document.getElementById(provinceId).value=province;
