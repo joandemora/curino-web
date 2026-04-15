@@ -167,6 +167,11 @@ nav{
 .address-form input:focus{border-color:var(--black)}
 .address-form input::placeholder{color:var(--mid)}
 .address-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
+.field-wrap{position:relative;margin-bottom:.75rem}
+.field-wrap input{margin-bottom:0}
+.field-error{display:none;font-size:11px;color:#dc2626;margin-top:.25rem}
+.field-wrap.has-error input{border-bottom-color:#dc2626!important}
+.field-wrap.has-error .field-error{display:block}
 
 /* Buttons */
 .btn{padding:.75rem 1.5rem;font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s,color .2s;font-weight:400}
@@ -376,20 +381,21 @@ footer{
     <button class="btn btn-outline btn-small btn-add" id="btnAddAddress" onclick="showAddressForm()">+ Anadir direccion</button>
 
     <div class="address-form" id="addressForm">
-      <input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required>
-      <div class="places-wrap">
+      <div class="field-wrap" data-req="addrName"><input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
+      <div class="places-wrap field-wrap" data-req="addrLine">
         <input type="text" id="addrLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
         <div class="places-dd" id="addrDD"></div>
+        <div class="field-error">* Obligatorio</div>
       </div>
       <input type="text" id="addrLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
       <input type="text" id="addrCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required>
+      <div class="field-wrap" data-req="addrNif"><input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required><div class="field-error">* Obligatorio</div></div>
       <div class="address-form-row">
-        <input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required>
-        <input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
+        <div class="field-wrap" data-req="addrCity"><input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
+        <div class="field-wrap" data-req="addrPostal"><input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
       </div>
       <div class="address-form-row">
-        <input type="text" id="addrProvince" placeholder="Provincia" autocomplete="address-level1" required>
+        <div class="field-wrap" data-req="addrProvince"><input type="text" id="addrProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
         <input type="text" id="addrCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
       </div>
       <input type="tel" id="addrPhone" placeholder="Telefono" autocomplete="tel" required>
@@ -671,7 +677,26 @@ function saveAddress(){
     country:document.getElementById('addrCountry').value.trim(),
     phone:document.getElementById('addrPhone').value.trim()
   };
-  if(!addr.name||!addr.line||!addr.nif||!addr.city||!addr.postal||!addr.province||!addr.country||!addr.phone) return;
+
+  // Validate required fields
+  var required=[
+    {id:'addrName',val:addr.name},
+    {id:'addrLine',val:addr.line},
+    {id:'addrNif',val:addr.nif},
+    {id:'addrCity',val:addr.city},
+    {id:'addrPostal',val:addr.postal},
+    {id:'addrProvince',val:addr.province}
+  ];
+  // Clear previous errors
+  document.querySelectorAll('#addressForm .field-wrap').forEach(function(w){w.classList.remove('has-error');});
+  var firstError=null;
+  required.forEach(function(f){
+    if(!f.val){
+      var wrap=document.querySelector('.field-wrap[data-req="'+f.id+'"]');
+      if(wrap){wrap.classList.add('has-error');if(!firstError) firstError=wrap;}
+    }
+  });
+  if(firstError){firstError.scrollIntoView({behavior:'smooth',block:'center'});return;}
 
   if(_editingIdx>=0) _addresses[_editingIdx]=addr;
   else _addresses.push(addr);
@@ -703,6 +728,14 @@ function deleteAddress(i){
   localStorage.setItem('curino_addresses',JSON.stringify(_addresses));
   loadAddresses();
 }
+
+// Clear field error on input
+document.querySelectorAll('#addressForm .field-wrap[data-req] input').forEach(function(inp){
+  inp.addEventListener('input',function(){
+    var wrap=inp.closest('.field-wrap');
+    if(wrap) wrap.classList.remove('has-error');
+  });
+});
 
 // ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 function loadGoogleMaps(key){

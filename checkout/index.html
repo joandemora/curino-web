@@ -105,6 +105,11 @@ nav{
 .ship-form input:focus{border-color:var(--black)}
 .ship-form input::placeholder{color:var(--mid)}
 .ship-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
+.field-wrap{position:relative;margin-bottom:.75rem}
+.field-wrap input{margin-bottom:0}
+.field-error{display:none;font-size:11px;color:#dc2626;margin-top:.25rem}
+.field-wrap.has-error input{border-bottom-color:#dc2626!important}
+.field-wrap.has-error .field-error{display:block}
 .billing-same-label{display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;margin-bottom:1rem}
 .billing-same-label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--black);cursor:pointer}
 
@@ -270,20 +275,21 @@ footer{
 
     <!-- Address form -->
     <div class="ship-form" id="shipForm">
-      <input type="text" id="shipName" placeholder="Nombre completo" autocomplete="name" required>
-      <div class="places-wrap">
+      <div class="field-wrap" data-req="shipName"><input type="text" id="shipName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
+      <div class="places-wrap field-wrap" data-req="shipLine">
         <input type="text" id="shipLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
         <div class="places-dd" id="shipDD"></div>
+        <div class="field-error">* Obligatorio</div>
       </div>
       <input type="text" id="shipLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
       <input type="text" id="shipCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <input type="text" id="shipNif" placeholder="DNI / CIF / NIF" required>
+      <div class="field-wrap" data-req="shipNif"><input type="text" id="shipNif" placeholder="DNI / CIF / NIF" required><div class="field-error">* Obligatorio</div></div>
       <div class="ship-form-row">
-        <input type="text" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required>
-        <input type="text" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
+        <div class="field-wrap" data-req="shipCity"><input type="text" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
+        <div class="field-wrap" data-req="shipPostal"><input type="text" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
       </div>
       <div class="ship-form-row">
-        <input type="text" id="shipProvince" placeholder="Provincia" autocomplete="address-level1" required>
+        <div class="field-wrap" data-req="shipProvince"><input type="text" id="shipProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
         <input type="text" id="shipCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
       </div>
       <input type="tel" id="shipPhone" placeholder="Telefono" autocomplete="tel" required>
@@ -296,20 +302,21 @@ footer{
       <span>Misma que la direccion de envio</span>
     </label>
     <div class="ship-form" id="billForm" style="display:none">
-      <input type="text" id="billName" placeholder="Nombre completo" autocomplete="name" required>
-      <div class="places-wrap">
+      <div class="field-wrap" data-req="billName"><input type="text" id="billName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
+      <div class="places-wrap field-wrap" data-req="billLine">
         <input type="text" id="billLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
         <div class="places-dd" id="billDD"></div>
+        <div class="field-error">* Obligatorio</div>
       </div>
       <input type="text" id="billLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
       <input type="text" id="billCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <input type="text" id="billNif" placeholder="DNI / CIF / NIF" required>
+      <div class="field-wrap" data-req="billNif"><input type="text" id="billNif" placeholder="DNI / CIF / NIF" required><div class="field-error">* Obligatorio</div></div>
       <div class="ship-form-row">
-        <input type="text" id="billCity" placeholder="Ciudad" autocomplete="address-level2" required>
-        <input type="text" id="billPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
+        <div class="field-wrap" data-req="billCity"><input type="text" id="billCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
+        <div class="field-wrap" data-req="billPostal"><input type="text" id="billPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
       </div>
       <div class="ship-form-row">
-        <input type="text" id="billProvince" placeholder="Provincia" autocomplete="address-level1" required>
+        <div class="field-wrap" data-req="billProvince"><input type="text" id="billProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
         <input type="text" id="billCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
       </div>
       <input type="tel" id="billPhone" placeholder="Telefono" autocomplete="tel" required>
@@ -526,24 +533,50 @@ function toggleBilling(){
   document.getElementById('billForm').style.display=document.getElementById('billingSame').checked?'none':'block';
 }
 
+function validateFields(prefix,addr){
+  var checks=[
+    {id:prefix+'Name',val:addr.name},
+    {id:prefix+'Line',val:addr.line},
+    {id:prefix+'Nif',val:addr.nif},
+    {id:prefix+'City',val:addr.city},
+    {id:prefix+'Postal',val:addr.postal},
+    {id:prefix+'Province',val:addr.province}
+  ];
+  var first=null;
+  checks.forEach(function(f){
+    if(!f.val){
+      var wrap=document.querySelector('.field-wrap[data-req="'+f.id+'"]');
+      if(wrap){wrap.classList.add('has-error');if(!first) first=wrap;}
+    }
+  });
+  return first;
+}
+
+// Clear field error on input
+document.querySelectorAll('.field-wrap[data-req] input').forEach(function(inp){
+  inp.addEventListener('input',function(){
+    var wrap=inp.closest('.field-wrap');
+    if(wrap) wrap.classList.remove('has-error');
+  });
+});
+
 // ── PAY ──
 async function handlePay(){
   var addr=getShippingAddress();
   var errEl=document.getElementById('checkoutError');
   errEl.style.display='none';
 
-  if(!validateAddress(addr)){
-    errEl.textContent='Completa todos los campos obligatorios de la direccion de envio.';
-    errEl.style.display='block';
-    if(document.getElementById('shipForm').style.display==='none') changeAddress();
-    return;
-  }
+  // Clear all errors
+  document.querySelectorAll('.field-wrap').forEach(function(w){w.classList.remove('has-error');});
+
+  if(document.getElementById('shipForm').style.display==='none') changeAddress();
+  var shipErrors=validateFields('ship',addr);
+  if(shipErrors){shipErrors.scrollIntoView({behavior:'smooth',block:'center'});return;}
 
   var billing=getBillingAddress();
-  if(billing&&!validateAddress(billing)){
-    errEl.textContent='Completa todos los campos obligatorios de la direccion de facturacion.';
-    errEl.style.display='block';
-    return;
+  if(billing){
+    var billErrors=validateFields('bill',billing);
+    if(billErrors){billErrors.scrollIntoView({behavior:'smooth',block:'center'});return;}
   }
 
   var btn=document.getElementById('btnPay');
