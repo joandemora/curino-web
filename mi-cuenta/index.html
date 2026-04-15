@@ -389,7 +389,7 @@ footer{
       </div>
       <input type="text" id="addrLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
       <input type="text" id="addrCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <div class="field-wrap" data-req="addrNif"><input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required><div class="field-error">* Obligatorio</div></div>
+      <div class="field-wrap" data-req="addrNif"><input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required><div class="field-error" id="addrNifError">* Obligatorio</div></div>
       <div class="address-form-row">
         <div class="field-wrap" data-req="addrCity"><input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
         <div class="field-wrap" data-req="addrPostal"><input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
@@ -698,6 +698,13 @@ function saveAddress(){
   });
   if(firstError){firstError.scrollIntoView({behavior:'smooth',block:'center'});return;}
 
+  // Validate NIF format
+  if(addr.nif&&!checkNifField('addrNif','addrNifError')){
+    var nifWrap=document.querySelector('.field-wrap[data-req="addrNif"]');
+    if(nifWrap) nifWrap.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
   if(_editingIdx>=0) _addresses[_editingIdx]=addr;
   else _addresses.push(addr);
 
@@ -729,6 +736,52 @@ function deleteAddress(i){
   loadAddresses();
 }
 
+// ── NIF/NIE/CIF VALIDATION ──
+function validateNIF(raw){
+  if(!raw) return false;
+  var v=raw.replace(/[-\s.]/g,'').toUpperCase();
+  // DNI: 8 digits + letter
+  if(/^\d{8}[A-Z]$/.test(v)){
+    return v[8]==='TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(v.substring(0,8),10)%23];
+  }
+  // NIE: X/Y/Z + 7 digits + letter
+  if(/^[XYZ]\d{7}[A-Z]$/.test(v)){
+    var n=v.replace('X','0').replace('Y','1').replace('Z','2');
+    return v[8]==='TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(n.substring(0,8),10)%23];
+  }
+  // CIF: letter + 7 digits + letter/digit
+  if(/^[ABCDEFGHJKLMNPQRSUVW]\d{7}[\dA-J]$/.test(v)){
+    var digits=v.substring(1,8);
+    var sumA=0,sumB=0;
+    for(var i=0;i<7;i++){
+      var d=parseInt(digits[i],10);
+      if(i%2===0){var x=d*2;sumB+=x>9?x-9:x;}
+      else sumA+=d;
+    }
+    var c=(10-(sumA+sumB)%10)%10;
+    var control=v[8];
+    if(/\d/.test(control)) return parseInt(control,10)===c;
+    return control===String.fromCharCode(65+c); // A=0, B=1...
+  }
+  return false;
+}
+
+function checkNifField(inputId,errorId){
+  var input=document.getElementById(inputId);
+  var wrap=input.closest('.field-wrap');
+  var err=document.getElementById(errorId);
+  var val=input.value.trim();
+  if(!val){wrap.classList.remove('has-error');return true;} // empty handled by required check
+  if(!validateNIF(val)){
+    err.textContent='* Documento no valido';
+    wrap.classList.add('has-error');
+    return false;
+  }
+  wrap.classList.remove('has-error');
+  err.textContent='* Obligatorio';
+  return true;
+}
+
 // Clear field error on input
 document.querySelectorAll('#addressForm .field-wrap[data-req] input').forEach(function(inp){
   inp.addEventListener('input',function(){
@@ -736,6 +789,9 @@ document.querySelectorAll('#addressForm .field-wrap[data-req] input').forEach(fu
     if(wrap) wrap.classList.remove('has-error');
   });
 });
+
+// NIF blur validation
+document.getElementById('addrNif').addEventListener('blur',function(){checkNifField('addrNif','addrNifError');});
 
 // ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 function loadGoogleMaps(key){
