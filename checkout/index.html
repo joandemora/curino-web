@@ -128,26 +128,15 @@ nav{
 .checkout-empty{text-align:center;color:var(--mid);font-size:14px;padding:3rem 0;grid-column:1/-1}
 .checkout-empty a{color:var(--black);border-bottom:1px solid var(--black);text-decoration:none;padding-bottom:1px}
 
-/* Google Places */
-#shipPlaceWrap{margin-bottom:.75rem}
-#shipPlaceWrap gmp-place-autocomplete{
-  width:100%;display:block;
-  --gmpx-color-surface:white;--gmpx-color-on-surface:#000;--gmpx-font-family-base:var(--font);
-  border:none;border-bottom:1px solid var(--border);outline:none;border-radius:0;
-  transition:border-color .2s;
-}
-#shipPlaceWrap gmp-place-autocomplete:focus-within{
-  outline:none!important;box-shadow:none!important;border-bottom:1px solid #000!important;
-}
-#shipPlaceWrap gmp-place-autocomplete::part(input){
-  outline:none!important;box-shadow:none!important;border:none!important;border-radius:0!important;
-  font-family:var(--font);font-size:14px;
-  padding:.6rem 0;background:transparent;width:100%;
-}
-#shipPlaceWrap gmp-place-autocomplete::part(predictions-list){
-  font-family:var(--font);font-size:13px;border:1px solid var(--border);
-  box-shadow:0 4px 12px rgba(0,0,0,.08);border-radius:0;
-}
+/* Google Places dropdown */
+.places-wrap{position:relative;margin-bottom:.75rem}
+.places-wrap input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;transition:border-color .2s}
+.places-wrap input:focus{border-color:var(--black)}
+.places-wrap input::placeholder{color:var(--mid)}
+.places-dd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-top:none;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.places-dd.open{display:block}
+.places-dd-item{padding:.5rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
+.places-dd-item:hover,.places-dd-item.active{background:var(--bg)}
 
 /* ── FOOTER ── */
 footer{
@@ -280,8 +269,10 @@ footer{
     <!-- Address form -->
     <div class="ship-form" id="shipForm">
       <input type="text" id="shipName" placeholder="Nombre completo" autocomplete="name" required>
-      <div id="shipPlaceWrap"></div>
-      <input type="hidden" id="shipLine">
+      <div class="places-wrap">
+        <input type="text" id="shipLine" placeholder="Direccion (calle, numero, piso)" autocomplete="off" required>
+        <div class="places-dd" id="shipDD"></div>
+      </div>
       <div class="ship-form-row">
         <input type="text" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required>
         <input type="text" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
@@ -547,93 +538,82 @@ async function handlePay(){
 // ── GOOGLE PLACES AUTOCOMPLETE (PlaceAutocompleteElement) ──
 function loadGoogleMaps(key){
   var s=document.createElement('script');
-  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&v=weekly&language=es&callback=initGooglePlaces';
+  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es&callback=initGooglePlaces';
   s.async=true;
   s.defer=true;
   document.head.appendChild(s);
 }
 
-function extractAddressComponents(comps,fields){
-  comps.forEach(function(c){
-    var name=c.longText||c.long_name||'';
-    var t=c.types||[];
-    if(t.includes('route')) fields.street=name;
-    if(t.includes('street_number')) fields.number=name;
-    if(t.includes('locality')) fields.city=name;
-    if(t.includes('postal_code')) fields.postal=name;
-    if(t.includes('administrative_area_level_2')) fields.province=name;
-    if(!fields.province&&t.includes('administrative_area_level_1')) fields.province=name;
-  });
-}
-
-function setShipPlaceInput(val){
-  var gmp=document.querySelector('#shipPlaceWrap gmp-place-autocomplete');
-  if(gmp&&gmp.value!==undefined) gmp.value=val;
-  var fb=document.getElementById('shipLineFallback');
-  if(fb) fb.value=val;
-}
-
+// ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 window.initGooglePlaces=function(){
-  var wrap=document.getElementById('shipPlaceWrap');
-  if(!wrap) return;
-
-  if(!google.maps.places.PlaceAutocompleteElement){
-    console.warn('PlaceAutocompleteElement not available');
-    showFallbackInput(wrap,'ship');
-    return;
-  }
-
-  try{
-    var el=new google.maps.places.PlaceAutocompleteElement({
-      componentRestrictions:{country:'es'},
-      types:['address']
-    });
-    el.setAttribute('placeholder','Direccion (calle, numero, piso)');
-    wrap.appendChild(el);
-
-    // Inject styles into shadow DOM to kill blue focus border
-    customElements.whenDefined('gmp-place-autocomplete').then(function(){
-      if(el.shadowRoot){
-        var s=document.createElement('style');
-        s.textContent='input{outline:none!important;box-shadow:none!important;border:none!important}*{outline:none!important;box-shadow:none!important}';
-        el.shadowRoot.appendChild(s);
-      }
-    });
-
-    // Pre-fill from saved address
-    var hidden=document.getElementById('shipLine');
-    if(hidden&&hidden.value) el.value=hidden.value;
-
-    el.addEventListener('gmp-select',async function(ev){
-      var place=null;
-      try{place=ev.placePrediction.toPlace();}catch(e){}
-      if(!place){place=ev.place||ev.detail?.place;}
-      if(!place) return;
-
-      try{await place.fetchFields({fields:['addressComponents','formattedAddress']});}catch(e){}
-
-      var comps=place.addressComponents;
-      if(!comps||!comps.length) return;
-
-      var fields={street:'',number:'',city:'',postal:'',province:''};
-      extractAddressComponents(comps,fields);
-      var fullLine=fields.street+(fields.number?' '+fields.number:'');
-      document.getElementById('shipLine').value=fullLine;
-      document.getElementById('shipCity').value=fields.city||'';
-      document.getElementById('shipPostal').value=fields.postal||'';
-      document.getElementById('shipProvince').value=fields.province||'';
-      document.getElementById('shipCountry').value='Espana';
-    });
-  }catch(err){
-    console.warn('PlaceAutocompleteElement error:',err);
-    showFallbackInput(wrap,'ship');
-  }
+  initPlacesInput('shipLine','shipDD','shipCity','shipPostal','shipProvince','shipCountry');
 };
 
-function showFallbackInput(wrap,prefix){
-  wrap.innerHTML='<input type="text" id="'+prefix+'LineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
-  var fb=document.getElementById(prefix+'LineFallback');
-  fb.addEventListener('input',function(){document.getElementById(prefix+'Line').value=fb.value;});
+function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
+  var input=document.getElementById(inputId);
+  var dd=document.getElementById(ddId);
+  if(!input||!dd) return;
+
+  var acService=new google.maps.places.AutocompleteService();
+  var placesDiv=document.createElement('div');
+  document.body.appendChild(placesDiv);
+  var placesService=new google.maps.places.PlacesService(placesDiv);
+  var debounce=null;
+  var predictions=[];
+
+  input.addEventListener('input',function(){
+    clearTimeout(debounce);
+    var q=input.value.trim();
+    if(q.length<3){dd.innerHTML='';dd.classList.remove('open');return;}
+    debounce=setTimeout(function(){
+      acService.getPlacePredictions({
+        input:q,
+        componentRestrictions:{country:'es'},
+        types:['address']
+      },function(results,status){
+        dd.innerHTML='';
+        if(status!=='OK'||!results){dd.classList.remove('open');return;}
+        predictions=results;
+        results.forEach(function(p,i){
+          var item=document.createElement('div');
+          item.className='places-dd-item';
+          item.textContent=p.description;
+          item.addEventListener('mousedown',function(e){e.preventDefault();selectPrediction(i);});
+          dd.appendChild(item);
+        });
+        dd.classList.add('open');
+      });
+    },250);
+  });
+
+  input.addEventListener('blur',function(){setTimeout(function(){dd.classList.remove('open');},150);});
+  input.addEventListener('focus',function(){if(dd.children.length>0) dd.classList.add('open');});
+
+  function selectPrediction(idx){
+    var p=predictions[idx];
+    if(!p) return;
+    dd.classList.remove('open');
+    input.value=p.description;
+
+    placesService.getDetails({placeId:p.place_id,fields:['address_components']},function(place,status){
+      if(status!=='OK'||!place||!place.address_components) return;
+      var street='',number='',city='',postal='',province='';
+      place.address_components.forEach(function(c){
+        var t=c.types;
+        if(t.indexOf('route')!==-1) street=c.long_name;
+        if(t.indexOf('street_number')!==-1) number=c.long_name;
+        if(t.indexOf('locality')!==-1) city=c.long_name;
+        if(t.indexOf('postal_code')!==-1) postal=c.long_name;
+        if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
+        if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
+      });
+      input.value=street+(number?' '+number:'');
+      document.getElementById(cityId).value=city;
+      document.getElementById(postalId).value=postal;
+      document.getElementById(provinceId).value=province;
+      document.getElementById(countryId).value='Espana';
+    });
+  }
 }
 </script>
 

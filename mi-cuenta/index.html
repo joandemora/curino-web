@@ -180,25 +180,15 @@ nav{
 .btn-add{margin-top:.5rem}
 
 /* ── GOOGLE PLACES AUTOCOMPLETE ── */
-#addrPlaceWrap{margin-bottom:.75rem}
-#addrPlaceWrap gmp-place-autocomplete{
-  width:100%;display:block;
-  --gmpx-color-surface:white;--gmpx-color-on-surface:#000;--gmpx-font-family-base:var(--font);
-  border:none;border-bottom:1px solid var(--border);outline:none;border-radius:0;
-  transition:border-color .2s;
-}
-#addrPlaceWrap gmp-place-autocomplete:focus-within{
-  outline:none!important;box-shadow:none!important;border-bottom:1px solid #000!important;
-}
-#addrPlaceWrap gmp-place-autocomplete::part(input){
-  outline:none!important;box-shadow:none!important;border:none!important;border-radius:0!important;
-  font-family:var(--font);font-size:14px;
-  padding:.6rem 0;background:transparent;width:100%;
-}
-#addrPlaceWrap gmp-place-autocomplete::part(predictions-list){
-  font-family:var(--font);font-size:13px;border:1px solid var(--border);
-  box-shadow:0 4px 12px rgba(0,0,0,.08);border-radius:0;
-}
+/* ── PLACES AUTOCOMPLETE DROPDOWN ── */
+.places-wrap{position:relative;margin-bottom:.75rem}
+.places-wrap input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;transition:border-color .2s}
+.places-wrap input:focus{border-color:var(--black)}
+.places-wrap input::placeholder{color:var(--mid)}
+.places-dd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-top:none;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.places-dd.open{display:block}
+.places-dd-item{padding:.5rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
+.places-dd-item:hover,.places-dd-item.active{background:var(--bg)}
 
 /* ── FOOTER ── */
 footer{
@@ -387,8 +377,10 @@ footer{
 
     <div class="address-form" id="addressForm">
       <input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required>
-      <div id="addrPlaceWrap"></div>
-      <input type="hidden" id="addrLine">
+      <div class="places-wrap">
+        <input type="text" id="addrLine" placeholder="Direccion (calle, numero, piso)" autocomplete="off" required>
+        <div class="places-dd" id="addrDD"></div>
+      </div>
       <div class="address-form-row">
         <input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required>
         <input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required>
@@ -653,20 +645,12 @@ function cancelAddress(){
   _editingIdx=-1;
 }
 
-function setPlaceInput(val){
-  var gmp=document.querySelector('#addrPlaceWrap gmp-place-autocomplete');
-  if(gmp&&gmp.value!==undefined) gmp.value=val;
-  var fb=document.getElementById('addrLineFallback');
-  if(fb) fb.value=val;
-}
-
 function clearAddressForm(){
   ['addrName','addrLine','addrCity','addrPostal','addrProvince','addrCountry','addrPhone'].forEach(function(id){
     var el=document.getElementById(id);
     if(id==='addrCountry') el.value='Espana';
     else el.value='';
   });
-  setPlaceInput('');
 }
 
 function saveAddress(){
@@ -694,7 +678,6 @@ function editAddress(i){
   var addr=_addresses[i];
   document.getElementById('addrName').value=addr.name;
   document.getElementById('addrLine').value=addr.line;
-  setPlaceInput(addr.line);
   document.getElementById('addrCity').value=addr.city;
   document.getElementById('addrPostal').value=addr.postal;
   document.getElementById('addrProvince').value=addr.province;
@@ -710,91 +693,84 @@ function deleteAddress(i){
   loadAddresses();
 }
 
-// ── GOOGLE PLACES AUTOCOMPLETE (PlaceAutocompleteElement) ──
+// ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 function loadGoogleMaps(key){
   var s=document.createElement('script');
-  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&v=weekly&language=es&callback=initGooglePlaces';
+  s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es&callback=initGooglePlaces';
   s.async=true;
   s.defer=true;
   document.head.appendChild(s);
 }
 
-function extractAddressComponents(comps,fields){
-  comps.forEach(function(c){
-    // longText is the new API, long_name is legacy — handle both
-    var name=c.longText||c.long_name||'';
-    var t=c.types||[];
-    if(t.includes('route')) fields.street=name;
-    if(t.includes('street_number')) fields.number=name;
-    if(t.includes('locality')) fields.city=name;
-    if(t.includes('postal_code')) fields.postal=name;
-    if(t.includes('administrative_area_level_2')) fields.province=name;
-    if(!fields.province&&t.includes('administrative_area_level_1')) fields.province=name;
-  });
-}
-
-function fillAddressFields(prefix,fields){
-  var fullLine=fields.street+(fields.number?' '+fields.number:'');
-  document.getElementById(prefix+'Line').value=fullLine;
-  document.getElementById(prefix+'City').value=fields.city||'';
-  document.getElementById(prefix+'Postal').value=fields.postal||'';
-  document.getElementById(prefix+'Province').value=fields.province||'';
-  document.getElementById(prefix+'Country').value='Espana';
-}
-
 window.initGooglePlaces=function(){
-  var wrap=document.getElementById('addrPlaceWrap');
-  if(!wrap) return;
-
-  // Check if PlaceAutocompleteElement exists
-  if(!google.maps.places.PlaceAutocompleteElement){
-    console.warn('PlaceAutocompleteElement not available');
-    showFallbackInput(wrap,'addr');
-    return;
-  }
-
-  try{
-    var el=new google.maps.places.PlaceAutocompleteElement({
-      componentRestrictions:{country:'es'},
-      types:['address']
-    });
-    el.setAttribute('placeholder','Direccion (calle, numero, piso)');
-    wrap.appendChild(el);
-
-    // Inject styles into shadow DOM to kill blue focus border
-    customElements.whenDefined('gmp-place-autocomplete').then(function(){
-      if(el.shadowRoot){
-        var s=document.createElement('style');
-        s.textContent='input{outline:none!important;box-shadow:none!important;border:none!important}*{outline:none!important;box-shadow:none!important}';
-        el.shadowRoot.appendChild(s);
-      }
-    });
-
-    el.addEventListener('gmp-select',async function(ev){
-      var place=null;
-      try{place=ev.placePrediction.toPlace();}catch(e){}
-      if(!place){place=ev.place||ev.detail?.place;}
-      if(!place) return;
-
-      try{await place.fetchFields({fields:['addressComponents','formattedAddress']});}catch(e){}
-
-      var comps=place.addressComponents;
-      if(!comps||!comps.length) return;
-
-      var fields={street:'',number:'',city:'',postal:'',province:''};
-      extractAddressComponents(comps,fields);
-      fillAddressFields('addr',fields);
-    });
-  }catch(err){
-    console.warn('PlaceAutocompleteElement error:',err);
-    showFallbackInput(wrap,'addr');
-  }
+  initPlacesInput('addrLine','addrDD','addrCity','addrPostal','addrProvince','addrCountry');
 };
 
-function showFallbackInput(wrap,prefix){
-  wrap.innerHTML='<input type="text" id="'+prefix+'LineFallback" placeholder="Direccion (calle, numero, piso)" style="width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:0">';
-  var fb=document.getElementById(prefix+'LineFallback');
-  fb.addEventListener('input',function(){document.getElementById(prefix+'Line').value=fb.value;});
+function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
+  var input=document.getElementById(inputId);
+  var dd=document.getElementById(ddId);
+  if(!input||!dd) return;
+
+  var acService=new google.maps.places.AutocompleteService();
+  var placesDiv=document.createElement('div');
+  document.body.appendChild(placesDiv);
+  var placesService=new google.maps.places.PlacesService(placesDiv);
+  var debounce=null;
+  var predictions=[];
+
+  input.addEventListener('input',function(){
+    clearTimeout(debounce);
+    var q=input.value.trim();
+    if(q.length<3){dd.innerHTML='';dd.classList.remove('open');return;}
+    debounce=setTimeout(function(){
+      acService.getPlacePredictions({
+        input:q,
+        componentRestrictions:{country:'es'},
+        types:['address']
+      },function(results,status){
+        dd.innerHTML='';
+        if(status!=='OK'||!results){dd.classList.remove('open');return;}
+        predictions=results;
+        results.forEach(function(p,i){
+          var item=document.createElement('div');
+          item.className='places-dd-item';
+          item.textContent=p.description;
+          item.addEventListener('mousedown',function(e){e.preventDefault();selectPrediction(i);});
+          dd.appendChild(item);
+        });
+        dd.classList.add('open');
+      });
+    },250);
+  });
+
+  input.addEventListener('blur',function(){setTimeout(function(){dd.classList.remove('open');},150);});
+  input.addEventListener('focus',function(){if(dd.children.length>0) dd.classList.add('open');});
+
+  function selectPrediction(idx){
+    var p=predictions[idx];
+    if(!p) return;
+    dd.classList.remove('open');
+    input.value=p.description;
+
+    placesService.getDetails({placeId:p.place_id,fields:['address_components']},function(place,status){
+      if(status!=='OK'||!place||!place.address_components) return;
+      var street='',number='',city='',postal='',province='';
+      place.address_components.forEach(function(c){
+        var t=c.types;
+        if(t.indexOf('route')!==-1) street=c.long_name;
+        if(t.indexOf('street_number')!==-1) number=c.long_name;
+        if(t.indexOf('locality')!==-1) city=c.long_name;
+        if(t.indexOf('postal_code')!==-1) postal=c.long_name;
+        if(t.indexOf('administrative_area_level_2')!==-1) province=c.long_name;
+        if(!province&&t.indexOf('administrative_area_level_1')!==-1) province=c.long_name;
+      });
+      input.value=street+(number?' '+number:'');
+      document.getElementById(cityId).value=city;
+      document.getElementById(postalId).value=postal;
+      document.getElementById(provinceId).value=province;
+      document.getElementById(countryId).value='Espana';
+    });
+  }
 }
 
 // ── LOGOUT ──
