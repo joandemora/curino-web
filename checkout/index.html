@@ -45,15 +45,21 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 .fw.has-error .ck-input{border-color:#dc2626!important}
 .fw.has-error .fw-err{display:block}
 
-/* Shipping method cards */
-.ck-methods{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.25rem}
-.ck-method{border:1px solid var(--border);padding:1rem;cursor:pointer;transition:border-color .2s;position:relative}
-.ck-method.selected{border-color:var(--black)}
-.ck-method-radio{position:absolute;top:1rem;right:1rem;width:16px;height:16px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
-.ck-method.selected .ck-method-radio::after{content:'';width:8px;height:8px;background:var(--black)}
-.ck-method-title{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.35rem;padding-right:24px}
-.ck-method-desc{font-size:12px;color:var(--mid);line-height:1.5}
-.ck-method-price{font-size:12px;font-weight:600;margin-top:.35rem}
+/* Shipping method radio options */
+.ck-methods{display:flex;flex-direction:column;gap:0;margin-bottom:.25rem}
+.ck-method{border:1px solid var(--border);padding:1rem 1rem 1rem 2.75rem;cursor:pointer;transition:border-color .2s;position:relative;margin-bottom:-1px}
+.ck-method:first-child{border-bottom-color:transparent}
+.ck-method.selected{border-color:var(--black);z-index:1}
+.ck-method.selected+.ck-method{border-top-color:var(--black)}
+.ck-method-radio{position:absolute;top:1.1rem;left:1rem;width:16px;height:16px;border:1.5px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:border-color .2s}
+.ck-method.selected .ck-method-radio{border-color:var(--black)}
+.ck-method.selected .ck-method-radio::after{content:'';width:8px;height:8px;background:var(--black);border-radius:50%}
+.ck-method-head{display:flex;justify-content:space-between;align-items:center}
+.ck-method-title{font-size:13px;font-weight:600;letter-spacing:.03em}
+.ck-method-price{font-size:13px;font-weight:600}
+.ck-method-desc{font-size:12px;color:var(--mid);line-height:1.5;margin-top:.35rem}
+.ck-method-note{font-size:11px;color:var(--mid);font-style:italic;margin-top:.35rem;display:none}
+.ck-method.selected .ck-method-note{display:block}
 
 /* Billing toggle */
 .ck-check{display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;margin-bottom:1rem}
@@ -114,7 +120,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
   .ck-side{display:none}
   .ck-main{padding:2rem 16px 160px}
   .ck-pay-desktop{display:none}
-  .ck-row,.ck-methods{grid-template-columns:1fr}
+  .ck-row{grid-template-columns:1fr}
   .ck-row-3{grid-template-columns:1fr}
 
   .mob-bar{display:block;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--white);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
@@ -177,17 +183,22 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <div class="ck-section">
       <div class="ck-section-title">Tipo de envio</div>
       <div class="ck-methods">
-        <div class="ck-method selected" id="methodDomicilio" onclick="selectMethod('domicilio')">
+        <div class="ck-method selected" id="methodEstandar" onclick="selectMethod('estandar')">
           <div class="ck-method-radio"></div>
-          <div class="ck-method-title">Envio a domicilio</div>
-          <div class="ck-method-desc">3 — 4 semanas</div>
-          <div class="ck-method-price">Incluido</div>
+          <div class="ck-method-head">
+            <div class="ck-method-title">Envio estandar</div>
+            <div class="ck-method-price">Incluido</div>
+          </div>
+          <div class="ck-method-desc">Entrega con cita previa a pie de calle &middot; 3 — 4 semanas</div>
         </div>
-        <div class="ck-method" id="methodTaller" onclick="selectMethod('taller')">
+        <div class="ck-method" id="methodMontaje" onclick="selectMethod('montaje')">
           <div class="ck-method-radio"></div>
-          <div class="ck-method-title">Recogida en taller</div>
-          <div class="ck-method-desc">2 — 3 semanas</div>
-          <div class="ck-method-price">Incluido</div>
+          <div class="ck-method-head">
+            <div class="ck-method-title">Envio con montaje</div>
+            <div class="ck-method-price">A consultar</div>
+          </div>
+          <div class="ck-method-desc">Entrega con cita previa y montaje en el interior de tu domicilio &middot; 3 — 4 semanas</div>
+          <div class="ck-method-note">Nuestro equipo se pondra en contacto contigo para coordinar el montaje</div>
         </div>
       </div>
     </div>
@@ -288,7 +299,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 <script>
 var _cart=JSON.parse(localStorage.getItem('curino_cart')||'[]');
 var _supabase=null,_currentUser=null;
-var _shipMethod='domicilio';
+var _shipMethod='estandar';
 
 // ── AUTH + INIT ──
 (async function(){
@@ -378,9 +389,8 @@ function toggleMobSummary(){
 // ── SHIPPING METHOD ──
 function selectMethod(m){
   _shipMethod=m;
-  document.getElementById('methodDomicilio').classList.toggle('selected',m==='domicilio');
-  document.getElementById('methodTaller').classList.toggle('selected',m==='taller');
-  document.getElementById('sectionAddress').style.display=m==='domicilio'?'block':'none';
+  document.getElementById('methodEstandar').classList.toggle('selected',m==='estandar');
+  document.getElementById('methodMontaje').classList.toggle('selected',m==='montaje');
 }
 
 // ── BILLING ──
@@ -476,14 +486,12 @@ async function handlePay(){
     {id:'shipLastName',val:d.lastName},
     {id:'shipPhone',val:d.phone.replace(/\+\d+\s*/,'')}
   ];
-  // Validate address if domicilio
-  if(_shipMethod==='domicilio'){
-    checks.push({id:'shipLine',val:d.line},{id:'shipPostal',val:d.postal},{id:'shipCity',val:d.city},{id:'shipProvince',val:d.province},{id:'shipNif',val:d.nif});
-  }
+  // Validate address
+  checks.push({id:'shipLine',val:d.line},{id:'shipPostal',val:d.postal},{id:'shipCity',val:d.city},{id:'shipProvince',val:d.province},{id:'shipNif',val:d.nif});
   var first=validateFields(checks);
   if(first){first.scrollIntoView({behavior:'smooth',block:'center'});return;}
 
-  if(_shipMethod==='domicilio'&&d.nif&&!checkNifField('shipNif','shipNifError')){
+  if(d.nif&&!checkNifField('shipNif','shipNifError')){
     document.querySelector('.fw[data-req="shipNif"]').scrollIntoView({behavior:'smooth',block:'center'});return;
   }
 
