@@ -44,6 +44,7 @@ nav{
 .nav-icons a:hover{color:#999999}
 .nav-icons svg{width:16px;height:16px;stroke:#000000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
 .nav-icons svg:hover{stroke:#999999}
+.nav-mobile-right{display:none}
 .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
 .nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
 .nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
@@ -616,7 +617,6 @@ footer{
   font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
   display:none;align-items:center;justify-content:center;line-height:1}
 .cart-badge.visible{display:flex}
-.nav-mobile-right{display:none}
 .cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;
   opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
 .cart-overlay.open{opacity:1;visibility:visible}
