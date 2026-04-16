@@ -63,22 +63,10 @@ module.exports = async function handler(req, res) {
     }
 
     // Validate price is a positive number
-    const precioNum = parseInt(precio, 10);
-    if (isNaN(precioNum) || precioNum < 100 || precioNum > 50000) {
+    const precioNum = parseFloat(precio);
+    if (isNaN(precioNum) || precioNum < 100 || precioNum > 200000) {
       console.error('Invalid price:', precio, '→', precioNum);
       return res.status(400).json({ error: 'Precio no válido: ' + precio });
-    }
-
-    // Server-side price validation
-    const area = (ancho / 100) * (alto / 100);
-    const basePrice = 1200 + area * 320;
-    console.log('Price validation:', { precioNum, basePrice, area, min: basePrice * 0.5, max: basePrice * 3 });
-
-    if (precioNum < basePrice * 0.5 || precioNum > basePrice * 3) {
-      return res.status(400).json({
-        error: 'Precio fuera de rango válido',
-        detail: { precio: precioNum, base: Math.round(basePrice) }
-      });
     }
 
     const description = `Armario ${ancho}×${alto}×${fondo}cm — ${material || 'Wengue'}`;
@@ -97,7 +85,7 @@ module.exports = async function handler(req, res) {
               name: 'Armario a medida Curino',
               description: description,
             },
-            unit_amount: precioNum * 100,
+            unit_amount: Math.round(precioNum * 100),
           },
           quantity: 1,
         },
