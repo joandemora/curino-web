@@ -375,7 +375,20 @@ function renderSummary(){
     _subtotal+=item.precio;
     var details='';
     if(item.material) details+='Material: '+item.material+'<br>';
-    if(item.puertas) details+='Puertas: '+item.puertas+'<br>';
+    // Build door line from doorDetail or fallback to puertas string
+    var dd=item.doorDetail;
+    if(dd&&dd.tipo){
+      var parts=[dd.tipo];
+      if(dd.marco) parts.push(dd.marco);
+      if(dd.textil) parts.push(dd.textil);
+      if(dd.colorRal) parts.push(dd.colorRal);
+      if(dd.travesano) parts.push(dd.travesano);
+      details+='Puertas: '+parts.join(' \u00B7 ')+'<br>';
+    }else if(item.puertas&&item.puertas!=='Sin puertas'){
+      details+='Puertas: '+item.puertas+'<br>';
+    }else if(item.puertas==='Sin puertas'){
+      details+='Sin puertas<br>';
+    }
     if(item.interior) details+='Interior: '+item.interior+'<br>';
     _itemsHtml+='<div class="sum-item"><div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
       '<div class="sum-info"><div class="sum-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+

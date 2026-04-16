@@ -2226,6 +2226,21 @@ function addToCart(){
   var puertaInfo = _P3.gama==='sinpuertas'?'Sin puertas':
     _P3.gama==='molduras'?'Puertas Fina ('+(_P3.trav?'con':'sin')+' travesaño)':'Puertas Lisas (RAL)';
 
+  // Door detail fields
+  var doorDetail = {};
+  if(_P3.gama!=='sinpuertas'){
+    doorDetail.tipo = _P3.gama==='molduras'?'Puertas Fina':'Puertas Lisas';
+    var marcoMat = _P3.marcoTipo==='madera'?(MAT_DATA.find(function(m){return m.id===_P3.mat})||{}).name||'Wengue':_P3_RAL[_P3.marcoRal]?_P3_RAL[_P3.marcoRal][0]:'RAL';
+    doorDetail.marco = marcoMat;
+    if(_P3.gama==='molduras'){
+      doorDetail.textil = _P3_TEXTIL[_P3.tx]?_P3_TEXTIL[_P3.tx][0]:'';
+      doorDetail.travesano = _P3.trav?'Con travesaño':'Sin travesaño';
+    }
+    if(_P3.gama==='lisas'){
+      doorDetail.colorRal = _P3_RAL[_P3.ral]?_P3_RAL[_P3.ral][0]:'';
+    }
+  }
+
   // Capture canvas thumbnail
   var thumb = '';
   var cImg = document.getElementById('compositeImg');
@@ -2239,6 +2254,7 @@ function addToCart(){
     material: mat.name,
     interior: mods,
     puertas: puertaInfo,
+    doorDetail: doorDetail,
     precio: calcPrice(),
     thumb: thumb
   };
