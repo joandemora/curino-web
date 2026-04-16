@@ -98,7 +98,7 @@ module.exports = async function handler(req, res) {
       mode: 'payment',
       currency: 'eur',
       customer: customer.id,
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'klarna'],
       line_items: [
         {
           price_data: {
