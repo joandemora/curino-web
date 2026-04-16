@@ -97,12 +97,14 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 .places-dd-item{padding:.6rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
 .places-dd-item:hover{background:var(--bg)}
 
-/* ── BREADCRUMB HEADER ── */
-.ck-header{display:flex;align-items:center;gap:.75rem;padding:1rem 64px;border-bottom:1px solid var(--border)}
-.ck-header a{display:flex;align-items:center;text-decoration:none;color:var(--black);gap:.75rem;transition:color .2s}
-.ck-header a:hover{color:var(--mid)}
-.ck-header svg{flex-shrink:0}
-.ck-header span{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+/* ── STEPPER ── */
+.ck-stepper{display:flex;align-items:center;padding:1rem 64px;border-bottom:1px solid var(--border);gap:0}
+.ck-step{display:flex;align-items:center;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);white-space:nowrap}
+.ck-step.active{color:var(--black);font-weight:600}
+.ck-step.done{color:var(--black)}
+.ck-step.done a{color:var(--black);text-decoration:none;transition:color .2s}
+.ck-step.done a:hover{color:var(--mid)}
+.ck-step-sep{margin:0 .75rem;color:var(--border);font-size:10px}
 
 /* ── EMPTY STATE ── */
 .ck-empty{display:none;text-align:center;color:var(--mid);font-size:14px;padding:6rem 2rem;min-height:60vh}
@@ -115,7 +117,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
   .ck-nav{padding:0 16px;height:52px}
-  .ck-header{padding:1rem 16px}
+  .ck-stepper{padding:.75rem 16px;overflow-x:auto}
   .ck-nav img{height:18px}
   .ck-outer{background:var(--white)}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
@@ -152,12 +154,15 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
   <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
 </div>
 
-<!-- BREADCRUMB -->
-<div class="ck-header">
-  <a href="/configurador-armarios-vestidores/">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>Datos de env&iacute;o</span>
-  </a>
+<!-- STEPPER -->
+<div class="ck-stepper">
+  <span class="ck-step done"><a href="/checkout/login/">1. Identificaci&oacute;n</a></span>
+  <span class="ck-step-sep">&rsaquo;</span>
+  <span class="ck-step active">2. Direcci&oacute;n de env&iacute;o</span>
+  <span class="ck-step-sep">&rsaquo;</span>
+  <span class="ck-step">3. Formas de entrega</span>
+  <span class="ck-step-sep">&rsaquo;</span>
+  <span class="ck-step">4. Pago</span>
 </div>
 
 <!-- CHECKOUT LAYOUT -->

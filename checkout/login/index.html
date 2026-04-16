@@ -62,10 +62,17 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 .sum-total-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase}
 .sum-tax{font-size:11px;color:var(--mid);text-align:right;margin-top:.35rem}
 
+/* Stepper */
+.ck-stepper{display:flex;align-items:center;padding:1rem 64px;border-bottom:1px solid var(--border);gap:0}
+.ck-step{display:flex;align-items:center;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);white-space:nowrap}
+.ck-step.active{color:var(--black);font-weight:600}
+.ck-step-sep{margin:0 .75rem;color:var(--border);font-size:10px}
+
 /* Responsive */
 @media(max-width:1200px){
   .ck-nav{padding:0 16px;height:52px}
   .ck-nav img{height:18px}
+  .ck-stepper{padding:.75rem 16px;overflow-x:auto}
   .ck-outer{background:var(--white)}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
   .ck-main{padding:2rem 16px;justify-content:flex-start}
@@ -77,6 +84,16 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 
 <div class="ck-nav">
   <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+</div>
+
+<div class="ck-stepper">
+  <span class="ck-step active">1. Identificaci&oacute;n</span>
+  <span class="ck-step-sep">&rsaquo;</span>
+  <span class="ck-step">2. Direcci&oacute;n de env&iacute;o</span>
+  <span class="ck-step-sep">&rsaquo;</span>
+  <span class="ck-step">3. Formas de entrega</span>
+  <span class="ck-step-sep">&rsaquo;</span>
+  <span class="ck-step">4. Pago</span>
 </div>
 
 <div class="ck-outer">
