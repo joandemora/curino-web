@@ -247,7 +247,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 
 <script>
 var _cart=JSON.parse(localStorage.getItem('curino_cart')||'[]');
-var supabase=null;
+var supabase;
 
 function formatPrice(amount){
   var parts=parseFloat(amount).toFixed(2).split('.');
@@ -287,15 +287,16 @@ function formatPrice(amount){
   document.getElementById('sumTax').textContent='Incluye '+formatPrice(iva)+' de IVA (21%)';
 })();
 
-// Auth — init supabase immediately, then check session
-var _configReady=fetch('/api/config',{redirect:'follow'}).then(function(r){return r.json()}).then(function(c){
-  if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
+// Auth — same init pattern as /login/
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
     supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-    return supabase.auth.getSession().then(function(s){
-      if(s.data.session) window.location.href='/checkout/';
-    });
-  }
-}).catch(function(){});
+    var s=await supabase.auth.getSession();
+    if(s.data.session) window.location.href='/checkout/';
+  }catch(e){console.error('Failed to init Supabase:',e);}
+})();
 
 // Tabs
 function switchTab(tab){
@@ -314,8 +315,6 @@ async function handleLogin(e){
   err.style.display='none';
   btn.disabled=true;
   btn.textContent='Entrando...';
-  if(!supabase) await _configReady;
-
   var result=await supabase.auth.signInWithPassword({
     email:document.getElementById('loginEmail').value,
     password:document.getElementById('loginPassword').value
@@ -338,7 +337,6 @@ async function handleRegister(e){
   err.style.display='none';
   btn.disabled=true;
   btn.textContent='Creando cuenta...';
-  if(!supabase) await _configReady;
 
   var result=await supabase.auth.signUp({
     email:document.getElementById('regEmail').value,
@@ -370,14 +368,8 @@ function getCallbackUrl(){
 }
 
 async function loginWithGoogle(){
-  console.log('loginWithGoogle called, supabase:', !!supabase);
-  if(!supabase) await _configReady;
-  console.log('after configReady, supabase:', !!supabase);
-  if(!supabase){console.error('supabase still null');return;}
-  console.log('calling signInWithOAuth, redirectTo:', getCallbackUrl());
-  var result=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
-  console.log('signInWithOAuth result:', result);
-  if(result.error) console.error('OAuth error:', result.error);
+  if(!supabase) return;
+  await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
 }
 </script>
 
