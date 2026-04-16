@@ -72,11 +72,44 @@ module.exports = async function handler(req, res) {
     const description = `Armario ${ancho}×${alto}×${fondo}cm — ${material || 'Wengue'}`;
     const origin = req.headers.origin || req.headers.referer?.replace(/\/[^/]*$/, '') || 'https://casacurino.com';
 
-    console.log('Creating Stripe session:', { description, precioNum, origin });
+    console.log('Creating Stripe session:', { description, precioNum, origin, customer_email });
 
-    const sessionParams = {
+    // Find or create Stripe customer (required for customer_balance / bank transfer)
+    const email = customer_email || '';
+    let customer;
+    if (email) {
+      const existing = await stripe.customers.list({ email, limit: 1 });
+      if (existing.data.length > 0) {
+        customer = existing.data[0];
+      } else {
+        customer = await stripe.customers.create({
+          email,
+          name: shipping_name || '',
+          metadata: { user_id: user_id || '' },
+        });
+      }
+    } else {
+      customer = await stripe.customers.create({
+        metadata: { user_id: user_id || '' },
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       currency: 'eur',
+      customer: customer.id,
+      payment_method_types: ['card', 'klarna', 'customer_balance'],
+      payment_method_options: {
+        customer_balance: {
+          funding_type: 'bank_transfer',
+          bank_transfer: {
+            type: 'eu_bank_transfer',
+            eu_bank_transfer: {
+              country: 'ES',
+            },
+          },
+        },
+      },
       line_items: [
         {
           price_data: {
@@ -109,11 +142,7 @@ module.exports = async function handler(req, res) {
       },
       success_url: `${origin}/configurador-armarios-vestidores/confirmacion/?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout/`,
-    };
-
-    if (customer_email) sessionParams.customer_email = customer_email;
-
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    });
 
     console.log('Stripe session created:', session.id);
     return res.status(200).json({ url: session.url });
