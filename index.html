@@ -634,8 +634,11 @@ footer{
 .cart-item-img img{max-width:100%;max-height:100%;object-fit:contain}
 .cart-item-info{flex:1;min-width:0}
 .cart-item-name{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase}
-.cart-item-desc{font-size:12px;color:#888;line-height:1.6}
+.cart-item-desc{font-size:11px;color:#888;line-height:1.5}
 .cart-item-price{font-size:14px;font-weight:700;margin-top:6px}
+.cart-item-actions{display:flex;gap:1rem;margin-top:6px}
+.cart-item-actions a,.cart-item-actions button{background:none;border:none;font-family:var(--font);font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:#888;padding:0;text-decoration:none;transition:color .2s}
+.cart-item-actions a:hover,.cart-item-actions button:hover{color:#000}
 .cart-item-remove{background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;font-family:var(--font);flex-shrink:0;align-self:flex-start}
 .cart-item-remove:hover{color:#000}
 .cart-footer{padding:1.5rem 2rem;border-top:1px solid #e5e5e5;flex-shrink:0}
@@ -1036,6 +1039,42 @@ function removeFromCart(id){
   renderCart();
 }
 
+function formatPrice(amount){
+  var parts=parseFloat(amount).toFixed(2).split('.');
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return parts.join(',')+' \u20AC';
+}
+
+function buildCartDesc(item){
+  var d='';
+  if(item.material) d+='Material: '+item.material+'<br>';
+  var dd=item.doorDetail;
+  if(dd&&dd.tipo){
+    var p=[dd.tipo];
+    if(dd.marco) p.push(dd.marco);
+    if(dd.textil) p.push(dd.textil);
+    if(dd.colorRal) p.push(dd.colorRal);
+    if(dd.travesano) p.push(dd.travesano);
+    d+='Puertas: '+p.join(' \u00B7 ')+'<br>';
+  }else if(item.puertas&&item.puertas!=='Sin puertas'){
+    d+='Puertas: '+item.puertas+'<br>';
+  }else if(item.puertas==='Sin puertas'){
+    d+='Sin puertas<br>';
+  }
+  if(item.moduleDetail&&item.moduleDetail.length){
+    item.moduleDetail.forEach(function(md,i){
+      var line='M\u00F3dulo '+(i+1)+' ('+md.width+'cm): ';
+      if(md.puerta) line+=md.puerta;
+      else{line+=md.hojas+' hoja'+(md.hojas>1?'s':'');if(md.apertura) line+=' \u00B7 Ap. '+md.apertura;}
+      if(md.interior) line+=' \u00B7 '+md.interior;
+      d+=line+'<br>';
+    });
+  }else if(item.interior){
+    d+='Interior: '+item.interior+'<br>';
+  }
+  return d;
+}
+
 function renderCart(){
   var container = document.getElementById('cartItems');
   var empty = document.getElementById('cartEmpty');
@@ -1048,17 +1087,17 @@ function renderCart(){
   empty.style.display='none';footer.style.display='block';
   container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
   var subtotal=0;
-  _cart.forEach(function(item){
+  _cart.forEach(function(item,idx){
     subtotal+=item.precio;
     var div=document.createElement('div');div.className='cart-item';
     div.innerHTML='<div class="cart-item-img">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
-      '<div class="cart-item-info"><div class="cart-item-name">Armario '+item.ancho+'×'+item.alto+'×'+item.fondo+' cm</div>'+
-      '<div class="cart-item-desc">'+item.material+' · '+item.puertas+'</div>'+
-      '<div class="cart-item-price">€ '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div></div>'+
-      '<button class="cart-item-remove" onclick="removeFromCart('+item.id+')">×</button>';
+      '<div class="cart-item-info"><div class="cart-item-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
+      '<div class="cart-item-desc">'+buildCartDesc(item)+'</div>'+
+      '<div class="cart-item-price">'+formatPrice(item.precio)+'</div>'+
+      '<div class="cart-item-actions"><a href="/configurador-armarios-vestidores/?edit='+idx+'">Editar</a><button onclick="removeFromCart('+item.id+')">Eliminar</button></div></div>';
     container.insertBefore(div,empty);
   });
-  document.getElementById('cartSubtotal').textContent='€ '+new Intl.NumberFormat('es-ES').format(subtotal);
+  document.getElementById('cartSubtotal').textContent=formatPrice(subtotal);
 }
 renderCart();
 

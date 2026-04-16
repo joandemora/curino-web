@@ -482,8 +482,11 @@ footer{
 .cart-item-img img{max-width:100%;max-height:100%;object-fit:contain}
 .cart-item-info{flex:1;min-width:0}
 .cart-item-name{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase}
-.cart-item-desc{font-size:12px;color:var(--mid);line-height:1.6}
+.cart-item-desc{font-size:11px;color:var(--mid);line-height:1.5}
 .cart-item-price{font-size:14px;font-weight:700;margin-top:6px}
+.cart-item-actions{display:flex;gap:1rem;margin-top:6px}
+.cart-item-actions a,.cart-item-actions button{background:none;border:none;font-family:var(--font);font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;text-decoration:none;transition:color .2s}
+.cart-item-actions a:hover,.cart-item-actions button:hover{color:var(--black)}
 .cart-item-remove{background:none;border:none;color:var(--light);cursor:pointer;
   font-size:18px;font-family:var(--font);transition:color .2s;flex-shrink:0;align-self:flex-start}
 .cart-item-remove:hover{color:#000}
@@ -2268,7 +2271,15 @@ function addToCart(){
       doorDetail: doorDetail, moduleDetail: moduleDetail,
       precio: calcPrice(), thumb: dataUrl
     };
-    _cart.push(item);
+    // Replace if editing, otherwise push new
+    var editIdx=sessionStorage.getItem('curino_edit_idx');
+    if(editIdx!==null){
+      _cart[parseInt(editIdx)]=item;
+      sessionStorage.removeItem('curino_edit_idx');
+      sessionStorage.removeItem('curino_edit_item');
+    }else{
+      _cart.push(item);
+    }
     saveCart();
     // Restore previous view
     if(prevView !== 'open') p3SetView(prevView);
@@ -2294,60 +2305,130 @@ function removeFromCart(id){
   saveCart();
 }
 
+function formatPrice(amount){
+  var parts=parseFloat(amount).toFixed(2).split('.');
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return parts.join(',')+' \u20AC';
+}
+
+function buildCartDesc(item){
+  var d='';
+  if(item.material) d+='Material: '+item.material+'<br>';
+  var dd=item.doorDetail;
+  if(dd&&dd.tipo){
+    var p=[dd.tipo];
+    if(dd.marco) p.push(dd.marco);
+    if(dd.textil) p.push(dd.textil);
+    if(dd.colorRal) p.push(dd.colorRal);
+    if(dd.travesano) p.push(dd.travesano);
+    d+='Puertas: '+p.join(' \u00B7 ')+'<br>';
+  }else if(item.puertas&&item.puertas!=='Sin puertas'){
+    d+='Puertas: '+item.puertas+'<br>';
+  }else if(item.puertas==='Sin puertas'){
+    d+='Sin puertas<br>';
+  }
+  if(item.moduleDetail&&item.moduleDetail.length){
+    item.moduleDetail.forEach(function(md,i){
+      var line='M\u00F3dulo '+(i+1)+' ('+md.width+'cm): ';
+      if(md.puerta) line+=md.puerta;
+      else{line+=md.hojas+' hoja'+(md.hojas>1?'s':'');if(md.apertura) line+=' \u00B7 Ap. '+md.apertura;}
+      if(md.interior) line+=' \u00B7 '+md.interior;
+      d+=line+'<br>';
+    });
+  }else if(item.interior){
+    d+='Interior: '+item.interior+'<br>';
+  }
+  return d;
+}
+
+function editCartItem(idx){
+  var item=_cart[idx];
+  if(!item) return;
+  // Store edit index so addToCart replaces instead of pushing
+  sessionStorage.setItem('curino_edit_idx',idx);
+  // Store config to restore
+  sessionStorage.setItem('curino_edit_item',JSON.stringify(item));
+  // If already on configurador, load directly
+  loadCartItemConfig(item);
+  toggleCart();
+}
+
+function loadCartItemConfig(item){
+  // Dimensions
+  ST.w=item.ancho; ST.h=item.alto; ST.d=item.fondo;
+  document.getElementById('inputW').value=ST.w;
+  document.getElementById('inputH').value=ST.h;
+  document.getElementById('inputD').value=ST.d;
+  if(document.getElementById('sliderW')) document.getElementById('sliderW').value=ST.w;
+  if(document.getElementById('sliderH')) document.getElementById('sliderH').value=ST.h;
+  if(document.getElementById('sliderD')) document.getElementById('sliderD').value=ST.d;
+  // Material
+  var matEntry=MAT_DATA.find(function(m){return m.name===item.material});
+  if(matEntry) selectMat(matEntry.id);
+  // Recalc modules and rebuild
+  calcModules(ST.w);
+  buildComposite();
+  goStep(1);
+}
+
 function renderCart(){
   var container = document.getElementById('cartItems');
   var empty = document.getElementById('cartEmpty');
   var footer = document.getElementById('cartFooter');
   var badge = document.getElementById('cartBadge');
 
-  // Badge
-  if(_cart.length > 0){
-    badge.textContent = _cart.length;
-    badge.classList.add('visible');
-  } else {
-    badge.classList.remove('visible');
-  }
+  if(_cart.length > 0){badge.textContent=_cart.length;badge.classList.add('visible');}
+  else{badge.classList.remove('visible');}
 
-  // Empty state
   if(_cart.length === 0){
     empty.style.display = 'block';
     footer.style.display = 'none';
-    // Clear item elements but keep empty div
-    var items = container.querySelectorAll('.cart-item');
-    items.forEach(function(el){el.remove()});
+    container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
     return;
   }
 
   empty.style.display = 'none';
   footer.style.display = 'block';
+  container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
 
-  // Remove existing items
-  var existing = container.querySelectorAll('.cart-item');
-  existing.forEach(function(el){el.remove()});
-
-  // Render items
   var subtotal = 0;
-  _cart.forEach(function(item){
+  _cart.forEach(function(item, idx){
     subtotal += item.precio;
     var div = document.createElement('div');
     div.className = 'cart-item';
     div.innerHTML =
       '<div class="cart-item-img">'+(item.thumb ? '<img src="'+item.thumb+'" alt="Armario">' : '')+'</div>'+
       '<div class="cart-item-info">'+
-        '<div class="cart-item-name">Armario '+item.ancho+'×'+item.alto+'×'+item.fondo+' cm</div>'+
-        '<div class="cart-item-desc">'+item.material+' · '+item.puertas+'</div>'+
-        '<div class="cart-item-price">€ '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div>'+
-      '</div>'+
-      '<button class="cart-item-remove" onclick="removeFromCart('+item.id+')">×</button>';
+        '<div class="cart-item-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
+        '<div class="cart-item-desc">'+buildCartDesc(item)+'</div>'+
+        '<div class="cart-item-price">'+formatPrice(item.precio)+'</div>'+
+        '<div class="cart-item-actions"><a href="javascript:void(0)" onclick="editCartItem('+idx+')">Editar</a><button onclick="removeFromCart('+item.id+')">Eliminar</button></div>'+
+      '</div>';
     container.insertBefore(div, empty);
   });
 
-  // Subtotal
-  document.getElementById('cartSubtotal').textContent = '€ ' + new Intl.NumberFormat('es-ES').format(subtotal);
+  document.getElementById('cartSubtotal').textContent = formatPrice(subtotal);
 }
 
 // Init cart on load
 renderCart();
+
+// Check if editing a cart item (from landing or URL ?edit=N)
+(function(){
+  var editItem=sessionStorage.getItem('curino_edit_item');
+  if(editItem){
+    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){}
+    return;
+  }
+  var params=new URLSearchParams(window.location.search);
+  var editIdx=params.get('edit');
+  if(editIdx!==null&&_cart[parseInt(editIdx)]){
+    sessionStorage.setItem('curino_edit_idx',editIdx);
+    sessionStorage.setItem('curino_edit_item',JSON.stringify(_cart[parseInt(editIdx)]));
+    loadCartItemConfig(_cart[parseInt(editIdx)]);
+    window.history.replaceState({},'',window.location.pathname);
+  }
+})();
 
 // ── AUTH ──
 var _supabase = null;
