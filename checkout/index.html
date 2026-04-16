@@ -309,23 +309,25 @@ var _supabase=null,_currentUser=null;
 var _shipMethod='estandar';
 
 // ── AUTH + INIT ──
+var _isGuest=new URLSearchParams(window.location.search).get('guest')==='1';
 (async function(){
   try{
     var r=await fetch('/api/config',{redirect:'follow'});
     var c=await r.json();
-    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+    if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
+      _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+      var s=await _supabase.auth.getSession();
+      if(s.data.session) _currentUser=s.data.session.user;
+    }
+    if(!_currentUser&&!_isGuest){
       window.location.href='/checkout/login/';return;
     }
-    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-    var s=await _supabase.auth.getSession();
-    if(!s.data.session){
-      window.location.href='/checkout/login/';return;
-    }
-    _currentUser=s.data.session.user;
     if(c.googleMapsApiKey) loadGoogleMaps(c.googleMapsApiKey);
+    if(_isGuest) window.history.replaceState({},'','/checkout/');
     initCheckout();
   }catch(e){
-    window.location.href='/checkout/login/';
+    if(!_isGuest) window.location.href='/checkout/login/';
+    else initCheckout();
   }
 })();
 
