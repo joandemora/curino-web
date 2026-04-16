@@ -98,18 +98,7 @@ module.exports = async function handler(req, res) {
       mode: 'payment',
       currency: 'eur',
       customer: customer.id,
-      payment_method_types: ['card', 'klarna', 'customer_balance'],
-      payment_method_options: {
-        customer_balance: {
-          funding_type: 'bank_transfer',
-          bank_transfer: {
-            type: 'eu_bank_transfer',
-            eu_bank_transfer: {
-              country: 'ES',
-            },
-          },
-        },
-      },
+      payment_method_types: ['card'],
       line_items: [
         {
           price_data: {
