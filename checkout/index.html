@@ -113,7 +113,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
   .mob-bar-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
   .mob-bar-right{display:flex;align-items:center;gap:.5rem}
   .mob-bar-total{font-size:15px;font-weight:600}
-  .mob-bar-arrow{font-size:10px;color:var(--mid);transition:transform .3s}
+  .mob-bar-arrow{color:var(--mid);transition:transform .3s;flex-shrink:0}
   .mob-bar.open .mob-bar-arrow{transform:rotate(180deg)}
   .mob-bar-detail{display:none;padding:0 16px 1rem;max-height:50vh;overflow-y:auto}
   .mob-bar.open .mob-bar-detail{display:block}
@@ -247,7 +247,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <span class="mob-bar-label">Resumen del pedido</span>
     <div class="mob-bar-right">
       <span class="mob-bar-total" id="mobBarTotal">&euro; 0</span>
-      <span class="mob-bar-arrow" id="mobBarArrow">&#9650;</span>
+      <svg class="mob-bar-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 7L6 2L11 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </div>
   </div>
   <div class="mob-bar-detail" id="mobBarDetail">
