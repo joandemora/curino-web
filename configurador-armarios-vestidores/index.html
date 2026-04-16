@@ -2261,43 +2261,31 @@ function addToCart(){
     return d;
   });
 
-  // Capture open-doors thumbnail
-  var prevView = _P3.view;
-  var thumbReady = function(dataUrl){
-    var item = {
-      id: Date.now(),
-      ancho: ST.w, alto: ST.h, fondo: ST.d,
-      material: mat.name, interior: mods, puertas: puertaInfo,
-      doorDetail: doorDetail, moduleDetail: moduleDetail,
-      precio: calcPrice(), thumb: dataUrl
-    };
-    // Replace if editing, otherwise push new
-    var editIdx=sessionStorage.getItem('curino_edit_idx');
-    if(editIdx!==null){
-      _cart[parseInt(editIdx)]=item;
-      sessionStorage.removeItem('curino_edit_idx');
-      sessionStorage.removeItem('curino_edit_item');
-      clearEditModeBtn();
-    }else{
-      _cart.push(item);
-    }
-    saveCart();
-    if(prevView !== 'open') p3SetView(prevView);
-    if(!document.getElementById('cartDrawer').classList.contains('open')) toggleCart();
+  // Capture current canvas as thumbnail
+  var thumb = '';
+  var cImg = document.getElementById('compositeImg');
+  if(cImg && cImg.src) thumb = cImg.src;
+
+  var item = {
+    id: Date.now(),
+    ancho: ST.w, alto: ST.h, fondo: ST.d,
+    material: mat.name, interior: mods, puertas: puertaInfo,
+    doorDetail: doorDetail, moduleDetail: moduleDetail,
+    precio: calcPrice(), thumb: thumb
   };
 
-  // Switch to open view, wait for render, capture
-  if(_P3.gama !== 'sinpuertas' && prevView !== 'open'){
-    _P3.view = 'open';
-    buildComposite();
-    setTimeout(function(){
-      var cImg = document.getElementById('compositeImg');
-      thumbReady(cImg && cImg.src ? cImg.src : '');
-    }, 400);
-  } else {
-    var cImg = document.getElementById('compositeImg');
-    thumbReady(cImg && cImg.src ? cImg.src : '');
+  // Replace if editing, otherwise push new
+  var editIdx=sessionStorage.getItem('curino_edit_idx');
+  if(editIdx!==null){
+    _cart[parseInt(editIdx)]=item;
+    sessionStorage.removeItem('curino_edit_idx');
+    sessionStorage.removeItem('curino_edit_item');
+    clearEditModeBtn();
+  }else{
+    _cart.push(item);
   }
+  saveCart();
+  toggleCart();
 }
 
 function removeFromCart(id){
