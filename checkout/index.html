@@ -357,7 +357,9 @@ function prefillAddress(){
 
 // ── FORMATTING ──
 function formatPrice(amount){
-  return amount.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' \u20AC';
+  var parts=parseFloat(amount).toFixed(2).split('.');
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return parts.join(',')+' \u20AC';
 }
 
 // ── SUMMARY ──
