@@ -2273,21 +2273,16 @@ function addToCart(){
     };
     // Replace if editing, otherwise push new
     var editIdx=sessionStorage.getItem('curino_edit_idx');
-    var wasEditing=editIdx!==null;
-    if(wasEditing){
+    if(editIdx!==null){
       _cart[parseInt(editIdx)]=item;
       sessionStorage.removeItem('curino_edit_idx');
       sessionStorage.removeItem('curino_edit_item');
-      // Restore button text
-      var btn=document.getElementById('btnAddCart');
-      if(btn) btn.innerHTML='A\u00F1adir al carrito \u00B7 <span id="ctaPrice">'+formatPrice(item.precio)+'</span>';
+      clearEditModeBtn();
     }else{
       _cart.push(item);
     }
     saveCart();
     if(prevView !== 'open') p3SetView(prevView);
-    // Open cart to show updated item
-    renderCart();
     if(!document.getElementById('cartDrawer').classList.contains('open')) toggleCart();
   };
 
@@ -2349,13 +2344,12 @@ function buildCartDesc(item){
 function editCartItem(idx){
   var item=_cart[idx];
   if(!item) return;
-  // Store edit index so addToCart replaces instead of pushing
-  sessionStorage.setItem('curino_edit_idx',idx);
-  // Store config to restore
+  sessionStorage.setItem('curino_edit_idx',String(idx));
   sessionStorage.setItem('curino_edit_item',JSON.stringify(item));
-  // If already on configurador, load directly
+  // Close cart, load config, update button
+  if(document.getElementById('cartDrawer').classList.contains('open')) toggleCart();
   loadCartItemConfig(item);
-  toggleCart();
+  setEditModeBtn();
 }
 
 function loadCartItemConfig(item){
@@ -2418,26 +2412,41 @@ function renderCart(){
 // Init cart on load
 renderCart();
 
-// Check if editing a cart item (from landing or URL ?edit=N)
+// ── EDIT MODE ──
+var _isEditMode=false;
+function setEditModeBtn(){
+  _isEditMode=true;
+  var btn=document.getElementById('btnAddCart');
+  if(!btn) return;
+  var price=btn.querySelector('#ctaPrice');
+  var priceText=price?price.textContent:'\u20AC 0';
+  btn.innerHTML='Actualizar \u00B7 <span id="ctaPrice">'+priceText+'</span>';
+}
+function clearEditModeBtn(){
+  _isEditMode=false;
+  var btn=document.getElementById('btnAddCart');
+  if(!btn) return;
+  var price=btn.querySelector('#ctaPrice');
+  var priceText=price?price.textContent:'\u20AC 0';
+  btn.innerHTML='A\u00F1adir al carrito \u00B7 <span id="ctaPrice">'+priceText+'</span>';
+}
+
+// Check on page load
 (function(){
-  function setEditMode(){
-    var btn=document.getElementById('btnAddCart');
-    if(btn) btn.innerHTML='Actualizar \u00B7 <span id="ctaPrice">'+btn.querySelector('#ctaPrice').textContent+'</span>';
-  }
-  var editItem=sessionStorage.getItem('curino_edit_item');
-  if(editItem){
-    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){}
-    setEditMode();
-    return;
-  }
   var params=new URLSearchParams(window.location.search);
   var editIdx=params.get('edit');
   if(editIdx!==null&&_cart[parseInt(editIdx)]){
     sessionStorage.setItem('curino_edit_idx',editIdx);
     sessionStorage.setItem('curino_edit_item',JSON.stringify(_cart[parseInt(editIdx)]));
     loadCartItemConfig(_cart[parseInt(editIdx)]);
-    setEditMode();
+    setTimeout(setEditModeBtn,100);
     window.history.replaceState({},'',window.location.pathname);
+    return;
+  }
+  var editItem=sessionStorage.getItem('curino_edit_item');
+  if(editItem){
+    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){}
+    setTimeout(setEditModeBtn,100);
   }
 })();
 
