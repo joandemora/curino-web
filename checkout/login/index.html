@@ -100,7 +100,6 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .ck-main{padding:2rem 16px 140px}
   .ck-side{display:none}
   .mob-bar{display:block;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--white);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
-  .mob-bar.docked{position:static;box-shadow:none}
   .mob-bar-collapsed{display:flex;justify-content:space-between;align-items:center;padding:1rem 16px;cursor:pointer}
   .mob-bar-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
   .mob-bar-right{display:flex;align-items:center;gap:.5rem}
@@ -419,15 +418,24 @@ async function loginWithGoogle(){
   await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
 }
 
-// Dock mob-bar when footer is visible
+// Dock mob-bar above footer on scroll
 (function(){
   var bar=document.getElementById('mobBar');
   var ft=document.querySelector('footer');
   if(!bar||!ft) return;
-  var io=new IntersectionObserver(function(entries){
-    bar.classList.toggle('docked',entries[0].isIntersecting);
-  },{threshold:0});
-  io.observe(ft);
+  window.addEventListener('scroll',function(){
+    var footerTop=ft.getBoundingClientRect().top;
+    var barH=bar.offsetHeight;
+    if(footerTop<=window.innerHeight){
+      bar.style.position='absolute';
+      bar.style.bottom='auto';
+      bar.style.top=(ft.offsetTop-barH)+'px';
+    }else{
+      bar.style.position='';
+      bar.style.bottom='';
+      bar.style.top='';
+    }
+  },{passive:true});
 })();
 </script>
 
