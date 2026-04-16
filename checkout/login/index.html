@@ -26,8 +26,13 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 
 /* Auth form */
 .auth-box{width:100%;max-width:380px}
-.auth-title{font-size:22px;font-weight:400;text-transform:uppercase;margin-bottom:.5rem;letter-spacing:normal}
-.auth-subtitle{font-size:13px;color:var(--mid);margin-bottom:2rem}
+.auth-tabs{display:flex;align-items:center;margin-bottom:2rem}
+.auth-tab{background:none;border:none;font-family:var(--font);font-size:13px;letter-spacing:.03em;color:var(--mid);cursor:pointer;padding:0 0 4px;transition:color .2s;position:relative}
+.auth-tab.active{color:var(--black);font-weight:600;border-bottom:1.5px solid var(--black)}
+.auth-tab:hover{color:var(--black)}
+.auth-tab-sep{margin:0 .75rem;color:var(--border);font-size:13px;user-select:none}
+.auth-panel{display:none}
+.auth-panel.active{display:block}
 .auth-input{width:100%;padding:.7rem .75rem;font-family:var(--font);font-size:14px;border:1px solid var(--border);outline:none;background:var(--white);transition:border-color .2s;margin-bottom:.75rem}
 .auth-input:focus{border-color:var(--black)}
 .auth-input::placeholder{color:var(--mid)}
@@ -102,30 +107,56 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
   <!-- LEFT: AUTH -->
   <div class="ck-main">
     <div class="auth-box">
-      <h1 class="auth-title">Identificarse</h1>
-      <p class="auth-subtitle">Inicia sesi&oacute;n o crea una cuenta para continuar con tu pedido</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Inicia sesi&oacute;n</button>
+        <span class="auth-tab-sep">|</span>
+        <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Crea tu cuenta</button>
+      </div>
 
       <div class="auth-error" id="authError"></div>
 
-      <form id="loginForm" onsubmit="handleLogin(event)">
-        <input type="email" class="auth-input" placeholder="Email" id="email" required autocomplete="email">
-        <input type="password" class="auth-input" placeholder="Contrase&ntilde;a" id="password" required autocomplete="current-password">
-        <button type="submit" class="auth-btn auth-btn-primary" id="btnLogin">Iniciar sesi&oacute;n</button>
-      </form>
+      <!-- LOGIN PANEL -->
+      <div class="auth-panel active" id="panelLogin">
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <input type="email" class="auth-input" placeholder="Email" id="loginEmail" required autocomplete="email">
+          <input type="password" class="auth-input" placeholder="Contrase&ntilde;a" id="loginPassword" required autocomplete="current-password">
+          <button type="submit" class="auth-btn auth-btn-primary" id="btnLogin">Iniciar sesi&oacute;n</button>
+        </form>
 
-      <div class="auth-divider">o</div>
+        <div class="auth-divider">o</div>
 
-      <button class="auth-btn auth-btn-social" onclick="loginWithGoogle()">
-        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-        Continuar con Google
-      </button>
+        <button class="auth-btn auth-btn-social" onclick="loginWithGoogle()">
+          <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continuar con Google
+        </button>
 
-      <button class="auth-btn auth-btn-social" onclick="loginWithApple()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
-        Continuar con Apple
-      </button>
+        <button class="auth-btn auth-btn-social" onclick="loginWithApple()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+          Continuar con Apple
+        </button>
+      </div>
 
-      <div class="auth-link">&iquest;No tienes cuenta? <a href="/registro/?redirect=/checkout/">Crear cuenta</a></div>
+      <!-- REGISTER PANEL -->
+      <div class="auth-panel" id="panelRegister">
+        <form id="registerForm" onsubmit="handleRegister(event)">
+          <input type="text" class="auth-input" placeholder="Nombre completo" id="regName" required autocomplete="name">
+          <input type="email" class="auth-input" placeholder="Email" id="regEmail" required autocomplete="email">
+          <input type="password" class="auth-input" placeholder="Contrase&ntilde;a (m&iacute;n. 6 caracteres)" id="regPassword" required minlength="6" autocomplete="new-password">
+          <button type="submit" class="auth-btn auth-btn-primary" id="btnRegister">Crear cuenta</button>
+        </form>
+
+        <div class="auth-divider">o</div>
+
+        <button class="auth-btn auth-btn-social" onclick="loginWithGoogle()">
+          <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continuar con Google
+        </button>
+
+        <button class="auth-btn auth-btn-social" onclick="loginWithApple()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+          Continuar con Apple
+        </button>
+      </div>
     </div>
   </div>
 
@@ -199,6 +230,16 @@ function formatPrice(amount){
   }catch(e){}
 })();
 
+// Tabs
+function switchTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
+  document.getElementById('tabRegister').classList.toggle('active',tab==='register');
+  document.getElementById('panelLogin').classList.toggle('active',tab==='login');
+  document.getElementById('panelRegister').classList.toggle('active',tab==='register');
+  document.getElementById('authError').style.display='none';
+}
+
+// Login
 async function handleLogin(e){
   e.preventDefault();
   var btn=document.getElementById('btnLogin');
@@ -208,8 +249,8 @@ async function handleLogin(e){
   btn.textContent='Entrando...';
 
   var result=await supabase.auth.signInWithPassword({
-    email:document.getElementById('email').value,
-    password:document.getElementById('password').value
+    email:document.getElementById('loginEmail').value,
+    password:document.getElementById('loginPassword').value
   });
   if(result.error){
     err.textContent=result.error.message;
@@ -219,6 +260,40 @@ async function handleLogin(e){
     return;
   }
   window.location.href='/checkout/';
+}
+
+// Register
+async function handleRegister(e){
+  e.preventDefault();
+  var btn=document.getElementById('btnRegister');
+  var err=document.getElementById('authError');
+  err.style.display='none';
+  btn.disabled=true;
+  btn.textContent='Creando cuenta...';
+
+  var result=await supabase.auth.signUp({
+    email:document.getElementById('regEmail').value,
+    password:document.getElementById('regPassword').value,
+    options:{data:{full_name:document.getElementById('regName').value}}
+  });
+  if(result.error){
+    err.textContent=result.error.message;
+    err.style.display='block';
+    btn.disabled=false;
+    btn.textContent='Crear cuenta';
+    return;
+  }
+  if(result.data.user&&!result.data.session){
+    err.style.display='none';
+    document.getElementById('authError').textContent='Cuenta creada. Revisa tu email para confirmar.';
+    document.getElementById('authError').style.display='block';
+    document.getElementById('authError').style.background='#f0fdf4';
+    document.getElementById('authError').style.color='#16a34a';
+    btn.disabled=false;
+    btn.textContent='Crear cuenta';
+  }else{
+    window.location.href='/checkout/';
+  }
 }
 
 function getCallbackUrl(){
