@@ -79,6 +79,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 .sum-divider{border:none;border-top:1px solid var(--border);margin:1rem 0}
 .sum-total{display:flex;justify-content:space-between;font-size:15px;font-weight:600;padding:.25rem 0}
 .sum-total-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.sum-tax{font-size:11px;color:var(--mid);text-align:right;margin-top:.35rem}
 
 /* Google Places */
 .places-wrap{position:relative;margin-bottom:.75rem}
@@ -253,6 +254,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <div class="sum-line"><span class="sum-line-label">Envio</span><span>Incluido</span></div>
     <hr class="sum-divider">
     <div class="sum-total"><span class="sum-total-label">Total</span><span id="summaryTotal">&euro; 0</span></div>
+    <div class="sum-tax" id="sumTax"></div>
   </div>
 </div>
 </div>
@@ -272,6 +274,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <div class="sum-line"><span class="sum-line-label">Envio</span><span>Incluido</span></div>
     <hr class="sum-divider">
     <div class="sum-total"><span class="sum-total-label">Total</span><span id="mobTotal">&euro; 0</span></div>
+    <div class="sum-tax" id="mobTax"></div>
   </div>
   <button class="ck-pay" id="btnPayMob" onclick="handlePay()">Ir al pago</button>
 </div>
@@ -356,11 +359,16 @@ function renderSummary(){
   document.getElementById('summaryItems').innerHTML=html;
   document.getElementById('sumSubtotal').textContent=fmt;
   document.getElementById('summaryTotal').textContent=fmt;
+  // IVA
+  var iva=(total-total/1.21).toFixed(2);
+  var taxText='Incluye '+iva+'\u20AC de IVA (21%)';
+  document.getElementById('sumTax').textContent=taxText;
   // Mobile bar
   document.getElementById('mobSummaryItems').innerHTML=html;
   document.getElementById('mobSubtotal').textContent=fmt;
   document.getElementById('mobTotal').textContent=fmt;
   document.getElementById('mobBarTotal').textContent=fmt;
+  document.getElementById('mobTax').textContent=taxText;
 }
 
 function toggleMobSummary(){
