@@ -21,11 +21,11 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 /* Layout */
 .ck-outer{background:linear-gradient(to right,var(--white) 50%,var(--bg) 50%);min-height:calc(100vh - 60px)}
 .ck-wrap{display:grid;grid-template-columns:1fr 1fr;width:100%;min-height:calc(100vh - 60px)}
-.ck-main{padding:3rem 64px 4rem;background:var(--white);display:flex;flex-direction:column;justify-content:center;max-width:none}
+.ck-main{padding:3rem 64px 4rem;background:var(--white);display:flex;align-items:center;justify-content:center}
 .ck-side{padding:2.5rem 64px 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
 
 /* Auth form */
-.auth-box{max-width:380px}
+.auth-box{width:100%;max-width:380px}
 .auth-title{font-size:22px;font-weight:400;text-transform:uppercase;margin-bottom:.5rem;letter-spacing:normal}
 .auth-subtitle{font-size:13px;color:var(--mid);margin-bottom:2rem}
 .auth-input{width:100%;padding:.7rem .75rem;font-family:var(--font);font-size:14px;border:1px solid var(--border);outline:none;background:var(--white);transition:border-color .2s;margin-bottom:.75rem}
