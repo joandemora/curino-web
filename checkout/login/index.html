@@ -19,10 +19,10 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 .ck-nav img{height:20px;width:auto;display:block;filter:brightness(0) invert(1)}
 
 /* Layout */
-.ck-outer{background:linear-gradient(to right,var(--white) 50%,var(--bg) 50%);min-height:calc(100vh - 60px)}
-.ck-wrap{display:grid;grid-template-columns:1fr 1fr;width:100%;min-height:calc(100vh - 60px)}
-.ck-main{padding:3rem 64px 4rem;background:var(--white);display:flex;align-items:center;justify-content:center}
-.ck-side{padding:2.5rem 64px 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
+.ck-outer{background:linear-gradient(to right,var(--white) 50%,var(--bg) 50%)}
+.ck-wrap{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.ck-main{padding:2.5rem 64px 4rem;background:var(--white)}
+.ck-side{padding:2.5rem 64px 4rem;background:var(--bg);border-left:1px solid var(--border)}
 
 /* Auth form */
 .auth-box{width:100%;max-width:380px}
@@ -73,15 +73,43 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 .ck-step.active{color:var(--black);font-weight:600}
 .ck-step-sep{margin:0 .75rem;color:var(--border);font-size:10px}
 
+/* Footer */
+footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
+.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
+.footer-col a:hover{color:#999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.14px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px;transition:color .2s,border-color .2s}
+.footer-newsletter button:hover{color:#999;border-color:#999}
+.footer-links{display:block}
+.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+
 /* Responsive */
 @media(max-width:1200px){
   .ck-nav{padding:0 16px;height:52px}
   .ck-nav img{height:18px}
   .ck-stepper{padding:.75rem 16px;overflow-x:auto}
   .ck-outer{background:var(--white)}
-  .ck-wrap{grid-template-columns:1fr;min-height:auto}
-  .ck-main{padding:2rem 16px;justify-content:flex-start}
+  .ck-wrap{grid-template-columns:1fr}
+  .ck-main{padding:2rem 16px}
   .ck-side{display:none}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  footer img[alt="Curino"]{height:20px!important}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
+  .footer-col.open h4::after{content:'\2212'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+  .footer-legal{align-items:center;text-align:center}
 }
 </style>
 </head>
@@ -173,6 +201,52 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
   </div>
 
 </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinter&iacute;a a medida — armarios, vestidores, cocinas y puertas con garant&iacute;a de 25 a&ntilde;os.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinter&iacute;a</h4>
+    <div class="footer-links">
+      <a href="/configurador-armarios-vestidores/">Configurador de armarios</a>
+      <a href="#">Proyecto a medida en Barcelona</a><a href="#">Proyecto a medida en Madrid</a>
+      <a href="#">Proyecto a medida en Valencia</a><a href="#">Proyecto a medida en Marbella</a><a href="#">Proyecto a medida en Bilbao</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:corp">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4>
+    <div class="footer-links">
+      <a href="#">Sobre nosotros</a><a href="#">I+D e Innovaci&oacute;n</a><a href="#">Seguridad en Curino</a><a href="#">&Eacute;tica Corporativa</a><a href="#">Proveedores</a>
+    </div>
+  </div>
+  <div class="footer-col" style="grid-area:empleo">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4>
+    <div class="footer-links"><a href="#">&Uacute;nete a Curino</a><a href="#">Curino Partners</a></div>
+  </div>
+  <div class="footer-col" style="grid-area:prensa">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4>
+    <div class="footer-links"><a href="#">Magazine</a><a href="#">Contacto Prensa</a></div>
+  </div>
+  <div class="footer-col" style="grid-area:contacto">
+    <h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4>
+    <div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div>
+  </div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter">
+    <h4>Newsletter</h4>
+    <div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>&copy; 2026 Curino &middot; Mueble a medida &middot; Espa&ntilde;a &middot; Europa &middot; EEUU</span>
+  <div class="footer-legal">
+    <span>Sistema & Curino, S.L.U.</span>
+    <span>T&eacute;rminos y Condiciones | Pol&iacute;tica de Privacidad | Pol&iacute;tica de Cookies</span>
+  </div>
+  <span>casacurino.com</span>
 </div>
 
 <script>
