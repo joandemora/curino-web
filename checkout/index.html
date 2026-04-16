@@ -789,7 +789,7 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
   }
   window.addEventListener('scroll',updateBarPosition,{passive:true});
   window.addEventListener('resize',updateBarPosition);
-  updateBarPosition();
+  window.addEventListener('load',updateBarPosition);
 })();
 </script>
 

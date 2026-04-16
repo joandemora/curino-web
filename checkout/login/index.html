@@ -438,7 +438,7 @@ async function loginWithGoogle(){
   }
   window.addEventListener('scroll',updateBarPosition,{passive:true});
   window.addEventListener('resize',updateBarPosition);
-  updateBarPosition();
+  window.addEventListener('load',updateBarPosition);
 })();
 </script>
 
