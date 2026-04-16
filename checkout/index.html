@@ -23,9 +23,10 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 .ck-nav img{height:20px;width:auto;display:block;filter:brightness(0) invert(1)}
 
 /* ── LAYOUT ── */
-.ck-wrap{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 60px)}
-.ck-main{padding:2.5rem 80px 4rem}
-.ck-side{padding:2.5rem 80px 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
+.ck-outer{background:linear-gradient(to right,var(--white) 50%,var(--bg) 50%);min-height:calc(100vh - 60px)}
+.ck-wrap{display:grid;grid-template-columns:1fr 1fr;max-width:1100px;margin:0 auto;min-height:calc(100vh - 60px)}
+.ck-main{padding:2.5rem 3rem 4rem;background:var(--white)}
+.ck-side{padding:2.5rem 3rem 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
 
 /* ── FORM ELEMENTS ── */
 .ck-section{margin-bottom:2.5rem}
@@ -95,9 +96,10 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 @media(max-width:1200px){
   .ck-nav{padding:0 16px;height:52px}
   .ck-nav img{height:18px}
+  .ck-outer{background:var(--white)}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
   .ck-main{padding:2rem 16px}
-  .ck-side{position:static;height:auto;padding:2rem 16px;border-left:none;border-top:1px solid var(--border)}
+  .ck-side{position:static;height:auto;padding:2rem 16px;border-left:none;border-top:8px solid var(--bg)}
   .ck-row,.ck-methods{grid-template-columns:1fr}
   .ck-row-3{grid-template-columns:1fr}
 }
@@ -111,7 +113,8 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 </div>
 
 <!-- CHECKOUT LAYOUT -->
-<div class="ck-wrap" id="checkoutPage" style="display:none">
+<div class="ck-outer" id="checkoutOuter" style="display:none">
+<div class="ck-wrap" id="checkoutPage">
 
   <!-- LEFT: FORM -->
   <div class="ck-main">
@@ -213,6 +216,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <div class="sum-total"><span class="sum-total-label">Total</span><span id="summaryTotal">&euro; 0</span></div>
   </div>
 </div>
+</div>
 
 <!-- EMPTY STATE -->
 <div class="ck-empty" id="checkoutEmpty">
@@ -248,7 +252,7 @@ var _shipMethod='domicilio';
 
 function initCheckout(){
   if(_cart.length===0){document.getElementById('checkoutEmpty').style.display='block';return;}
-  document.getElementById('checkoutPage').style.display='grid';
+  document.getElementById('checkoutOuter').style.display='block';
   renderSummary();
   prefillContact();
   prefillAddress();
