@@ -287,18 +287,15 @@ function formatPrice(amount){
   document.getElementById('sumTax').textContent='Incluye '+formatPrice(iva)+' de IVA (21%)';
 })();
 
-// Auth
-(async function(){
-  try{
-    var r=await fetch('/api/config',{redirect:'follow'});
-    var c=await r.json();
-    if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
-      supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-      var s=await supabase.auth.getSession();
+// Auth — init supabase immediately, then check session
+var _configReady=fetch('/api/config',{redirect:'follow'}).then(function(r){return r.json()}).then(function(c){
+  if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
+    supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    return supabase.auth.getSession().then(function(s){
       if(s.data.session) window.location.href='/checkout/';
-    }
-  }catch(e){}
-})();
+    });
+  }
+}).catch(function(){});
 
 // Tabs
 function switchTab(tab){
@@ -317,6 +314,7 @@ async function handleLogin(e){
   err.style.display='none';
   btn.disabled=true;
   btn.textContent='Entrando...';
+  if(!supabase) await _configReady;
 
   var result=await supabase.auth.signInWithPassword({
     email:document.getElementById('loginEmail').value,
@@ -340,6 +338,7 @@ async function handleRegister(e){
   err.style.display='none';
   btn.disabled=true;
   btn.textContent='Creando cuenta...';
+  if(!supabase) await _configReady;
 
   var result=await supabase.auth.signUp({
     email:document.getElementById('regEmail').value,
@@ -371,13 +370,9 @@ function getCallbackUrl(){
 }
 
 async function loginWithGoogle(){
-  if(!supabase){alert('Cargando...');return;}
+  if(!supabase) await _configReady;
+  if(!supabase) return;
   await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
-}
-
-async function loginWithApple(){
-  if(!supabase){alert('Cargando...');return;}
-  await supabase.auth.signInWithOAuth({provider:'apple',options:{redirectTo:getCallbackUrl()}});
 }
 </script>
 
