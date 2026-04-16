@@ -517,8 +517,8 @@ footer{
   nav{padding:0 16px;height:60px}
   .nav-logo img{height:20px}
   .nav-right{display:none}
-  .nav-mobile-icons{display:flex;align-items:center;gap:1rem}
-  .nav-hamburger{display:flex}
+  .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  .nav-mobile-right .nav-hamburger{display:flex}
 
   .hero-wrapper{margin-top:60px;padding:0 16px}
   .hero{height:70vh;min-height:auto;max-height:none}
@@ -616,7 +616,7 @@ footer{
   font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
   display:none;align-items:center;justify-content:center;line-height:1}
 .cart-badge.visible{display:flex}
-.nav-mobile-icons{display:none}
+.nav-mobile-right{display:none}
 .cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;
   opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
 .cart-overlay.open{opacity:1;visibility:visible}
@@ -713,12 +713,12 @@ footer{
     <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge" id="cartBadge">0</div></div>
   </div>
   </div>
-  <div class="nav-mobile-icons">
+  <div class="nav-mobile-right">
     <a href="/login/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
     <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge cart-badge-mob" id="cartBadgeMob">0</div></div>
-  </div>
-  <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
-    <span></span><span></span><span></span>
+    <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
+      <span></span><span></span><span></span>
+    </div>
   </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
