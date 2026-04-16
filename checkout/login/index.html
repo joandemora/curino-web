@@ -370,9 +370,14 @@ function getCallbackUrl(){
 }
 
 async function loginWithGoogle(){
+  console.log('loginWithGoogle called, supabase:', !!supabase);
   if(!supabase) await _configReady;
-  if(!supabase) return;
-  await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
+  console.log('after configReady, supabase:', !!supabase);
+  if(!supabase){console.error('supabase still null');return;}
+  console.log('calling signInWithOAuth, redirectTo:', getCallbackUrl());
+  var result=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
+  console.log('signInWithOAuth result:', result);
+  if(result.error) console.error('OAuth error:', result.error);
 }
 </script>
 
