@@ -49,7 +49,7 @@ module.exports = async function handler(req, res) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   try {
-    const { ancho, alto, fondo, material, interior, puertas, precio, user_id,
+    const { ancho, alto, fondo, material, interior, puertas, precio, user_id, customer_email,
       shipping_name, shipping_line, shipping_city, shipping_postal,
       shipping_province, shipping_country, shipping_phone } = body;
 
@@ -74,7 +74,7 @@ module.exports = async function handler(req, res) {
 
     console.log('Creating Stripe session:', { description, precioNum, origin });
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams = {
       mode: 'payment',
       currency: 'eur',
       line_items: [
@@ -108,8 +108,12 @@ module.exports = async function handler(req, res) {
         shipping_phone: shipping_phone || '',
       },
       success_url: `${origin}/configurador-armarios-vestidores/confirmacion/?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/configurador-armarios-vestidores/`,
-    });
+      cancel_url: `${origin}/checkout/`,
+    };
+
+    if (customer_email) sessionParams.customer_email = customer_email;
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     console.log('Stripe session created:', session.id);
     return res.status(200).json({ url: session.url });

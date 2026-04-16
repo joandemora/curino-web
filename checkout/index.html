@@ -665,6 +665,7 @@ async function handlePay(){
         material:desc,interior:_cart.length+' armario(s)',
         puertas:_cart.map(function(i){return i.puertas}).join(', '),
         precio:total,user_id:_currentUser?_currentUser.id:'',
+        customer_email:d.email||(_currentUser?_currentUser.email:''),
         shipping_name:d.firstName+' '+d.lastName,
         shipping_line:shipFull,shipping_city:d.city,
         shipping_postal:d.postal,shipping_province:d.province,
