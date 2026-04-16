@@ -75,6 +75,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 /* ── SIDEBAR SUMMARY ── */
 .sum-title{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin-bottom:1.25rem}
 .sum-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border)}
+.sum-item:last-child{border-bottom:none}
 .sum-thumb{width:72px;height:72px;background:var(--white);border:1px solid var(--border);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .sum-thumb img{max-width:100%;max-height:100%;object-fit:contain}
 .sum-info{flex:1;min-width:0}
@@ -372,9 +373,13 @@ function renderSummary(){
   _itemsHtml='';
   _cart.forEach(function(item){
     _subtotal+=item.precio;
+    var details='';
+    if(item.material) details+='Material: '+item.material+'<br>';
+    if(item.puertas) details+='Puertas: '+item.puertas+'<br>';
+    if(item.interior) details+='Interior: '+item.interior+'<br>';
     _itemsHtml+='<div class="sum-item"><div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
       '<div class="sum-info"><div class="sum-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
-      '<div class="sum-desc">'+item.material+' \u00B7 '+item.puertas+'</div></div>'+
+      '<div class="sum-desc">'+details+'</div></div>'+
       '<div class="sum-price">'+formatPrice(item.precio)+'</div></div>';
   });
   _montajeCost=Math.round(_subtotal*0.07*100)/100;
