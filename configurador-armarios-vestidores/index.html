@@ -431,6 +431,7 @@ footer{
 
 @media(max-width:1200px){
   .site-nav .nav-right{display:none}
+  .site-nav .nav-mobile-icons{display:flex;align-items:center;gap:1rem}
   .site-nav .nav-hamburger{display:flex}
   .site-nav{padding:0 16px}
   .megamenu{display:none!important}
@@ -455,6 +456,7 @@ footer{
 /* ── USER ICON ── */
 .user-icon-link{display:flex;align-items:center}
 .user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+.nav-mobile-icons{display:none}
 
 /* ── CART DRAWER ── */
 .cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
@@ -566,6 +568,10 @@ footer{
       <div class="cart-badge" id="cartBadge">0</div>
     </div>
   </div>
+  </div>
+  <div class="nav-mobile-icons">
+    <a href="/login/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+    <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge cart-badge-mob" id="cartBadgeMob">0</div></div>
   </div>
   <div class="nav-hamburger" onclick="toggleSiteMenu()" id="siteHamburger">
     <span></span><span></span><span></span>
@@ -2365,8 +2371,14 @@ function renderCart(){
   var footer = document.getElementById('cartFooter');
   var badge = document.getElementById('cartBadge');
 
-  if(_cart.length > 0){badge.textContent=_cart.length;badge.classList.add('visible');}
-  else{badge.classList.remove('visible');}
+  var badgeMob=document.getElementById('cartBadgeMob');
+  if(_cart.length > 0){
+    badge.textContent=_cart.length;badge.classList.add('visible');
+    if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
+  }else{
+    badge.classList.remove('visible');
+    if(badgeMob) badgeMob.classList.remove('visible');
+  }
 
   if(_cart.length === 0){
     empty.style.display = 'block';
@@ -2455,6 +2467,7 @@ async function checkAuth(){
   if(r.data.session){
     _currentUser = r.data.session.user;
     document.getElementById('userIconLink').href = '/mi-cuenta/';
+    var mob=document.getElementById('userIconLinkMob');if(mob) mob.href='/mi-cuenta/';
   } else {
     _currentUser = null;
     document.getElementById('userIconLink').href = '/login/';
