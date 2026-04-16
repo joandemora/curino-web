@@ -2419,18 +2419,39 @@ function clearEditModeBtn(){
 (function(){
   var params=new URLSearchParams(window.location.search);
   var editIdx=params.get('edit');
+  console.log('=== EDIT MODE CHECK ===');
+  console.log('URL search:', window.location.search);
+  console.log('editIdx param:', editIdx);
+  console.log('_cart length:', _cart.length);
+  console.log('_cart['+editIdx+']:', editIdx!==null?_cart[parseInt(editIdx)]:null);
+  console.log('sessionStorage curino_edit_item:', sessionStorage.getItem('curino_edit_item')?'exists':'null');
+  var btn=document.getElementById('btnAddCart');
+  console.log('btnAddCart found:', !!btn);
+  console.log('btnAddCart text:', btn?btn.textContent:'n/a');
   if(editIdx!==null&&_cart[parseInt(editIdx)]){
+    console.log('>>> Entering edit mode from URL param');
     sessionStorage.setItem('curino_edit_idx',editIdx);
     sessionStorage.setItem('curino_edit_item',JSON.stringify(_cart[parseInt(editIdx)]));
     loadCartItemConfig(_cart[parseInt(editIdx)]);
-    setTimeout(setEditModeBtn,200);
+    setTimeout(function(){
+      console.log('>>> setTimeout fired, calling setEditModeBtn');
+      setEditModeBtn();
+      var btn2=document.getElementById('btnAddCart');
+      console.log('btnAddCart text after:', btn2?btn2.textContent:'n/a');
+    },200);
     window.history.replaceState({},'',window.location.pathname);
     return;
   }
   var editItem=sessionStorage.getItem('curino_edit_item');
   if(editItem){
-    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){}
-    setTimeout(setEditModeBtn,200);
+    console.log('>>> Entering edit mode from sessionStorage');
+    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){console.error('loadCartItemConfig error:',e);}
+    setTimeout(function(){
+      console.log('>>> setTimeout fired (session), calling setEditModeBtn');
+      setEditModeBtn();
+    },200);
+  }else{
+    console.log('>>> No edit mode');
   }
 })();
 
