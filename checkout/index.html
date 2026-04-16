@@ -92,16 +92,39 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 .ck-empty{display:none;text-align:center;color:var(--mid);font-size:14px;padding:6rem 2rem;min-height:60vh}
 .ck-empty a{color:var(--black);border-bottom:1px solid var(--black);text-decoration:none;padding-bottom:1px}
 
+/* ── MOBILE BOTTOM BAR (hidden on desktop) ── */
+.mob-bar{display:none}
+.ck-pay-desktop{display:block}
+
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
   .ck-nav{padding:0 16px;height:52px}
   .ck-nav img{height:18px}
   .ck-outer{background:var(--white)}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
-  .ck-side{order:-1;position:static;height:auto;padding:2rem 16px;border-left:none;border-bottom:8px solid var(--border)}
-  .ck-main{order:1;padding:2rem 16px}
+  .ck-side{display:none}
+  .ck-main{padding:2rem 16px 160px}
+  .ck-pay-desktop{display:none}
   .ck-row,.ck-methods{grid-template-columns:1fr}
   .ck-row-3{grid-template-columns:1fr}
+
+  .mob-bar{display:block;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--white);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+  .mob-bar-collapsed{display:flex;justify-content:space-between;align-items:center;padding:1rem 16px;cursor:pointer}
+  .mob-bar-left{display:flex;align-items:center;gap:.5rem}
+  .mob-bar-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+  .mob-bar-arrow{font-size:10px;color:var(--mid);transition:transform .3s}
+  .mob-bar.open .mob-bar-arrow{transform:rotate(180deg)}
+  .mob-bar-total{font-size:15px;font-weight:600}
+  .mob-bar-detail{display:none;padding:0 16px 1rem;max-height:50vh;overflow-y:auto}
+  .mob-bar.open .mob-bar-detail{display:block}
+  .mob-bar .ck-pay{margin:0 16px 16px;width:calc(100% - 32px)}
+  .mob-bar .sum-item{display:flex;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+  .mob-bar .sum-item:last-of-type{border-bottom:none}
+  .mob-bar .sum-thumb{width:48px;height:48px;background:var(--bg);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .mob-bar .sum-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+  .mob-bar .sum-name{font-size:12px;font-weight:600}
+  .mob-bar .sum-desc{font-size:11px;color:var(--mid)}
+  .mob-bar .sum-price{font-size:12px;font-weight:600;white-space:nowrap;align-self:center}
 }
 </style>
 </head>
@@ -201,7 +224,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
       </div>
     </div>
 
-    <button class="ck-pay" id="btnPay" onclick="handlePay()">Ir al pago</button>
+    <button class="ck-pay ck-pay-desktop" id="btnPay" onclick="handlePay()">Ir al pago</button>
     <div class="ck-error" id="checkoutError"></div>
   </div>
 
@@ -216,6 +239,25 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <div class="sum-total"><span class="sum-total-label">Total</span><span id="summaryTotal">&euro; 0</span></div>
   </div>
 </div>
+</div>
+
+<!-- MOBILE BOTTOM BAR -->
+<div class="mob-bar" id="mobBar">
+  <div class="mob-bar-collapsed" id="mobBarToggle" onclick="toggleMobSummary()">
+    <div class="mob-bar-left">
+      <span class="mob-bar-label">Resumen del pedido</span>
+      <span class="mob-bar-arrow" id="mobBarArrow">&#9650;</span>
+    </div>
+    <span class="mob-bar-total" id="mobBarTotal">&euro; 0</span>
+  </div>
+  <div class="mob-bar-detail" id="mobBarDetail">
+    <div id="mobSummaryItems"></div>
+    <div class="sum-line"><span class="sum-line-label">Subtotal</span><span id="mobSubtotal">&euro; 0</span></div>
+    <div class="sum-line"><span class="sum-line-label">Envio</span><span>Incluido</span></div>
+    <hr class="sum-divider">
+    <div class="sum-total"><span class="sum-total-label">Total</span><span id="mobTotal">&euro; 0</span></div>
+  </div>
+  <button class="ck-pay" id="btnPayMob" onclick="handlePay()">Ir al pago</button>
 </div>
 
 <!-- EMPTY STATE -->
@@ -284,22 +326,29 @@ function prefillAddress(){
 
 // ── SUMMARY ──
 function renderSummary(){
-  var container=document.getElementById('summaryItems');
-  container.innerHTML='';
   var total=0;
+  var html='';
   _cart.forEach(function(item){
     total+=item.precio;
-    var div=document.createElement('div');
-    div.className='sum-item';
-    div.innerHTML='<div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
+    html+='<div class="sum-item"><div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
       '<div class="sum-info"><div class="sum-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
       '<div class="sum-desc">'+item.material+' \u00B7 '+item.puertas+'</div></div>'+
-      '<div class="sum-price">\u20AC '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div>';
-    container.appendChild(div);
+      '<div class="sum-price">\u20AC '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div></div>';
   });
   var fmt='\u20AC '+new Intl.NumberFormat('es-ES').format(total);
+  // Desktop sidebar
+  document.getElementById('summaryItems').innerHTML=html;
   document.getElementById('sumSubtotal').textContent=fmt;
   document.getElementById('summaryTotal').textContent=fmt;
+  // Mobile bar
+  document.getElementById('mobSummaryItems').innerHTML=html;
+  document.getElementById('mobSubtotal').textContent=fmt;
+  document.getElementById('mobTotal').textContent=fmt;
+  document.getElementById('mobBarTotal').textContent=fmt;
+}
+
+function toggleMobSummary(){
+  document.getElementById('mobBar').classList.toggle('open');
 }
 
 // ── SHIPPING METHOD ──
