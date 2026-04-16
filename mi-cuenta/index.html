@@ -44,6 +44,7 @@ nav{
 .nav-icons a:hover{color:#999999}
 .nav-icons svg{width:16px;height:16px;stroke:#000000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
 .nav-icons svg:hover{stroke:#999999}
+.nav-mobile-right{display:none}
 .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
 .nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
 .nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
@@ -222,7 +223,8 @@ footer{
   nav{padding:0 16px;height:60px}
   .nav-logo img{height:20px}
   .nav-right{display:none}
-  .nav-hamburger{display:flex}
+  .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  .nav-mobile-right .nav-hamburger{display:flex}
   .account{margin-top:80px;padding:0 16px}
   .account-title{font-size:16px}
   .account-row{flex-direction:column;align-items:flex-start;gap:.25rem}
@@ -310,8 +312,12 @@ footer{
     <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge" id="cartBadge">0</div></div>
   </div>
   </div>
-  <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
-    <span></span><span></span><span></span>
+  <div class="nav-mobile-right">
+    <a href="/mi-cuenta/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+    <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge cart-badge-mob" id="cartBadgeMob">0</div></div>
+    <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
+      <span></span><span></span><span></span>
+    </div>
   </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
@@ -519,8 +525,14 @@ function renderCart(){
   var empty = document.getElementById('cartEmpty');
   var footer = document.getElementById('cartFooter');
   var badge = document.getElementById('cartBadge');
-  if(_cart.length > 0){badge.textContent=_cart.length;badge.classList.add('visible');}
-  else{badge.classList.remove('visible');}
+  var badgeMob = document.getElementById('cartBadgeMob');
+  if(_cart.length > 0){
+    badge.textContent=_cart.length;badge.classList.add('visible');
+    if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
+  }else{
+    badge.classList.remove('visible');
+    if(badgeMob) badgeMob.classList.remove('visible');
+  }
   if(_cart.length === 0){empty.style.display='block';footer.style.display='none';
     container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});return;}
   empty.style.display='none';footer.style.display='block';
