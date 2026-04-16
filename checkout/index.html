@@ -110,11 +110,11 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
   .mob-bar{display:block;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--white);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
   .mob-bar-collapsed{display:flex;justify-content:space-between;align-items:center;padding:1rem 16px;cursor:pointer}
-  .mob-bar-left{display:flex;align-items:center;gap:.5rem}
   .mob-bar-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+  .mob-bar-right{display:flex;align-items:center;gap:.5rem}
+  .mob-bar-total{font-size:15px;font-weight:600}
   .mob-bar-arrow{font-size:10px;color:var(--mid);transition:transform .3s}
   .mob-bar.open .mob-bar-arrow{transform:rotate(180deg)}
-  .mob-bar-total{font-size:15px;font-weight:600}
   .mob-bar-detail{display:none;padding:0 16px 1rem;max-height:50vh;overflow-y:auto}
   .mob-bar.open .mob-bar-detail{display:block}
   .mob-bar .ck-pay{margin:0 16px 16px;width:calc(100% - 32px)}
@@ -244,11 +244,11 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 <!-- MOBILE BOTTOM BAR -->
 <div class="mob-bar" id="mobBar">
   <div class="mob-bar-collapsed" id="mobBarToggle" onclick="toggleMobSummary()">
-    <div class="mob-bar-left">
-      <span class="mob-bar-label">Resumen del pedido</span>
+    <span class="mob-bar-label">Resumen del pedido</span>
+    <div class="mob-bar-right">
+      <span class="mob-bar-total" id="mobBarTotal">&euro; 0</span>
       <span class="mob-bar-arrow" id="mobBarArrow">&#9650;</span>
     </div>
-    <span class="mob-bar-total" id="mobBarTotal">&euro; 0</span>
   </div>
   <div class="mob-bar-detail" id="mobBarDetail">
     <div id="mobSummaryItems"></div>
