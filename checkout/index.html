@@ -10,420 +10,236 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --black:#0a0a0a;
-  --mid:#888;
-  --light:#c0c0c0;
-  --border:#e5e5e5;
-  --bg:#f8f8f6;
-  --white:#ffffff;
+  --black:#0a0a0a;--mid:#888;--light:#c0c0c0;--border:#e5e5e5;--bg:#f8f8f6;--white:#fff;
   --font:'Open Sans',system-ui,sans-serif;
 }
 html{scroll-behavior:smooth;overflow-x:hidden}
 body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
 p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
-/* ── NAV ── */
-nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 32px;height:80px;
-  background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-}
-.nav-logo{text-decoration:none;display:flex;align-items:center}
-.nav-logo img{height:28px;width:auto;display:block}
-.nav-right{display:flex;align-items:center;gap:1.8rem}
-.nav-links{display:flex;gap:1.8rem;align-items:center}
-.nav-links a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s;position:relative}
-.nav-links a:hover{color:#999}
-.nav-icons{display:flex;gap:1.2rem;align-items:center}
-.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
-.nav-icons a:hover{color:#999}
-.nav-icons svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
-.nav-icons svg:hover{stroke:#999}
-.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
-.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
-.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
-.nav-hamburger.open span:nth-child(2){opacity:0}
-.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+/* ── CHECKOUT NAV (simplified) ── */
+.ck-nav{display:flex;align-items:center;justify-content:center;padding:1.5rem 32px;border-bottom:1px solid var(--border)}
+.ck-nav a{display:flex;align-items:center}
+.ck-nav img{height:24px;width:auto;display:block}
 
-/* ── MEGAMENU ── */
-.mega-trigger{position:relative}
-.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
-.mega-trigger:hover::after{display:block}
-.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
-.megamenu{
-  position:fixed;top:80px;left:0;right:0;z-index:99;width:100%;background:var(--white);padding:32px;
-  display:flex;justify-content:flex-start;gap:180px;
-  opacity:0;visibility:hidden;transform:translateY(-8px);
-  transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;border-top:1px solid var(--border);
-}
-.mega-col{margin-bottom:32px}
-.mega-col-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
-.mega-col a{display:block;font-size:14px;letter-spacing:0.14px;line-height:19.88px;color:#000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px;transition:color .2s}
-.mega-col a:hover{color:#999}
-.mega-imgs{margin-left:auto;display:flex;gap:16px;flex-shrink:0}
-.mega-img{display:flex;flex-direction:column;align-items:center;flex-shrink:0;position:relative}
-.mega-img::before{content:'';position:absolute;top:0;left:0;width:300px;height:300px;background:rgba(0,0,0,0);transition:background .3s;z-index:1;pointer-events:none}
-.mega-img:hover::before{background:rgba(0,0,0,.2)}
-.mega-img img{width:300px;height:300px;object-fit:cover;display:block}
-.mega-img>a:first-child{display:block;line-height:0;border:none;padding:0;margin:0}
-.mega-img a{display:inline-block;margin-top:12px;font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1px solid #000;padding-bottom:3px;transition:color .2s,border-color .2s}
-.mega-img a:hover{color:#999;border-color:#999}
+/* ── LAYOUT ── */
+.ck-wrap{display:grid;grid-template-columns:3fr 2fr;min-height:calc(100vh - 73px)}
+.ck-main{padding:2.5rem 3rem 4rem;max-width:680px;margin-left:auto}
+.ck-side{padding:2.5rem 3rem 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
 
-/* ── MOBILE MENU ── */
-.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:var(--white);padding:1.5rem 2rem;z-index:99;flex-direction:column;gap:0;overflow-y:auto}
-.mobile-menu.open{display:flex}
-.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
-.mobile-menu a:last-child{border-bottom:none}
-.mobile-accordion{border-bottom:1px solid var(--border)}
-.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;font-weight:400}
-.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
-.mobile-accordion.open .mobile-accordion-title::after{content:'\2212'}
-.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
-.mobile-accordion.open .mobile-accordion-body{max-height:800px}
-.mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
-.mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;letter-spacing:0.14px;line-height:19.88px;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+/* ── FORM ELEMENTS ── */
+.ck-section{margin-bottom:2.5rem}
+.ck-section-title{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin-bottom:1.25rem}
+.ck-input{width:100%;padding:.7rem .75rem;font-family:var(--font);font-size:14px;border:1px solid var(--border);outline:none;background:var(--white);transition:border-color .2s;margin-bottom:.75rem}
+.ck-input:focus{border-color:var(--black)}
+.ck-input::placeholder{color:var(--mid)}
+.ck-row{display:grid;grid-template-columns:1fr 1fr;gap:0 .75rem}
+.ck-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 .75rem}
+.ck-row-phone{display:grid;grid-template-columns:80px 1fr;gap:0 .75rem}
 
-/* ── USER ICON ── */
-.user-icon-link{display:flex;align-items:center}
-.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+/* Field validation */
+.fw{position:relative;margin-bottom:.75rem}
+.fw .ck-input{margin-bottom:0}
+.fw-err{display:none;font-size:11px;color:#dc2626;margin-top:.25rem}
+.fw.has-error .ck-input{border-color:#dc2626!important}
+.fw.has-error .fw-err{display:block}
 
-/* ── CHECKOUT ── */
-.checkout{max-width:960px;margin:120px auto 4rem;padding:0 32px;display:grid;grid-template-columns:1fr 380px;gap:3rem;align-items:start}
-.checkout-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:normal;margin-bottom:2rem;grid-column:1/-1}
-.checkout-main{min-width:0}
-.checkout-sidebar{position:sticky;top:120px}
+/* Shipping method cards */
+.ck-methods{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.25rem}
+.ck-method{border:1px solid var(--border);padding:1rem;cursor:pointer;transition:border-color .2s;position:relative}
+.ck-method.selected{border-color:var(--black)}
+.ck-method-radio{position:absolute;top:1rem;right:1rem;width:16px;height:16px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+.ck-method.selected .ck-method-radio::after{content:'';width:8px;height:8px;background:var(--black)}
+.ck-method-title{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.35rem;padding-right:24px}
+.ck-method-desc{font-size:12px;color:var(--mid);line-height:1.5}
+.ck-method-price{font-size:12px;font-weight:600;margin-top:.35rem}
 
-/* Shipping */
-.section-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
-.address-saved{border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem}
-.address-saved p{font-size:13px;line-height:1.6;text-align:left}
-.address-saved-actions{display:flex;gap:1rem;margin-top:.75rem}
-.address-saved-actions button{background:none;border:none;font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;transition:color .2s}
-.address-saved-actions button:hover{color:var(--black)}
-.ship-form input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:.75rem;transition:border-color .2s}
-.ship-form input:focus{border-color:var(--black)}
-.ship-form input::placeholder{color:var(--mid)}
-.ship-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
-.field-wrap{position:relative;margin-bottom:.75rem}
-.field-wrap input{margin-bottom:0}
-.field-error{display:none;font-size:11px;color:#dc2626;margin-top:.25rem}
-.field-wrap.has-error input{border-bottom-color:#dc2626!important}
-.field-wrap.has-error .field-error{display:block}
-.billing-same-label{display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;margin-bottom:1rem}
-.billing-same-label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--black);cursor:pointer}
+/* Billing toggle */
+.ck-check{display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;margin-bottom:1rem}
+.ck-check input[type="checkbox"]{width:16px;height:16px;accent-color:var(--black);cursor:pointer;flex-shrink:0}
 
-/* Summary sidebar */
-.summary-box{border:1px solid var(--border);padding:1.5rem}
-.summary-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
-.summary-item{display:flex;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border)}
-.summary-item:last-of-type{border-bottom:none}
-.summary-thumb{width:64px;height:64px;background:var(--bg);flex-shrink:0;overflow:hidden}
-.summary-thumb img{width:100%;height:100%;object-fit:contain}
-.summary-info{flex:1;min-width:0}
-.summary-name{font-size:13px;font-weight:600;margin-bottom:.15rem}
-.summary-desc{font-size:12px;color:var(--mid);line-height:1.5}
-.summary-price{font-size:13px;white-space:nowrap}
-.summary-total{display:flex;justify-content:space-between;padding:1rem 0 0;margin-top:.5rem;border-top:2px solid var(--black);font-size:14px;font-weight:600}
-.summary-total-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-.btn-pay{display:block;width:100%;padding:1rem;margin-top:1.25rem;background:var(--black);color:var(--white);
-  font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;
-  border:none;cursor:pointer;transition:background .2s;text-align:center}
-.btn-pay:hover{background:#333}
-.btn-pay:disabled{background:var(--mid);cursor:not-allowed}
-.checkout-error{background:#fef2f2;color:#dc2626;padding:.75rem;font-size:13px;margin-top:.75rem;display:none}
-.checkout-empty{text-align:center;color:var(--mid);font-size:14px;padding:3rem 0;grid-column:1/-1}
-.checkout-empty a{color:var(--black);border-bottom:1px solid var(--black);text-decoration:none;padding-bottom:1px}
+/* Pay button */
+.ck-pay{display:block;width:100%;padding:1rem;background:var(--black);color:var(--white);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:background .2s;text-align:center;margin-top:1rem}
+.ck-pay:hover{background:#333}
+.ck-pay:disabled{background:var(--mid);cursor:not-allowed}
+.ck-error{background:#fef2f2;color:#dc2626;padding:.75rem;font-size:13px;margin-top:.75rem;display:none}
 
-/* Google Places dropdown */
+/* ── SIDEBAR SUMMARY ── */
+.sum-title{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin-bottom:1.25rem}
+.sum-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border)}
+.sum-thumb{width:72px;height:72px;background:var(--white);border:1px solid var(--border);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.sum-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.sum-info{flex:1;min-width:0}
+.sum-name{font-size:13px;font-weight:600;margin-bottom:.2rem}
+.sum-desc{font-size:12px;color:var(--mid);line-height:1.5}
+.sum-price{font-size:13px;font-weight:600;white-space:nowrap;align-self:center}
+.sum-line{display:flex;justify-content:space-between;font-size:13px;padding:.4rem 0}
+.sum-line-label{color:var(--mid)}
+.sum-divider{border:none;border-top:1px solid var(--border);margin:1rem 0}
+.sum-total{display:flex;justify-content:space-between;font-size:15px;font-weight:600;padding:.25rem 0}
+.sum-total-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+/* Google Places */
 .places-wrap{position:relative;margin-bottom:.75rem}
-.places-wrap input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;transition:border-color .2s}
-.places-wrap input:focus{border-color:var(--black)}
-.places-wrap input::placeholder{color:var(--mid)}
+.places-wrap .ck-input{margin-bottom:0}
 .places-dd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-top:none;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .places-dd.open{display:block}
-.places-dd-item{padding:.5rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
-.places-dd-item:hover,.places-dd-item.active{background:var(--bg)}
+.places-dd-item{padding:.6rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
+.places-dd-item:hover{background:var(--bg)}
 
-/* ── FOOTER ── */
-footer{
-  background:var(--black);color:#fff;padding:4rem 32px 3rem;
-  display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;
-  grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";
-  font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;
-}
-.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
-.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
-.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
-.footer-col a:hover{color:#999}
-.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.14px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
-.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
-.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px;transition:color .2s,border-color .2s}
-.footer-newsletter button:hover{color:#999;border-color:#999}
-.footer-links{display:block}
-.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
-.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+/* ── EMPTY STATE ── */
+.ck-empty{display:none;text-align:center;color:var(--mid);font-size:14px;padding:6rem 2rem;min-height:60vh}
+.ck-empty a{color:var(--black);border-bottom:1px solid var(--black);text-decoration:none;padding-bottom:1px}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
-  nav{padding:0 16px;height:60px}
-  .nav-logo img{height:20px}
-  .nav-right{display:none}
-  .nav-hamburger{display:flex}
-  .checkout{margin-top:80px;padding:0 16px;grid-template-columns:1fr;gap:2rem}
-  .checkout-sidebar{position:static}
-  .ship-form-row{grid-template-columns:1fr}
-  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
-  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
-  footer img[alt="Curino"]{height:20px!important}
-  .footer-tagline{width:100%;max-width:none}
-  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
-  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
-  .footer-col.open h4::after{content:'\2212'}
-  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
-  .footer-col.open .footer-links{max-height:300px}
-  .footer-col a{padding:.4rem 0}
-  .footer-newsletter h4::after{display:none}
-  .footer-newsletter .footer-links{max-height:none}
-  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
-  .footer-legal{align-items:center;text-align:center}
+  .ck-nav{padding:1rem 16px}
+  .ck-nav img{height:20px}
+  .ck-wrap{grid-template-columns:1fr;min-height:auto}
+  .ck-main{padding:2rem 16px;max-width:none;margin:0}
+  .ck-side{position:static;height:auto;padding:2rem 16px;border-left:none;border-top:1px solid var(--border)}
+  .ck-row,.ck-methods{grid-template-columns:1fr}
+  .ck-row-3{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
-  <div class="nav-right">
-  <div class="nav-links">
-    <div class="mega-trigger">
-      <a href="#">Alta Carpinteria</a>
-      <div class="megamenu">
-        <div class="mega-col">
-          <div class="mega-col-title">Sistemas</div>
-          <a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a>
-        </div>
-        <div class="mega-col">
-          <div class="mega-col-title">Estancias</div>
-          <a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a>
-        </div>
-        <div class="mega-col">
-          <div class="mega-col-title">Productos</div>
-          <a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a>
-        </div>
-        <div class="mega-col">
-          <div class="mega-col-title">Proyectos Integrales</div>
-          <a href="#">Residencial</a><a href="#">Contract</a><a href="#">Couture</a>
-        </div>
-        <div class="mega-imgs">
-          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="/configurador-armarios-vestidores/">Proyecto a medida</a></div>
-          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="/configurador-armarios-vestidores/">Configurador</a></div>
-        </div>
-      </div>
-    </div>
-    <a href="#">Disenadores</a>
-    <a href="#">Lab Work</a>
-    <a href="#">Materiales</a>
-    <a href="#">Estudio</a>
-    <a href="#">Magazine</a>
-    <a href="#">Partners</a>
-    <a href="#">Contacto</a>
-  </div>
-  <div class="nav-icons">
-    <a href="#">ES</a>
-    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <a href="/mi-cuenta/" class="user-icon-link" id="userIconLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
-  </div>
-  </div>
-  <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
-    <span></span><span></span><span></span>
-  </div>
-</nav>
-<div class="mobile-menu" id="mobileMenu">
-  <div class="mobile-accordion">
-    <div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div>
-    <div class="mobile-accordion-body">
-      <div class="mobile-sub-title">Sistemas</div>
-      <a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a>
-      <div class="mobile-sub-title">Estancias</div>
-      <a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a>
-      <div class="mobile-sub-title">Productos</div>
-      <a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a>
-    </div>
-  </div>
-  <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
+<!-- CHECKOUT NAV -->
+<div class="ck-nav">
+  <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
 </div>
 
-<!-- CHECKOUT -->
-<div class="checkout" id="checkoutPage" style="display:none">
-  <h1 class="checkout-title">Checkout</h1>
+<!-- CHECKOUT LAYOUT -->
+<div class="ck-wrap" id="checkoutPage" style="display:none">
 
-  <!-- Left: shipping -->
-  <div class="checkout-main">
-    <div class="section-title">Direccion de envio</div>
+  <!-- LEFT: FORM -->
+  <div class="ck-main">
 
-    <!-- Saved address (pre-filled) -->
-    <div id="savedAddress" style="display:none">
-      <div class="address-saved">
-        <p id="savedAddressText"></p>
-        <div class="address-saved-actions">
-          <button onclick="changeAddress()">Cambiar direccion</button>
+    <!-- Contact -->
+    <div class="ck-section">
+      <div class="ck-section-title">Datos de contacto</div>
+      <div class="fw" data-req="shipEmail"><input type="email" class="ck-input" id="shipEmail" placeholder="Email" autocomplete="email" required><div class="fw-err">* Obligatorio</div></div>
+      <div class="ck-row">
+        <div class="fw" data-req="shipFirstName"><input type="text" class="ck-input" id="shipFirstName" placeholder="Nombre" autocomplete="given-name" required><div class="fw-err">* Obligatorio</div></div>
+        <div class="fw" data-req="shipLastName"><input type="text" class="ck-input" id="shipLastName" placeholder="Apellidos" autocomplete="family-name" required><div class="fw-err">* Obligatorio</div></div>
+      </div>
+      <div class="ck-row-phone">
+        <input type="text" class="ck-input" id="shipPrefix" value="+34" autocomplete="tel-country-code">
+        <div class="fw" data-req="shipPhone"><input type="tel" class="ck-input" id="shipPhone" placeholder="Telefono" autocomplete="tel-national" required><div class="fw-err">* Obligatorio</div></div>
+      </div>
+    </div>
+
+    <!-- Shipping method -->
+    <div class="ck-section">
+      <div class="ck-section-title">Tipo de envio</div>
+      <div class="ck-methods">
+        <div class="ck-method selected" id="methodDomicilio" onclick="selectMethod('domicilio')">
+          <div class="ck-method-radio"></div>
+          <div class="ck-method-title">Envio a domicilio</div>
+          <div class="ck-method-desc">3 — 4 semanas</div>
+          <div class="ck-method-price">Incluido</div>
+        </div>
+        <div class="ck-method" id="methodTaller" onclick="selectMethod('taller')">
+          <div class="ck-method-radio"></div>
+          <div class="ck-method-title">Recogida en taller</div>
+          <div class="ck-method-desc">2 — 3 semanas</div>
+          <div class="ck-method-price">Incluido</div>
         </div>
       </div>
     </div>
 
-    <!-- Address form -->
-    <div class="ship-form" id="shipForm">
-      <div class="field-wrap" data-req="shipName"><input type="text" id="shipName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
-      <div class="places-wrap field-wrap" data-req="shipLine">
-        <input type="text" id="shipLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
+    <!-- Shipping address -->
+    <div class="ck-section" id="sectionAddress">
+      <div class="ck-section-title">Direccion de envio</div>
+      <div class="places-wrap fw" data-req="shipLine">
+        <input type="text" class="ck-input" id="shipLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
         <div class="places-dd" id="shipDD"></div>
-        <div class="field-error">* Obligatorio</div>
+        <div class="fw-err">* Obligatorio</div>
       </div>
-      <input type="text" id="shipLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
-      <input type="text" id="shipCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <div class="field-wrap" data-req="shipNif"><input type="text" id="shipNif" placeholder="DNI / CIF / NIF" required><div class="field-error" id="shipNifError">* Obligatorio</div></div>
-      <div class="ship-form-row">
-        <div class="field-wrap" data-req="shipCity"><input type="text" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
-        <div class="field-wrap" data-req="shipPostal"><input type="text" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
+      <input type="text" class="ck-input" id="shipLine2" placeholder="Piso, puerta, escalera... (opcional)" autocomplete="address-line2">
+      <div class="ck-row">
+        <div class="fw" data-req="shipPostal"><input type="text" class="ck-input" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="fw-err">* Obligatorio</div></div>
+        <div class="fw" data-req="shipCity"><input type="text" class="ck-input" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="fw-err">* Obligatorio</div></div>
       </div>
-      <div class="ship-form-row">
-        <div class="field-wrap" data-req="shipProvince"><input type="text" id="shipProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
-        <input type="text" id="shipCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
+      <div class="ck-row">
+        <div class="fw" data-req="shipProvince"><input type="text" class="ck-input" id="shipProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="fw-err">* Obligatorio</div></div>
+        <input type="text" class="ck-input" id="shipCountry" placeholder="Pais" value="Espana" autocomplete="country-name">
       </div>
-      <input type="tel" id="shipPhone" placeholder="Telefono" autocomplete="tel" required>
+      <input type="text" class="ck-input" id="shipCompany" placeholder="Empresa (opcional)" autocomplete="organization">
+      <div class="fw" data-req="shipNif"><input type="text" class="ck-input" id="shipNif" placeholder="DNI / CIF / NIF" required><div class="fw-err" id="shipNifError">* Obligatorio</div></div>
     </div>
 
     <!-- Billing address -->
-    <div class="section-title" style="margin-top:2rem">Direccion de facturacion</div>
-    <label class="billing-same-label">
-      <input type="checkbox" id="billingSame" checked onchange="toggleBilling()">
-      <span>Misma que la direccion de envio</span>
-    </label>
-    <div class="ship-form" id="billForm" style="display:none">
-      <div class="field-wrap" data-req="billName"><input type="text" id="billName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
-      <div class="places-wrap field-wrap" data-req="billLine">
-        <input type="text" id="billLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
-        <div class="places-dd" id="billDD"></div>
-        <div class="field-error">* Obligatorio</div>
+    <div class="ck-section">
+      <div class="ck-section-title">Direccion de facturacion</div>
+      <label class="ck-check">
+        <input type="checkbox" id="billingSame" checked onchange="toggleBilling()">
+        <span>Misma que la direccion de envio</span>
+      </label>
+      <div id="billForm" style="display:none">
+        <div class="fw" data-req="billFirstName"><input type="text" class="ck-input" id="billFirstName" placeholder="Nombre" required><div class="fw-err">* Obligatorio</div></div>
+        <div class="fw" data-req="billLastName"><input type="text" class="ck-input" id="billLastName" placeholder="Apellidos" required><div class="fw-err">* Obligatorio</div></div>
+        <div class="places-wrap fw" data-req="billLine">
+          <input type="text" class="ck-input" id="billLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
+          <div class="places-dd" id="billDD"></div>
+          <div class="fw-err">* Obligatorio</div>
+        </div>
+        <input type="text" class="ck-input" id="billLine2" placeholder="Piso, puerta, escalera... (opcional)">
+        <div class="ck-row">
+          <div class="fw" data-req="billPostal"><input type="text" class="ck-input" id="billPostal" placeholder="Codigo postal" required><div class="fw-err">* Obligatorio</div></div>
+          <div class="fw" data-req="billCity"><input type="text" class="ck-input" id="billCity" placeholder="Ciudad" required><div class="fw-err">* Obligatorio</div></div>
+        </div>
+        <div class="ck-row">
+          <div class="fw" data-req="billProvince"><input type="text" class="ck-input" id="billProvince" placeholder="Provincia" required><div class="fw-err">* Obligatorio</div></div>
+          <input type="text" class="ck-input" id="billCountry" placeholder="Pais" value="Espana">
+        </div>
+        <div class="fw" data-req="billNif"><input type="text" class="ck-input" id="billNif" placeholder="DNI / CIF / NIF" required><div class="fw-err" id="billNifError">* Obligatorio</div></div>
       </div>
-      <input type="text" id="billLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
-      <input type="text" id="billCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <div class="field-wrap" data-req="billNif"><input type="text" id="billNif" placeholder="DNI / CIF / NIF" required><div class="field-error" id="billNifError">* Obligatorio</div></div>
-      <div class="ship-form-row">
-        <div class="field-wrap" data-req="billCity"><input type="text" id="billCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
-        <div class="field-wrap" data-req="billPostal"><input type="text" id="billPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
-      </div>
-      <div class="ship-form-row">
-        <div class="field-wrap" data-req="billProvince"><input type="text" id="billProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
-        <input type="text" id="billCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
-      </div>
-      <input type="tel" id="billPhone" placeholder="Telefono" autocomplete="tel" required>
     </div>
+
+    <button class="ck-pay" id="btnPay" onclick="handlePay()">Ir al pago</button>
+    <div class="ck-error" id="checkoutError"></div>
   </div>
 
-  <!-- Right: summary -->
-  <div class="checkout-sidebar">
-    <div class="summary-box">
-      <div class="summary-title">Resumen del pedido</div>
-      <div id="summaryItems"></div>
-      <div class="summary-total">
-        <span class="summary-total-label">Total</span>
-        <span id="summaryTotal">&euro; 0</span>
-      </div>
-      <button class="btn-pay" id="btnPay" onclick="handlePay()">Ir al pago</button>
-      <div class="checkout-error" id="checkoutError"></div>
-    </div>
+  <!-- RIGHT: SUMMARY -->
+  <div class="ck-side">
+    <div class="sum-title">Resumen del pedido</div>
+    <div id="summaryItems"></div>
+    <hr class="sum-divider">
+    <div class="sum-line"><span class="sum-line-label">Subtotal</span><span id="sumSubtotal">&euro; 0</span></div>
+    <div class="sum-line"><span class="sum-line-label">Envio</span><span>Incluido</span></div>
+    <hr class="sum-divider">
+    <div class="sum-total"><span class="sum-total-label">Total</span><span id="summaryTotal">&euro; 0</span></div>
   </div>
 </div>
 
-<!-- Empty cart state -->
-<div class="checkout" id="checkoutEmpty" style="display:none">
-  <div class="checkout-empty">
-    Tu carrito esta vacio.<br><br>
-    <a href="/configurador-armarios-vestidores/">Ir al configurador</a>
-  </div>
-</div>
-
-<!-- FOOTER -->
-<footer>
-  <div style="grid-area:logo">
-    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
-    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinteria a medida — armarios, vestidores, cocinas y puertas con garantia de 25 anos.</p>
-  </div>
-  <div class="footer-col" style="grid-area:alta">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</h4>
-    <div class="footer-links">
-      <a href="/configurador-armarios-vestidores/">Configurador de armarios</a>
-      <a href="#">Proyecto a medida en Barcelona</a><a href="#">Proyecto a medida en Madrid</a>
-      <a href="#">Proyecto a medida en Valencia</a><a href="#">Proyecto a medida en Marbella</a><a href="#">Proyecto a medida en Bilbao</a>
-    </div>
-  </div>
-  <div class="footer-col" style="grid-area:corp">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4>
-    <div class="footer-links">
-      <a href="#">Sobre nosotros</a><a href="#">I+D e Innovacion</a><a href="#">Seguridad en Curino</a><a href="#">Etica Corporativa</a><a href="#">Proveedores</a>
-    </div>
-  </div>
-  <div class="footer-col" style="grid-area:empleo">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4>
-    <div class="footer-links"><a href="#">Unete a Curino</a><a href="#">Curino Partners</a></div>
-  </div>
-  <div class="footer-col" style="grid-area:prensa">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4>
-    <div class="footer-links"><a href="#">Magazine</a><a href="#">Contacto Prensa</a></div>
-  </div>
-  <div class="footer-col" style="grid-area:contacto">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4>
-    <div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div>
-  </div>
-  <div class="footer-col footer-newsletter" style="grid-area:newsletter">
-    <h4>Newsletter</h4>
-    <div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div>
-  </div>
-</footer>
-<div class="footer-bottom">
-  <span>&copy; 2026 Curino &middot; Mueble a medida &middot; Espana &middot; Europa &middot; EEUU</span>
-  <div class="footer-legal">
-    <span>Sistema & Curino, S.L.U.</span>
-    <span>Terminos y Condiciones | Politica de Privacidad | Politica de Cookies</span>
-  </div>
-  <span>casacurino.com</span>
+<!-- EMPTY STATE -->
+<div class="ck-empty" id="checkoutEmpty">
+  Tu carrito esta vacio.<br><br>
+  <a href="/configurador-armarios-vestidores/">Ir al configurador</a>
 </div>
 
 <script>
-// ── MOBILE MENU ──
-function toggleMenu(){
-  document.getElementById('mobileMenu').classList.toggle('open');
-  document.getElementById('hamburger').classList.toggle('open');
-}
-
-// ── CART (read-only for summary) ──
 var _cart=JSON.parse(localStorage.getItem('curino_cart')||'[]');
+var _supabase=null,_currentUser=null;
+var _shipMethod='domicilio';
 
 // ── AUTH + INIT ──
-var _supabase=null,_currentUser=null;
-
 (async function(){
   try{
     var r=await fetch('/api/config',{redirect:'follow'});
     var c=await r.json();
     if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
-      window.location.href='/login/?redirect=/checkout/';
-      return;
+      window.location.href='/login/?redirect=/checkout/';return;
     }
     _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
     var s=await _supabase.auth.getSession();
     if(!s.data.session){
-      window.location.href='/login/?redirect=/checkout/';
-      return;
+      window.location.href='/login/?redirect=/checkout/';return;
     }
     _currentUser=s.data.session.user;
-    document.getElementById('userIconLink').href='/mi-cuenta/';
-
     if(c.googleMapsApiKey) loadGoogleMaps(c.googleMapsApiKey);
-
     initCheckout();
   }catch(e){
     window.location.href='/login/?redirect=/checkout/';
@@ -431,15 +247,35 @@ var _supabase=null,_currentUser=null;
 })();
 
 function initCheckout(){
-  // Empty cart?
-  if(_cart.length===0){
-    document.getElementById('checkoutEmpty').style.display='grid';
-    return;
-  }
-
+  if(_cart.length===0){document.getElementById('checkoutEmpty').style.display='block';return;}
   document.getElementById('checkoutPage').style.display='grid';
   renderSummary();
-  loadSavedAddress();
+  prefillContact();
+  prefillAddress();
+}
+
+// ── PREFILL ──
+function prefillContact(){
+  var meta=_currentUser.user_metadata||{};
+  var full=meta.full_name||meta.name||'';
+  var parts=full.split(' ');
+  if(parts.length>0) document.getElementById('shipFirstName').value=parts[0];
+  if(parts.length>1) document.getElementById('shipLastName').value=parts.slice(1).join(' ');
+  document.getElementById('shipEmail').value=_currentUser.email||'';
+}
+
+function prefillAddress(){
+  var addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
+  if(addresses.length===0) return;
+  var a=addresses[0];
+  if(a.line) document.getElementById('shipLine').value=a.line;
+  if(a.line2) document.getElementById('shipLine2').value=a.line2;
+  if(a.city) document.getElementById('shipCity').value=a.city;
+  if(a.postal) document.getElementById('shipPostal').value=a.postal;
+  if(a.province) document.getElementById('shipProvince').value=a.province;
+  if(a.company) document.getElementById('shipCompany').value=a.company;
+  if(a.nif) document.getElementById('shipNif').value=a.nif;
+  if(a.phone) document.getElementById('shipPhone').value=a.phone;
 }
 
 // ── SUMMARY ──
@@ -450,196 +286,153 @@ function renderSummary(){
   _cart.forEach(function(item){
     total+=item.precio;
     var div=document.createElement('div');
-    div.className='summary-item';
-    div.innerHTML='<div class="summary-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
-      '<div class="summary-info"><div class="summary-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
-      '<div class="summary-desc">'+item.material+' \u00B7 '+item.puertas+'</div></div>'+
-      '<div class="summary-price">\u20AC '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div>';
+    div.className='sum-item';
+    div.innerHTML='<div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
+      '<div class="sum-info"><div class="sum-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
+      '<div class="sum-desc">'+item.material+' \u00B7 '+item.puertas+'</div></div>'+
+      '<div class="sum-price">\u20AC '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div>';
     container.appendChild(div);
   });
-  document.getElementById('summaryTotal').textContent='\u20AC '+new Intl.NumberFormat('es-ES').format(total);
+  var fmt='\u20AC '+new Intl.NumberFormat('es-ES').format(total);
+  document.getElementById('sumSubtotal').textContent=fmt;
+  document.getElementById('summaryTotal').textContent=fmt;
 }
 
-// ── SAVED ADDRESS ──
-function loadSavedAddress(){
-  var addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
-  if(addresses.length===0) return;
-
-  var addr=addresses[0]; // use first saved address
-  var lines=addr.line+(addr.line2?' '+addr.line2:'');
-  document.getElementById('savedAddressText').innerHTML=
-    '<strong>'+addr.name+'</strong>'+(addr.company?' &middot; '+addr.company:'')+'<br>'+
-    lines+'<br>'+addr.postal+' '+addr.city+', '+addr.province+'<br>'+
-    addr.country+(addr.nif?' &middot; '+addr.nif:'')+(addr.phone?'<br>'+addr.phone:'');
-
-  // Pre-fill hidden form
-  document.getElementById('shipName').value=addr.name;
-  document.getElementById('shipLine').value=addr.line;
-  document.getElementById('shipLine2').value=addr.line2||'';
-  document.getElementById('shipCompany').value=addr.company||'';
-  document.getElementById('shipNif').value=addr.nif||'';
-  document.getElementById('shipCity').value=addr.city;
-  document.getElementById('shipPostal').value=addr.postal;
-  document.getElementById('shipProvince').value=addr.province;
-  document.getElementById('shipCountry').value=addr.country;
-  document.getElementById('shipPhone').value=addr.phone||'';
-
-  document.getElementById('savedAddress').style.display='block';
-  document.getElementById('shipForm').style.display='none';
+// ── SHIPPING METHOD ──
+function selectMethod(m){
+  _shipMethod=m;
+  document.getElementById('methodDomicilio').classList.toggle('selected',m==='domicilio');
+  document.getElementById('methodTaller').classList.toggle('selected',m==='taller');
+  document.getElementById('sectionAddress').style.display=m==='domicilio'?'block':'none';
 }
 
-function changeAddress(){
-  document.getElementById('savedAddress').style.display='none';
-  document.getElementById('shipForm').style.display='block';
-}
-
-// ── GET SHIPPING DATA ──
-function getShippingAddress(){
-  return{
-    name:document.getElementById('shipName').value.trim(),
-    line:document.getElementById('shipLine').value.trim(),
-    line2:document.getElementById('shipLine2').value.trim(),
-    company:document.getElementById('shipCompany').value.trim(),
-    nif:document.getElementById('shipNif').value.trim(),
-    city:document.getElementById('shipCity').value.trim(),
-    postal:document.getElementById('shipPostal').value.trim(),
-    province:document.getElementById('shipProvince').value.trim(),
-    country:document.getElementById('shipCountry').value.trim(),
-    phone:document.getElementById('shipPhone').value.trim()
-  };
-}
-
-function getBillingAddress(){
-  if(document.getElementById('billingSame').checked) return null;
-  return{
-    name:document.getElementById('billName').value.trim(),
-    line:document.getElementById('billLine').value.trim(),
-    line2:document.getElementById('billLine2').value.trim(),
-    company:document.getElementById('billCompany').value.trim(),
-    nif:document.getElementById('billNif').value.trim(),
-    city:document.getElementById('billCity').value.trim(),
-    postal:document.getElementById('billPostal').value.trim(),
-    province:document.getElementById('billProvince').value.trim(),
-    country:document.getElementById('billCountry').value.trim(),
-    phone:document.getElementById('billPhone').value.trim()
-  };
-}
-
-function validateAddress(addr){
-  return addr.name&&addr.line&&addr.nif&&addr.city&&addr.postal&&addr.province&&addr.country&&addr.phone;
-}
-
+// ── BILLING ──
 function toggleBilling(){
   document.getElementById('billForm').style.display=document.getElementById('billingSame').checked?'none':'block';
 }
 
-function validateFields(prefix,addr){
-  var checks=[
-    {id:prefix+'Name',val:addr.name},
-    {id:prefix+'Line',val:addr.line},
-    {id:prefix+'Nif',val:addr.nif},
-    {id:prefix+'City',val:addr.city},
-    {id:prefix+'Postal',val:addr.postal},
-    {id:prefix+'Province',val:addr.province}
-  ];
+// ── COLLECT DATA ──
+function getShippingData(){
+  return{
+    email:document.getElementById('shipEmail').value.trim(),
+    firstName:document.getElementById('shipFirstName').value.trim(),
+    lastName:document.getElementById('shipLastName').value.trim(),
+    phone:document.getElementById('shipPrefix').value.trim()+' '+document.getElementById('shipPhone').value.trim(),
+    line:document.getElementById('shipLine').value.trim(),
+    line2:document.getElementById('shipLine2').value.trim(),
+    postal:document.getElementById('shipPostal').value.trim(),
+    city:document.getElementById('shipCity').value.trim(),
+    province:document.getElementById('shipProvince').value.trim(),
+    country:document.getElementById('shipCountry').value.trim(),
+    company:document.getElementById('shipCompany').value.trim(),
+    nif:document.getElementById('shipNif').value.trim()
+  };
+}
+
+function getBillingData(){
+  if(document.getElementById('billingSame').checked) return null;
+  return{
+    firstName:document.getElementById('billFirstName').value.trim(),
+    lastName:document.getElementById('billLastName').value.trim(),
+    line:document.getElementById('billLine').value.trim(),
+    line2:document.getElementById('billLine2').value.trim(),
+    postal:document.getElementById('billPostal').value.trim(),
+    city:document.getElementById('billCity').value.trim(),
+    province:document.getElementById('billProvince').value.trim(),
+    country:document.getElementById('billCountry').value.trim(),
+    nif:document.getElementById('billNif').value.trim()
+  };
+}
+
+// ── VALIDATION ──
+function validateFields(checks){
+  document.querySelectorAll('.fw').forEach(function(w){w.classList.remove('has-error');});
   var first=null;
   checks.forEach(function(f){
     if(!f.val){
-      var wrap=document.querySelector('.field-wrap[data-req="'+f.id+'"]');
+      var wrap=document.querySelector('.fw[data-req="'+f.id+'"]');
       if(wrap){wrap.classList.add('has-error');if(!first) first=wrap;}
     }
   });
   return first;
 }
 
-// ── NIF/NIE/CIF VALIDATION ──
 function validateNIF(raw){
   if(!raw) return false;
   var v=raw.replace(/[-\s.]/g,'').toUpperCase();
-  if(/^\d{8}[A-Z]$/.test(v)){
-    return v[8]==='TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(v.substring(0,8),10)%23];
-  }
-  if(/^[XYZ]\d{7}[A-Z]$/.test(v)){
-    var n=v.replace('X','0').replace('Y','1').replace('Z','2');
-    return v[8]==='TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(n.substring(0,8),10)%23];
-  }
+  if(/^\d{8}[A-Z]$/.test(v)) return v[8]==='TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(v.substring(0,8),10)%23];
+  if(/^[XYZ]\d{7}[A-Z]$/.test(v)){var n=v.replace('X','0').replace('Y','1').replace('Z','2');return v[8]==='TRWAGMYFPDXBNJZSQVHLCKE'[parseInt(n.substring(0,8),10)%23];}
   if(/^[ABCDEFGHJKLMNPQRSUVW]\d{7}[\dA-J]$/.test(v)){
-    var digits=v.substring(1,8);
-    var sumA=0,sumB=0;
-    for(var i=0;i<7;i++){
-      var d=parseInt(digits[i],10);
-      if(i%2===0){var x=d*2;sumB+=x>9?x-9:x;}
-      else sumA+=d;
-    }
-    var c=(10-(sumA+sumB)%10)%10;
-    var control=v[8];
-    if(/\d/.test(control)) return parseInt(control,10)===c;
-    return control===String.fromCharCode(65+c);
+    var digits=v.substring(1,8),sumA=0,sumB=0;
+    for(var i=0;i<7;i++){var d=parseInt(digits[i],10);if(i%2===0){var x=d*2;sumB+=x>9?x-9:x;}else sumA+=d;}
+    var c=(10-(sumA+sumB)%10)%10,ctrl=v[8];
+    return /\d/.test(ctrl)?parseInt(ctrl,10)===c:ctrl===String.fromCharCode(65+c);
   }
   return false;
 }
 
 function checkNifField(inputId,errorId){
-  var input=document.getElementById(inputId);
-  var wrap=input.closest('.field-wrap');
-  var err=document.getElementById(errorId);
+  var input=document.getElementById(inputId),wrap=input.closest('.fw'),err=document.getElementById(errorId);
   var val=input.value.trim();
   if(!val){wrap.classList.remove('has-error');return true;}
-  if(!validateNIF(val)){
-    err.textContent='* Documento no valido';
-    wrap.classList.add('has-error');
-    return false;
-  }
-  wrap.classList.remove('has-error');
-  err.textContent='* Obligatorio';
-  return true;
+  if(!validateNIF(val)){err.textContent='* Documento no valido';wrap.classList.add('has-error');return false;}
+  wrap.classList.remove('has-error');err.textContent='* Obligatorio';return true;
 }
 
-// Clear field error on input
-document.querySelectorAll('.field-wrap[data-req] input').forEach(function(inp){
-  inp.addEventListener('input',function(){
-    var wrap=inp.closest('.field-wrap');
-    if(wrap) wrap.classList.remove('has-error');
-  });
+// Clear errors on input
+document.querySelectorAll('.fw[data-req] input').forEach(function(inp){
+  inp.addEventListener('input',function(){var w=inp.closest('.fw');if(w) w.classList.remove('has-error');});
 });
-
-// NIF blur validation
 document.getElementById('shipNif').addEventListener('blur',function(){checkNifField('shipNif','shipNifError');});
 document.getElementById('billNif').addEventListener('blur',function(){checkNifField('billNif','billNifError');});
 
 // ── PAY ──
 async function handlePay(){
-  var addr=getShippingAddress();
+  var d=getShippingData();
   var errEl=document.getElementById('checkoutError');
   errEl.style.display='none';
 
-  // Clear all errors
-  document.querySelectorAll('.field-wrap').forEach(function(w){w.classList.remove('has-error');});
+  // Validate contact
+  var checks=[
+    {id:'shipEmail',val:d.email},
+    {id:'shipFirstName',val:d.firstName},
+    {id:'shipLastName',val:d.lastName},
+    {id:'shipPhone',val:d.phone.replace(/\+\d+\s*/,'')}
+  ];
+  // Validate address if domicilio
+  if(_shipMethod==='domicilio'){
+    checks.push({id:'shipLine',val:d.line},{id:'shipPostal',val:d.postal},{id:'shipCity',val:d.city},{id:'shipProvince',val:d.province},{id:'shipNif',val:d.nif});
+  }
+  var first=validateFields(checks);
+  if(first){first.scrollIntoView({behavior:'smooth',block:'center'});return;}
 
-  if(document.getElementById('shipForm').style.display==='none') changeAddress();
-  var shipErrors=validateFields('ship',addr);
-  if(shipErrors){shipErrors.scrollIntoView({behavior:'smooth',block:'center'});return;}
-  if(addr.nif&&!checkNifField('shipNif','shipNifError')){
-    document.querySelector('.field-wrap[data-req="shipNif"]').scrollIntoView({behavior:'smooth',block:'center'});return;
+  if(_shipMethod==='domicilio'&&d.nif&&!checkNifField('shipNif','shipNifError')){
+    document.querySelector('.fw[data-req="shipNif"]').scrollIntoView({behavior:'smooth',block:'center'});return;
   }
 
-  var billing=getBillingAddress();
+  // Validate billing
+  var billing=getBillingData();
   if(billing){
-    var billErrors=validateFields('bill',billing);
-    if(billErrors){billErrors.scrollIntoView({behavior:'smooth',block:'center'});return;}
+    var bChecks=[
+      {id:'billFirstName',val:billing.firstName},{id:'billLastName',val:billing.lastName},
+      {id:'billLine',val:billing.line},{id:'billPostal',val:billing.postal},
+      {id:'billCity',val:billing.city},{id:'billProvince',val:billing.province},
+      {id:'billNif',val:billing.nif}
+    ];
+    var bFirst=validateFields(bChecks);
+    if(bFirst){bFirst.scrollIntoView({behavior:'smooth',block:'center'});return;}
     if(billing.nif&&!checkNifField('billNif','billNifError')){
-      document.querySelector('.field-wrap[data-req="billNif"]').scrollIntoView({behavior:'smooth',block:'center'});return;
+      document.querySelector('.fw[data-req="billNif"]').scrollIntoView({behavior:'smooth',block:'center'});return;
     }
   }
 
   var btn=document.getElementById('btnPay');
-  btn.disabled=true;
-  btn.textContent='Procesando...';
+  btn.disabled=true;btn.textContent='Procesando...';
 
   var total=_cart.reduce(function(s,i){return s+i.precio},0);
   var desc=_cart.map(function(i){return i.ancho+'\u00D7'+i.alto+'\u00D7'+i.fondo+'cm '+i.material}).join(' + ');
-  var shipFull=addr.line+(addr.line2?' '+addr.line2:'');
-  var billAddr=billing||addr;
+  var shipFull=d.line+(d.line2?' '+d.line2:'');
+  var billAddr=billing||d;
   var billFull=billAddr.line+(billAddr.line2?' '+billAddr.line2:'');
 
   try{
@@ -647,63 +440,44 @@ async function handlePay(){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        ancho:_cart[0].ancho,
-        alto:_cart[0].alto,
-        fondo:_cart[0].fondo,
-        material:desc,
-        interior:_cart.length+' armario(s)',
+        ancho:_cart[0].ancho,alto:_cart[0].alto,fondo:_cart[0].fondo,
+        material:desc,interior:_cart.length+' armario(s)',
         puertas:_cart.map(function(i){return i.puertas}).join(', '),
-        precio:total,
-        user_id:_currentUser?_currentUser.id:'',
-        shipping_name:addr.name,
-        shipping_line:shipFull,
-        shipping_city:addr.city,
-        shipping_postal:addr.postal,
-        shipping_province:addr.province,
-        shipping_country:addr.country,
-        shipping_phone:addr.phone,
-        shipping_nif:addr.nif,
-        billing_name:billAddr.name,
-        billing_line:billFull,
-        billing_city:billAddr.city,
-        billing_postal:billAddr.postal,
-        billing_nif:billAddr.nif
+        precio:total,user_id:_currentUser?_currentUser.id:'',
+        shipping_name:d.firstName+' '+d.lastName,
+        shipping_line:shipFull,shipping_city:d.city,
+        shipping_postal:d.postal,shipping_province:d.province,
+        shipping_country:d.country,shipping_phone:d.phone,shipping_nif:d.nif,
+        billing_name:(billing?billing.firstName+' '+billing.lastName:d.firstName+' '+d.lastName),
+        billing_line:billFull,billing_city:billAddr.city,
+        billing_postal:billAddr.postal,billing_nif:billAddr.nif
       })
     });
     var data=await res.json();
     if(data.url){
-      // Save address for future use
+      // Save address
+      var addr={name:d.firstName+' '+d.lastName,line:d.line,line2:d.line2,city:d.city,postal:d.postal,province:d.province,country:d.country,company:d.company,nif:d.nif,phone:document.getElementById('shipPhone').value.trim()};
       var addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
       var exists=addresses.some(function(a){return a.line===addr.line&&a.postal===addr.postal});
-      if(!exists){
-        addresses.unshift(addr);
-        localStorage.setItem('curino_addresses',JSON.stringify(addresses));
-      }
+      if(!exists){addresses.unshift(addr);localStorage.setItem('curino_addresses',JSON.stringify(addresses));}
       window.location.href=data.url;
     }else{
       errEl.textContent=data.error||'No se pudo crear la sesion de pago';
-      errEl.style.display='block';
-      btn.disabled=false;
-      btn.textContent='Ir al pago';
+      errEl.style.display='block';btn.disabled=false;btn.textContent='Ir al pago';
     }
   }catch(err){
     errEl.textContent='Error de conexion. Intentalo de nuevo.';
-    errEl.style.display='block';
-    btn.disabled=false;
-    btn.textContent='Ir al pago';
+    errEl.style.display='block';btn.disabled=false;btn.textContent='Ir al pago';
   }
 }
 
-// ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
+// ── GOOGLE PLACES ──
 function loadGoogleMaps(key){
   var s=document.createElement('script');
   s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=places&language=es&callback=initGooglePlaces';
-  s.async=true;
-  s.defer=true;
-  document.head.appendChild(s);
+  s.async=true;s.defer=true;document.head.appendChild(s);
 }
 
-// ── GOOGLE PLACES (AutocompleteService + PlacesService) ──
 window.initGooglePlaces=function(){
   initPlacesInput('shipLine','shipDD','shipCity','shipPostal','shipProvince','shipCountry');
   initPlacesInput('billLine','billDD','billCity','billPostal','billProvince','billCountry');
@@ -713,31 +487,22 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
   var input=document.getElementById(inputId);
   var dd=document.getElementById(ddId);
   if(!input||!dd) return;
-
   var acService=new google.maps.places.AutocompleteService();
-  var placesDiv=document.createElement('div');
-  document.body.appendChild(placesDiv);
+  var placesDiv=document.createElement('div');document.body.appendChild(placesDiv);
   var placesService=new google.maps.places.PlacesService(placesDiv);
-  var debounce=null;
-  var predictions=[];
+  var debounce=null,predictions=[];
 
   input.addEventListener('input',function(){
     clearTimeout(debounce);
     var q=input.value.trim();
     if(q.length<3){dd.innerHTML='';dd.classList.remove('open');return;}
     debounce=setTimeout(function(){
-      acService.getPlacePredictions({
-        input:q,
-        componentRestrictions:{country:'es'},
-        types:['address']
-      },function(results,status){
+      acService.getPlacePredictions({input:q,componentRestrictions:{country:'es'},types:['address']},function(results,status){
         dd.innerHTML='';
         if(status!=='OK'||!results){dd.classList.remove('open');return;}
         predictions=results;
         results.forEach(function(p,i){
-          var item=document.createElement('div');
-          item.className='places-dd-item';
-          item.textContent=p.description;
+          var item=document.createElement('div');item.className='places-dd-item';item.textContent=p.description;
           item.addEventListener('mousedown',function(e){e.preventDefault();selectPrediction(i);});
           dd.appendChild(item);
         });
@@ -751,22 +516,14 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
 
   function extractExtra(typed,street,number){
     var norm=typed.toLowerCase().replace(/[,.\s]+/g,' ').trim();
-    if(number){
-      var numIdx=norm.indexOf(number.toLowerCase());
-      if(numIdx!==-1){
-        var after=typed.substring(numIdx+number.length).replace(/^[\s,]+/,'');
-        return after;
-      }
-    }
+    if(number){var numIdx=norm.indexOf(number.toLowerCase());if(numIdx!==-1) return typed.substring(numIdx+number.length).replace(/^[\s,]+/,'');}
     return '';
   }
 
   function selectPrediction(idx){
-    var p=predictions[idx];
-    if(!p) return;
+    var p=predictions[idx];if(!p) return;
     dd.classList.remove('open');
     var userText=input.value;
-
     placesService.getDetails({placeId:p.place_id,fields:['address_components']},function(place,status){
       if(status!=='OK'||!place||!place.address_components) return;
       var street='',number='',city='',postal='',province='';
