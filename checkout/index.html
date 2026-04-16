@@ -389,7 +389,22 @@ function renderSummary(){
     }else if(item.puertas==='Sin puertas'){
       details+='Sin puertas<br>';
     }
-    if(item.interior) details+='Interior: '+item.interior+'<br>';
+    // Module detail
+    if(item.moduleDetail&&item.moduleDetail.length){
+      item.moduleDetail.forEach(function(md,mi){
+        var line='M\u00F3dulo '+(mi+1)+' ('+md.width+'cm): ';
+        if(md.puerta){
+          line+=md.puerta;
+        }else{
+          line+=md.hojas+' hoja'+(md.hojas>1?'s':'');
+          if(md.apertura) line+=' \u00B7 Apertura '+md.apertura;
+        }
+        if(md.interior) line+=' \u00B7 '+md.interior;
+        details+=line+'<br>';
+      });
+    }else if(item.interior){
+      details+='Interior: '+item.interior+'<br>';
+    }
     _itemsHtml+='<div class="sum-item"><div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
       '<div class="sum-info"><div class="sum-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
       '<div class="sum-desc">'+details+'</div></div>'+

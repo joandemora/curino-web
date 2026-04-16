@@ -2241,27 +2241,52 @@ function addToCart(){
     }
   }
 
-  // Capture canvas thumbnail
-  var thumb = '';
-  var cImg = document.getElementById('compositeImg');
-  if(cImg && cImg.src) thumb = cImg.src;
+  // Per-module detail
+  var moduleDetail = ST.modules.map(function(m, i){
+    var pm = _P3.mods[i] || {con:true, ap:'der'};
+    var h = p3Hojas(m.width);
+    var intName = (INTERIORS.find(function(x){return x.id===m.interiorId})||{}).name || m.interiorId;
+    var d = {width: m.width, interior: intName};
+    if(_P3.gama === 'sinpuertas'){
+      d.puerta = 'Sin puerta';
+    } else if(pm.con){
+      d.hojas = h.n;
+      if(h.n === 1) d.apertura = pm.ap === 'izq' ? 'Izquierda' : 'Derecha';
+    } else {
+      d.puerta = 'Sin puerta';
+    }
+    return d;
+  });
 
-  var item = {
-    id: Date.now(),
-    ancho: ST.w,
-    alto: ST.h,
-    fondo: ST.d,
-    material: mat.name,
-    interior: mods,
-    puertas: puertaInfo,
-    doorDetail: doorDetail,
-    precio: calcPrice(),
-    thumb: thumb
+  // Capture open-doors thumbnail
+  var prevView = _P3.view;
+  var thumbReady = function(dataUrl){
+    var item = {
+      id: Date.now(),
+      ancho: ST.w, alto: ST.h, fondo: ST.d,
+      material: mat.name, interior: mods, puertas: puertaInfo,
+      doorDetail: doorDetail, moduleDetail: moduleDetail,
+      precio: calcPrice(), thumb: dataUrl
+    };
+    _cart.push(item);
+    saveCart();
+    // Restore previous view
+    if(prevView !== 'open') p3SetView(prevView);
+    toggleCart();
   };
 
-  _cart.push(item);
-  saveCart();
-  toggleCart();
+  // Switch to open view, wait for render, capture
+  if(_P3.gama !== 'sinpuertas' && prevView !== 'open'){
+    _P3.view = 'open';
+    buildComposite();
+    setTimeout(function(){
+      var cImg = document.getElementById('compositeImg');
+      thumbReady(cImg && cImg.src ? cImg.src : '');
+    }, 400);
+  } else {
+    var cImg = document.getElementById('compositeImg');
+    thumbReady(cImg && cImg.src ? cImg.src : '');
+  }
 }
 
 function removeFromCart(id){
