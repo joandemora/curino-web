@@ -148,7 +148,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .mob-bar-total{font-size:15px;font-weight:600}
   .mob-bar-arrow{color:var(--mid);transition:transform .3s;flex-shrink:0}
   .mob-bar.open .mob-bar-arrow{transform:rotate(180deg)}
-  .mob-bar-detail{display:none;padding:0 16px 1rem;max-height:calc(100vh - 160px);overflow-y:auto}
+  .mob-bar-detail{display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--white);padding:1rem 16px;max-height:calc(100vh - 160px);overflow-y:auto;border-top:1px solid var(--border);box-shadow:0 -4px 12px rgba(0,0,0,.06)}
   .mob-bar.open .mob-bar-detail{display:block}
   .mob-bar .ck-pay{margin:0 16px 16px;width:calc(100% - 32px)}
   .mob-bar .sum-item{display:flex;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
