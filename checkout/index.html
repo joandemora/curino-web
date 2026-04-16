@@ -88,6 +88,13 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 .places-dd-item{padding:.6rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
 .places-dd-item:hover{background:var(--bg)}
 
+/* ── BREADCRUMB HEADER ── */
+.ck-header{display:flex;align-items:center;gap:.75rem;padding:1rem 64px;border-bottom:1px solid var(--border)}
+.ck-header a{display:flex;align-items:center;text-decoration:none;color:var(--black);gap:.75rem;transition:color .2s}
+.ck-header a:hover{color:var(--mid)}
+.ck-header svg{flex-shrink:0}
+.ck-header span{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+
 /* ── EMPTY STATE ── */
 .ck-empty{display:none;text-align:center;color:var(--mid);font-size:14px;padding:6rem 2rem;min-height:60vh}
 .ck-empty a{color:var(--black);border-bottom:1px solid var(--black);text-decoration:none;padding-bottom:1px}
@@ -99,6 +106,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
   .ck-nav{padding:0 16px;height:52px}
+  .ck-header{padding:1rem 16px}
   .ck-nav img{height:18px}
   .ck-outer{background:var(--white)}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
@@ -133,6 +141,14 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 <!-- CHECKOUT NAV -->
 <div class="ck-nav">
   <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+</div>
+
+<!-- BREADCRUMB -->
+<div class="ck-header">
+  <a href="/configurador-armarios-vestidores/">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Datos de envio</span>
+  </a>
 </div>
 
 <!-- CHECKOUT LAYOUT -->
