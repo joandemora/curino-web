@@ -18,14 +18,14 @@ body{background:var(--white);color:var(--black);font-family:var(--font);font-wei
 p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
 /* ── CHECKOUT NAV (simplified) ── */
-.ck-nav{display:flex;align-items:center;justify-content:center;padding:1.5rem 32px;border-bottom:1px solid var(--border)}
+.ck-nav{display:flex;align-items:center;padding:0 80px;height:60px;background:var(--black)}
 .ck-nav a{display:flex;align-items:center}
-.ck-nav img{height:24px;width:auto;display:block}
+.ck-nav img{height:20px;width:auto;display:block;filter:brightness(0) invert(1)}
 
 /* ── LAYOUT ── */
-.ck-wrap{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 73px)}
-.ck-main{padding:2.5rem 4vw 4rem}
-.ck-side{padding:2.5rem 4vw 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
+.ck-wrap{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 60px)}
+.ck-main{padding:2.5rem 80px 4rem}
+.ck-side{padding:2.5rem 80px 4rem;background:var(--bg);border-left:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto}
 
 /* ── FORM ELEMENTS ── */
 .ck-section{margin-bottom:2.5rem}
@@ -93,10 +93,10 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
-  .ck-nav{padding:1rem 16px}
-  .ck-nav img{height:20px}
+  .ck-nav{padding:0 16px;height:52px}
+  .ck-nav img{height:18px}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
-  .ck-main{padding:2rem 16px;max-width:none;margin:0}
+  .ck-main{padding:2rem 16px}
   .ck-side{position:static;height:auto;padding:2rem 16px;border-left:none;border-top:1px solid var(--border)}
   .ck-row,.ck-methods{grid-template-columns:1fr}
   .ck-row-3{grid-template-columns:1fr}
