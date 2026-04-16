@@ -155,7 +155,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 <div class="ck-header">
   <a href="/configurador-armarios-vestidores/">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>Datos de envio</span>
+    <span>Datos de env&iacute;o</span>
   </a>
 </div>
 
@@ -176,18 +176,18 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
       </div>
       <div class="ck-row-phone">
         <input type="text" class="ck-input" id="shipPrefix" value="+34" autocomplete="tel-country-code">
-        <div class="fw" data-req="shipPhone"><input type="tel" class="ck-input" id="shipPhone" placeholder="Telefono" autocomplete="tel-national" required><div class="fw-err">* Obligatorio</div></div>
+        <div class="fw" data-req="shipPhone"><input type="tel" class="ck-input" id="shipPhone" placeholder="Tel&eacute;fono" autocomplete="tel-national" required><div class="fw-err">* Obligatorio</div></div>
       </div>
     </div>
 
     <!-- Shipping method -->
     <div class="ck-section">
-      <div class="ck-section-title">Tipo de envio</div>
+      <div class="ck-section-title">M&eacute;todo de entrega</div>
       <div class="ck-methods">
         <div class="ck-method selected" id="methodEstandar" onclick="selectMethod('estandar')">
           <div class="ck-method-radio"></div>
           <div class="ck-method-head">
-            <div class="ck-method-title">Envio estandar</div>
+            <div class="ck-method-title">Env&iacute;o est&aacute;ndar</div>
             <div class="ck-method-price">Incluido</div>
           </div>
           <div class="ck-method-desc">Entrega con cita previa a pie de calle &middot; <span class="ck-method-time">3 — 4 semanas</span></div>
@@ -195,31 +195,31 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
         <div class="ck-method" id="methodMontaje" onclick="selectMethod('montaje')">
           <div class="ck-method-radio"></div>
           <div class="ck-method-head">
-            <div class="ck-method-title">Envio con montaje</div>
+            <div class="ck-method-title">Env&iacute;o con montaje</div>
             <div class="ck-method-price" id="montajePrice"></div>
           </div>
           <div class="ck-method-desc">Entrega con cita previa y montaje en el interior de tu domicilio &middot; <span class="ck-method-time">3 — 4 semanas</span></div>
-          <div class="ck-method-note">Nuestro equipo se pondra en contacto contigo para coordinar el montaje</div>
+          <div class="ck-method-note">Nuestro equipo se pondr&aacute; en contacto contigo para coordinar el montaje</div>
         </div>
       </div>
     </div>
 
     <!-- Shipping address -->
     <div class="ck-section" id="sectionAddress">
-      <div class="ck-section-title">Direccion de envio</div>
+      <div class="ck-section-title">Direcci&oacute;n de env&iacute;o</div>
       <div class="places-wrap fw" data-req="shipLine">
-        <input type="text" class="ck-input" id="shipLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
+        <input type="text" class="ck-input" id="shipLine" placeholder="Direcci&oacute;n (calle, n&uacute;mero)" autocomplete="off" required>
         <div class="places-dd" id="shipDD"></div>
         <div class="fw-err">* Obligatorio</div>
       </div>
       <input type="text" class="ck-input" id="shipLine2" placeholder="Piso, puerta, escalera... (opcional)" autocomplete="address-line2">
       <div class="ck-row">
-        <div class="fw" data-req="shipPostal"><input type="text" class="ck-input" id="shipPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="fw-err">* Obligatorio</div></div>
+        <div class="fw" data-req="shipPostal"><input type="text" class="ck-input" id="shipPostal" placeholder="C&oacute;digo postal" autocomplete="postal-code" required><div class="fw-err">* Obligatorio</div></div>
         <div class="fw" data-req="shipCity"><input type="text" class="ck-input" id="shipCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="fw-err">* Obligatorio</div></div>
       </div>
       <div class="ck-row">
         <div class="fw" data-req="shipProvince"><input type="text" class="ck-input" id="shipProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="fw-err">* Obligatorio</div></div>
-        <input type="text" class="ck-input" id="shipCountry" placeholder="Pais" value="Espana" autocomplete="country-name">
+        <input type="text" class="ck-input" id="shipCountry" placeholder="Pa&iacute;s" value="Espa&ntilde;a" autocomplete="country-name">
       </div>
       <input type="text" class="ck-input" id="shipCompany" placeholder="Empresa (opcional)" autocomplete="organization">
       <div class="fw" data-req="shipNif"><input type="text" class="ck-input" id="shipNif" placeholder="DNI / CIF / NIF" required><div class="fw-err" id="shipNifError">* Obligatorio</div></div>
@@ -227,27 +227,27 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
     <!-- Billing address -->
     <div class="ck-section">
-      <div class="ck-section-title">Direccion de facturacion</div>
+      <div class="ck-section-title">Direcci&oacute;n de facturaci&oacute;n</div>
       <label class="ck-check">
         <input type="checkbox" id="billingSame" checked onchange="toggleBilling()">
-        <span>Misma que la direccion de envio</span>
+        <span>Misma que la direcci&oacute;n de env&iacute;o</span>
       </label>
       <div id="billForm" style="display:none">
         <div class="fw" data-req="billFirstName"><input type="text" class="ck-input" id="billFirstName" placeholder="Nombre" required><div class="fw-err">* Obligatorio</div></div>
         <div class="fw" data-req="billLastName"><input type="text" class="ck-input" id="billLastName" placeholder="Apellidos" required><div class="fw-err">* Obligatorio</div></div>
         <div class="places-wrap fw" data-req="billLine">
-          <input type="text" class="ck-input" id="billLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
+          <input type="text" class="ck-input" id="billLine" placeholder="Direcci&oacute;n (calle, n&uacute;mero)" autocomplete="off" required>
           <div class="places-dd" id="billDD"></div>
           <div class="fw-err">* Obligatorio</div>
         </div>
         <input type="text" class="ck-input" id="billLine2" placeholder="Piso, puerta, escalera... (opcional)">
         <div class="ck-row">
-          <div class="fw" data-req="billPostal"><input type="text" class="ck-input" id="billPostal" placeholder="Codigo postal" required><div class="fw-err">* Obligatorio</div></div>
+          <div class="fw" data-req="billPostal"><input type="text" class="ck-input" id="billPostal" placeholder="C&oacute;digo postal" required><div class="fw-err">* Obligatorio</div></div>
           <div class="fw" data-req="billCity"><input type="text" class="ck-input" id="billCity" placeholder="Ciudad" required><div class="fw-err">* Obligatorio</div></div>
         </div>
         <div class="ck-row">
           <div class="fw" data-req="billProvince"><input type="text" class="ck-input" id="billProvince" placeholder="Provincia" required><div class="fw-err">* Obligatorio</div></div>
-          <input type="text" class="ck-input" id="billCountry" placeholder="Pais" value="Espana">
+          <input type="text" class="ck-input" id="billCountry" placeholder="Pa&iacute;s" value="Espa&ntilde;a">
         </div>
         <div class="fw" data-req="billNif"><input type="text" class="ck-input" id="billNif" placeholder="DNI / CIF / NIF" required><div class="fw-err" id="billNifError">* Obligatorio</div></div>
       </div>
@@ -263,7 +263,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
     <div id="summaryItems"></div>
     <hr class="sum-divider">
     <div class="sum-line"><span class="sum-line-label">Subtotal</span><span id="sumSubtotal">&euro; 0</span></div>
-    <div class="sum-line"><span class="sum-line-label">Envio</span><span id="sumShipping">Incluido</span></div>
+    <div class="sum-line"><span class="sum-line-label">Env&iacute;o</span><span id="sumShipping">Incluido</span></div>
     <hr class="sum-divider">
     <div class="sum-total"><span class="sum-total-label">Total</span><span id="summaryTotal">&euro; 0</span></div>
     <div class="sum-tax" id="sumTax"></div>
@@ -283,7 +283,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
   <div class="mob-bar-detail" id="mobBarDetail">
     <div id="mobSummaryItems"></div>
     <div class="sum-line"><span class="sum-line-label">Subtotal</span><span id="mobSubtotal">&euro; 0</span></div>
-    <div class="sum-line"><span class="sum-line-label">Envio</span><span id="mobShipping">Incluido</span></div>
+    <div class="sum-line"><span class="sum-line-label">Env&iacute;o</span><span id="mobShipping">Incluido</span></div>
     <hr class="sum-divider">
     <div class="sum-total"><span class="sum-total-label">Total</span><span id="mobTotal">&euro; 0</span></div>
     <div class="sum-tax" id="mobTax"></div>
@@ -293,7 +293,7 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
 <!-- EMPTY STATE -->
 <div class="ck-empty" id="checkoutEmpty">
-  Tu carrito esta vacio.<br><br>
+  Tu carrito est&aacute; vac&iacute;o.<br><br>
   <a href="/configurador-armarios-vestidores/">Ir al configurador</a>
 </div>
 
@@ -355,6 +355,11 @@ function prefillAddress(){
   if(a.phone) document.getElementById('shipPhone').value=a.phone;
 }
 
+// ── FORMATTING ──
+function formatPrice(amount){
+  return amount.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' \u20AC';
+}
+
 // ── SUMMARY ──
 var _subtotal=0;
 var _montajeCost=0;
@@ -368,11 +373,10 @@ function renderSummary(){
     _itemsHtml+='<div class="sum-item"><div class="sum-thumb">'+(item.thumb?'<img src="'+item.thumb+'" alt="">':'')+'</div>'+
       '<div class="sum-info"><div class="sum-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
       '<div class="sum-desc">'+item.material+' \u00B7 '+item.puertas+'</div></div>'+
-      '<div class="sum-price">\u20AC '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div></div>';
+      '<div class="sum-price">'+formatPrice(item.precio)+'</div></div>';
   });
-  // Montaje = 7% of subtotal
   _montajeCost=Math.round(_subtotal*0.07*100)/100;
-  document.getElementById('montajePrice').textContent=new Intl.NumberFormat('es-ES',{minimumFractionDigits:2}).format(_montajeCost)+' \u20AC';
+  document.getElementById('montajePrice').textContent=formatPrice(_montajeCost);
   document.getElementById('summaryItems').innerHTML=_itemsHtml;
   document.getElementById('mobSummaryItems').innerHTML=_itemsHtml;
   updateTotals();
@@ -381,11 +385,11 @@ function renderSummary(){
 function updateTotals(){
   var shipping=_shipMethod==='montaje'?_montajeCost:0;
   var total=_subtotal+shipping;
-  var fmtSub='\u20AC '+new Intl.NumberFormat('es-ES').format(_subtotal);
-  var fmtTotal='\u20AC '+new Intl.NumberFormat('es-ES').format(total);
-  var fmtShip=shipping>0?new Intl.NumberFormat('es-ES',{minimumFractionDigits:2}).format(shipping)+' \u20AC':'Incluido';
-  var iva=(total-total/1.21).toFixed(2);
-  var taxText='Incluye '+iva+'\u20AC de IVA (21%)';
+  var fmtSub=formatPrice(_subtotal);
+  var fmtTotal=formatPrice(total);
+  var fmtShip=shipping>0?formatPrice(shipping):'Incluido';
+  var iva=total-total/1.21;
+  var taxText='Incluye '+formatPrice(iva)+' de IVA (21%)';
   // Desktop
   document.getElementById('sumSubtotal').textContent=fmtSub;
   document.getElementById('sumShipping').textContent=fmtShip;
@@ -480,7 +484,7 @@ function checkNifField(inputId,errorId){
   var input=document.getElementById(inputId),wrap=input.closest('.fw'),err=document.getElementById(errorId);
   var val=input.value.trim();
   if(!val){wrap.classList.remove('has-error');return true;}
-  if(!validateNIF(val)){err.textContent='* Documento no valido';wrap.classList.add('has-error');return false;}
+  if(!validateNIF(val)){err.textContent='* Documento no v\u00E1lido';wrap.classList.add('has-error');return false;}
   wrap.classList.remove('has-error');err.textContent='* Obligatorio';return true;
 }
 
@@ -565,11 +569,11 @@ async function handlePay(){
       if(!exists){addresses.unshift(addr);localStorage.setItem('curino_addresses',JSON.stringify(addresses));}
       window.location.href=data.url;
     }else{
-      errEl.textContent=data.error||'No se pudo crear la sesion de pago';
+      errEl.textContent=data.error||'No se pudo crear la sesi\u00F3n de pago';
       errEl.style.display='block';btn.disabled=false;btn.textContent='Ir al pago';
     }
   }catch(err){
-    errEl.textContent='Error de conexion. Intentalo de nuevo.';
+    errEl.textContent='Error de conexi\u00F3n. Int\u00E9ntalo de nuevo.';
     errEl.style.display='block';btn.disabled=false;btn.textContent='Ir al pago';
   }
 }
