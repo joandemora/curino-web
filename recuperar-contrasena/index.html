@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nueva contraseña — Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--mid:#888;--border:#e5e5e5;--white:#fff;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.auth-box{width:100%;max-width:380px}
+.auth-logo{display:block;height:28px;margin:0 auto 2.5rem}
+.auth-title{font-size:22px;font-weight:400;text-transform:uppercase;text-align:center;margin-bottom:.5rem;letter-spacing:normal}
+.auth-subtitle{font-size:13px;color:var(--mid);text-align:center;margin-bottom:2rem}
+.auth-input{width:100%;padding:.7rem .75rem;font-family:var(--font);font-size:14px;border:1px solid var(--border);outline:none;background:var(--white);transition:border-color .2s;margin-bottom:.75rem}
+.auth-input:focus{border-color:var(--black)}
+.auth-input::placeholder{color:var(--mid)}
+.auth-btn{width:100%;padding:1rem;font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s;font-weight:400;background:var(--black);color:var(--white)}
+.auth-btn:hover{background:#333}
+.auth-btn:disabled{background:var(--mid);cursor:not-allowed}
+.auth-error{background:#fef2f2;color:#dc2626;padding:.75rem;font-size:13px;margin-bottom:1rem;display:none}
+.auth-success{background:#f0fdf4;color:#16a34a;padding:.75rem;font-size:13px;margin-bottom:1rem;display:none}
+.auth-link{display:block;text-align:center;margin-top:1.5rem;font-size:13px;color:var(--mid)}
+.auth-link a{color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:1px}
+.auth-link a:hover{color:#999;border-color:#999}
+</style>
+</head>
+<body>
+
+<div class="auth-box">
+  <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino" class="auth-logo"></a>
+
+  <!-- Loading state -->
+  <div id="stateLoading">
+    <p class="auth-subtitle">Verificando enlace...</p>
+  </div>
+
+  <!-- Invalid/expired link -->
+  <div id="stateInvalid" style="display:none">
+    <h1 class="auth-title">Enlace no v&aacute;lido</h1>
+    <p class="auth-subtitle">Este enlace de recuperaci&oacute;n ha expirado o no es v&aacute;lido. Solicita uno nuevo.</p>
+    <div class="auth-link"><a href="/checkout/login/">Volver a iniciar sesi&oacute;n</a></div>
+  </div>
+
+  <!-- Reset form -->
+  <div id="stateForm" style="display:none">
+    <h1 class="auth-title">Nueva contrase&ntilde;a</h1>
+    <p class="auth-subtitle">Introduce tu nueva contrase&ntilde;a</p>
+    <div class="auth-error" id="authError"></div>
+    <form onsubmit="handleReset(event)">
+      <input type="password" class="auth-input" placeholder="Nueva contrase&ntilde;a (m&iacute;n. 6 caracteres)" id="newPassword" required minlength="6" autocomplete="new-password">
+      <input type="password" class="auth-input" placeholder="Confirmar contrase&ntilde;a" id="confirmPassword" required minlength="6" autocomplete="new-password">
+      <button type="submit" class="auth-btn" id="btnReset">Cambiar contrase&ntilde;a</button>
+    </form>
+  </div>
+
+  <!-- Success -->
+  <div id="stateSuccess" style="display:none">
+    <h1 class="auth-title">Contrase&ntilde;a actualizada</h1>
+    <p class="auth-subtitle">Tu contrase&ntilde;a se ha cambiado correctamente.</p>
+    <div class="auth-link"><a href="/mi-cuenta/">Ir a mi cuenta</a></div>
+  </div>
+</div>
+
+<script>
+var supabase;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+
+    // Supabase SDK picks up the token from the URL hash automatically
+    // Wait for the auth state to change to PASSWORD_RECOVERY
+    var resolved=false;
+    supabase.auth.onAuthStateChange(function(event,session){
+      if(resolved) return;
+      if(event==='PASSWORD_RECOVERY'&&session){
+        resolved=true;
+        showForm();
+      }
+    });
+
+    // Also check current session after a brief delay
+    setTimeout(async function(){
+      if(resolved) return;
+      var s=await supabase.auth.getSession();
+      if(s.data.session){
+        resolved=true;
+        showForm();
+      }else{
+        showInvalid();
+      }
+    },2000);
+
+  }catch(e){
+    showInvalid();
+  }
+})();
+
+function showForm(){
+  document.getElementById('stateLoading').style.display='none';
+  document.getElementById('stateForm').style.display='block';
+  window.history.replaceState({},'',window.location.pathname);
+}
+
+function showInvalid(){
+  document.getElementById('stateLoading').style.display='none';
+  document.getElementById('stateInvalid').style.display='block';
+}
+
+async function handleReset(e){
+  e.preventDefault();
+  var btn=document.getElementById('btnReset');
+  var err=document.getElementById('authError');
+  var pw=document.getElementById('newPassword').value;
+  var pw2=document.getElementById('confirmPassword').value;
+  err.style.display='none';
+
+  if(pw!==pw2){
+    err.textContent='Las contrase\u00F1as no coinciden.';
+    err.style.display='block';
+    return;
+  }
+
+  btn.disabled=true;
+  btn.textContent='Actualizando...';
+
+  var result=await supabase.auth.updateUser({password:pw});
+  if(result.error){
+    err.textContent=result.error.message;
+    err.style.display='block';
+    btn.disabled=false;
+    btn.textContent='Cambiar contrase\u00F1a';
+    return;
+  }
+
+  document.getElementById('stateForm').style.display='none';
+  document.getElementById('stateSuccess').style.display='block';
+}
+</script>
+
+</body>
+</html>

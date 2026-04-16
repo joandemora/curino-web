@@ -430,7 +430,7 @@ async function handleForgot(){
     return;
   }
   if(!supabase) return;
-  var result=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/login/'});
+  var result=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/recuperar-contrasena/'});
   if(result.error){
     err.textContent=result.error.message;
     err.style.display='block';err.style.background='';err.style.color='';
