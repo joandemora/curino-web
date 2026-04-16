@@ -769,12 +769,12 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
   }
 }
 
-// Dock mob-bar above footer on scroll
+// Dock mob-bar above footer
 (function(){
   var bar=document.getElementById('mobBar');
   var ft=document.querySelector('footer');
   if(!bar||!ft) return;
-  window.addEventListener('scroll',function(){
+  function updateBarPosition(){
     var footerTop=ft.getBoundingClientRect().top;
     var barH=bar.offsetHeight;
     if(footerTop<=window.innerHeight){
@@ -786,7 +786,10 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
       bar.style.bottom='';
       bar.style.top='';
     }
-  },{passive:true});
+  }
+  window.addEventListener('scroll',updateBarPosition,{passive:true});
+  window.addEventListener('resize',updateBarPosition);
+  updateBarPosition();
 })();
 </script>
 
