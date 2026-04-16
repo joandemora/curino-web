@@ -142,6 +142,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .ck-row-3{grid-template-columns:1fr}
 
   .mob-bar{display:block;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--white);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+  .mob-bar.docked{position:static;box-shadow:none}
   .mob-bar-collapsed{display:flex;justify-content:space-between;align-items:center;padding:1rem 16px;cursor:pointer}
   .mob-bar-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
   .mob-bar-right{display:flex;align-items:center;gap:.5rem}
@@ -170,7 +171,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .footer-col a{padding:.4rem 0}
   .footer-newsletter h4::after{display:none}
   .footer-newsletter .footer-links{max-height:none}
-  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px 4.5rem}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
   .footer-legal{align-items:center;text-align:center}
 }
 </style>
@@ -768,6 +769,17 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
     });
   }
 }
+
+// Dock mob-bar when footer is visible
+(function(){
+  var bar=document.getElementById('mobBar');
+  var ft=document.querySelector('footer');
+  if(!bar||!ft) return;
+  var io=new IntersectionObserver(function(entries){
+    bar.classList.toggle('docked',entries[0].isIntersecting);
+  },{threshold:0});
+  io.observe(ft);
+})();
 </script>
 
 </body>
