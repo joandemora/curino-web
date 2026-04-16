@@ -2343,17 +2343,18 @@ function editCartItem(idx){
 function loadCartItemConfig(item){
   // Dimensions
   ST.w=item.ancho; ST.h=item.alto; ST.d=item.fondo;
-  document.getElementById('inputW').value=ST.w;
-  document.getElementById('inputH').value=ST.h;
-  document.getElementById('inputD').value=ST.d;
-  if(document.getElementById('sliderW')) document.getElementById('sliderW').value=ST.w;
-  if(document.getElementById('sliderH')) document.getElementById('sliderH').value=ST.h;
-  if(document.getElementById('sliderD')) document.getElementById('sliderD').value=ST.d;
+  var sw=document.getElementById('sliderW');if(sw) sw.value=ST.w;
+  var sh=document.getElementById('sliderH');if(sh) sh.value=ST.h;
+  var sd=document.getElementById('sliderD');if(sd) sd.value=ST.d;
+  var vw=document.getElementById('valW');if(vw) vw.textContent=ST.w+' cm';
+  var vh=document.getElementById('valH');if(vh) vh.textContent=ST.h+' cm';
+  var vd=document.getElementById('valD');if(vd) vd.textContent=ST.d+' cm';
   // Material
   var matEntry=MAT_DATA.find(function(m){return m.name===item.material});
-  if(matEntry) selectMat(matEntry.id);
+  if(matEntry&&typeof selectMat==='function') selectMat(matEntry.id);
   // Recalc modules and rebuild
-  calcModules(ST.w);
+  manualMods=false;
+  initModules();
   buildComposite();
   goStep(1);
 }
@@ -2415,43 +2416,22 @@ function clearEditModeBtn(){
   if(span) btn.firstChild.textContent='A\u00F1adir al carrito \u00B7 ';
 }
 
-// Check on page load
+// Check on page load for edit mode
 (function(){
   var params=new URLSearchParams(window.location.search);
   var editIdx=params.get('edit');
-  console.log('=== EDIT MODE CHECK ===');
-  console.log('URL search:', window.location.search);
-  console.log('editIdx param:', editIdx);
-  console.log('_cart length:', _cart.length);
-  console.log('_cart['+editIdx+']:', editIdx!==null?_cart[parseInt(editIdx)]:null);
-  console.log('sessionStorage curino_edit_item:', sessionStorage.getItem('curino_edit_item')?'exists':'null');
-  var btn=document.getElementById('btnAddCart');
-  console.log('btnAddCart found:', !!btn);
-  console.log('btnAddCart text:', btn?btn.textContent:'n/a');
   if(editIdx!==null&&_cart[parseInt(editIdx)]){
-    console.log('>>> Entering edit mode from URL param');
     sessionStorage.setItem('curino_edit_idx',editIdx);
     sessionStorage.setItem('curino_edit_item',JSON.stringify(_cart[parseInt(editIdx)]));
     loadCartItemConfig(_cart[parseInt(editIdx)]);
-    setTimeout(function(){
-      console.log('>>> setTimeout fired, calling setEditModeBtn');
-      setEditModeBtn();
-      var btn2=document.getElementById('btnAddCart');
-      console.log('btnAddCart text after:', btn2?btn2.textContent:'n/a');
-    },200);
+    setTimeout(setEditModeBtn,300);
     window.history.replaceState({},'',window.location.pathname);
     return;
   }
   var editItem=sessionStorage.getItem('curino_edit_item');
   if(editItem){
-    console.log('>>> Entering edit mode from sessionStorage');
-    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){console.error('loadCartItemConfig error:',e);}
-    setTimeout(function(){
-      console.log('>>> setTimeout fired (session), calling setEditModeBtn');
-      setEditModeBtn();
-    },200);
-  }else{
-    console.log('>>> No edit mode');
+    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){}
+    setTimeout(setEditModeBtn,300);
   }
 })();
 
