@@ -25,6 +25,11 @@ create policy "Public insert project requests"
   on public.project_requests for insert
   with check (true);
 
+-- Anyone can read drafts (needed for .select() after insert)
+create policy "Public select draft project requests"
+  on public.project_requests for select
+  using (status = 'draft');
+
 -- Anyone can update drafts (progressive save by id)
 create policy "Public update draft project requests"
   on public.project_requests for update

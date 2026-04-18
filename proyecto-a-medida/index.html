@@ -382,12 +382,14 @@ async function saveProgress(){
   if(!_supabase) return;
   try{
     if(!_recordId){
-      // Step 1: create record
+      // Step 1: create record with a client-generated id
+      _recordId=crypto.randomUUID();
       var res=await _supabase.from('project_requests').insert({
+        id:_recordId,
         email:_data.email,
         status:'draft'
-      }).select('id').single();
-      if(res.data) _recordId=res.data.id;
+      });
+      if(res.error){console.error('Insert error:',res.error.message);_recordId=null;}
     }else{
       // Steps 2+: update existing record
       var updates={};
@@ -397,7 +399,8 @@ async function saveProgress(){
       if(_step===5) updates.timeline=_data.timeline;
       if(_step===6) updates.name=_data.name;
       if(Object.keys(updates).length){
-        await _supabase.from('project_requests').update(updates).eq('id',_recordId);
+        var res=await _supabase.from('project_requests').update(updates).eq('id',_recordId);
+        if(res.error) console.error('Update error:',res.error.message);
       }
     }
   }catch(e){console.error('Save progress error:',e);}
