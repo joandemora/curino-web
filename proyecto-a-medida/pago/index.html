@@ -21,6 +21,8 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 .pay-summary dt{font-weight:600;display:inline}
 .pay-summary dd{display:inline;margin:0;color:var(--mid)}
 .pay-summary .row{margin-bottom:.35rem}
+.pay-availability{font-size:14px;color:var(--mid);margin-bottom:1.25rem}
+.pay-availability strong{color:var(--black)}
 .pay-btn{width:100%;padding:1rem;background:var(--black);color:var(--white);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:background .2s}
 .pay-btn:hover{background:#333}
 .pay-btn:disabled{background:var(--mid);cursor:not-allowed}
@@ -42,12 +44,14 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 
   <div class="pay-summary" id="paySummary"></div>
 
+  <div class="pay-availability">Solo quedan <strong>3</strong> proyectos disponibles en <strong id="payMonth"></strong></div>
   <button class="pay-btn" id="btnPay" onclick="handlePay()">Pagar se&ntilde;al</button>
   <div class="pay-error" id="payError"></div>
   <div class="pay-back"><a href="/proyecto-a-medida/">Volver al formulario</a></div>
 </div>
 
 <script>
+document.getElementById('payMonth').textContent=new Date().toLocaleString('es-ES',{month:'long'});
 var _project=JSON.parse(sessionStorage.getItem('curino_project')||'null');
 
 if(!_project){
