@@ -97,12 +97,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pam-opt-desc{font-size:12px;color:var(--mid);margin-top:.25rem}
 
 /* Category grid */
-.pam-cats{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;width:100%;max-width:480px}
-.pam-cat{border:1px solid var(--border);padding:1.25rem 1rem;cursor:pointer;transition:border-color .2s;text-align:center}
+.pam-cats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;width:100%;max-width:580px}
+.pam-cat{border:1px solid var(--border);cursor:pointer;transition:border-color .2s;text-align:center;overflow:hidden}
+.pam-cat-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
 .pam-cat:hover{border-color:var(--black)}
 .pam-cat.selected{border-color:var(--black);background:var(--bg)}
-.pam-cat-name{font-size:13px;font-weight:600;letter-spacing:.03em;margin-bottom:.35rem}
-.pam-cat-items{font-size:11px;color:var(--mid);line-height:1.5}
+.pam-cat-name{font-size:12px;font-weight:600;letter-spacing:.03em;padding:.75rem .5rem .65rem}
+.pam-cat-items{display:none}
 
 /* Multi-select checkboxes inside category */
 .pam-sub{display:none;flex-direction:column;gap:.5rem;width:100%;max-width:440px;margin-top:1rem}
@@ -148,7 +149,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .pam-landing-left h1{font-size:22px}
   .pam-landing-right{height:50vh}
   .pam-step{padding:5rem 16px 3rem}
-  .pam-cats{grid-template-columns:1fr}
+  .pam-cats{grid-template-columns:1fr 1fr;max-width:100%}
   .pam-progress{top:60px}
   footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
   footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
@@ -261,12 +262,12 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
     <div class="pam-step-title">Tipo de mueble</div>
     <div class="pam-step-sub">Puedes seleccionar las que quieras</div>
     <div class="pam-cats" id="cats4">
-      <div class="pam-cat" onclick="selectCat(this,'dormitorio')"><div class="pam-cat-name">Dormitorio</div><div class="pam-cat-items">Armarios, Cabeceros, Camas, C&oacute;modas</div></div>
-      <div class="pam-cat" onclick="selectCat(this,'vestidor')"><div class="pam-cat-name">Vestidor</div><div class="pam-cat-items">Vestidores, Zapateros, Organizadores</div></div>
-      <div class="pam-cat" onclick="selectCat(this,'cocina')"><div class="pam-cat-name">Cocina</div><div class="pam-cat-items">Cocina a medida, Despensas</div></div>
-      <div class="pam-cat" onclick="selectCat(this,'bano')"><div class="pam-cat-name">Ba&ntilde;o</div><div class="pam-cat-items">Muebles de ba&ntilde;o, Espejos</div></div>
-      <div class="pam-cat" onclick="selectCat(this,'salon')"><div class="pam-cat-name">Sal&oacute;n / Comedor</div><div class="pam-cat-items">Mueble TV, Mesas, Librer&iacute;as, Aparadores</div></div>
-      <div class="pam-cat" onclick="selectCat(this,'otro')"><div class="pam-cat-name">Otro</div><div class="pam-cat-items">Puertas, Paneles, Proyectos especiales</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'dormitorio')"><img class="pam-cat-img" src="/assets/imagenes/landing/strip-dormitorio.png" alt="Dormitorio"><div class="pam-cat-name">Dormitorio</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'vestidor')"><img class="pam-cat-img" src="/assets/imagenes/landing/maestro-vestidor.png" alt="Vestidor"><div class="pam-cat-name">Vestidor</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'cocina')"><img class="pam-cat-img" src="/assets/imagenes/landing/maestro-detalle.png" alt="Cocina"><div class="pam-cat-name">Cocina</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'bano')"><img class="pam-cat-img" src="/assets/imagenes/landing/autor-detalle.png" alt="Ba&ntilde;o"><div class="pam-cat-name">Ba&ntilde;o</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'salon')"><img class="pam-cat-img" src="/assets/imagenes/landing/piano-salon.png" alt="Sal&oacute;n"><div class="pam-cat-name">Sal&oacute;n / Comedor</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'otro')"><img class="pam-cat-img" src="/assets/imagenes/landing/strip-libreria.png" alt="Otro"><div class="pam-cat-name">Otro</div></div>
     </div>
     <div class="pam-error" id="err4">Selecciona al menos una estancia</div>
     <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" onclick="nextStep()">Continuar</button></div>
