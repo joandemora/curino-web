@@ -315,6 +315,7 @@ function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('op
 var _step=0;
 var _data={email:'',client_type:'',professional_support:'',rooms:[],timeline:'',name:'',phone:''};
 var _supabase;
+var _recordId=null; // Supabase row id for progressive save
 
 (async function(){
   try{
@@ -353,7 +354,7 @@ function showStep(){
 
 function showError(n){var e=document.getElementById('err'+n);if(e) e.style.display='block';}
 
-function nextStep(){
+async function nextStep(){
   // Validate current step
   if(_step===1){
     var v=document.getElementById('pamEmail').value.trim();
@@ -369,8 +370,37 @@ function nextStep(){
     if(!v){showError(6);return;}
     _data.name=v;
   }
+
+  // Progressive save to Supabase
+  await saveProgress();
+
   _step++;
   showStep();
+}
+
+async function saveProgress(){
+  if(!_supabase) return;
+  try{
+    if(!_recordId){
+      // Step 1: create record
+      var res=await _supabase.from('project_requests').insert({
+        email:_data.email,
+        status:'draft'
+      }).select('id').single();
+      if(res.data) _recordId=res.data.id;
+    }else{
+      // Steps 2+: update existing record
+      var updates={};
+      if(_step===2) updates.client_type=_data.client_type;
+      if(_step===3) updates.professional_support=_data.professional_support;
+      if(_step===4) updates.rooms=_data.rooms;
+      if(_step===5) updates.timeline=_data.timeline;
+      if(_step===6) updates.name=_data.name;
+      if(Object.keys(updates).length){
+        await _supabase.from('project_requests').update(updates).eq('id',_recordId);
+      }
+    }
+  }catch(e){console.error('Save progress error:',e);}
 }
 
 function prevStep(){
@@ -401,19 +431,14 @@ async function submitProject(){
   var btn=document.getElementById('btnSubmit');
   btn.disabled=true;btn.textContent='Enviando...';
 
-  // Save to Supabase
-  if(_supabase){
+  // Final save: update with phone and set status to pending
+  if(_supabase&&_recordId){
     try{
-      await _supabase.from('project_requests').insert({
-        email:_data.email,
-        name:_data.name,
+      await _supabase.from('project_requests').update({
         phone:_data.phone,
-        client_type:_data.client_type,
-        professional_support:_data.professional_support,
-        rooms:_data.rooms,
-        timeline:_data.timeline
-      });
-    }catch(e){console.error('Supabase insert error:',e);}
+        status:'pending'
+      }).eq('id',_recordId);
+    }catch(e){console.error('Supabase update error:',e);}
   }
 
   // Store data for payment page

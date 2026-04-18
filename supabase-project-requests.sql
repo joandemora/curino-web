@@ -9,7 +9,7 @@ create table if not exists public.project_requests (
   professional_support text not null default '',
   rooms jsonb not null default '[]',
   timeline text not null default '',
-  status text not null default 'pending' check (status in ('pending','contacted','in_progress','completed')),
+  status text not null default 'draft' check (status in ('draft','pending','contacted','in_progress','completed')),
   paid boolean not null default false,
   created_at timestamptz default now() not null
 );
@@ -25,7 +25,13 @@ create policy "Public insert project requests"
   on public.project_requests for insert
   with check (true);
 
--- Only service_role can read/update
+-- Anyone can update drafts (progressive save by id)
+create policy "Public update draft project requests"
+  on public.project_requests for update
+  using (status = 'draft')
+  with check (true);
+
+-- Service role can do everything
 create policy "Service role manages project requests"
   on public.project_requests for all
   using (auth.role() = 'service_role');
