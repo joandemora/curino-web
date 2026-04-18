@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Se&ntilde;al del proyecto &mdash; Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--mid:#888;--border:#e5e5e5;--bg:#f8f8f6;--white:#fff;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.pay-box{width:100%;max-width:440px;text-align:center}
+.pay-logo{display:block;height:28px;margin:0 auto 2.5rem}
+.pay-title{font-size:22px;font-weight:400;text-transform:uppercase;margin-bottom:.75rem;letter-spacing:normal}
+.pay-desc{font-size:14px;color:var(--mid);line-height:1.7;margin-bottom:2rem}
+.pay-amount{font-size:32px;font-weight:600;margin-bottom:.5rem}
+.pay-note{font-size:12px;color:var(--mid);margin-bottom:2rem}
+.pay-summary{text-align:left;border:1px solid var(--border);padding:1.25rem;margin-bottom:2rem;font-size:13px;line-height:1.8}
+.pay-summary dt{font-weight:600;display:inline}
+.pay-summary dd{display:inline;margin:0;color:var(--mid)}
+.pay-summary .row{margin-bottom:.35rem}
+.pay-btn{width:100%;padding:1rem;background:var(--black);color:var(--white);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:background .2s}
+.pay-btn:hover{background:#333}
+.pay-btn:disabled{background:var(--mid);cursor:not-allowed}
+.pay-error{color:#dc2626;font-size:13px;margin-top:1rem;display:none}
+.pay-back{display:block;margin-top:1.5rem;font-size:13px;color:var(--mid)}
+.pay-back a{color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:1px}
+.pay-back a:hover{color:#999;border-color:#999}
+</style>
+</head>
+<body>
+
+<div class="pay-box">
+  <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino" class="pay-logo"></a>
+  <div class="pay-title">Se&ntilde;al del proyecto</div>
+  <p class="pay-desc">Para iniciar tu proyecto a medida, te pedimos una se&ntilde;al de 290&euro; que se descontar&aacute; del importe total del pedido.</p>
+  <div class="pay-amount">290,00 &euro;</div>
+  <div class="pay-note">Se descuenta del total del proyecto</div>
+
+  <div class="pay-summary" id="paySummary"></div>
+
+  <button class="pay-btn" id="btnPay" onclick="handlePay()">Pagar se&ntilde;al</button>
+  <div class="pay-error" id="payError"></div>
+  <div class="pay-back"><a href="/proyecto-a-medida/">Volver al formulario</a></div>
+</div>
+
+<script>
+var _project=JSON.parse(sessionStorage.getItem('curino_project')||'null');
+
+if(!_project){
+  window.location.href='/proyecto-a-medida/';
+}else{
+  // Show summary
+  var s=document.getElementById('paySummary');
+  var html='';
+  html+='<div class="row"><dt>Nombre: </dt><dd>'+_project.name+'</dd></div>';
+  html+='<div class="row"><dt>Email: </dt><dd>'+_project.email+'</dd></div>';
+  html+='<div class="row"><dt>Tel\u00E9fono: </dt><dd>'+_project.phone+'</dd></div>';
+  var types={'particular_propietario':'Particular \u2014 Propietario','particular_inquilino':'Particular \u2014 Inquilino','profesional_arquitecto':'Profesional \u2014 Arquitecto','profesional_interiorista':'Profesional \u2014 Interiorista'};
+  html+='<div class="row"><dt>Cliente: </dt><dd>'+(types[_project.client_type]||_project.client_type)+'</dd></div>';
+  if(_project.rooms&&_project.rooms.length) html+='<div class="row"><dt>Estancias: </dt><dd>'+_project.rooms.join(', ')+'</dd></div>';
+  var timelines={'2_meses':'Pr\u00F3ximos 2 meses','3_6_meses':'3 a 6 meses','6_mas':'M\u00E1s de 6 meses'};
+  html+='<div class="row"><dt>Plazo: </dt><dd>'+(timelines[_project.timeline]||_project.timeline)+'</dd></div>';
+  s.innerHTML=html;
+}
+
+async function handlePay(){
+  var btn=document.getElementById('btnPay');
+  var err=document.getElementById('payError');
+  err.style.display='none';
+  btn.disabled=true;btn.textContent='Procesando...';
+
+  try{
+    var res=await fetch('/api/checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        ancho:0,alto:0,fondo:0,
+        material:'Proyecto a medida',
+        interior:'Se\u00F1al',
+        puertas:'',
+        precio:290,
+        user_id:'',
+        customer_email:_project.email,
+        shipping_name:_project.name,
+        shipping_phone:_project.phone
+      })
+    });
+    var data=await res.json();
+    if(data.url){
+      sessionStorage.removeItem('curino_project');
+      window.location.href=data.url;
+    }else{
+      err.textContent=data.error||'Error al crear la sesi\u00F3n de pago';
+      err.style.display='block';
+      btn.disabled=false;btn.textContent='Pagar se\u00F1al';
+    }
+  }catch(e){
+    err.textContent='Error de conexi\u00F3n. Int\u00E9ntalo de nuevo.';
+    err.style.display='block';
+    btn.disabled=false;btn.textContent='Pagar se\u00F1al';
+  }
+}
+</script>
+
+</body>
+</html>

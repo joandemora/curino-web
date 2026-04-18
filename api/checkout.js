@@ -54,22 +54,21 @@ module.exports = async function handler(req, res) {
       shipping_province, shipping_country, shipping_phone } = body;
 
     // Validate required fields
-    if (!ancho || !alto || !fondo || !precio) {
-      console.error('Missing fields:', { ancho, alto, fondo, precio });
-      return res.status(400).json({
-        error: 'Faltan campos obligatorios',
-        detail: { ancho: !!ancho, alto: !!alto, fondo: !!fondo, precio: !!precio }
-      });
+    if (!precio) {
+      console.error('Missing precio');
+      return res.status(400).json({ error: 'Falta el precio' });
     }
 
     // Validate price is a positive number
     const precioNum = parseFloat(precio);
-    if (isNaN(precioNum) || precioNum < 100 || precioNum > 200000) {
+    if (isNaN(precioNum) || precioNum < 1 || precioNum > 200000) {
       console.error('Invalid price:', precio, '→', precioNum);
       return res.status(400).json({ error: 'Precio no válido: ' + precio });
     }
 
-    const description = `Armario ${ancho}×${alto}×${fondo}cm — ${material || 'Wengue'}`;
+    const description = ancho && alto && fondo
+      ? `Armario ${ancho}×${alto}×${fondo}cm — ${material || 'Wengue'}`
+      : material || 'Proyecto a medida Curino';
     const origin = req.headers.origin || req.headers.referer?.replace(/\/[^/]*$/, '') || 'https://casacurino.com';
 
     console.log('Creating Stripe session:', { description, precioNum, origin, customer_email });

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proyecto a medida &mdash; Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--mid:#888;--light:#c0c0c0;--border:#e5e5e5;--bg:#f8f8f6;--white:#fff;--font:'Open Sans',system-ui,sans-serif}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
+.nav-links{display:flex;gap:1.8rem;align-items:center}
+.nav-links a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-links a:hover{color:#999}
+.nav-icons{display:flex;gap:1.2rem;align-items:center}
+.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-icons svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
+.nav-icons svg:hover{stroke:#999}
+.user-icon-link{display:flex;align-items:center}
+.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+.nav-mobile-right{display:none}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.megamenu{position:fixed;top:80px;left:0;right:0;z-index:99;width:100%;background:var(--white);padding:32px;display:flex;justify-content:flex-start;gap:180px;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;border-top:1px solid var(--border)}
+.mega-col{margin-bottom:32px}
+.mega-col-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
+.mega-col a{display:block;font-size:14px;letter-spacing:0.14px;line-height:19.88px;color:#000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px;transition:color .2s}
+.mega-col a:hover{color:#999}
+.mega-imgs{margin-left:auto;display:flex;gap:16px;flex-shrink:0}
+.mega-img{display:flex;flex-direction:column;align-items:center;flex-shrink:0;position:relative}
+.mega-img img{width:300px;height:300px;object-fit:cover;display:block}
+.mega-img a{display:inline-block;margin-top:12px;font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1px solid #000;padding-bottom:3px}
+.mega-img a:hover{color:#999;border-color:#999}
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:var(--white);padding:1.5rem 2rem;z-index:99;flex-direction:column;gap:0;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.mobile-accordion{border-bottom:1px solid var(--border)}
+.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;font-weight:400}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'\2212'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:800px}
+.mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
+.mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+
+/* ── LANDING ── */
+.pam-landing{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 80px);margin-top:80px}
+.pam-landing-left{display:flex;flex-direction:column;justify-content:center;padding:4rem 4rem 4rem 6vw}
+.pam-landing-left h1{font-size:32px;font-weight:400;text-transform:uppercase;letter-spacing:normal;line-height:1.3;margin-bottom:1.25rem}
+.pam-landing-left p{font-size:14px;color:var(--mid);line-height:1.7;margin-bottom:2rem;max-width:440px}
+.pam-landing-right{background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pam-landing-right img{width:100%;height:100%;object-fit:cover}
+.btn-main{display:inline-block;padding:1rem 2.5rem;background:var(--black);color:var(--white);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:background .2s;text-decoration:none;text-align:center}
+.btn-main:hover{background:#333}
+
+/* ── STEPS ── */
+.pam-steps{display:none;min-height:100vh;flex-direction:column}
+.pam-steps.active{display:flex}
+.pam-progress{position:fixed;top:80px;left:0;right:0;height:3px;background:var(--border);z-index:90}
+.pam-progress-bar{height:100%;background:var(--black);transition:width .4s ease}
+.pam-step{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;padding:6rem 2rem 4rem;text-align:center}
+.pam-step.active{display:flex}
+.pam-step-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:normal;margin-bottom:.5rem}
+.pam-step-sub{font-size:13px;color:var(--mid);margin-bottom:2rem}
+.pam-step-input{width:100%;max-width:380px;padding:.75rem;font-family:var(--font);font-size:14px;border:1px solid var(--border);outline:none;background:var(--white);transition:border-color .2s;margin-bottom:1rem}
+.pam-step-input:focus{border-color:var(--black)}
+.pam-step-input::placeholder{color:var(--mid)}
+
+/* Option cards */
+.pam-options{display:flex;flex-direction:column;gap:.75rem;width:100%;max-width:440px}
+.pam-opt{border:1px solid var(--border);padding:1rem 1.25rem;cursor:pointer;transition:border-color .2s;text-align:left;font-size:14px}
+.pam-opt:hover{border-color:var(--black)}
+.pam-opt.selected{border-color:var(--black);background:var(--bg)}
+.pam-opt-title{font-size:13px;font-weight:600;letter-spacing:.03em}
+.pam-opt-desc{font-size:12px;color:var(--mid);margin-top:.25rem}
+
+/* Category grid */
+.pam-cats{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;width:100%;max-width:480px}
+.pam-cat{border:1px solid var(--border);padding:1.25rem 1rem;cursor:pointer;transition:border-color .2s;text-align:center}
+.pam-cat:hover{border-color:var(--black)}
+.pam-cat.selected{border-color:var(--black);background:var(--bg)}
+.pam-cat-name{font-size:13px;font-weight:600;letter-spacing:.03em;margin-bottom:.35rem}
+.pam-cat-items{font-size:11px;color:var(--mid);line-height:1.5}
+
+/* Multi-select checkboxes inside category */
+.pam-sub{display:none;flex-direction:column;gap:.5rem;width:100%;max-width:440px;margin-top:1rem}
+.pam-sub.active{display:flex}
+.pam-sub label{display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;padding:.5rem .75rem;border:1px solid var(--border);transition:border-color .2s}
+.pam-sub label:hover{border-color:var(--black)}
+.pam-sub input[type="checkbox"]{width:16px;height:16px;accent-color:var(--black);cursor:pointer}
+
+/* Nav buttons */
+.pam-nav{display:flex;gap:.75rem;margin-top:2rem;width:100%;max-width:380px;justify-content:center}
+.pam-nav .btn-main{flex:1}
+.btn-back{display:inline-block;padding:1rem 2rem;background:transparent;color:var(--black);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:1px solid var(--border);cursor:pointer;transition:border-color .2s;text-align:center}
+.btn-back:hover{border-color:var(--black)}
+.pam-error{color:#dc2626;font-size:12px;margin-top:-.5rem;margin-bottom:.5rem;display:none}
+
+/* Phone row */
+.pam-phone-row{display:flex;gap:.5rem;width:100%;max-width:380px}
+.pam-phone-prefix{width:80px;flex-shrink:0}
+
+/* ── FOOTER ── */
+footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
+.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
+.footer-col a:hover{color:#999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px}
+.footer-newsletter button:hover{color:#999;border-color:#999}
+.footer-links{display:block}
+.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){
+  nav{padding:0 16px;height:60px}
+  .nav-logo img{height:20px}
+  .nav-right{display:none}
+  .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  .nav-mobile-right .nav-hamburger{display:flex}
+  .pam-landing{grid-template-columns:1fr;margin-top:60px}
+  .pam-landing-left{padding:3rem 16px;text-align:center;align-items:center}
+  .pam-landing-left h1{font-size:22px}
+  .pam-landing-right{height:50vh}
+  .pam-step{padding:5rem 16px 3rem}
+  .pam-cats{grid-template-columns:1fr}
+  .pam-progress{top:60px}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
+  .footer-col.open h4::after{content:'\2212'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <div class="nav-right">
+  <div class="nav-links">
+    <div class="mega-trigger">
+      <a href="#">Alta Carpinteria</a>
+      <div class="megamenu">
+        <div class="mega-col"><div class="mega-col-title">Sistemas</div><a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a></div>
+        <div class="mega-col"><div class="mega-col-title">Estancias</div><a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a></div>
+        <div class="mega-col"><div class="mega-col-title">Productos</div><a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a></div>
+        <div class="mega-col"><div class="mega-col-title">Proyectos Integrales</div><a href="#">Residencial</a><a href="#">Contract</a><a href="#">Couture</a></div>
+        <div class="mega-imgs">
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="/configurador-armarios-vestidores/">Proyecto a medida</a></div>
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="/configurador-armarios-vestidores/">Configurador</a></div>
+        </div>
+      </div>
+    </div>
+    <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
+  </div>
+  <div class="nav-icons">
+    <a href="#">ES</a>
+    <a href="/login/" class="user-icon-link" id="userIconLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+  </div>
+  </div>
+  <div class="nav-mobile-right">
+    <a href="/login/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+    <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-accordion"><div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div><div class="mobile-accordion-body"><div class="mobile-sub-title">Sistemas</div><a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a><div class="mobile-sub-title">Estancias</div><a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a></div></div>
+  <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
+</div>
+
+<!-- LANDING -->
+<div class="pam-landing" id="pamLanding">
+  <div class="pam-landing-left">
+    <h1>Tu proyecto<br>a medida</h1>
+    <p>Cu&eacute;ntanos qu&eacute; necesitas y nuestro equipo de dise&ntilde;o te preparar&aacute; una propuesta personalizada. Mobiliario de alta carpinter&iacute;a, fabricado en Espa&ntilde;a con garant&iacute;a de 25 a&ntilde;os.</p>
+    <button class="btn-main" onclick="startTest()">Comenzar</button>
+  </div>
+  <div class="pam-landing-right">
+    <img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida Curino">
+  </div>
+</div>
+
+<!-- STEPS -->
+<div class="pam-steps" id="pamSteps">
+  <div class="pam-progress"><div class="pam-progress-bar" id="progressBar"></div></div>
+
+  <!-- Step 1: Email -->
+  <div class="pam-step" id="step1">
+    <div class="pam-step-title">Tu email</div>
+    <div class="pam-step-sub">Para enviarte la propuesta personalizada</div>
+    <input type="email" class="pam-step-input" id="pamEmail" placeholder="email@ejemplo.com" autocomplete="email">
+    <div class="pam-error" id="err1">Introduce un email v&aacute;lido</div>
+    <div class="pam-nav"><button class="btn-main" onclick="nextStep()">Continuar</button></div>
+  </div>
+
+  <!-- Step 2: Client type -->
+  <div class="pam-step" id="step2">
+    <div class="pam-step-title">&iquest;Qu&eacute; tipo de cliente eres?</div>
+    <div class="pam-options" id="opts2">
+      <div class="pam-opt" onclick="selectOpt(2,this,'particular_propietario')"><div class="pam-opt-title">Particular &mdash; Propietario</div></div>
+      <div class="pam-opt" onclick="selectOpt(2,this,'particular_inquilino')"><div class="pam-opt-title">Particular &mdash; Inquilino</div></div>
+      <div class="pam-opt" onclick="selectOpt(2,this,'profesional_arquitecto')"><div class="pam-opt-title">Profesional &mdash; Arquitecto</div></div>
+      <div class="pam-opt" onclick="selectOpt(2,this,'profesional_interiorista')"><div class="pam-opt-title">Profesional &mdash; Interiorista</div></div>
+    </div>
+    <div class="pam-error" id="err2">Selecciona una opci&oacute;n</div>
+    <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" onclick="nextStep()">Continuar</button></div>
+  </div>
+
+  <!-- Step 3: Professional support -->
+  <div class="pam-step" id="step3">
+    <div class="pam-step-title">&iquest;Cuentas con el apoyo de un profesional?</div>
+    <div class="pam-options" id="opts3">
+      <div class="pam-opt" onclick="selectOpt(3,this,'si')"><div class="pam-opt-title">S&iacute;</div><div class="pam-opt-desc">Arquitecto, dise&ntilde;ador, reformista...</div></div>
+      <div class="pam-opt" onclick="selectOpt(3,this,'no')"><div class="pam-opt-title">No</div><div class="pam-opt-desc">Coordino yo mismo el proyecto</div></div>
+    </div>
+    <div class="pam-error" id="err3">Selecciona una opci&oacute;n</div>
+    <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" onclick="nextStep()">Continuar</button></div>
+  </div>
+
+  <!-- Step 4: Furniture type -->
+  <div class="pam-step" id="step4">
+    <div class="pam-step-title">Tipo de mueble</div>
+    <div class="pam-step-sub">Selecciona la estancia y los muebles que necesitas</div>
+    <div class="pam-cats" id="cats4">
+      <div class="pam-cat" onclick="selectCat(this,'dormitorio')"><div class="pam-cat-name">Dormitorio</div><div class="pam-cat-items">Armarios, Cabeceros, Camas, C&oacute;modas</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'vestidor')"><div class="pam-cat-name">Vestidor</div><div class="pam-cat-items">Vestidores, Zapateros, Organizadores</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'cocina')"><div class="pam-cat-name">Cocina</div><div class="pam-cat-items">Cocina a medida, Despensas</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'bano')"><div class="pam-cat-name">Ba&ntilde;o</div><div class="pam-cat-items">Muebles de ba&ntilde;o, Espejos</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'salon')"><div class="pam-cat-name">Sal&oacute;n / Comedor</div><div class="pam-cat-items">Mueble TV, Mesas, Librer&iacute;as, Aparadores</div></div>
+      <div class="pam-cat" onclick="selectCat(this,'otro')"><div class="pam-cat-name">Otro</div><div class="pam-cat-items">Puertas, Paneles, Proyectos especiales</div></div>
+    </div>
+    <div class="pam-error" id="err4">Selecciona al menos una estancia</div>
+    <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" onclick="nextStep()">Continuar</button></div>
+  </div>
+
+  <!-- Step 5: Timeline -->
+  <div class="pam-step" id="step5">
+    <div class="pam-step-title">&iquest;Cu&aacute;ndo te gustar&iacute;a instalar?</div>
+    <div class="pam-options" id="opts5">
+      <div class="pam-opt" onclick="selectOpt(5,this,'2_meses')"><div class="pam-opt-title">En los pr&oacute;ximos 2 meses</div></div>
+      <div class="pam-opt" onclick="selectOpt(5,this,'3_6_meses')"><div class="pam-opt-title">Dentro de 3 a 6 meses</div></div>
+      <div class="pam-opt" onclick="selectOpt(5,this,'6_mas')"><div class="pam-opt-title">En m&aacute;s de 6 meses</div></div>
+    </div>
+    <div class="pam-error" id="err5">Selecciona un plazo</div>
+    <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" onclick="nextStep()">Continuar</button></div>
+  </div>
+
+  <!-- Step 6: Name -->
+  <div class="pam-step" id="step6">
+    <div class="pam-step-title">&iquest;C&oacute;mo te llamas?</div>
+    <input type="text" class="pam-step-input" id="pamName" placeholder="Nombre completo" autocomplete="name">
+    <div class="pam-error" id="err6">Introduce tu nombre</div>
+    <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" onclick="nextStep()">Continuar</button></div>
+  </div>
+
+  <!-- Step 7: Phone + submit -->
+  <div class="pam-step" id="step7">
+    <div class="pam-step-title">Tu tel&eacute;fono</div>
+    <div class="pam-step-sub">Para que nuestro equipo pueda contactarte</div>
+    <div class="pam-phone-row">
+      <input type="text" class="pam-step-input pam-phone-prefix" id="pamPrefix" value="+34">
+      <input type="tel" class="pam-step-input" id="pamPhone" placeholder="612 345 678" autocomplete="tel-national">
+    </div>
+    <div class="pam-error" id="err7">Introduce tu tel&eacute;fono</div>
+    <div class="pam-nav"><button class="btn-back" onclick="prevStep()">Atr&aacute;s</button><button class="btn-main" id="btnSubmit" onclick="submitProject()">Enviar</button></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinter&iacute;a a medida &mdash; armarios, vestidores, cocinas y puertas con garant&iacute;a de 25 a&ntilde;os.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta"><h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinter&iacute;a</h4><div class="footer-links"><a href="/configurador-armarios-vestidores/">Configurador de armarios</a><a href="#">Proyecto a medida en Barcelona</a><a href="#">Proyecto a medida en Madrid</a><a href="#">Proyecto a medida en Valencia</a></div></div>
+  <div class="footer-col" style="grid-area:corp"><h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4><div class="footer-links"><a href="#">Sobre nosotros</a><a href="#">I+D e Innovaci&oacute;n</a><a href="#">Seguridad en Curino</a></div></div>
+  <div class="footer-col" style="grid-area:empleo"><h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4><div class="footer-links"><a href="#">&Uacute;nete a Curino</a><a href="#">Curino Partners</a></div></div>
+  <div class="footer-col" style="grid-area:prensa"><h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4><div class="footer-links"><a href="#">Magazine</a><a href="#">Contacto Prensa</a></div></div>
+  <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div></div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
+</footer>
+<div class="footer-bottom"><span>&copy; 2026 Curino</span><div class="footer-legal"><span>Sistema & Curino, S.L.U.</span></div><span>casacurino.com</span></div>
+
+<script>
+function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');document.getElementById('hamburger').classList.toggle('open');}
+
+var _step=0;
+var _data={email:'',client_type:'',professional_support:'',rooms:[],timeline:'',name:'',phone:''};
+var _supabase;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
+      _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+      var s=await _supabase.auth.getSession();
+      if(s.data.session){
+        document.getElementById('userIconLink').href='/mi-cuenta/';
+        var mob=document.getElementById('userIconLinkMob');if(mob) mob.href='/mi-cuenta/';
+        if(s.data.session.user.email) _data.email=s.data.session.user.email;
+        var meta=s.data.session.user.user_metadata||{};
+        if(meta.full_name) _data.name=meta.full_name;
+      }
+    }
+  }catch(e){}
+})();
+
+function startTest(){
+  document.getElementById('pamLanding').style.display='none';
+  document.getElementById('pamSteps').classList.add('active');
+  _step=1;
+  showStep();
+  // Pre-fill if we have data
+  if(_data.email) document.getElementById('pamEmail').value=_data.email;
+  if(_data.name) document.getElementById('pamName').value=_data.name;
+}
+
+function showStep(){
+  for(var i=1;i<=7;i++) document.getElementById('step'+i).classList.toggle('active',i===_step);
+  document.getElementById('progressBar').style.width=((_step/7)*100)+'%';
+  // Hide errors
+  for(var i=1;i<=7;i++){var e=document.getElementById('err'+i);if(e) e.style.display='none';}
+}
+
+function showError(n){var e=document.getElementById('err'+n);if(e) e.style.display='block';}
+
+function nextStep(){
+  // Validate current step
+  if(_step===1){
+    var v=document.getElementById('pamEmail').value.trim();
+    if(!v||!v.includes('@')){showError(1);return;}
+    _data.email=v;
+  }
+  if(_step===2){if(!_data.client_type){showError(2);return;}}
+  if(_step===3){if(!_data.professional_support){showError(3);return;}}
+  if(_step===4){if(!_data.rooms.length){showError(4);return;}}
+  if(_step===5){if(!_data.timeline){showError(5);return;}}
+  if(_step===6){
+    var v=document.getElementById('pamName').value.trim();
+    if(!v){showError(6);return;}
+    _data.name=v;
+  }
+  _step++;
+  showStep();
+}
+
+function prevStep(){
+  if(_step>1){_step--;showStep();}
+}
+
+function selectOpt(step,el,val){
+  var container=document.getElementById('opts'+step);
+  container.querySelectorAll('.pam-opt').forEach(function(o){o.classList.remove('selected');});
+  el.classList.add('selected');
+  if(step===2) _data.client_type=val;
+  if(step===3) _data.professional_support=val;
+  if(step===5) _data.timeline=val;
+}
+
+function selectCat(el,room){
+  el.classList.toggle('selected');
+  var idx=_data.rooms.indexOf(room);
+  if(idx>=0) _data.rooms.splice(idx,1);
+  else _data.rooms.push(room);
+}
+
+async function submitProject(){
+  var phone=document.getElementById('pamPrefix').value.trim()+' '+document.getElementById('pamPhone').value.trim();
+  if(document.getElementById('pamPhone').value.trim().length<6){showError(7);return;}
+  _data.phone=phone;
+
+  var btn=document.getElementById('btnSubmit');
+  btn.disabled=true;btn.textContent='Enviando...';
+
+  // Save to Supabase
+  if(_supabase){
+    try{
+      await _supabase.from('project_requests').insert({
+        email:_data.email,
+        name:_data.name,
+        phone:_data.phone,
+        client_type:_data.client_type,
+        professional_support:_data.professional_support,
+        rooms:_data.rooms,
+        timeline:_data.timeline
+      });
+    }catch(e){console.error('Supabase insert error:',e);}
+  }
+
+  // Store data for payment page
+  sessionStorage.setItem('curino_project',JSON.stringify(_data));
+  window.location.href='/proyecto-a-medida/pago/';
+}
+</script>
+
+</body>
+</html>
