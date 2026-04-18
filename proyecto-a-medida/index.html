@@ -63,7 +63,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pam-landing{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 80px);margin-top:80px}
 .pam-landing-left{display:flex;flex-direction:column;justify-content:center;padding:4rem 4rem 4rem 6vw}
 .pam-landing-left h1{font-size:32px;font-weight:400;text-transform:uppercase;letter-spacing:normal;line-height:1.3;margin-bottom:1.25rem}
-.pam-landing-left p{font-size:14px;color:var(--mid);line-height:1.7;margin-bottom:2rem;max-width:440px}
+.pam-landing-left p{font-size:14px;color:var(--mid);line-height:1.7;margin-bottom:1.5rem;max-width:440px}
+.pam-pricing{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1rem}
+.pam-price-old{font-size:18px;color:var(--mid);text-decoration:line-through}
+.pam-price-new{font-size:36px;font-weight:600}
+.pam-availability{font-size:13px;color:var(--mid);margin-bottom:2rem}
+.pam-availability strong{color:var(--black)}
 .pam-landing-right{background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .pam-landing-right img{width:100%;height:100%;object-fit:cover}
 .btn-main{display:inline-block;padding:1rem 2.5rem;background:var(--black);color:var(--white);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:background .2s;text-decoration:none;text-align:center}
@@ -199,9 +204,14 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 <!-- LANDING -->
 <div class="pam-landing" id="pamLanding">
   <div class="pam-landing-left">
-    <h1>Tu proyecto<br>a medida</h1>
-    <p>Cu&eacute;ntanos qu&eacute; necesitas y nuestro equipo de dise&ntilde;o te preparar&aacute; una propuesta personalizada. Mobiliario de alta carpinter&iacute;a, fabricado en Espa&ntilde;a con garant&iacute;a de 25 a&ntilde;os.</p>
-    <button class="btn-main" onclick="startTest()">Comenzar</button>
+    <h1>Proyecto de Dise&ntilde;o<br>Integral Gratuito</h1>
+    <p>Planos, alzados, mediciones y selecci&oacute;n de material incluidos.<br>Mobiliario de alta carpinter&iacute;a, fabricado en Espa&ntilde;a con garant&iacute;a de 25 a&ntilde;os.</p>
+    <div class="pam-pricing">
+      <span class="pam-price-old">1.500 &euro;</span>
+      <span class="pam-price-new">0 &euro;</span>
+    </div>
+    <div class="pam-availability">Solo <strong>3 de 12</strong> proyectos disponibles en <strong id="pamMonth"></strong></div>
+    <button class="btn-main" onclick="startTest()">Comenzar tu proyecto a medida gratis</button>
   </div>
   <div class="pam-landing-right">
     <img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida Curino">
@@ -311,6 +321,9 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 
 <script>
 function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');document.getElementById('hamburger').classList.toggle('open');}
+
+// Dynamic month
+document.getElementById('pamMonth').textContent=new Date().toLocaleString('es-ES',{month:'long'});
 
 var _step=0;
 var _data={email:'',client_type:'',professional_support:'',rooms:[],timeline:'',name:'',phone:''};
