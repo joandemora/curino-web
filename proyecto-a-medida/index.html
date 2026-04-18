@@ -433,6 +433,8 @@ function selectOpt(step,el,val){
   if(step===2) _data.client_type=val;
   if(step===3) _data.professional_support=val;
   if(step===5) _data.timeline=val;
+  // Auto-advance after short delay
+  setTimeout(function(){nextStep();},300);
 }
 
 function selectCat(el,room){
