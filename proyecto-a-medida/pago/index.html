@@ -90,7 +90,8 @@ async function handlePay(){
         user_id:'',
         customer_email:_project.email,
         shipping_name:_project.name,
-        shipping_phone:_project.phone
+        shipping_phone:_project.phone,
+        cancel_url:window.location.origin+'/proyecto-a-medida/pago/'
       })
     });
     var data=await res.json();

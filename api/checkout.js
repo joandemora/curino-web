@@ -129,7 +129,7 @@ module.exports = async function handler(req, res) {
         shipping_phone: shipping_phone || '',
       },
       success_url: `${origin}/configurador-armarios-vestidores/confirmacion/?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout/`,
+      cancel_url: body.cancel_url || `${origin}/checkout/`,
     });
 
     console.log('Stripe session created:', session.id);
