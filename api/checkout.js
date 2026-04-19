@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
           price_data: {
             currency: 'eur',
             product_data: {
-              name: 'Armario a medida Curino',
+              name: body.product_name || 'Armario a medida Curino',
               description: description,
             },
             unit_amount: Math.round(precioNum * 100),
