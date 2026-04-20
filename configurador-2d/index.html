@@ -24,13 +24,25 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-layout{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 48px)}
 
 /* Left panel */
-.c2d-left{border-right:1px solid var(--border);overflow-y:auto;padding:1rem}
-.c2d-left h3{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
-.c2d-left h3:not(:first-child){margin-top:1.25rem}
-.c2d-mod{display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;border:1px solid var(--border);margin-bottom:.4rem;cursor:grab;font-size:12px;transition:border-color .2s;user-select:none}
+.c2d-left{border-right:1px solid var(--border);overflow-y:auto;padding:.75rem}
+.c2d-section{border-bottom:1px solid var(--border);padding-bottom:0}
+.c2d-section:last-child{border-bottom:none}
+.c2d-section-title{display:flex;justify-content:space-between;align-items:center;padding:.6rem .25rem;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--black)}
+.c2d-section-title::after{content:'+';font-size:14px;font-weight:300;color:var(--mid)}
+.c2d-section.open .c2d-section-title::after{content:'\2212'}
+.c2d-section-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.c2d-section.open .c2d-section-body{max-height:800px}
+.c2d-sub{padding-left:.5rem;margin-bottom:.5rem}
+.c2d-sub-title{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);padding:.4rem 0 .3rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.c2d-sub-title::after{content:'+';font-size:12px;font-weight:300;color:var(--light)}
+.c2d-sub.open .c2d-sub-title::after{content:'\2212'}
+.c2d-sub-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.c2d-sub.open .c2d-sub-body{max-height:500px}
+.c2d-mod{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border:1px solid var(--border);margin-bottom:.35rem;cursor:grab;font-size:11px;transition:border-color .2s;user-select:none}
 .c2d-mod:hover{border-color:var(--black)}
 .c2d-mod:active{cursor:grabbing}
-.c2d-mod-icon{width:24px;height:24px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--mid);flex-shrink:0}
+.c2d-mod-icon{width:22px;height:22px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:var(--mid);flex-shrink:0}
+.c2d-mod-size{font-size:9px;color:var(--mid);margin-left:auto}
 
 /* Canvas area */
 .c2d-center{background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
@@ -89,21 +101,47 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 
   <!-- LEFT: Modules -->
   <div class="c2d-left">
-    <h3>Armario</h3>
-    <div class="c2d-mod" draggable="true" data-type="cajon" data-w="60" data-h="20"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n</div>
-    <div class="c2d-mod" draggable="true" data-type="puerta_batiente" data-w="60" data-h="200"><div class="c2d-mod-icon">PB</div>Puerta batiente</div>
-    <div class="c2d-mod" draggable="true" data-type="puerta_corredera" data-w="80" data-h="200"><div class="c2d-mod-icon">PC</div>Puerta corredera</div>
-    <div class="c2d-mod" draggable="true" data-type="balda" data-w="60" data-h="3"><div class="c2d-mod-icon">BL</div>Balda</div>
-    <div class="c2d-mod" draggable="true" data-type="hueco_ropa" data-w="60" data-h="100"><div class="c2d-mod-icon">HR</div>Hueco ropa</div>
-    <div class="c2d-mod" draggable="true" data-type="espacio_libre" data-w="60" data-h="60"><div class="c2d-mod-icon">EL</div>Espacio libre</div>
+    <!-- ARMARIO -->
+    <div class="c2d-section open">
+      <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Armario</div>
+      <div class="c2d-section-body">
+        <!-- Interior -->
+        <div class="c2d-sub open">
+          <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Interior</div>
+          <div class="c2d-sub-body">
+            <div class="c2d-mod" draggable="true" data-type="modulo" data-w="60" data-h="200"><div class="c2d-mod-icon">MD</div>M&oacute;dulo<span class="c2d-mod-size">60&times;200</span></div>
+            <div class="c2d-mod" draggable="true" data-type="barra" data-w="60" data-h="5"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">60&times;5</span></div>
+            <div class="c2d-mod" draggable="true" data-type="estante" data-w="60" data-h="3"><div class="c2d-mod-icon">ES</div>Estante<span class="c2d-mod-size">60&times;3</span></div>
+            <div class="c2d-mod" draggable="true" data-type="cajon" data-w="60" data-h="20"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">60&times;20</span></div>
+            <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="60" data-h="15"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">60&times;15</span></div>
+            <div class="c2d-mod" draggable="true" data-type="balda_extraible" data-w="60" data-h="3"><div class="c2d-mod-icon">BX</div>Balda extra&iacute;ble<span class="c2d-mod-size">60&times;3</span></div>
+            <div class="c2d-mod" draggable="true" data-type="divisor" data-w="5" data-h="200"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">5&times;200</span></div>
+          </div>
+        </div>
+        <!-- Exterior -->
+        <div class="c2d-sub open">
+          <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Exterior</div>
+          <div class="c2d-sub-body">
+            <div class="c2d-mod" draggable="true" data-type="puerta_batiente" data-w="60" data-h="200"><div class="c2d-mod-icon">PB</div>Puerta batiente<span class="c2d-mod-size">60&times;200</span></div>
+            <div class="c2d-mod" draggable="true" data-type="tapeta" data-w="5" data-h="200"><div class="c2d-mod-icon">TP</div>Tapeta<span class="c2d-mod-size">5&times;200</span></div>
+            <div class="c2d-mod" draggable="true" data-type="costado" data-w="5" data-h="200"><div class="c2d-mod-icon">CT</div>Costado<span class="c2d-mod-size">5&times;200</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <h3>Cocina</h3>
-    <div class="c2d-mod" draggable="true" data-type="modulo_bajo" data-w="60" data-h="85"><div class="c2d-mod-icon">MB</div>M&oacute;dulo bajo</div>
-    <div class="c2d-mod" draggable="true" data-type="modulo_alto" data-w="60" data-h="70"><div class="c2d-mod-icon">MA</div>M&oacute;dulo alto</div>
-    <div class="c2d-mod" draggable="true" data-type="cajon_cocina" data-w="60" data-h="20"><div class="c2d-mod-icon">CC</div>Caj&oacute;n</div>
-    <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="60" data-h="85"><div class="c2d-mod-icon">LV</div>Lavavajillas</div>
-    <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="60" data-h="180"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico</div>
-    <div class="c2d-mod" draggable="true" data-type="horno" data-w="60" data-h="60"><div class="c2d-mod-icon">HO</div>Horno</div>
+    <!-- COCINA -->
+    <div class="c2d-section">
+      <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Cocina</div>
+      <div class="c2d-section-body">
+        <div class="c2d-mod" draggable="true" data-type="modulo_bajo" data-w="60" data-h="85"><div class="c2d-mod-icon">MB</div>M&oacute;dulo bajo<span class="c2d-mod-size">60&times;85</span></div>
+        <div class="c2d-mod" draggable="true" data-type="modulo_alto" data-w="60" data-h="70"><div class="c2d-mod-icon">MA</div>M&oacute;dulo alto<span class="c2d-mod-size">60&times;70</span></div>
+        <div class="c2d-mod" draggable="true" data-type="cajon_cocina" data-w="60" data-h="20"><div class="c2d-mod-icon">CC</div>Caj&oacute;n<span class="c2d-mod-size">60&times;20</span></div>
+        <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="60" data-h="85"><div class="c2d-mod-icon">LV</div>Lavavajillas<span class="c2d-mod-size">60&times;85</span></div>
+        <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="60" data-h="180"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico<span class="c2d-mod-size">60&times;180</span></div>
+        <div class="c2d-mod" draggable="true" data-type="horno" data-w="60" data-h="60"><div class="c2d-mod-icon">HO</div>Horno<span class="c2d-mod-size">60&times;60</span></div>
+      </div>
+    </div>
   </div>
 
   <!-- CENTER: Canvas -->
@@ -223,7 +261,7 @@ function renderModules(){
 }
 
 function typeLabel(t){
-  var labels={cajon:'Caj\u00F3n',puerta_batiente:'P. Batiente',puerta_corredera:'P. Corredera',balda:'Balda',hueco_ropa:'Hueco ropa',espacio_libre:'Espacio libre',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno'};
+  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno'};
   return labels[t]||t;
 }
 
@@ -241,7 +279,7 @@ function renderProps(){
     return;
   }
   var m=_modules[_selected];
-  var types=['cajon','puerta_batiente','puerta_corredera','balda','hueco_ropa','espacio_libre','modulo_bajo','modulo_alto','cajon_cocina','lavavajillas','frigorifico','horno'];
+  var types=['modulo','barra','estante','cajon','zapatero','balda_extraible','divisor','puerta_batiente','tapeta','costado','modulo_bajo','modulo_alto','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
   panel.innerHTML=
     '<div class="c2d-prop"><label>Ancho (cm)</label><input type="number" value="'+m.w+'" onchange="updateProp(\'w\',this.value)"></div>'+
