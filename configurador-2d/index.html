@@ -312,6 +312,27 @@ function renderModules(){
         '<div style="position:absolute;top:0;left:0;right:0;height:'+(m.h*sc)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
       '</div>';
     }
+    if(m.type==='zapatero'&&_view==='alzado'){
+      div.classList.add('no-frame');
+      var zW=m.w*sc,zH=m.h*sc;
+      var zSpacing=150*sc; // 150mm between shelves
+      var zTope=20*sc; // 20mm tope
+      var zRise=Math.tan(17*Math.PI/180)*zW; // ~17° incline
+      var svgLines='';
+      var y=zH;
+      while(y>0){
+        var y1=y,y2=y-zRise;
+        if(y2<0) y2=0;
+        // Inclined shelf line (bottom-left to top-right)
+        svgLines+='<line x1="0" y1="'+y1+'" x2="'+zW+'" y2="'+y2+'" stroke="#000" stroke-width="1"/>';
+        // Tope (short vertical at bottom-left)
+        svgLines+='<line x1="0" y1="'+y1+'" x2="0" y2="'+(y1-zTope)+'" stroke="#000" stroke-width="1"/>';
+        y-=zSpacing;
+      }
+      inner='<div style="position:absolute;inset:0;pointer-events:none">'+
+        '<svg width="'+zW+'" height="'+zH+'" style="position:absolute;top:0;left:0">'+svgLines+'</svg>'+
+      '</div>';
+    }
     if((m.type==='cajon'||m.type==='cajon_cocina')&&_view==='alzado'){
       div.classList.add('no-frame');
       var cB=30*sc,cM=30*sc;
