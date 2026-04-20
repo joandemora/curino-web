@@ -354,7 +354,9 @@ function renderProps(){
 function updateProp(key,val){
   if(_sel.size!==1) return;saveHistory();
   var idx=_sel.values().next().value;
-  _modules[idx][key]=key==='type'?val:(parseInt(val)||0);
+  var v=key==='type'?val:(parseInt(val)||0);
+  if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
+  _modules[idx][key]=v;
   draw();renderModules();renderProps();
 }
 function deleteSelected(){
@@ -566,19 +568,20 @@ function resizeMove(e){
     }
   }else{
     var yEdges=getSnapEdges('y',skip);
+    var hMin=m.type==='estante'?19:GRID,hMax=m.type==='estante'?40:Infinity;
     // Top handle (screen up): top edge = m.y + m.h
     if(p==='t'||p==='tl'||p==='tr'){
       var rawTop2=r.origY+r.origH-dy;
       var snT2=magSnap(rawTop2,yEdges,sc);
-      var nh=snT2-m.y;
-      if(nh>=GRID){m.h=nh;if(snT2!==snap(rawTop2)) showSnapLine(snT2,'y');}
+      var nh=Math.min(hMax,Math.max(hMin,snT2-m.y));
+      if(nh>=hMin){m.h=nh;if(snT2!==snap(rawTop2)) showSnapLine(snT2,'y');}
     }
     // Bottom handle (screen down): bottom edge = m.y
     if(p==='b'||p==='bl'||p==='br'){
       var rawBot2=r.origY+dy;
       var snB2=magSnap(rawBot2,yEdges,sc);
-      var nh2=(r.origY+r.origH)-snB2;
-      if(nh2>=GRID){m.y=snB2;m.h=nh2;if(snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
+      var nh2=Math.min(hMax,Math.max(hMin,(r.origY+r.origH)-snB2));
+      if(nh2>=hMin){m.y=r.origY+r.origH-nh2;m.h=nh2;if(snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
     }
   }
   renderModules();renderProps();
