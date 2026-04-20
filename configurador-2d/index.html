@@ -151,6 +151,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
             <div class="c2d-mod" draggable="true" data-type="puerta_batiente" data-w="600" data-h="2000"><div class="c2d-mod-icon">PB</div>Puerta batiente<span class="c2d-mod-size">600&times;2000</span></div>
             <div class="c2d-mod" draggable="true" data-type="tapeta" data-w="50" data-h="2000"><div class="c2d-mod-icon">TP</div>Tapeta<span class="c2d-mod-size">50&times;2000</span></div>
             <div class="c2d-mod" draggable="true" data-type="costado" data-w="50" data-h="2000"><div class="c2d-mod-icon">CT</div>Costado<span class="c2d-mod-size">50&times;2000</span></div>
+            <div class="c2d-mod" draggable="true" data-type="zocalo" data-w="600" data-h="100"><div class="c2d-mod-icon">ZC</div>Z&oacute;calo<span class="c2d-mod-size">600&times;100</span></div>
           </div>
         </div>
       </div>
@@ -273,7 +274,7 @@ function renderModules(){
     div.style.left=mx+'px';div.style.top=my+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
-    if(m.type==='divisor') div.classList.add('no-frame');
+    if(m.type==='divisor'||m.type==='zocalo') div.classList.add('no-frame');
     if(m.type==='modulo'&&_view==='alzado'){
       div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
@@ -381,7 +382,7 @@ function renderModules(){
 }
 
 function typeLabel(t){
-  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno'};
+  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno'};
   return labels[t]||t;
 }
 
@@ -402,7 +403,7 @@ function renderProps(){
   var idx=_sel.values().next().value;
   var m=_modules[idx];
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
-  var types=['modulo','barra','estante','cajon','zapatero','balda_extraible','divisor','puerta_batiente','tapeta','costado','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
+  var types=['modulo','barra','estante','cajon','zapatero','divisor','puerta_batiente','tapeta','costado','zocalo','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
   var hFixed=m.type==='barra'||m.type==='zapatero';
   var dFixed=m.type==='barra';
