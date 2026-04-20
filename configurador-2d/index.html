@@ -293,10 +293,8 @@ function renderModules(){
     }
     if(m.type==='estante'&&_view==='alzado'){
       div.style.border='none';div.style.background='none';
-      var eThick=30*sc;
-      var ey=(m.h*sc-eThick)/2;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        '<div style="position:absolute;top:'+ey+'px;left:0;right:0;height:'+eThick+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        '<div style="position:absolute;top:0;left:0;right:0;height:'+(m.h*sc)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
@@ -430,8 +428,7 @@ function getSnapEdges(axis,skipIndices){
         edges.push(m.y+70,m.y+40,m.y+m.h-19); // tarima top, base board, top panel inner
       }
       if(m.type==='estante'){
-        var eMid=m.y+m.h/2;
-        edges.push(eMid-15,eMid+15); // estante rect edges (30mm centered)
+        edges.push(m.y,m.y+m.h); // already covered by outer edges
       }
       if(m.type==='barra'){
         var bMid=m.y+m.h/2;
