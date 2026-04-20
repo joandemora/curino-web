@@ -273,6 +273,7 @@ function renderModules(){
     div.style.left=mx+'px';div.style.top=my+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
+    if(m.type==='divisor') div.classList.add('no-frame');
     if(m.type==='modulo'&&_view==='alzado'){
       div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
