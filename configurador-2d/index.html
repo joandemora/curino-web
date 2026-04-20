@@ -415,7 +415,12 @@ function renderProps(){
     '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="50" onchange="updateProp(\'x\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Profundidad Z (mm)</label><input type="number" value="'+(m.pz||0)+'" step="50" onchange="updateProp(\'pz\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="50" onchange="updateProp(\'y\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Tipo</label><select onchange="updateProp(\'type\',this.value)">'+opts+'</select></div>'+
+    (m.type==='puerta_batiente'?
+      '<div class="c2d-prop"><label>Apertura</label><select onchange="updateProp(\'apertura\',this.value)">'+
+        '<option value="derecha"'+((m.apertura||'derecha')==='derecha'?' selected':'')+'>Apertura derecha</option>'+
+        '<option value="izquierda"'+(m.apertura==='izquierda'?' selected':'')+'>Apertura izquierda</option>'+
+        '<option value="vertical"'+(m.apertura==='vertical'?' selected':'')+'>Apertura vertical</option>'+
+      '</select></div>':'')+
     '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar m\u00F3dulo</button>';
 }
 
