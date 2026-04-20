@@ -664,29 +664,28 @@ function groupResizeMove(e){
   if(!_groupResize) return;
   var g=_groupResize,sc=s(),p=g.pos;
   var dx=(e.clientX-g.startX)/sc,dy=(e.clientY-g.startY)/sc;
-  if(_view!=='planta') dy=-dy; // invert Y for alzado
+  if(_view!=='planta') dy=-dy;
 
-  // Compute new bounding box
-  var nx=g.bx,ny=g.by,nw=g.bw,nh=g.bh;
-  if(p==='r'||p==='tr'||p==='br') nw=Math.max(GRID,g.bw+dx);
-  if(p==='l'||p==='tl'||p==='bl'){var dw=g.bw-dx;if(dw>=GRID){nw=dw;nx=g.bx+dx;}}
-  if(p==='t'||p==='tl'||p==='tr') nh=Math.max(GRID,g.bh+dy);
-  if(p==='b'||p==='bl'||p==='br'){var dh=g.bh-dy;if(dh>=GRID){nh=dh;ny=g.by+dy;}}
+  // Anchor = fixed corner (opposite to handle being dragged)
+  // anchorX: right side fixed when dragging left, left side fixed when dragging right
+  var ax=g.bx,aw=g.bw; // anchor X and new width
+  if(p==='r'||p==='tr'||p==='br'){aw=Math.max(GRID,g.bw+dx);}
+  if(p==='l'||p==='tl'||p==='bl'){aw=Math.max(GRID,g.bw-dx);ax=g.bx+g.bw-aw;}
+  var ay=g.by,ah=g.bh;
+  if(p==='t'||p==='tl'||p==='tr'){ah=Math.max(GRID,g.bh+dy);}
+  if(p==='b'||p==='bl'||p==='br'){ah=Math.max(GRID,g.bh-dy);ay=g.by+g.bh-ah;}
 
-  var sx=nw/g.bw,sy=nh/g.bh;
+  var sx=aw/g.bw,sy=ah/g.bh;
 
-  // Scale all modules proportionally
   g.originals.forEach(function(o){
     var m=_modules[o.idx];
+    m.x=Math.round(ax+(o.x-g.bx)*sx);
+    m.w=Math.max(GRID,Math.round(o.w*sx));
     if(_view==='planta'){
-      m.x=Math.round(nx+(o.x-g.bx)*sx);
-      m.w=Math.max(GRID,Math.round(o.w*sx));
-      m.pz=Math.round(ny+(o.pz-g.by)*sy);
-      m.d=Math.max(GRID,Math.round((o.d)*sy));
+      m.pz=Math.round(ay+(o.pz-g.by)*sy);
+      m.d=Math.max(GRID,Math.round(o.d*sy));
     }else{
-      m.x=Math.round(nx+(o.x-g.bx)*sx);
-      m.w=Math.max(GRID,Math.round(o.w*sx));
-      m.y=Math.round(ny+(o.y-g.by)*sy);
+      m.y=Math.round(ay+(o.y-g.by)*sy);
       m.h=Math.max(GRID,Math.round(o.h*sy));
     }
   });
