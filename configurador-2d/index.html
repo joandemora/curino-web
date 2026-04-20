@@ -253,7 +253,7 @@ function renderModules(){
     var div=document.createElement('div');
     div.className='c2d-module'+(i===_selected?' selected':'');
     div.style.left=(o.x+m.x*sc)+'px';
-    div.style.top=(o.y+m.y*sc)+'px';
+    div.style.top=(o.y+(_furH-m.y-m.h)*sc)+'px';
     div.style.width=(m.w*sc)+'px';
     div.style.height=(m.h*sc)+'px';
     var inner='';
@@ -337,7 +337,8 @@ wrap.addEventListener('drop',function(e){
   e.preventDefault();if(!_dragData) return;
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var x=snap((e.clientX-rect.left-o.x)/sc);
-  var y=snap((e.clientY-rect.top-o.y)/sc);
+  var screenY=(e.clientY-rect.top-o.y)/sc;
+  var y=snap(_furH-screenY-_dragData.h);
   saveHistory();
   _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,x:x,y:y});
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
@@ -355,7 +356,7 @@ function startDragModule(e,i){
 function dragModuleMove(e){
   if(!_dragMod) return;var sc=s();
   _modules[_dragMod.idx].x=snap(_dragMod.origX+(e.clientX-_dragMod.startX)/sc);
-  _modules[_dragMod.idx].y=snap(_dragMod.origY+(e.clientY-_dragMod.startY)/sc);
+  _modules[_dragMod.idx].y=snap(_dragMod.origY-(e.clientY-_dragMod.startY)/sc);
   renderModules();renderProps();
 }
 function dragModuleEnd(){
@@ -379,12 +380,12 @@ function resizeMove(e){
   var p=r.pos;
   // Right edge
   if(p==='r'||p==='tr'||p==='br') m.w=Math.max(GRID,snap(r.origW+dx));
-  // Bottom edge
-  if(p==='b'||p==='bl'||p==='br') m.h=Math.max(GRID,snap(r.origH+dy));
   // Left edge
   if(p==='l'||p==='tl'||p==='bl'){var nw=snap(r.origW-dx);if(nw>=GRID){m.w=nw;m.x=snap(r.origX+dx);}}
-  // Top edge
-  if(p==='t'||p==='tl'||p==='tr'){var nh=snap(r.origH-dy);if(nh>=GRID){m.h=nh;m.y=snap(r.origY+dy);}}
+  // Top handle (screen up = world Y increases = grow upward)
+  if(p==='t'||p==='tl'||p==='tr'){var nh=snap(r.origH-dy);if(nh>=GRID){m.h=nh;m.y=snap(r.origY+r.origH-nh);}}
+  // Bottom handle (screen down = world Y decreases = shrink from bottom)
+  if(p==='b'||p==='bl'||p==='br'){var nh=snap(r.origH+dy);if(nh>=GRID){m.h=nh;m.y=snap(r.origY-(nh-r.origH));}}
   renderModules();renderProps();
 }
 function resizeEnd(){
