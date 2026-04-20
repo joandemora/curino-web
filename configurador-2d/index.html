@@ -445,7 +445,7 @@ function renderProps(){
 function updateProp(key,val){
   if(_sel.size!==1) return;saveHistory();
   var idx=_sel.values().next().value;
-  var v=key==='type'?val:(parseInt(val)||0);
+  var v=(key==='type'||key==='apertura')?val:(parseInt(val)||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
   if(key==='w'&&_modules[idx].type==='divisor') return;
