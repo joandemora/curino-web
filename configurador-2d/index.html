@@ -285,10 +285,15 @@ function renderModules(){
         svg+='<line x1="0" y1="0" x2="'+pw+'" y2="'+cy+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
         svg+='<line x1="'+pw+'" y1="'+cy+'" x2="0" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
         svg+='<rect x="'+(pw-tW)+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" fill="none" stroke="#000" stroke-width="1"/>';
-      }else{
+      }else if(ap==='izquierda'){
         svg+='<line x1="'+pw+'" y1="0" x2="0" y2="'+cy+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
         svg+='<line x1="0" y1="'+cy+'" x2="'+pw+'" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
         svg+='<rect x="0" y="'+tY+'" width="'+tW+'" height="'+tH+'" fill="none" stroke="#000" stroke-width="1"/>';
+      }else{
+        var cx=pw/2;
+        svg+='<line x1="0" y1="'+ph+'" x2="'+cx+'" y2="0" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
+        svg+='<line x1="'+cx+'" y1="0" x2="'+pw+'" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
+        svg+='<rect x="'+((pw-tH)/2)+'" y="'+(ph-tW)+'" width="'+tH+'" height="'+tW+'" fill="none" stroke="#000" stroke-width="1"/>';
       }
       svg+='</svg>';
       inner=svg;
