@@ -378,14 +378,14 @@ function resizeMove(e){
   var r=_resizing,m=_modules[r.idx],sc=s();
   var dx=(e.clientX-r.startX)/sc,dy=(e.clientY-r.startY)/sc;
   var p=r.pos;
-  // Right edge
+  // Right edge: grow width rightward
   if(p==='r'||p==='tr'||p==='br') m.w=Math.max(GRID,snap(r.origW+dx));
-  // Left edge
+  // Left edge: grow width leftward, move x
   if(p==='l'||p==='tl'||p==='bl'){var nw=snap(r.origW-dx);if(nw>=GRID){m.w=nw;m.x=snap(r.origX+dx);}}
-  // Top handle (screen up = world Y increases = grow upward)
-  if(p==='t'||p==='tl'||p==='tr'){var nh=snap(r.origH-dy);if(nh>=GRID){m.h=nh;m.y=snap(r.origY+r.origH-nh);}}
-  // Bottom handle (screen down = world Y decreases = shrink from bottom)
-  if(p==='b'||p==='bl'||p==='br'){var nh=snap(r.origH+dy);if(nh>=GRID){m.h=nh;m.y=snap(r.origY-(nh-r.origH));}}
+  // Top handle (screen): drag up (dy<0) = grow upward, m.y stays fixed
+  if(p==='t'||p==='tl'||p==='tr'){var nh=snap(r.origH-dy);if(nh>=GRID) m.h=nh;}
+  // Bottom handle (screen): drag down (dy>0) = shrink from bottom, m.y decreases
+  if(p==='b'||p==='bl'||p==='br'){var nh=snap(r.origH+dy);if(nh>=GRID){m.y=snap(r.origY-(nh-r.origH));m.h=nh;}}
   renderModules();renderProps();
 }
 function resizeEnd(){
