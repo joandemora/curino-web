@@ -58,19 +58,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
 .mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
 
-/* ── HERO ── */
-.est-hero{position:relative;height:85vh;margin-top:80px;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.est-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.est-hero::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.35)}
-.est-hero-title{position:relative;z-index:1;color:var(--white);font-size:36px;font-weight:300;text-align:center;max-width:700px;padding:0 2rem;line-height:1.3;text-transform:uppercase;letter-spacing:.02em}
+/* ── HERO CARDS ── */
+.est-hero{display:grid;grid-template-columns:1fr 1fr;margin-top:80px;min-height:85vh}
+.est-card{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.est-card-left{background:url(/assets/imagenes/landing/FINA.jpg) center/cover no-repeat}
+.est-card-left::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.est-card-right{background:var(--black);display:flex;align-items:center;justify-content:center}
+.est-card-right-inner{color:var(--mid);font-size:14px;text-align:center;padding:2rem}
+.est-card-right-inner svg{width:48px;height:48px;stroke:var(--mid);stroke-width:1;fill:none;margin-bottom:1rem}
 
-/* ── VALUES ── */
-.est-values{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1100px;margin:0 auto}
-.est-value{padding:3.5rem 3rem;border-bottom:1px solid var(--border)}
-.est-value:nth-child(odd){border-right:1px solid var(--border)}
-.est-value-num{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
-.est-value-title{font-size:16px;font-weight:600;margin-bottom:.5rem}
-.est-value-desc{font-size:14px;color:var(--mid);line-height:1.7}
+/* Accordion on left card */
+.est-accordion{position:relative;z-index:1;padding:2.5rem 3rem;width:100%}
+.est-acc-item{border-bottom:1px solid rgba(255,255,255,.15)}
+.est-acc-title{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;cursor:pointer;color:var(--white);font-size:14px;font-weight:600;letter-spacing:.02em}
+.est-acc-title::after{content:'+';font-size:18px;font-weight:300;color:rgba(255,255,255,.5);transition:transform .3s}
+.est-acc-item.open .est-acc-title::after{content:'\2212'}
+.est-acc-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.est-acc-item.open .est-acc-body{max-height:200px}
+.est-acc-body p{font-size:13px;color:rgba(255,255,255,.65);line-height:1.7;padding:0 0 1rem}
 
 /* ── QUOTE ── */
 .est-quote{padding:5rem 2rem;text-align:center;max-width:800px;margin:0 auto}
@@ -116,10 +121,10 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .nav-right{display:none}
   .nav-mobile-right{display:flex;align-items:center;gap:1rem}
   .nav-mobile-right .nav-hamburger{display:flex}
-  .est-hero{height:60vh;margin-top:60px}
-  .est-hero-title{font-size:22px}
-  .est-values{grid-template-columns:1fr}
-  .est-value{border-right:none!important}
+  .est-hero{grid-template-columns:1fr;margin-top:60px;min-height:auto}
+  .est-card-left{min-height:70vh}
+  .est-card-right{min-height:50vh}
+  .est-accordion{padding:2rem 16px}
   .est-quote p{font-size:20px}
   .est-steps-grid{grid-template-columns:1fr 1fr;gap:1.5rem}
   footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
@@ -177,33 +182,35 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="/estudio/">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
 </div>
 
-<!-- HERO -->
+<!-- HERO CARDS -->
 <div class="est-hero">
-  <img src="/assets/imagenes/landing/MAESTRO.jpg" alt="Curino Estudio">
-  <h1 class="est-hero-title">El mueble que imaginabas, hecho realidad</h1>
-</div>
-
-<!-- VALUES -->
-<div class="est-values">
-  <div class="est-value reveal">
-    <div class="est-value-num">01</div>
-    <div class="est-value-title">Todo online</div>
-    <div class="est-value-desc">Gestiona todo el proceso sin moverte. Dise&ntilde;o, revisi&oacute;n y decisiones desde casa, sin visitas ni interrupciones.</div>
+  <!-- Left: image + accordion -->
+  <div class="est-card est-card-left">
+    <div class="est-accordion">
+      <div class="est-acc-item open">
+        <div class="est-acc-title" onclick="toggleAcc(this)">Todo online</div>
+        <div class="est-acc-body"><p>Gestiona todo el proceso sin moverte. Dise&ntilde;o, revisi&oacute;n y decisiones desde casa, sin visitas ni interrupciones.</p></div>
+      </div>
+      <div class="est-acc-item">
+        <div class="est-acc-title" onclick="toggleAcc(this)">Tu equipo de dise&ntilde;o</div>
+        <div class="est-acc-body"><p>Nuestros dise&ntilde;adores te acompa&ntilde;an en cada fase, desde el primer boceto hasta el detalle final.</p></div>
+      </div>
+      <div class="est-acc-item">
+        <div class="est-acc-title" onclick="toggleAcc(this)">Materiales sin compromiso</div>
+        <div class="est-acc-body"><p>Selecci&oacute;n de acabados, herrajes y calidades de alta carpinter&iacute;a. Fabricado en Espa&ntilde;a con garant&iacute;a de 25 a&ntilde;os.</p></div>
+      </div>
+      <div class="est-acc-item">
+        <div class="est-acc-title" onclick="toggleAcc(this)">Instalaci&oacute;n incluida</div>
+        <div class="est-acc-body"><p>Nos encargamos de la entrega y el montaje. T&uacute; solo tienes que disfrutar del resultado.</p></div>
+      </div>
+    </div>
   </div>
-  <div class="est-value reveal">
-    <div class="est-value-num">02</div>
-    <div class="est-value-title">Tu equipo de dise&ntilde;o</div>
-    <div class="est-value-desc">Nuestros dise&ntilde;adores te acompa&ntilde;an en cada fase, desde el primer boceto hasta el detalle final.</div>
-  </div>
-  <div class="est-value reveal">
-    <div class="est-value-num">03</div>
-    <div class="est-value-title">Materiales sin compromiso</div>
-    <div class="est-value-desc">Selecci&oacute;n de acabados, herrajes y calidades de alta carpinter&iacute;a. Fabricado en Espa&ntilde;a con garant&iacute;a de 25 a&ntilde;os.</div>
-  </div>
-  <div class="est-value reveal">
-    <div class="est-value-num">04</div>
-    <div class="est-value-title">Instalaci&oacute;n incluida</div>
-    <div class="est-value-desc">Nos encargamos de la entrega y el montaje. T&uacute; solo tienes que disfrutar del resultado.</div>
+  <!-- Right: video placeholder -->
+  <div class="est-card est-card-right">
+    <div class="est-card-right-inner">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <div>V&iacute;deo pr&oacute;ximamente</div>
+    </div>
   </div>
 </div>
 
@@ -262,6 +269,15 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 
 <script>
 function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');document.getElementById('hamburger').classList.toggle('open');}
+
+function toggleAcc(el){
+  var item=el.parentElement;
+  var wasOpen=item.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.est-acc-item').forEach(function(i){i.classList.remove('open');});
+  // Open clicked if it was closed
+  if(!wasOpen) item.classList.add('open');
+}
 
 // Reveal on scroll
 var io=new IntersectionObserver(function(entries){
