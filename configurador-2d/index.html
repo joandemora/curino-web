@@ -308,12 +308,10 @@ function renderModules(){
       '</div>';
     }
     if((m.type==='cajon'||m.type==='cajon_cocina')&&_view==='alzado'){
-      var cBand=30*sc,cMg=30*sc;
+      div.style.background='none';
+      var cBand=30*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        // Top band (filled dark grey)
         '<div style="position:absolute;top:0;left:0;right:0;height:'+cBand+'px;background:#666"></div>'+
-        // Inner panel rectangle (margin 30mm from left, right, bottom; starts below band)
-        '<div style="position:absolute;top:'+cBand+'px;left:'+cMg+'px;right:'+cMg+'px;bottom:'+cMg+'px;border:1px solid #000;box-sizing:border-box"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
