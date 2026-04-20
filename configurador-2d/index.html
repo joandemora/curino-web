@@ -298,7 +298,8 @@ function renderModules(){
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      ['tl','t','tr','l','r','bl','b','br'].forEach(function(pos){
+      var handles=m.type==='barra'?['l','r']:['tl','t','tr','l','r','bl','b','br'];
+      handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
         h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
