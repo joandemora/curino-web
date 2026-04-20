@@ -280,7 +280,7 @@ function renderModules(){
       var ap=m.apertura||'derecha';
       var cy=ph/2;
       var tW=15*sc,tH=60*sc,tY=(ph-tH)/2;
-      var svg='<svg style="position:absolute;top:0;left:0;width:'+pw+'px;height:'+ph+'px;pointer-events:none">';
+      var svg='<svg style="position:absolute;top:-1px;left:-1px;width:'+(pw+2)+'px;height:'+(ph+2)+'px;pointer-events:none" viewBox="-1 -1 '+(pw+2)+' '+(ph+2)+'">';
       if(ap==='derecha'){
         svg+='<line x1="0" y1="0" x2="'+pw+'" y2="'+cy+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
         svg+='<line x1="'+pw+'" y1="'+cy+'" x2="0" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
