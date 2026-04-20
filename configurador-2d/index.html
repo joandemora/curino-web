@@ -643,12 +643,13 @@ function resizeMove(e){
       var nh=Math.min(hMax,Math.max(hMin,snT2-m.y));
       if(nh>=hMin){m.h=nh;if(snT2!==snap(rawTop2)) showSnapLine(snT2,'y');}
     }
-    // Bottom handle (screen down): bottom edge = m.y
+    // Bottom handle (screen down): bottom edge = m.y, screen down = world Y decreases
     if(p==='b'||p==='bl'||p==='br'){
-      var rawBot2=r.origY+dy;
+      var rawBot2=r.origY-dy;
       var snB2=magSnap(rawBot2,yEdges,sc);
-      var nh2=Math.min(hMax,Math.max(hMin,(r.origY+r.origH)-snB2));
-      if(nh2>=hMin){m.y=r.origY+r.origH-nh2;m.h=nh2;if(snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
+      var topEdge=r.origY+r.origH;
+      var nh2=Math.min(hMax,Math.max(hMin,topEdge-snB2));
+      if(nh2>=hMin){m.y=topEdge-nh2;m.h=nh2;if(snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
     }
   }
   renderModules();renderProps();
