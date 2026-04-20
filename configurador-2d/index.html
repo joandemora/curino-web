@@ -275,6 +275,26 @@ function renderModules(){
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
+    if(m.type==='puerta_batiente'&&_view==='alzado'){
+      var pw=m.w*sc,ph=m.h*sc;
+      var ap=m.apertura||'derecha';
+      var svgW=pw,svgH=ph,arc='';
+      if(ap==='derecha'){
+        // Hinge on right, arc sweeps left from top-right corner
+        arc='<path d="M0,0 A'+pw+','+pw+' 0 0,1 '+pw+','+pw+'" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>';
+        arc+='<line x1="0" y1="0" x2="0" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>';
+      }else if(ap==='izquierda'){
+        // Hinge on left, arc sweeps right from top-left corner
+        arc='<path d="M'+pw+',0 A'+pw+','+pw+' 0 0,0 0,'+pw+'" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>';
+        arc+='<line x1="'+pw+'" y1="0" x2="'+pw+'" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>';
+      }else{
+        // Vertical: hinge at top, arc sweeps upward
+        svgH=ph+pw; // extend SVG upward
+        arc='<path d="M0,'+pw+' A'+pw+','+pw+' 0 0,0 '+pw+','+pw+'" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>';
+      }
+      inner='<div style="position:absolute;'+(ap==='vertical'?'bottom:0;left:0':'top:0;left:0')+';pointer-events:none;overflow:visible">'+
+        '<svg width="'+svgW+'" height="'+svgH+'" style="overflow:visible">'+arc+'</svg></div>';
+    }
     if(m.type==='modulo'&&_view==='alzado'){
       div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
