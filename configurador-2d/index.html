@@ -274,6 +274,18 @@ function renderModules(){
         '<div style="position:absolute;bottom:'+t70+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
+    if(m.type==='barra'&&_view==='alzado'){
+      var barH=30*sc,supW=40*sc;
+      var barY=(m.h*sc)/2-barH/2; // centered vertically
+      inner='<div style="position:absolute;inset:0;pointer-events:none">'+
+        // Horizontal bar (centered)
+        '<div style="position:absolute;top:'+barY+'px;left:0;right:0;height:'+barH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Left support (top to bar)
+        '<div style="position:absolute;top:0;left:0;width:'+supW+'px;height:'+(barY+barH)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Right support (top to bar)
+        '<div style="position:absolute;top:0;right:0;width:'+supW+'px;height:'+(barY+barH)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+      '</div>';
+    }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
     div.innerHTML=inner+'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>';
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
