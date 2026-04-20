@@ -67,6 +67,9 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-module{position:absolute;border:1px solid var(--black);background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--mid);cursor:move;user-select:none;transition:box-shadow .15s}
 .c2d-module:hover{box-shadow:0 0 0 2px var(--accent)}
 .c2d-module.selected{box-shadow:0 0 0 2px var(--accent);border-color:var(--accent)}
+.c2d-module.no-frame{border:none!important;background:transparent!important}
+.c2d-module.no-frame:hover{box-shadow:0 0 0 2px var(--accent)}
+.c2d-module.no-frame.selected{box-shadow:0 0 0 2px var(--accent);border:none!important}
 .c2d-module-label{text-align:center;line-height:1.3;pointer-events:none}
 /* Resize handles */
 .c2d-handle{position:absolute;width:8px;height:8px;background:var(--accent);border:1px solid var(--white);z-index:2}
@@ -269,7 +272,7 @@ function renderModules(){
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
     if(m.type==='modulo'&&_view==='alzado'){
-      div.style.border='none';
+      div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
       var hTotal=m.h*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
@@ -289,7 +292,7 @@ function renderModules(){
       '</div>';
     }
     if(m.type==='barra'&&_view==='alzado'){
-      div.style.border='none';div.style.background='none';
+      div.classList.add('no-frame');
       var supW=20*sc,supH=40*sc,gap=30*sc;
       var cy=(m.h*sc-supH)/2;
       var lineTop=cy+(supH-gap)/2;
@@ -302,13 +305,13 @@ function renderModules(){
       '</div>';
     }
     if(m.type==='estante'&&_view==='alzado'){
-      div.style.border='none';div.style.background='none';
+      div.classList.add('no-frame');
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
         '<div style="position:absolute;top:0;left:0;right:0;height:'+(m.h*sc)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
       '</div>';
     }
     if((m.type==='cajon'||m.type==='cajon_cocina')&&_view==='alzado'){
-      div.style.border='none';div.style.background='none';
+      div.classList.add('no-frame');
       var cBand=30*sc,cSide=30*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
         '<div style="position:absolute;top:0;left:0;right:0;height:'+cBand+'px;background:#666"></div>'+
