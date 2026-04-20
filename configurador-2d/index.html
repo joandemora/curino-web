@@ -677,20 +677,27 @@ function groupResizeMove(e){
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
-  console.log('Group resize: ratio=',sx.toFixed(3),sy.toFixed(3),'modules=',g.originals.length,'sel=',_sel.size);
+  var fixedH={'barra':40};
+  var clampH={'estante':{min:19,max:40}};
   g.originals.forEach(function(o){
-    var m=_modules[o.idx];
-    var oldW=m.w,oldH=m.h;
+    var m=_modules[o.idx],t=m.type;
+    // X axis: scale all
     m.x=Math.round(ax+(o.x-g.bx)*sx);
     m.w=Math.max(GRID,Math.round(o.w*sx));
+    // Y axis
     if(_view==='planta'){
       m.pz=Math.round(ay+(o.pz-g.by)*sy);
-      m.d=Math.max(GRID,Math.round(o.d*sy));
+      if(!(t in fixedH)) m.d=Math.max(GRID,Math.round(o.d*sy));
     }else{
       m.y=Math.round(ay+(o.y-g.by)*sy);
-      m.h=Math.max(GRID,Math.round(o.h*sy));
+      if(t in fixedH){
+        // Fixed height: keep original, don't scale
+      }else if(t in clampH){
+        m.h=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
+      }else{
+        m.h=Math.max(GRID,Math.round(o.h*sy));
+      }
     }
-    console.log('  ['+o.idx+'] '+_modules[o.idx].type+': '+oldW+'→'+m.w+' x '+oldH+'→'+m.h);
   });
   renderModules();renderProps();
 }
