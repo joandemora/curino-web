@@ -275,6 +275,21 @@ function renderModules(){
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
+    if(m.type==='puerta_batiente'&&_view==='alzado'){
+      var pw=m.w*sc,ph=m.h*sc;
+      var ap=m.apertura||'derecha';
+      var tW=15*sc,tH=60*sc,tY=(ph-tH)/2;
+      var svg='<svg style="position:absolute;top:0;left:0;width:'+pw+'px;height:'+ph+'px;pointer-events:none">';
+      if(ap==='derecha'){
+        svg+='<line x1="0" y1="0" x2="'+pw+'" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
+        svg+='<rect x="'+(pw-tW)+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" fill="none" stroke="#000" stroke-width="1"/>';
+      }else{
+        svg+='<line x1="'+pw+'" y1="0" x2="0" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
+        svg+='<rect x="0" y="'+tY+'" width="'+tW+'" height="'+tH+'" fill="none" stroke="#000" stroke-width="1"/>';
+      }
+      svg+='</svg>';
+      inner=svg;
+    }
     if(m.type==='modulo'&&_view==='alzado'){
       div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
