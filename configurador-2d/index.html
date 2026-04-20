@@ -406,12 +406,12 @@ function renderProps(){
   var types=['modulo','barra','estante','cajon','zapatero','divisor','puerta_batiente','tapeta','costado','zocalo','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
   var hFixed=m.type==='barra'||m.type==='zapatero';
-  var dFixed=m.type==='barra';
+  var dFixed=m.type==='barra'||m.type==='tapeta'||m.type==='zocalo';
   var wFixed=m.type==='divisor';
   panel.innerHTML=
     '<div class="c2d-prop"><label>Ancho (mm)</label>'+(wFixed?'<div style="font-size:13px;padding:6px 0">19 mm</div>':'<input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)">')+'</div>'+
     '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50"'+(hFixed?' disabled':' onchange="updateProp(\'h\',this.value)"')+'></div>'+
-    '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50"'+(dFixed?' disabled':' onchange="updateProp(\'d\',this.value)"')+'></div>'+
+    '<div class="c2d-prop"><label>Fondo (mm)</label>'+(dFixed?'<div style="font-size:13px;padding:6px 0">'+(m.d||19)+' mm</div>':'<input type="number" value="'+(m.d||600)+'" step="50" onchange="updateProp(\'d\',this.value)">')+'</div>'+
     '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="50" onchange="updateProp(\'x\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Profundidad Z (mm)</label><input type="number" value="'+(m.pz||0)+'" step="50" onchange="updateProp(\'pz\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="50" onchange="updateProp(\'y\',this.value)"></div>'+
@@ -427,6 +427,7 @@ function updateProp(key,val){
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
   if(key==='w'&&_modules[idx].type==='divisor') return;
   if(key==='h'&&_modules[idx].type==='barra') v=40;
+  if(key==='d'&&(_modules[idx].type==='barra'||_modules[idx].type==='tapeta'||_modules[idx].type==='zocalo')) return;
   _modules[idx][key]=v;
   draw();renderModules();renderProps();
 }
@@ -457,7 +458,8 @@ wrap.addEventListener('drop',function(e){
     y=snap(_furH-screenY-_dragData.h);pz=0;
   }
   saveHistory();
-  var dd=_dragData.type==='barra'?40:600;
+  var _dFixed={'barra':40,'tapeta':19,'zocalo':19};
+  var dd=_dFixed[_dragData.type]||600;
   _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz});
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
@@ -697,16 +699,17 @@ function groupResizeMove(e){
   var sx=aw/g.bw,sy=ah/g.bh;
 
   var fixedH={'barra':40,'zapatero':200};
+  var fixedD={'barra':40,'tapeta':19,'zocalo':19};
   var clampH={'estante':{min:19,max:40}};
   g.originals.forEach(function(o){
     var m=_modules[o.idx],t=m.type;
-    // X axis: scale all
+    // X axis: scale all (except divisor width)
     m.x=Math.round(ax+(o.x-g.bx)*sx);
-    m.w=Math.max(GRID,Math.round(o.w*sx));
+    if(t!=='divisor') m.w=Math.max(GRID,Math.round(o.w*sx));
     // Y axis
     if(_view==='planta'){
       m.pz=Math.round(ay+(o.pz-g.by)*sy);
-      if(!(t in fixedH)) m.d=Math.max(GRID,Math.round(o.d*sy));
+      if(!(t in fixedD)) m.d=Math.max(GRID,Math.round(o.d*sy));
     }else{
       m.y=Math.round(ay+(o.y-g.by)*sy);
       if(t in fixedH){
