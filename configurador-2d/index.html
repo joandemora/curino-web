@@ -313,11 +313,14 @@ function renderModules(){
     if((m.type==='cajon'||m.type==='cajon_cocina')&&_view==='alzado'){
       div.classList.add('no-frame');
       var cB=30*sc,cH=m.h*sc;
+      var cM=30*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
         '<div style="position:absolute;top:0;left:0;right:0;height:'+cB+'px;background:#666"></div>'+
         '<div style="position:absolute;bottom:0;left:0;right:0;border-bottom:1px solid #000"></div>'+
         '<div style="position:absolute;top:'+cB+'px;left:0;height:'+(cH-cB)+'px;border-left:1px solid #000"></div>'+
         '<div style="position:absolute;top:'+cB+'px;right:0;height:'+(cH-cB)+'px;border-right:1px solid #000"></div>'+
+        '<div style="position:absolute;top:'+cB+'px;left:'+cM+'px;height:'+(cH-cB)+'px;border-left:1px solid #000"></div>'+
+        '<div style="position:absolute;top:'+cB+'px;right:'+cM+'px;height:'+(cH-cB)+'px;border-right:1px solid #000"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
