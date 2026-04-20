@@ -313,10 +313,20 @@ function renderModules(){
       '</div>';
     }
     if(m.type==='zapatero'&&_view==='alzado'){
-      var zH=m.h*sc,zStep=150*sc;
+      div.classList.add('no-frame');
+      var zH=m.h*sc,zW=m.w*sc,zStep=150*sc;
       var lines='';
+      // Top line
+      lines+='<div style="position:absolute;top:0;left:0;right:0;border-top:1px solid #000"></div>';
+      // Bottom line
+      lines+='<div style="position:absolute;bottom:0;left:0;right:0;border-bottom:1px solid #000"></div>';
+      // Left line
+      lines+='<div style="position:absolute;top:0;left:0;bottom:0;border-left:1px solid #000"></div>';
+      // Right line
+      lines+='<div style="position:absolute;top:0;right:0;bottom:0;border-right:1px solid #000"></div>';
+      // Divider lines every 150mm from top
       for(var zy=zStep;zy<zH;zy+=zStep){
-        lines+='<div style="position:absolute;bottom:'+zy+'px;left:0;right:0;border-top:1px solid #000"></div>';
+        lines+='<div style="position:absolute;top:'+zy+'px;left:0;right:0;border-top:1px solid #000"></div>';
       }
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+lines+'</div>';
     }
