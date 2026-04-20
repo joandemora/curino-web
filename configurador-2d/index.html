@@ -121,7 +121,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
           <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Interior</div>
           <div class="c2d-sub-body">
             <div class="c2d-mod" draggable="true" data-type="modulo" data-w="600" data-h="2000"><div class="c2d-mod-icon">MD</div>M&oacute;dulo<span class="c2d-mod-size">600&times;2000</span></div>
-            <div class="c2d-mod" draggable="true" data-type="barra" data-w="600" data-h="50"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">600&times;50</span></div>
+            <div class="c2d-mod" draggable="true" data-type="barra" data-w="600" data-h="40"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">600&times;40</span></div>
             <div class="c2d-mod" draggable="true" data-type="estante" data-w="600" data-h="30"><div class="c2d-mod-icon">ES</div>Estante<span class="c2d-mod-size">600&times;30</span></div>
             <div class="c2d-mod" draggable="true" data-type="cajon" data-w="600" data-h="200"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
             <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="150"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;150</span></div>
@@ -333,10 +333,11 @@ function renderProps(){
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   var types=['modulo','barra','estante','cajon','zapatero','balda_extraible','divisor','puerta_batiente','tapeta','costado','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
+  var isBarra=m.type==='barra';
   panel.innerHTML=
     '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50" onchange="updateProp(\'d\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50"'+(isBarra?' disabled':' onchange="updateProp(\'h\',this.value)"')+'></div>'+
+    '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50"'+(isBarra?' disabled':' onchange="updateProp(\'d\',this.value)"')+'></div>'+
     '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="50" onchange="updateProp(\'x\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Profundidad Z (mm)</label><input type="number" value="'+(m.pz||0)+'" step="50" onchange="updateProp(\'pz\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="50" onchange="updateProp(\'y\',this.value)"></div>'+
@@ -377,7 +378,8 @@ wrap.addEventListener('drop',function(e){
     y=snap(_furH-screenY-_dragData.h);pz=0;
   }
   saveHistory();
-  _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:600,x:x,y:y,pz:pz});
+  var dd=_dragData.type==='barra'?40:600;
+  _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz});
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
