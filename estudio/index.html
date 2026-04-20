@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estudio &mdash; Curino</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--mid:#888;--light:#c0c0c0;--border:#e5e5e5;--bg:#f8f8f6;--white:#fff;--font:'Open Sans',system-ui,sans-serif}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
+.nav-links{display:flex;gap:1.8rem;align-items:center}
+.nav-links a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-links a:hover{color:#999}
+.nav-icons{display:flex;gap:1.2rem;align-items:center}
+.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-icons svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
+.nav-icons svg:hover{stroke:#999}
+.user-icon-link{display:flex;align-items:center}
+.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+.nav-mobile-right{display:none}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.megamenu{position:fixed;top:80px;left:0;right:0;z-index:99;width:100%;background:var(--white);padding:32px;display:flex;justify-content:flex-start;gap:180px;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;border-top:1px solid var(--border)}
+.mega-col{margin-bottom:32px}
+.mega-col-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
+.mega-col a{display:block;font-size:14px;letter-spacing:0.14px;line-height:19.88px;color:#000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px;transition:color .2s}
+.mega-col a:hover{color:#999}
+.mega-imgs{margin-left:auto;display:flex;gap:16px;flex-shrink:0}
+.mega-img{display:flex;flex-direction:column;align-items:center;flex-shrink:0;position:relative}
+.mega-img img{width:300px;height:300px;object-fit:cover;display:block}
+.mega-img a{display:inline-block;margin-top:12px;font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1px solid #000;padding-bottom:3px}
+.mega-img a:hover{color:#999;border-color:#999}
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:var(--white);padding:1.5rem 2rem;z-index:99;flex-direction:column;gap:0;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.mobile-accordion{border-bottom:1px solid var(--border)}
+.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;font-weight:400}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'\2212'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:800px}
+.mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
+.mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+
+/* ── HERO ── */
+.est-hero{position:relative;height:85vh;margin-top:80px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.est-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.est-hero::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.est-hero-title{position:relative;z-index:1;color:var(--white);font-size:36px;font-weight:300;text-align:center;max-width:700px;padding:0 2rem;line-height:1.3;text-transform:uppercase;letter-spacing:.02em}
+
+/* ── VALUES ── */
+.est-values{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1100px;margin:0 auto}
+.est-value{padding:3.5rem 3rem;border-bottom:1px solid var(--border)}
+.est-value:nth-child(odd){border-right:1px solid var(--border)}
+.est-value-num{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
+.est-value-title{font-size:16px;font-weight:600;margin-bottom:.5rem}
+.est-value-desc{font-size:14px;color:var(--mid);line-height:1.7}
+
+/* ── QUOTE ── */
+.est-quote{padding:5rem 2rem;text-align:center;max-width:800px;margin:0 auto}
+.est-quote p{font-size:26px;font-weight:300;line-height:1.5;font-style:italic;color:var(--black)}
+
+/* ── STEPS ── */
+.est-steps{max-width:1100px;margin:0 auto;padding:0 2rem 5rem}
+.est-steps-title{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;text-align:center;margin-bottom:3rem;color:var(--mid)}
+.est-steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem}
+.est-step{text-align:center}
+.est-step-img{width:100%;aspect-ratio:4/3;object-fit:cover;margin-bottom:1.25rem;background:var(--bg)}
+.est-step-num{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:.5rem}
+.est-step-name{font-size:14px;font-weight:600;line-height:1.5}
+
+/* ── CTA ── */
+.est-cta{text-align:center;padding:2rem 2rem 5rem}
+.est-cta-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:normal;margin-bottom:1.5rem}
+.btn-main{display:inline-block;padding:1rem 2.5rem;background:var(--black);color:var(--white);font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:background .2s;text-decoration:none}
+.btn-main:hover{background:#333}
+
+/* ── REVEAL ── */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:none}
+
+/* ── FOOTER ── */
+footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
+.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
+.footer-col a:hover{color:#999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px}
+.footer-newsletter button:hover{color:#999;border-color:#999}
+.footer-links{display:block}
+.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){
+  nav{padding:0 16px;height:60px}
+  .nav-logo img{height:20px}
+  .nav-right{display:none}
+  .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  .nav-mobile-right .nav-hamburger{display:flex}
+  .est-hero{height:60vh;margin-top:60px}
+  .est-hero-title{font-size:22px}
+  .est-values{grid-template-columns:1fr}
+  .est-value{border-right:none!important}
+  .est-quote p{font-size:20px}
+  .est-steps-grid{grid-template-columns:1fr 1fr;gap:1.5rem}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
+  .footer-col.open h4::after{content:'\2212'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+}
+@media(max-width:480px){
+  .est-steps-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <div class="nav-right">
+  <div class="nav-links">
+    <div class="mega-trigger">
+      <a href="#">Alta Carpinteria</a>
+      <div class="megamenu">
+        <div class="mega-col"><div class="mega-col-title">Sistemas</div><a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a></div>
+        <div class="mega-col"><div class="mega-col-title">Estancias</div><a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a></div>
+        <div class="mega-col"><div class="mega-col-title">Productos</div><a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a></div>
+        <div class="mega-col"><div class="mega-col-title">Proyectos Integrales</div><a href="#">Residencial</a><a href="#">Contract</a><a href="#">Couture</a></div>
+        <div class="mega-imgs">
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="/configurador-armarios-vestidores/">Proyecto a medida</a></div>
+          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="/configurador-armarios-vestidores/">Configurador</a></div>
+        </div>
+      </div>
+    </div>
+    <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="/estudio/">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
+  </div>
+  <div class="nav-icons">
+    <a href="#">ES</a>
+    <a href="/login/" class="user-icon-link" id="userIconLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+  </div>
+  </div>
+  <div class="nav-mobile-right">
+    <a href="/login/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+    <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-accordion"><div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div><div class="mobile-accordion-body"><div class="mobile-sub-title">Sistemas</div><a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a><div class="mobile-sub-title">Estancias</div><a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a></div></div>
+  <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="/estudio/">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
+</div>
+
+<!-- HERO -->
+<div class="est-hero">
+  <img src="/assets/imagenes/landing/MAESTRO.jpg" alt="Curino Estudio">
+  <h1 class="est-hero-title">El mueble que imaginabas, hecho realidad</h1>
+</div>
+
+<!-- VALUES -->
+<div class="est-values">
+  <div class="est-value reveal">
+    <div class="est-value-num">01</div>
+    <div class="est-value-title">Todo online</div>
+    <div class="est-value-desc">Gestiona todo el proceso sin moverte. Dise&ntilde;o, revisi&oacute;n y decisiones desde casa, sin visitas ni interrupciones.</div>
+  </div>
+  <div class="est-value reveal">
+    <div class="est-value-num">02</div>
+    <div class="est-value-title">Tu equipo de dise&ntilde;o</div>
+    <div class="est-value-desc">Nuestros dise&ntilde;adores te acompa&ntilde;an en cada fase, desde el primer boceto hasta el detalle final.</div>
+  </div>
+  <div class="est-value reveal">
+    <div class="est-value-num">03</div>
+    <div class="est-value-title">Materiales sin compromiso</div>
+    <div class="est-value-desc">Selecci&oacute;n de acabados, herrajes y calidades de alta carpinter&iacute;a. Fabricado en Espa&ntilde;a con garant&iacute;a de 25 a&ntilde;os.</div>
+  </div>
+  <div class="est-value reveal">
+    <div class="est-value-num">04</div>
+    <div class="est-value-title">Instalaci&oacute;n incluida</div>
+    <div class="est-value-desc">Nos encargamos de la entrega y el montaje. T&uacute; solo tienes que disfrutar del resultado.</div>
+  </div>
+</div>
+
+<!-- QUOTE -->
+<div class="est-quote reveal">
+  <p>&ldquo;Un proceso sencillo para un resultado que dura toda la vida.&rdquo;</p>
+</div>
+
+<!-- STEPS -->
+<div class="est-steps">
+  <div class="est-steps-title">C&oacute;mo funciona</div>
+  <div class="est-steps-grid">
+    <div class="est-step reveal">
+      <img class="est-step-img" src="/assets/imagenes/landing/piano-thumbnail.png" alt="Cu&eacute;ntanos tu proyecto">
+      <div class="est-step-num">Paso 1</div>
+      <div class="est-step-name">Cu&eacute;ntanos tu proyecto</div>
+    </div>
+    <div class="est-step reveal">
+      <img class="est-step-img" src="/assets/imagenes/landing/fina-thumbnail.png" alt="Dise&ntilde;amos tu propuesta">
+      <div class="est-step-num">Paso 2</div>
+      <div class="est-step-name">Nuestro equipo dise&ntilde;a tu propuesta</div>
+    </div>
+    <div class="est-step reveal">
+      <img class="est-step-img" src="/assets/imagenes/landing/maestro-detalle.png" alt="Apruebas planos y materiales">
+      <div class="est-step-num">Paso 3</div>
+      <div class="est-step-name">Apruebas los planos y materiales</div>
+    </div>
+    <div class="est-step reveal">
+      <img class="est-step-img" src="/assets/imagenes/landing/maestro-vestidor.png" alt="Fabricamos e instalamos">
+      <div class="est-step-num">Paso 4</div>
+      <div class="est-step-name">Fabricamos e instalamos</div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="est-cta reveal">
+  <div class="est-cta-title">Tu proyecto empieza aqu&iacute;</div>
+  <a href="/proyecto-a-medida/" class="btn-main">Empieza tu proyecto</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinter&iacute;a a medida &mdash; armarios, vestidores, cocinas y puertas con garant&iacute;a de 25 a&ntilde;os.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta"><h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinter&iacute;a</h4><div class="footer-links"><a href="/configurador-armarios-vestidores/">Configurador de armarios</a><a href="#">Proyecto a medida en Barcelona</a><a href="#">Proyecto a medida en Madrid</a><a href="#">Proyecto a medida en Valencia</a></div></div>
+  <div class="footer-col" style="grid-area:corp"><h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4><div class="footer-links"><a href="#">Sobre nosotros</a><a href="#">I+D e Innovaci&oacute;n</a><a href="#">Seguridad en Curino</a></div></div>
+  <div class="footer-col" style="grid-area:empleo"><h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4><div class="footer-links"><a href="#">&Uacute;nete a Curino</a><a href="#">Curino Partners</a></div></div>
+  <div class="footer-col" style="grid-area:prensa"><h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4><div class="footer-links"><a href="#">Magazine</a><a href="#">Contacto Prensa</a></div></div>
+  <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div></div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
+</footer>
+<div class="footer-bottom"><span>&copy; 2026 Curino &middot; Mueble a medida &middot; Espa&ntilde;a &middot; Europa &middot; EEUU</span><div class="footer-legal"><span>Sistema & Curino, S.L.U.</span><span>T&eacute;rminos y Condiciones | Pol&iacute;tica de Privacidad</span></div><span>casacurino.com</span></div>
+
+<script>
+function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');document.getElementById('hamburger').classList.toggle('open');}
+
+// Reveal on scroll
+var io=new IntersectionObserver(function(entries){
+  entries.forEach(function(e,i){
+    if(e.isIntersecting){
+      setTimeout(function(){e.target.classList.add('visible');},i*70);
+      io.unobserve(e.target);
+    }
+  });
+},{threshold:0.07});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+</script>
+
+</body>
+</html>
