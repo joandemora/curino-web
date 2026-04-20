@@ -258,13 +258,18 @@ function renderModules(){
     div.style.height=(m.h*sc)+'px';
     var inner='';
     if(m.type==='modulo'){
-      var p=19*sc,t=70*sc; // panel 19mm, tarima 70mm
+      var p=19*sc,t=70*sc,tb=30*sc; // panel 19mm, tarima 70mm, base thickness 30mm
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        '<div style="position:absolute;top:'+p+'px;left:0;right:0;border-top:1px solid #000"></div>'+
-        '<div style="position:absolute;bottom:'+p+'px;left:0;right:0;border-top:1px solid #000"></div>'+
-        '<div style="position:absolute;top:0;left:'+p+'px;bottom:0;border-left:1px solid #000"></div>'+
-        '<div style="position:absolute;top:0;right:'+p+'px;bottom:0;border-left:1px solid #000"></div>'+
-        '<div style="position:absolute;bottom:'+(p+t)+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
+        // Top inner line (from x+19 to x+w-19)
+        '<div style="position:absolute;top:'+p+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
+        // Left inner line (from y+19 to bottom-70)
+        '<div style="position:absolute;top:'+p+'px;left:'+p+'px;bottom:'+t+'px;border-left:1px solid #000"></div>'+
+        // Right inner line (from y+19 to bottom-70)
+        '<div style="position:absolute;top:'+p+'px;right:'+p+'px;bottom:'+t+'px;border-right:1px solid #000"></div>'+
+        // Tarima top line (at bottom-70)
+        '<div style="position:absolute;bottom:'+t+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
+        // Tarima base thickness line (at bottom-40, i.e. 70-30=40)
+        '<div style="position:absolute;bottom:'+(t-tb)+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
     div.innerHTML=inner+'<div class="c2d-module-label">'+m.w+'&times;'+m.h+'<br>'+typeLabel(m.type)+'</div>';
