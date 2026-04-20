@@ -276,19 +276,20 @@ function renderModules(){
     }
     if(m.type==='barra'&&_view==='alzado'){
       div.style.border='none';
-      var supW=30*sc,supH=40*sc,gap=30*sc;
-      var cy=(m.h*sc-supH)/2; // center vertically
+      var mg=19*sc,supW=30*sc,supH=40*sc,gap=30*sc;
+      var cy=(m.h*sc-supH)/2;
       var lineTop=cy+(supH-gap)/2;
       var lineBot=lineTop+gap;
+      var lx=mg,rx=mg; // left/right inset
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        // Left support 30×40, centered vertically
-        '<div style="position:absolute;top:'+cy+'px;left:0;width:'+supW+'px;height:'+supH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Right support 30×40, centered vertically
-        '<div style="position:absolute;top:'+cy+'px;right:0;width:'+supW+'px;height:'+supH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Left support 30×40, inset 19mm from left
+        '<div style="position:absolute;top:'+cy+'px;left:'+lx+'px;width:'+supW+'px;height:'+supH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Right support 30×40, inset 19mm from right
+        '<div style="position:absolute;top:'+cy+'px;right:'+rx+'px;width:'+supW+'px;height:'+supH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
         // Top line connecting supports
-        '<div style="position:absolute;top:'+lineTop+'px;left:'+supW+'px;right:'+supW+'px;border-top:1px solid #000"></div>'+
+        '<div style="position:absolute;top:'+lineTop+'px;left:'+(lx+supW)+'px;right:'+(rx+supW)+'px;border-top:1px solid #000"></div>'+
         // Bottom line (30mm below)
-        '<div style="position:absolute;top:'+lineBot+'px;left:'+supW+'px;right:'+supW+'px;border-top:1px solid #000"></div>'+
+        '<div style="position:absolute;top:'+lineBot+'px;left:'+(lx+supW)+'px;right:'+(rx+supW)+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
