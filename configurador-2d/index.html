@@ -433,24 +433,24 @@ function resizeEnd(){
 
 // Pan (middle mouse / space) + Marquee selection + Deselect
 var _panning=null,_marquee=null,_marqueeDiv=null;
-wrap.style.cursor='crosshair';
+wrap.style.cursor='grab';
 wrap.addEventListener('mousedown',function(e){
   if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
-  if(e.button===1||e.altKey){
-    // Middle click or Alt = pan
-    _panning={startX:e.clientX,startY:e.clientY,origPX:_panX,origPY:_panY};
-    wrap.style.cursor='grabbing';
-    document.addEventListener('mousemove',panMove);
-    document.addEventListener('mouseup',panEnd);
-  }else{
-    // Left click = marquee selection
-    _marquee={startX:e.clientX-rect.left,startY:e.clientY-rect.top,shift:e.shiftKey};
+  if(e.shiftKey){
+    // Shift + drag = marquee selection
+    _marquee={startX:e.clientX-rect.left,startY:e.clientY-rect.top,shift:true};
     _marqueeDiv=document.createElement('div');_marqueeDiv.className='c2d-marquee';
     layer.appendChild(_marqueeDiv);
     document.addEventListener('mousemove',marqueeMove);
     document.addEventListener('mouseup',marqueeEnd);
+  }else{
+    // Normal drag / middle click = pan
+    _panning={startX:e.clientX,startY:e.clientY,origPX:_panX,origPY:_panY};
+    wrap.style.cursor='grabbing';
+    document.addEventListener('mousemove',panMove);
+    document.addEventListener('mouseup',panEnd);
   }
 });
 function panMove(e){
@@ -460,9 +460,11 @@ function panMove(e){
   draw();renderModules();
 }
 function panEnd(e){
-  _panning=null;wrap.style.cursor='crosshair';
+  var moved=_panning&&(Math.abs(e.clientX-_panning.startX)>3||Math.abs(e.clientY-_panning.startY)>3);
+  _panning=null;wrap.style.cursor='grab';
   document.removeEventListener('mousemove',panMove);
   document.removeEventListener('mouseup',panEnd);
+  if(!moved) clearSelection();
 }
 function marqueeMove(e){
   if(!_marquee) return;
