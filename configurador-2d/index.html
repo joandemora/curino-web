@@ -292,6 +292,15 @@ function renderModules(){
         '<div style="position:absolute;top:'+lineBot+'px;left:'+(lx+supW)+'px;right:'+(rx+supW)+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
+    if(m.type==='estante'&&_view==='alzado'){
+      div.style.border='none';div.style.background='none';
+      var emg=19*sc,eThick=30*sc;
+      var ey=(m.h*sc-eThick)/2; // centered vertically
+      inner='<div style="position:absolute;inset:0;pointer-events:none">'+
+        '<div style="position:absolute;top:'+ey+'px;left:'+emg+'px;right:'+emg+'px;border-top:1px solid #000"></div>'+
+        '<div style="position:absolute;top:'+(ey+eThick)+'px;left:'+emg+'px;right:'+emg+'px;border-top:1px solid #000"></div>'+
+      '</div>';
+    }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
     div.innerHTML=inner+'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>';
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
