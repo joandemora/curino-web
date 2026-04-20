@@ -79,6 +79,9 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-handle-l{top:50%;margin-top:-4px;left:-4px;cursor:ew-resize}
 .c2d-handle-r{top:50%;margin-top:-4px;right:-4px;cursor:ew-resize}
 .c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(37,99,235,.06);pointer-events:none;z-index:5}
+.c2d-snapline{position:absolute;background:#e53e3e;pointer-events:none;z-index:4}
+.c2d-snapline-h{height:1px;left:0;right:0}
+.c2d-snapline-v{width:1px;top:0;bottom:0}
 
 /* Responsive */
 @media(max-width:900px){
@@ -187,7 +190,8 @@ var _zoom=1;
 var _view='alzado';
 var _furW=2000,_furH=2400,_furD=600;
 var SCALE=0.25; // px per mm at zoom=1
-var GRID=50; // snap grid in mm
+var GRID=1; // snap grid in mm
+var SNAP_RADIUS=5; // magnetic snap radius in px
 var _dragData=null;
 var _resizing=null;
 
@@ -402,18 +406,100 @@ function startDragModule(e,i){
   document.addEventListener('mousemove',dragModuleMove);
   document.addEventListener('mouseup',dragModuleEnd);
 }
+function magSnap(val,edges,sc){
+  // Find closest edge within SNAP_RADIUS pixels
+  var best=null,bestDist=SNAP_RADIUS/sc;
+  edges.forEach(function(edge){
+    var d=Math.abs(val-edge);
+    if(d<bestDist){bestDist=d;best=edge;}
+  });
+  return best!==null?best:snap(val);
+}
+function getSnapEdges(axis,skipIndices){
+  // Collect all edges of non-selected modules + furniture bounds
+  var edges=[];
+  _modules.forEach(function(m,i){
+    if(skipIndices.has(i)) return;
+    if(axis==='x'){edges.push(m.x);edges.push(m.x+m.w);}
+    else if(axis==='y'){edges.push(m.y);edges.push(m.y+m.h);}
+    else if(axis==='pz'){edges.push(m.pz||0);edges.push((m.pz||0)+(m.d||600));}
+  });
+  // Furniture bounds
+  if(axis==='x'){edges.push(0);edges.push(_furW);}
+  else if(axis==='y'){edges.push(0);edges.push(_furH);}
+  else if(axis==='pz'){edges.push(0);edges.push(_furD);}
+  return edges;
+}
+var _snapLines=[];
+function clearSnapLines(){_snapLines.forEach(function(el){el.remove();});_snapLines=[];}
+function showSnapLine(val,axis){
+  var sc=s(),o=origin(),el=document.createElement('div');
+  el.className='c2d-snapline';
+  if(axis==='x'){
+    el.classList.add('c2d-snapline-v');
+    el.style.left=(o.x+val*sc)+'px';
+  }else{
+    el.classList.add('c2d-snapline-h');
+    var yPx=_view==='planta'?(o.y+val*sc):(o.y+(_furH-val)*sc);
+    el.style.top=yPx+'px';
+  }
+  layer.appendChild(el);_snapLines.push(el);
+}
 function dragModuleMove(e){
   if(!_dragMod) return;var sc=s();
+  clearSnapLines();
   var dx=(e.clientX-_dragMod.startX)/sc;
   var dy=(e.clientY-_dragMod.startY)/sc;
+  var ref=_dragMod.origins[0],m0=_modules[ref.idx];
+  var xEdges=getSnapEdges('x',_sel);
+  // Snap X using first module's left and right edges
+  var rawX=ref.x+dx;
+  var snappedLeft=magSnap(rawX,xEdges,sc);
+  var snappedRight=magSnap(rawX+m0.w,xEdges,sc);
+  var finalX;
+  if(Math.abs(snappedLeft-rawX)<Math.abs(snappedRight-(rawX+m0.w))){
+    finalX=snappedLeft;if(snappedLeft!==snap(rawX)) showSnapLine(snappedLeft,'x');
+  }else{
+    finalX=snappedRight-m0.w;if(snappedRight!==snap(rawX+m0.w)) showSnapLine(snappedRight,'x');
+  }
+  var xOff=finalX-ref.x;
+  // Snap Y axis
+  var yOff;
+  if(_view==='planta'){
+    var pzEdges=getSnapEdges('pz',_sel);
+    var rawPZ=ref.pz+dy;
+    var snTop=magSnap(rawPZ,pzEdges,sc);
+    var snBot=magSnap(rawPZ+(m0.d||600),pzEdges,sc);
+    var finalPZ;
+    if(Math.abs(snTop-rawPZ)<Math.abs(snBot-(rawPZ+(m0.d||600)))){
+      finalPZ=snTop;if(snTop!==snap(rawPZ)) showSnapLine(snTop,'pz');
+    }else{
+      finalPZ=snBot-(m0.d||600);if(snBot!==snap(rawPZ+(m0.d||600))) showSnapLine(snBot,'pz');
+    }
+    yOff=finalPZ-ref.pz;
+  }else{
+    var yEdges=getSnapEdges('y',_sel);
+    var rawY=ref.y-dy;
+    var snBot2=magSnap(rawY,yEdges,sc);
+    var snTop2=magSnap(rawY+m0.h,yEdges,sc);
+    var finalY;
+    if(Math.abs(snBot2-rawY)<Math.abs(snTop2-(rawY+m0.h))){
+      finalY=snBot2;if(snBot2!==snap(rawY)) showSnapLine(snBot2,'y');
+    }else{
+      finalY=snTop2-m0.h;if(snTop2!==snap(rawY+m0.h)) showSnapLine(snTop2,'y');
+    }
+    yOff=finalY-ref.y;
+  }
+  // Apply offsets to all selected
   _dragMod.origins.forEach(function(o){
-    _modules[o.idx].x=snap(o.x+dx);
-    if(_view==='planta') _modules[o.idx].pz=snap(o.pz+dy);
-    else _modules[o.idx].y=snap(o.y-dy);
+    _modules[o.idx].x=o.x+xOff;
+    if(_view==='planta') _modules[o.idx].pz=o.pz+yOff;
+    else _modules[o.idx].y=o.y+yOff;
   });
   renderModules();renderProps();
 }
 function dragModuleEnd(){
+  clearSnapLines();
   if(_dragMod) saveHistory();_dragMod=null;
   document.removeEventListener('mousemove',dragModuleMove);
   document.removeEventListener('mouseup',dragModuleEnd);draw();
