@@ -141,7 +141,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
             <div class="c2d-mod" draggable="true" data-type="cajon" data-w="600" data-h="200"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
             <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="200"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;200</span></div>
 
-            <div class="c2d-mod" draggable="true" data-type="divisor" data-w="50" data-h="2000"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">50&times;2000</span></div>
+            <div class="c2d-mod" draggable="true" data-type="divisor" data-w="19" data-h="2000"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">19&times;2000</span></div>
           </div>
         </div>
         <!-- Exterior -->
@@ -341,7 +341,7 @@ function renderModules(){
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:['tl','t','tr','l','r','bl','b','br'];
+      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:['tl','t','tr','l','r','bl','b','br'];
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
@@ -405,8 +405,9 @@ function renderProps(){
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
   var hFixed=m.type==='barra'||m.type==='zapatero';
   var dFixed=m.type==='barra';
+  var wFixed=m.type==='divisor';
   panel.innerHTML=
-    '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Ancho (mm)</label>'+(wFixed?'<div style="font-size:13px;padding:6px 0">19 mm</div>':'<input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)">')+'</div>'+
     '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50"'+(hFixed?' disabled':' onchange="updateProp(\'h\',this.value)"')+'></div>'+
     '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50"'+(dFixed?' disabled':' onchange="updateProp(\'d\',this.value)"')+'></div>'+
     '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="50" onchange="updateProp(\'x\',this.value)"></div>'+
@@ -422,6 +423,7 @@ function updateProp(key,val){
   var v=key==='type'?val:(parseInt(val)||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
+  if(key==='w'&&_modules[idx].type==='divisor') return;
   if(key==='h'&&_modules[idx].type==='barra') v=40;
   _modules[idx][key]=v;
   draw();renderModules();renderProps();
