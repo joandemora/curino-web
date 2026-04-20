@@ -139,7 +139,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
             <div class="c2d-mod" draggable="true" data-type="barra" data-w="600" data-h="40"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">600&times;40</span></div>
             <div class="c2d-mod" draggable="true" data-type="estante" data-w="600" data-h="30"><div class="c2d-mod-icon">ES</div>Estante<span class="c2d-mod-size">600&times;30</span></div>
             <div class="c2d-mod" draggable="true" data-type="cajon" data-w="600" data-h="200"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
-            <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="150"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;150</span></div>
+            <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="230"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;230</span></div>
             <div class="c2d-mod" draggable="true" data-type="balda_extraible" data-w="600" data-h="30"><div class="c2d-mod-icon">BX</div>Balda extra&iacute;ble<span class="c2d-mod-size">600&times;30</span></div>
             <div class="c2d-mod" draggable="true" data-type="divisor" data-w="50" data-h="2000"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">50&times;2000</span></div>
           </div>
@@ -314,21 +314,14 @@ function renderModules(){
     }
     if(m.type==='zapatero'&&_view==='alzado'){
       div.classList.add('no-frame');
-      var zH=m.h*sc,zW=m.w*sc,zStep=150*sc;
-      var lines='';
-      // Top line
-      lines+='<div style="position:absolute;top:0;left:0;right:0;border-top:1px solid #000"></div>';
-      // Bottom line
-      lines+='<div style="position:absolute;bottom:0;left:0;right:0;border-bottom:1px solid #000"></div>';
-      // Left line
-      lines+='<div style="position:absolute;top:0;left:0;bottom:0;border-left:1px solid #000"></div>';
-      // Right line
-      lines+='<div style="position:absolute;top:0;right:0;bottom:0;border-right:1px solid #000"></div>';
-      // Divider lines every 150mm from top
-      for(var zy=zStep;zy<zH;zy+=zStep){
-        lines+='<div style="position:absolute;top:'+zy+'px;left:0;right:0;border-top:1px solid #000"></div>';
-      }
-      inner='<div style="position:absolute;inset:0;pointer-events:none">'+lines+'</div>';
+      var zH=m.h*sc,z30=30*sc;
+      inner='<div style="position:absolute;inset:0;pointer-events:none">'+
+        '<div style="position:absolute;top:0;left:0;right:0;border-top:1px solid #000"></div>'+
+        '<div style="position:absolute;bottom:'+z30+'px;left:0;right:0;border-top:1px solid #000"></div>'+
+        '<div style="position:absolute;bottom:0;left:0;right:0;border-bottom:1px solid #000"></div>'+
+        '<div style="position:absolute;top:0;left:0;bottom:0;border-left:1px solid #000"></div>'+
+        '<div style="position:absolute;top:0;right:0;bottom:0;border-right:1px solid #000"></div>'+
+      '</div>';
     }
     if((m.type==='cajon'||m.type==='cajon_cocina')&&_view==='alzado'){
       div.classList.add('no-frame');
@@ -348,7 +341,7 @@ function renderModules(){
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      var handles=m.type==='barra'?['l','r']:['tl','t','tr','l','r','bl','b','br'];
+      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:['tl','t','tr','l','r','bl','b','br'];
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
@@ -410,7 +403,7 @@ function renderProps(){
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   var types=['modulo','barra','estante','cajon','zapatero','balda_extraible','divisor','puerta_batiente','tapeta','costado','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
-  var isBarra=m.type==='barra';
+  var isBarra=m.type==='barra'||m.type==='zapatero';
   panel.innerHTML=
     '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50"'+(isBarra?' disabled':' onchange="updateProp(\'h\',this.value)"')+'></div>'+
@@ -427,6 +420,8 @@ function updateProp(key,val){
   var idx=_sel.values().next().value;
   var v=key==='type'?val:(parseInt(val)||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
+  if(key==='h'&&_modules[idx].type==='zapatero') v=230;
+  if(key==='h'&&_modules[idx].type==='barra') v=40;
   _modules[idx][key]=v;
   draw();renderModules();renderProps();
 }
@@ -695,7 +690,7 @@ function groupResizeMove(e){
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
-  var fixedH={'barra':40};
+  var fixedH={'barra':40,'zapatero':230};
   var clampH={'estante':{min:19,max:40}};
   g.originals.forEach(function(o){
     var m=_modules[o.idx],t=m.type;
