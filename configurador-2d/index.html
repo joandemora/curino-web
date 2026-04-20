@@ -258,18 +258,30 @@ function renderModules(){
     div.style.height=(m.h*sc)+'px';
     var inner='';
     if(m.type==='modulo'){
-      div.style.border='none'; // boards draw all borders
+      div.style.border='none';
       var p=19*sc,t=70*sc,tb=30*sc;
-      var hTotal=m.h*sc,wTotal=m.w*sc;
+      var hTotal=m.h*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        // Left lateral: 19mm × full height
-        '<div style="position:absolute;top:0;left:0;width:'+p+'px;height:'+hTotal+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Right lateral: 19mm × full height
-        '<div style="position:absolute;top:0;right:0;width:'+p+'px;height:'+hTotal+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Top board: between laterals
-        '<div style="position:absolute;top:0;left:'+p+'px;right:'+p+'px;height:'+p+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Bottom edge (close the module)
-        '<div style="position:absolute;bottom:0;left:0;right:0;border-bottom:1px solid #000"></div>'+
+        // Left lateral — outer edge (full height)
+        '<div style="position:absolute;top:0;left:0;bottom:0;border-left:1px solid #000"></div>'+
+        // Left lateral — top cap
+        '<div style="position:absolute;top:0;left:0;width:'+p+'px;border-top:1px solid #000"></div>'+
+        // Left lateral — bottom cap
+        '<div style="position:absolute;bottom:0;left:0;width:'+p+'px;border-bottom:1px solid #000"></div>'+
+        // Left lateral — inner edge (from y+19 downward)
+        '<div style="position:absolute;top:'+p+'px;left:'+p+'px;bottom:0;border-left:1px solid #000"></div>'+
+        // Right lateral — outer edge (full height)
+        '<div style="position:absolute;top:0;right:0;bottom:0;border-right:1px solid #000"></div>'+
+        // Right lateral — top cap
+        '<div style="position:absolute;top:0;right:0;width:'+p+'px;border-top:1px solid #000"></div>'+
+        // Right lateral — bottom cap
+        '<div style="position:absolute;bottom:0;right:0;width:'+p+'px;border-bottom:1px solid #000"></div>'+
+        // Right lateral — inner edge (from y+19 downward)
+        '<div style="position:absolute;top:'+p+'px;right:'+p+'px;bottom:0;border-right:1px solid #000"></div>'+
+        // Top board — top line (between laterals)
+        '<div style="position:absolute;top:0;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
+        // Top board — bottom line (between laterals)
+        '<div style="position:absolute;top:'+p+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
         // Tarima line 1 (at bottom-70)
         '<div style="position:absolute;bottom:'+t+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
         // Tarima line 2 (at bottom-40)
