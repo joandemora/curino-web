@@ -295,10 +295,9 @@ function renderModules(){
     if(m.type==='estante'&&_view==='alzado'){
       div.style.border='none';div.style.background='none';
       var emg=19*sc,eThick=30*sc;
-      var ey=(m.h*sc-eThick)/2; // centered vertically
+      var ey=(m.h*sc-eThick)/2;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        '<div style="position:absolute;top:'+ey+'px;left:'+emg+'px;right:'+emg+'px;border-top:1px solid #000"></div>'+
-        '<div style="position:absolute;top:'+(ey+eThick)+'px;left:'+emg+'px;right:'+emg+'px;border-top:1px solid #000"></div>'+
+        '<div style="position:absolute;top:'+ey+'px;left:'+emg+'px;right:'+emg+'px;height:'+eThick+'px;border:1px solid #000;box-sizing:border-box"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
