@@ -456,6 +456,7 @@ function updateProp(key,val){
   if(key==='w'&&_modules[idx].type==='divisor') return;
   if(key==='h'&&_modules[idx].type==='barra') v=40;
   if(key==='d'&&(_modules[idx].type==='barra'||_modules[idx].type==='tapeta'||_modules[idx].type==='zocalo')) return;
+  if(key==='d'&&_modules[idx].type==='puerta_batiente') v=Math.max(19,Math.min(30,v));
   _modules[idx][key]=v;
   draw();renderModules();renderProps();
 }
@@ -486,7 +487,7 @@ wrap.addEventListener('drop',function(e){
     y=snap(_furH-screenY-_dragData.h);pz=0;
   }
   saveHistory();
-  var _dFixed={'barra':40,'tapeta':19,'zocalo':19};
+  var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
   _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz});
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
@@ -728,6 +729,7 @@ function groupResizeMove(e){
 
   var fixedH={'barra':40,'zapatero':200};
   var fixedD={'barra':40,'tapeta':19,'zocalo':19};
+  var clampD={'puerta_batiente':{min:19,max:30}};
   var clampH={'estante':{min:19,max:40}};
   g.originals.forEach(function(o){
     var m=_modules[o.idx],t=m.type;
@@ -737,7 +739,9 @@ function groupResizeMove(e){
     // Y axis
     if(_view==='planta'){
       m.pz=Math.round(ay+(o.pz-g.by)*sy);
-      if(!(t in fixedD)) m.d=Math.max(GRID,Math.round(o.d*sy));
+      if(t in fixedD){/*keep*/}
+      else if(t in clampD) m.d=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d*sy)));
+      else m.d=Math.max(GRID,Math.round(o.d*sy));
     }else{
       m.y=Math.round(ay+(o.y-g.by)*sy);
       if(t in fixedH){
