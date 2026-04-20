@@ -82,6 +82,13 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-snapline{position:absolute;background:#e53e3e;pointer-events:none;z-index:4}
 .c2d-snapline-h{height:1px;left:0;right:0}
 .c2d-snapline-v{width:1px;top:0;bottom:0}
+/* Context menu */
+.c2d-ctx{position:fixed;z-index:999;background:var(--white);border:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:160px;padding:4px 0;display:none}
+.c2d-ctx.open{display:block}
+.c2d-ctx-item{padding:6px 14px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .1s}
+.c2d-ctx-item:hover{background:var(--bg)}
+.c2d-ctx-item span{color:var(--mid);font-size:10px}
+.c2d-ctx-sep{height:1px;background:var(--border);margin:4px 0}
 
 /* Responsive */
 @media(max-width:900px){
@@ -179,6 +186,9 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
     </div>
   </div>
 </div>
+
+<!-- Context menu -->
+<div class="c2d-ctx" id="ctxMenu"></div>
 
 <script>
 // State (all dimensions in mm)
@@ -745,6 +755,89 @@ function exportPNG(){
 }
 
 saveHistory();resizeCanvas();
+
+// ── CONTEXT MENU ──
+var _ctxMenu=document.getElementById('ctxMenu');
+var _ctxTarget=null; // index of right-clicked module or null
+
+function showCtx(x,y,onModule){
+  var items='';
+  if(onModule){
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'duplicate\')">Duplicar<span>Ctrl+D</span></div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'copy\')">Copiar<span>Ctrl+C</span></div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'cut\')">Cortar<span>Ctrl+X</span></div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'paste\')">Pegar<span>Ctrl+V</span></div>';
+    items+='<div class="c2d-ctx-sep"></div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'front\')">Mover al frente</div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'forward\')">Mover hacia delante</div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'backward\')">Mover hacia atr\u00E1s</div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'back\')">Mover al fondo</div>';
+  }else{
+    if(_clipboard&&_clipboard.length) items+='<div class="c2d-ctx-item" onclick="ctxAction(\'paste\')">Pegar<span>Ctrl+V</span></div>';
+    else items+='<div class="c2d-ctx-item" style="color:var(--mid);cursor:default">Pegar</div>';
+  }
+  _ctxMenu.innerHTML=items;
+  _ctxMenu.style.left=x+'px';_ctxMenu.style.top=y+'px';
+  _ctxMenu.classList.add('open');
+}
+function hideCtx(){_ctxMenu.classList.remove('open');}
+
+function ctxAction(action){
+  hideCtx();
+  if(action==='duplicate'){
+    if(_sel.size===0) return;
+    saveHistory();
+    var newSel=new Set();
+    _sel.forEach(function(i){
+      var m=JSON.parse(JSON.stringify(_modules[i]));
+      m.x+=50;m.y+=50;_modules.push(m);newSel.add(_modules.length-1);
+    });
+    _sel=newSel;draw();renderModules();renderProps();
+  }
+  if(action==='copy'){
+    if(_sel.size>0) _clipboard=Array.from(_sel).map(function(i){return JSON.parse(JSON.stringify(_modules[i]));});
+  }
+  if(action==='cut'){
+    if(_sel.size>0){_clipboard=Array.from(_sel).map(function(i){return JSON.parse(JSON.stringify(_modules[i]));});deleteSelected();}
+  }
+  if(action==='paste'){
+    if(_clipboard&&_clipboard.length){saveHistory();_sel.clear();_clipboard.forEach(function(cm){var m=JSON.parse(JSON.stringify(cm));m.x+=50;m.y+=50;_modules.push(m);_sel.add(_modules.length-1);});draw();renderModules();renderProps();}
+  }
+  if(action==='front'||action==='forward'||action==='backward'||action==='back'){
+    if(_sel.size!==1) return;
+    var idx=_sel.values().next().value;
+    saveHistory();
+    var mod=_modules.splice(idx,1)[0];
+    var newIdx;
+    if(action==='front') newIdx=_modules.length;
+    else if(action==='forward') newIdx=Math.min(idx+1,_modules.length);
+    else if(action==='backward') newIdx=Math.max(idx-1,0);
+    else newIdx=0;
+    _modules.splice(newIdx,0,mod);
+    _sel.clear();_sel.add(newIdx);
+    draw();renderModules();renderProps();
+  }
+}
+
+// Right-click on modules
+wrap.addEventListener('contextmenu',function(e){e.preventDefault();});
+document.addEventListener('contextmenu',function(e){
+  if(!wrap.contains(e.target)) return;
+  e.preventDefault();
+  // Check if right-clicked on a module
+  var el=e.target.closest('.c2d-module');
+  if(el){
+    var idx=Array.from(layer.querySelectorAll('.c2d-module')).indexOf(el);
+    if(idx>=0&&!_sel.has(idx)){_sel.clear();_sel.add(idx);renderModules();renderProps();}
+    _ctxTarget=idx;
+    showCtx(e.clientX,e.clientY,true);
+  }else{
+    _ctxTarget=null;
+    showCtx(e.clientX,e.clientY,false);
+  }
+});
+document.addEventListener('click',function(){hideCtx();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape') hideCtx();});
 </script>
 
 </body>
