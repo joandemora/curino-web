@@ -231,14 +231,9 @@ function draw(){
   ctx.strokeRect(o.x,o.y,vw*sc,vh*sc);
   // Cotas
   ctx.fillStyle='#000';ctx.font='11px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';
-  ctx.fillText(vw+' mm',o.x+vw*sc/2,o.y-8);
-  ctx.save();ctx.translate(o.x-8,o.y+vh*sc/2);ctx.rotate(-Math.PI/2);
-  ctx.fillText(vh+' mm',0,0);ctx.restore();
-  // Plant dividers
-  // Plant view outline dimensions label uses _furD
-  if(_view==='planta'){
-    ctx.fillText(_furD+' mm',o.x-20,o.y+vh*sc/2); // override left label
-  }
+  ctx.fillText((_view==='planta'?_furW:_furW)+' mm',o.x+vw*sc/2,o.y-12);
+  ctx.save();ctx.translate(o.x-14,o.y+vh*sc/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText((_view==='planta'?_furD:_furH)+' mm',0,0);ctx.restore();
 }
 
 function renderModules(){
@@ -383,7 +378,7 @@ function dragModuleEnd(){
 // Resize handles
 function startResize(e,i,pos){
   var m=_modules[i];
-  _resizing={idx:i,pos:pos,startX:e.clientX,startY:e.clientY,origX:m.x,origY:m.y,origW:m.w,origH:m.h};
+  _resizing={idx:i,pos:pos,startX:e.clientX,startY:e.clientY,origX:m.x,origY:m.y,origW:m.w,origH:m.h,origD:m.d||600,origPZ:m.pz||0};
   saveHistory();
   document.addEventListener('mousemove',resizeMove);
   document.addEventListener('mouseup',resizeEnd);
@@ -393,14 +388,21 @@ function resizeMove(e){
   var r=_resizing,m=_modules[r.idx],sc=s();
   var dx=(e.clientX-r.startX)/sc,dy=(e.clientY-r.startY)/sc;
   var p=r.pos;
-  // Right edge: grow width rightward
+  // X axis (width) — same in both views
   if(p==='r'||p==='tr'||p==='br') m.w=Math.max(GRID,snap(r.origW+dx));
-  // Left edge: grow width leftward, move x
   if(p==='l'||p==='tl'||p==='bl'){var nw=snap(r.origW-dx);if(nw>=GRID){m.w=nw;m.x=snap(r.origX+dx);}}
-  // Top handle (screen): drag up (dy<0) = grow upward, m.y stays fixed
-  if(p==='t'||p==='tl'||p==='tr'){var nh=snap(r.origH-dy);if(nh>=GRID) m.h=nh;}
-  // Bottom handle (screen): drag down (dy>0) = shrink from bottom, m.y decreases
-  if(p==='b'||p==='bl'||p==='br'){var nh=snap(r.origH+dy);if(nh>=GRID){m.y=snap(r.origY-(nh-r.origH));m.h=nh;}}
+  // Y axis — depends on view
+  if(_view==='planta'){
+    // Top handle: move pz up (decrease), grow depth
+    if(p==='t'||p==='tl'||p==='tr'){var nd=snap(r.origD-dy);if(nd>=GRID){m.d=nd;m.pz=snap(r.origPZ+dy);}}
+    // Bottom handle: grow depth downward
+    if(p==='b'||p==='bl'||p==='br') m.d=Math.max(GRID,snap(r.origD+dy));
+  }else{
+    // Alzado: top handle grows height upward (m.y stays)
+    if(p==='t'||p==='tl'||p==='tr'){var nh=snap(r.origH-dy);if(nh>=GRID) m.h=nh;}
+    // Bottom handle: shrink from bottom (m.y decreases)
+    if(p==='b'||p==='bl'||p==='br'){var nh=snap(r.origH+dy);if(nh>=GRID){m.y=snap(r.origY-(nh-r.origH));m.h=nh;}}
+  }
   renderModules();renderProps();
 }
 function resizeEnd(){
