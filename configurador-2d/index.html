@@ -259,8 +259,8 @@ function renderModules(){
     var inner='';
     if(m.type==='modulo'){
       div.style.border='none'; // boards draw all borders
-      var p=19*sc,t=70*sc,tb=30*sc;
-      var hTotal=m.h*sc,wTotal=m.w*sc;
+      var p=19*sc,t70=70*sc,t40=40*sc;
+      var hTotal=m.h*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
         // Left lateral: 19mm × full height
         '<div style="position:absolute;top:0;left:0;width:'+p+'px;height:'+hTotal+'px;border:1px solid #000;box-sizing:border-box"></div>'+
@@ -268,12 +268,13 @@ function renderModules(){
         '<div style="position:absolute;top:0;right:0;width:'+p+'px;height:'+hTotal+'px;border:1px solid #000;box-sizing:border-box"></div>'+
         // Top board: between laterals
         '<div style="position:absolute;top:0;left:'+p+'px;right:'+p+'px;height:'+p+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Bottom edge (close the module)
-        '<div style="position:absolute;bottom:0;left:0;right:0;border-bottom:1px solid #000"></div>'+
-        // Tarima line 1 (at bottom-70)
-        '<div style="position:absolute;bottom:'+t+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
-        // Tarima line 2 (at bottom-40)
-        '<div style="position:absolute;bottom:'+(t-tb)+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
+        // Tarima: 3 lines — floor (0mm), +40mm, +70mm
+        // Floor line (between laterals, at base)
+        '<div style="position:absolute;bottom:0;left:'+p+'px;right:'+p+'px;border-bottom:1px solid #000"></div>'+
+        // Tablero inferior at 40mm from base
+        '<div style="position:absolute;bottom:'+t40+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
+        // Top of tarima at 70mm from base
+        '<div style="position:absolute;bottom:'+t70+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
     div.innerHTML=inner+'<div class="c2d-module-label">'+m.w+'&times;'+m.h+'<br>'+typeLabel(m.type)+'</div>';
