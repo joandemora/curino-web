@@ -78,6 +78,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-handle-b{bottom:-4px;left:50%;margin-left:-4px;cursor:ns-resize}
 .c2d-handle-l{top:50%;margin-top:-4px;left:-4px;cursor:ew-resize}
 .c2d-handle-r{top:50%;margin-top:-4px;right:-4px;cursor:ew-resize}
+.c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(37,99,235,.06);pointer-events:none;z-index:5}
 
 /* Responsive */
 @media(max-width:900px){
@@ -179,7 +180,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 <script>
 // State (all dimensions in mm)
 var _modules=[];
-var _selected=null;
+var _sel=new Set(); // selected indices
 var _history=[];
 var _historyIdx=-1;
 var _zoom=1;
@@ -241,7 +242,7 @@ function renderModules(){
   var sc=s(),o=origin();
   _modules.forEach(function(m,i){
     var div=document.createElement('div');
-    div.className='c2d-module'+(i===_selected?' selected':'');
+    div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
     if(_view==='planta'){
       mw=m.w*sc;mh=(m.d||600)*sc;
@@ -276,9 +277,9 @@ function renderModules(){
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
     div.innerHTML=inner+'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>';
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
-    div.onclick=function(e){e.stopPropagation();selectModule(i);};
-    // Resize handles (only on selected)
-    if(i===_selected){
+    div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
+    // Resize handles (only on single selection)
+    if(_sel.size===1&&_sel.has(i)){
       ['tl','t','tr','l','r','bl','b','br'].forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
@@ -295,12 +296,23 @@ function typeLabel(t){
   return labels[t]||t;
 }
 
-function selectModule(i){_selected=i;renderModules();renderProps();}
+function selectModule(i,shift){
+  if(shift){
+    if(_sel.has(i)) _sel.delete(i); else _sel.add(i);
+  }else{
+    _sel.clear();_sel.add(i);
+  }
+  renderModules();renderProps();
+}
+function clearSelection(){_sel.clear();renderModules();renderProps();}
 
 function renderProps(){
   var panel=document.getElementById('propsPanel');
-  if(_selected===null||!_modules[_selected]){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
-  var m=_modules[_selected];
+  if(_sel.size===0){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
+  if(_sel.size>1){panel.innerHTML='<div class="c2d-empty"><strong>'+_sel.size+'</strong> m\u00F3dulos seleccionados</div><button class="c2d-btn-del" onclick="deleteSelected()">Eliminar selecci\u00F3n</button>';return;}
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];
+  if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   var types=['modulo','barra','estante','cajon','zapatero','balda_extraible','divisor','puerta_batiente','tapeta','costado','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
   panel.innerHTML=
@@ -311,18 +323,20 @@ function renderProps(){
     '<div class="c2d-prop"><label>Profundidad Z (mm)</label><input type="number" value="'+(m.pz||0)+'" step="50" onchange="updateProp(\'pz\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="50" onchange="updateProp(\'y\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Tipo</label><select onchange="updateProp(\'type\',this.value)">'+opts+'</select></div>'+
-    '<button class="c2d-btn-del" onclick="deleteModule()">Eliminar m\u00F3dulo</button>';
+    '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar m\u00F3dulo</button>';
 }
 
 function updateProp(key,val){
-  if(_selected===null) return;saveHistory();
-  _modules[_selected][key]=key==='type'?val:(parseInt(val)||0);
+  if(_sel.size!==1) return;saveHistory();
+  var idx=_sel.values().next().value;
+  _modules[idx][key]=key==='type'?val:(parseInt(val)||0);
   draw();renderModules();renderProps();
 }
-function deleteModule(){
-  if(_selected===null) return;saveHistory();
-  _modules.splice(_selected,1);_selected=null;
-  draw();renderModules();renderProps();
+function deleteSelected(){
+  if(_sel.size===0) return;saveHistory();
+  var arr=Array.from(_sel).sort(function(a,b){return b-a;});
+  arr.forEach(function(i){_modules.splice(i,1);});
+  _sel.clear();draw();renderModules();renderProps();
 }
 
 // Drag from panel
@@ -349,24 +363,30 @@ wrap.addEventListener('drop',function(e){
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
-// Move module
+// Move module(s)
 var _dragMod=null;
 function startDragModule(e,i){
   e.preventDefault();
-  var m=_modules[i];
-  _dragMod={idx:i,startX:e.clientX,startY:e.clientY,origX:m.x,origY:m.y,origPZ:m.pz||0};
-  selectModule(i);
+  if(!_sel.has(i)) selectModule(i,e.shiftKey);
+  // Store originals for all selected
+  var origins=[];
+  _sel.forEach(function(idx){
+    var m=_modules[idx];
+    origins.push({idx:idx,x:m.x,y:m.y,pz:m.pz||0});
+  });
+  _dragMod={startX:e.clientX,startY:e.clientY,origins:origins};
   document.addEventListener('mousemove',dragModuleMove);
   document.addEventListener('mouseup',dragModuleEnd);
 }
 function dragModuleMove(e){
   if(!_dragMod) return;var sc=s();
-  _modules[_dragMod.idx].x=snap(_dragMod.origX+(e.clientX-_dragMod.startX)/sc);
-  if(_view==='planta'){
-    _modules[_dragMod.idx].pz=snap(_dragMod.origPZ+(e.clientY-_dragMod.startY)/sc);
-  }else{
-    _modules[_dragMod.idx].y=snap(_dragMod.origY-(e.clientY-_dragMod.startY)/sc);
-  }
+  var dx=(e.clientX-_dragMod.startX)/sc;
+  var dy=(e.clientY-_dragMod.startY)/sc;
+  _dragMod.origins.forEach(function(o){
+    _modules[o.idx].x=snap(o.x+dx);
+    if(_view==='planta') _modules[o.idx].pz=snap(o.pz+dy);
+    else _modules[o.idx].y=snap(o.y-dy);
+  });
   renderModules();renderProps();
 }
 function dragModuleEnd(){
@@ -411,16 +431,27 @@ function resizeEnd(){
   document.removeEventListener('mouseup',resizeEnd);draw();
 }
 
-// Pan + Deselect
-var _panning=null;
-wrap.style.cursor='grab';
+// Pan (middle mouse / space) + Marquee selection + Deselect
+var _panning=null,_marquee=null,_marqueeDiv=null;
+wrap.style.cursor='crosshair';
 wrap.addEventListener('mousedown',function(e){
   if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
   e.preventDefault();
-  _panning={startX:e.clientX,startY:e.clientY,origPX:_panX,origPY:_panY};
-  wrap.style.cursor='grabbing';
-  document.addEventListener('mousemove',panMove);
-  document.addEventListener('mouseup',panEnd);
+  var rect=wrap.getBoundingClientRect();
+  if(e.button===1||e.altKey){
+    // Middle click or Alt = pan
+    _panning={startX:e.clientX,startY:e.clientY,origPX:_panX,origPY:_panY};
+    wrap.style.cursor='grabbing';
+    document.addEventListener('mousemove',panMove);
+    document.addEventListener('mouseup',panEnd);
+  }else{
+    // Left click = marquee selection
+    _marquee={startX:e.clientX-rect.left,startY:e.clientY-rect.top,shift:e.shiftKey};
+    _marqueeDiv=document.createElement('div');_marqueeDiv.className='c2d-marquee';
+    layer.appendChild(_marqueeDiv);
+    document.addEventListener('mousemove',marqueeMove);
+    document.addEventListener('mouseup',marqueeEnd);
+  }
 });
 function panMove(e){
   if(!_panning) return;
@@ -429,12 +460,47 @@ function panMove(e){
   draw();renderModules();
 }
 function panEnd(e){
-  var moved=_panning&&(Math.abs(e.clientX-_panning.startX)>3||Math.abs(e.clientY-_panning.startY)>3);
-  _panning=null;
-  wrap.style.cursor='grab';
+  _panning=null;wrap.style.cursor='crosshair';
   document.removeEventListener('mousemove',panMove);
   document.removeEventListener('mouseup',panEnd);
-  if(!moved){_selected=null;renderModules();renderProps();}
+}
+function marqueeMove(e){
+  if(!_marquee) return;
+  var rect=wrap.getBoundingClientRect();
+  var cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+  var x=Math.min(_marquee.startX,cx),y=Math.min(_marquee.startY,cy);
+  var w=Math.abs(cx-_marquee.startX),h=Math.abs(cy-_marquee.startY);
+  _marqueeDiv.style.left=x+'px';_marqueeDiv.style.top=y+'px';
+  _marqueeDiv.style.width=w+'px';_marqueeDiv.style.height=h+'px';
+}
+function marqueeEnd(e){
+  var rect=wrap.getBoundingClientRect();
+  var cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+  var moved=Math.abs(cx-_marquee.startX)>3||Math.abs(cy-_marquee.startY)>3;
+  if(_marqueeDiv){_marqueeDiv.remove();_marqueeDiv=null;}
+  if(!moved){
+    // Click without drag = deselect
+    if(!_marquee.shift) clearSelection();
+  }else{
+    // Select modules inside marquee
+    var sc=s(),o=origin();
+    var mx1=Math.min(_marquee.startX,cx),my1=Math.min(_marquee.startY,cy);
+    var mx2=Math.max(_marquee.startX,cx),my2=Math.max(_marquee.startY,cy);
+    if(!_marquee.shift) _sel.clear();
+    _modules.forEach(function(m,i){
+      var mleft,mtop,mw,mh;
+      if(_view==='planta'){
+        mleft=o.x+m.x*sc;mtop=o.y+(m.pz||0)*sc;mw=m.w*sc;mh=(m.d||600)*sc;
+      }else{
+        mleft=o.x+m.x*sc;mtop=o.y+(_furH-m.y-m.h)*sc;mw=m.w*sc;mh=m.h*sc;
+      }
+      if(mleft+mw>mx1&&mleft<mx2&&mtop+mh>my1&&mtop<my2) _sel.add(i);
+    });
+    renderModules();renderProps();
+  }
+  _marquee=null;
+  document.removeEventListener('mousemove',marqueeMove);
+  document.removeEventListener('mouseup',marqueeEnd);
 }
 
 // Views
@@ -477,24 +543,25 @@ function saveHistory(){
   _history=_history.slice(0,_historyIdx+1);
   _history.push(JSON.stringify(_modules));_historyIdx=_history.length-1;
 }
-function undo(){if(_historyIdx>0){_historyIdx--;_modules=JSON.parse(_history[_historyIdx]);_selected=null;draw();renderModules();renderProps();}}
-function redo(){if(_historyIdx<_history.length-1){_historyIdx++;_modules=JSON.parse(_history[_historyIdx]);_selected=null;draw();renderModules();renderProps();}}
+function undo(){if(_historyIdx>0){_historyIdx--;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();}}
+function redo(){if(_historyIdx<_history.length-1){_historyIdx++;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();}}
 
 // Clipboard
 var _clipboard=null;
 document.addEventListener('keydown',function(e){
+  var inInput=document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='SELECT';
   // Delete
-  if((e.key==='Delete'||e.key==='Backspace')&&_selected!==null&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='SELECT'){
-    e.preventDefault();deleteModule();return;
+  if((e.key==='Delete'||e.key==='Backspace')&&_sel.size>0&&!inInput){
+    e.preventDefault();deleteSelected();return;
   }
   if(!e.ctrlKey&&!e.metaKey) return;
   var key=e.key.toLowerCase();
   // Copy
-  if(key==='c'&&_selected!==null){e.preventDefault();_clipboard=JSON.parse(JSON.stringify(_modules[_selected]));return;}
+  if(key==='c'&&_sel.size>0){e.preventDefault();_clipboard=Array.from(_sel).map(function(i){return JSON.parse(JSON.stringify(_modules[i]));});return;}
   // Cut
-  if(key==='x'&&_selected!==null){e.preventDefault();_clipboard=JSON.parse(JSON.stringify(_modules[_selected]));deleteModule();return;}
+  if(key==='x'&&_sel.size>0){e.preventDefault();_clipboard=Array.from(_sel).map(function(i){return JSON.parse(JSON.stringify(_modules[i]));});deleteSelected();return;}
   // Paste
-  if(key==='v'&&_clipboard){e.preventDefault();saveHistory();var m=JSON.parse(JSON.stringify(_clipboard));m.x+=50;m.y+=50;_modules.push(m);draw();renderModules();selectModule(_modules.length-1);return;}
+  if(key==='v'&&_clipboard&&_clipboard.length){e.preventDefault();saveHistory();_sel.clear();_clipboard.forEach(function(cm){var m=JSON.parse(JSON.stringify(cm));m.x+=50;m.y+=50;_modules.push(m);_sel.add(_modules.length-1);});draw();renderModules();renderProps();return;}
   // Undo
   if(key==='z'&&!e.shiftKey){e.preventDefault();undo();return;}
   // Redo
