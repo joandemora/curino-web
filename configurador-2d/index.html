@@ -275,20 +275,20 @@ function renderModules(){
       '</div>';
     }
     if(m.type==='barra'&&_view==='alzado'){
-      var sq=40*sc,gap=30*sc;
-      var totalH=sq; // squares are 40mm, lines centered within them
-      var cy=(m.h*sc-sq)/2; // center vertically
-      var lineTop=cy+(sq-gap)/2;
+      div.style.border='none';
+      var supW=30*sc,supH=40*sc,gap=30*sc;
+      var cy=(m.h*sc-supH)/2; // center vertically
+      var lineTop=cy+(supH-gap)/2;
       var lineBot=lineTop+gap;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        // Left square 40×40, centered vertically
-        '<div style="position:absolute;top:'+cy+'px;left:0;width:'+sq+'px;height:'+sq+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Right square 40×40, centered vertically
-        '<div style="position:absolute;top:'+cy+'px;right:0;width:'+sq+'px;height:'+sq+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Top line connecting squares
-        '<div style="position:absolute;top:'+lineTop+'px;left:'+sq+'px;right:'+sq+'px;border-top:1px solid #000"></div>'+
-        // Bottom line connecting squares (30mm below top line)
-        '<div style="position:absolute;top:'+lineBot+'px;left:'+sq+'px;right:'+sq+'px;border-top:1px solid #000"></div>'+
+        // Left support 30×40, centered vertically
+        '<div style="position:absolute;top:'+cy+'px;left:0;width:'+supW+'px;height:'+supH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Right support 30×40, centered vertically
+        '<div style="position:absolute;top:'+cy+'px;right:0;width:'+supW+'px;height:'+supH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Top line connecting supports
+        '<div style="position:absolute;top:'+lineTop+'px;left:'+supW+'px;right:'+supW+'px;border-top:1px solid #000"></div>'+
+        // Bottom line (30mm below)
+        '<div style="position:absolute;top:'+lineBot+'px;left:'+supW+'px;right:'+supW+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
