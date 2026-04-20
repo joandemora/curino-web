@@ -235,30 +235,31 @@ function draw(){
   ctx.save();ctx.translate(o.x-8,o.y+vh*sc/2);ctx.rotate(-Math.PI/2);
   ctx.fillText(vh+' mm',0,0);ctx.restore();
   // Plant dividers
+  // Plant view outline dimensions label uses _furD
   if(_view==='planta'){
-    ctx.strokeStyle='#999';ctx.lineWidth=1;
-    _modules.forEach(function(m){
-      var mx=o.x+m.x*sc;
-      ctx.beginPath();ctx.moveTo(mx,o.y);ctx.lineTo(mx,o.y+vh*sc);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(mx+m.w*sc,o.y);ctx.lineTo(mx+m.w*sc,o.y+vh*sc);ctx.stroke();
-    });
+    ctx.fillText(_furD+' mm',o.x-20,o.y+vh*sc/2); // override left label
   }
 }
 
 function renderModules(){
   layer.innerHTML='';
-  if(_view==='planta') return;
   var sc=s(),o=origin();
   _modules.forEach(function(m,i){
     var div=document.createElement('div');
     div.className='c2d-module'+(i===_selected?' selected':'');
-    div.style.left=(o.x+m.x*sc)+'px';
-    div.style.top=(o.y+(_furH-m.y-m.h)*sc)+'px';
-    div.style.width=(m.w*sc)+'px';
-    div.style.height=(m.h*sc)+'px';
+    var mw,mh,mx,my;
+    if(_view==='planta'){
+      mw=m.w*sc;mh=(m.d||600)*sc;
+      mx=o.x+m.x*sc;my=o.y+(m.pz||0)*sc;
+    }else{
+      mw=m.w*sc;mh=m.h*sc;
+      mx=o.x+m.x*sc;my=o.y+(_furH-m.y-m.h)*sc;
+    }
+    div.style.left=mx+'px';div.style.top=my+'px';
+    div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
-    if(m.type==='modulo'){
-      div.style.border='none'; // boards draw all borders
+    if(m.type==='modulo'&&_view==='alzado'){
+      div.style.border='none';
       var p=19*sc,t70=70*sc,t40=40*sc;
       var hTotal=m.h*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
@@ -277,7 +278,8 @@ function renderModules(){
         '<div style="position:absolute;bottom:'+t70+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
-    div.innerHTML=inner+'<div class="c2d-module-label">'+m.w+'&times;'+m.h+'<br>'+typeLabel(m.type)+'</div>';
+    var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
+    div.innerHTML=inner+'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>';
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){e.stopPropagation();selectModule(i);};
     // Resize handles (only on selected)
@@ -311,6 +313,7 @@ function renderProps(){
     '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50" onchange="updateProp(\'d\',this.value)"></div>'+
     '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="50" onchange="updateProp(\'x\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Profundidad Z (mm)</label><input type="number" value="'+(m.pz||0)+'" step="50" onchange="updateProp(\'pz\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="50" onchange="updateProp(\'y\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Tipo</label><select onchange="updateProp(\'type\',this.value)">'+opts+'</select></div>'+
     '<button class="c2d-btn-del" onclick="deleteModule()">Eliminar m\u00F3dulo</button>';
@@ -340,9 +343,14 @@ wrap.addEventListener('drop',function(e){
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var x=snap((e.clientX-rect.left-o.x)/sc);
   var screenY=(e.clientY-rect.top-o.y)/sc;
-  var y=snap(_furH-screenY-_dragData.h);
+  var y,pz;
+  if(_view==='planta'){
+    y=0;pz=snap(screenY);
+  }else{
+    y=snap(_furH-screenY-_dragData.h);pz=0;
+  }
   saveHistory();
-  _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:600,x:x,y:y});
+  _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:600,x:x,y:y,pz:pz});
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
@@ -350,7 +358,8 @@ wrap.addEventListener('drop',function(e){
 var _dragMod=null;
 function startDragModule(e,i){
   e.preventDefault();
-  _dragMod={idx:i,startX:e.clientX,startY:e.clientY,origX:_modules[i].x,origY:_modules[i].y};
+  var m=_modules[i];
+  _dragMod={idx:i,startX:e.clientX,startY:e.clientY,origX:m.x,origY:m.y,origPZ:m.pz||0};
   selectModule(i);
   document.addEventListener('mousemove',dragModuleMove);
   document.addEventListener('mouseup',dragModuleEnd);
@@ -358,7 +367,11 @@ function startDragModule(e,i){
 function dragModuleMove(e){
   if(!_dragMod) return;var sc=s();
   _modules[_dragMod.idx].x=snap(_dragMod.origX+(e.clientX-_dragMod.startX)/sc);
-  _modules[_dragMod.idx].y=snap(_dragMod.origY-(e.clientY-_dragMod.startY)/sc);
+  if(_view==='planta'){
+    _modules[_dragMod.idx].pz=snap(_dragMod.origPZ+(e.clientY-_dragMod.startY)/sc);
+  }else{
+    _modules[_dragMod.idx].y=snap(_dragMod.origY-(e.clientY-_dragMod.startY)/sc);
+  }
   renderModules();renderProps();
 }
 function dragModuleEnd(){
