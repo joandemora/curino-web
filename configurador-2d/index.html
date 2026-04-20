@@ -259,16 +259,17 @@ function renderModules(){
     var inner='';
     if(m.type==='modulo'){
       var p=19*sc,t=70*sc,tb=30*sc; // panel 19mm, tarima 70mm, base thickness 30mm
+      var hTotal=m.h*sc,wTotal=m.w*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        // Top inner line (from x+19 to x+w-19)
-        '<div style="position:absolute;top:'+p+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
-        // Left inner line (from y+19 to bottom-70)
-        '<div style="position:absolute;top:'+p+'px;left:'+p+'px;bottom:'+t+'px;border-left:1px solid #000"></div>'+
-        // Right inner line (from y+19 to bottom-70)
-        '<div style="position:absolute;top:'+p+'px;right:'+p+'px;bottom:'+t+'px;border-right:1px solid #000"></div>'+
-        // Tarima top line (at bottom-70)
+        // Left lateral board: 19mm wide × full height
+        '<div style="position:absolute;top:0;left:0;width:'+p+'px;height:'+hTotal+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Right lateral board: 19mm wide × full height
+        '<div style="position:absolute;top:0;right:0;width:'+p+'px;height:'+hTotal+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Top board: interior width × 19mm, between laterals
+        '<div style="position:absolute;top:0;left:'+p+'px;right:'+p+'px;height:'+p+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Tarima line 1 (at bottom-70)
         '<div style="position:absolute;bottom:'+t+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
-        // Tarima base thickness line (at bottom-40, i.e. 70-30=40)
+        // Tarima line 2 (at bottom-40, base board 30mm thick)
         '<div style="position:absolute;bottom:'+(t-tb)+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
