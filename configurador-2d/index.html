@@ -403,11 +403,12 @@ function renderProps(){
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   var types=['modulo','barra','estante','cajon','zapatero','balda_extraible','divisor','puerta_batiente','tapeta','costado','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
-  var isBarra=m.type==='barra'||m.type==='zapatero';
+  var hFixed=m.type==='barra'||m.type==='zapatero';
+  var dFixed=m.type==='barra';
   panel.innerHTML=
     '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50"'+(isBarra?' disabled':' onchange="updateProp(\'h\',this.value)"')+'></div>'+
-    '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50"'+(isBarra?' disabled':' onchange="updateProp(\'d\',this.value)"')+'></div>'+
+    '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50"'+(hFixed?' disabled':' onchange="updateProp(\'h\',this.value)"')+'></div>'+
+    '<div class="c2d-prop"><label>Fondo (mm)</label><input type="number" value="'+(m.d||600)+'" step="50"'+(dFixed?' disabled':' onchange="updateProp(\'d\',this.value)"')+'></div>'+
     '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="50" onchange="updateProp(\'x\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Profundidad Z (mm)</label><input type="number" value="'+(m.pz||0)+'" step="50" onchange="updateProp(\'pz\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="50" onchange="updateProp(\'y\',this.value)"></div>'+
