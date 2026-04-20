@@ -416,18 +416,35 @@ function magSnap(val,edges,sc){
   return best!==null?best:snap(val);
 }
 function getSnapEdges(axis,skipIndices){
-  // Collect all edges of non-selected modules + furniture bounds
   var edges=[];
   _modules.forEach(function(m,i){
     if(skipIndices.has(i)) return;
-    if(axis==='x'){edges.push(m.x);edges.push(m.x+m.w);}
-    else if(axis==='y'){edges.push(m.y);edges.push(m.y+m.h);}
-    else if(axis==='pz'){edges.push(m.pz||0);edges.push((m.pz||0)+(m.d||600));}
+    if(axis==='x'){
+      edges.push(m.x,m.x+m.w);
+      // Interior lines
+      if(m.type==='modulo'){edges.push(m.x+19,m.x+m.w-19);}
+      if(m.type==='barra'){edges.push(m.x+20,m.x+m.w-20);}
+    }else if(axis==='y'){
+      edges.push(m.y,m.y+m.h);
+      if(m.type==='modulo'){
+        edges.push(m.y+70,m.y+40,m.y+m.h-19); // tarima top, base board, top panel inner
+      }
+      if(m.type==='estante'){
+        var eMid=m.y+m.h/2;
+        edges.push(eMid-15,eMid+15); // estante rect edges (30mm centered)
+      }
+      if(m.type==='barra'){
+        var bMid=m.y+m.h/2;
+        edges.push(bMid-15,bMid+15); // barra lines (30mm gap centered)
+      }
+    }else if(axis==='pz'){
+      edges.push(m.pz||0,(m.pz||0)+(m.d||600));
+    }
   });
   // Furniture bounds
-  if(axis==='x'){edges.push(0);edges.push(_furW);}
-  else if(axis==='y'){edges.push(0);edges.push(_furH);}
-  else if(axis==='pz'){edges.push(0);edges.push(_furD);}
+  if(axis==='x'){edges.push(0,_furW);}
+  else if(axis==='y'){edges.push(0,_furH);}
+  else if(axis==='pz'){edges.push(0,_furD);}
   return edges;
 }
 var _snapLines=[];
