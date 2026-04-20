@@ -275,15 +275,20 @@ function renderModules(){
       '</div>';
     }
     if(m.type==='barra'&&_view==='alzado'){
-      var barH=30*sc,supW=40*sc;
-      var barY=(m.h*sc)/2-barH/2; // centered vertically
+      var sq=40*sc,gap=30*sc;
+      var totalH=sq; // squares are 40mm, lines centered within them
+      var cy=(m.h*sc-sq)/2; // center vertically
+      var lineTop=cy+(sq-gap)/2;
+      var lineBot=lineTop+gap;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
-        // Horizontal bar (centered)
-        '<div style="position:absolute;top:'+barY+'px;left:0;right:0;height:'+barH+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Left support (top to bar)
-        '<div style="position:absolute;top:0;left:0;width:'+supW+'px;height:'+(barY+barH)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
-        // Right support (top to bar)
-        '<div style="position:absolute;top:0;right:0;width:'+supW+'px;height:'+(barY+barH)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Left square 40×40, centered vertically
+        '<div style="position:absolute;top:'+cy+'px;left:0;width:'+sq+'px;height:'+sq+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Right square 40×40, centered vertically
+        '<div style="position:absolute;top:'+cy+'px;right:0;width:'+sq+'px;height:'+sq+'px;border:1px solid #000;box-sizing:border-box"></div>'+
+        // Top line connecting squares
+        '<div style="position:absolute;top:'+lineTop+'px;left:'+sq+'px;right:'+sq+'px;border-top:1px solid #000"></div>'+
+        // Bottom line connecting squares (30mm below top line)
+        '<div style="position:absolute;top:'+lineBot+'px;left:'+sq+'px;right:'+sq+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
     var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
