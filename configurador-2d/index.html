@@ -293,7 +293,7 @@ function renderModules(){
         var cx=pw/2;
         svg+='<line x1="0" y1="0" x2="'+cx+'" y2="'+ph+'" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
         svg+='<line x1="'+cx+'" y1="'+ph+'" x2="'+pw+'" y2="0" stroke="#999" stroke-width="1" stroke-dasharray="8,5"/>';
-        svg+='<rect x="'+((pw-tH)/2)+'" y="0" width="'+tH+'" height="'+tW+'" fill="none" stroke="#000" stroke-width="1"/>';
+        svg+='<rect x="'+((pw-tH)/2)+'" y="'+(ph-tW)+'" width="'+tH+'" height="'+tW+'" fill="none" stroke="#000" stroke-width="1"/>';
       }
       svg+='</svg>';
       inner=svg;
