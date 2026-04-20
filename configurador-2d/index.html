@@ -275,34 +275,6 @@ function renderModules(){
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
-    if(m.type==='puerta_batiente'&&_view==='alzado'){
-      var pw=m.w*sc,ph=m.h*sc,r=pw;
-      var ap=m.apertura||'derecha';
-      // Door is the solid rectangle (from .c2d-module border)
-      // Arc: quarter circle, radius = width, dashed grey
-      var svg='';
-      if(ap==='derecha'){
-        // Hinge right side: arc from bottom-right, sweeping left
-        // Center at (pw, ph), arc goes from angle -90° (up) to -180° (left)
-        svg='<svg style="position:absolute;top:0;left:0;width:'+pw+'px;height:'+ph+'px;overflow:visible;pointer-events:none">'+
-          '<path d="M0,'+ph+' A'+r+','+r+' 0 0,1 '+pw+',0" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>'+
-          '<line x1="'+pw+'" y1="0" x2="'+pw+'" y2="'+ph+'" stroke="#000" stroke-width="1"/>'+
-        '</svg>';
-      }else if(ap==='izquierda'){
-        // Hinge left side: arc from bottom-left, sweeping right
-        svg='<svg style="position:absolute;top:0;left:0;width:'+pw+'px;height:'+ph+'px;overflow:visible;pointer-events:none">'+
-          '<path d="M'+pw+','+ph+' A'+r+','+r+' 0 0,0 0,0" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>'+
-          '<line x1="0" y1="0" x2="0" y2="'+ph+'" stroke="#000" stroke-width="1"/>'+
-        '</svg>';
-      }else{
-        // Vertical: hinge at top, arc sweeps upward (radius = height)
-        var rv=ph;
-        svg='<svg style="position:absolute;top:'+(-rv)+'px;left:0;width:'+pw+'px;height:'+(rv+ph)+'px;overflow:visible;pointer-events:none">'+
-          '<path d="M0,'+rv+' A'+rv+','+rv+' 0 0,0 '+pw+','+rv+'" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>'+
-        '</svg>';
-      }
-      inner=svg;
-    }
     if(m.type==='modulo'&&_view==='alzado'){
       div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
