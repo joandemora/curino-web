@@ -399,6 +399,18 @@ function switchView(v){
 function zoomIn(){_zoom=Math.min(_zoom*1.2,4);draw();renderModules();}
 function zoomOut(){_zoom=Math.max(_zoom/1.2,0.3);draw();renderModules();}
 
+// Scroll wheel zoom (centered on cursor)
+wrap.addEventListener('wheel',function(e){
+  e.preventDefault();
+  var rect=wrap.getBoundingClientRect();
+  var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  var oldS=s();
+  if(e.deltaY<0) _zoom=Math.min(_zoom*1.1,4);
+  else _zoom=Math.max(_zoom/1.1,0.3);
+  // No pan offset yet — just zoom and redraw
+  draw();renderModules();
+},{passive:false});
+
 // History
 function saveHistory(){
   _history=_history.slice(0,_historyIdx+1);
@@ -406,6 +418,27 @@ function saveHistory(){
 }
 function undo(){if(_historyIdx>0){_historyIdx--;_modules=JSON.parse(_history[_historyIdx]);_selected=null;draw();renderModules();renderProps();}}
 function redo(){if(_historyIdx<_history.length-1){_historyIdx++;_modules=JSON.parse(_history[_historyIdx]);_selected=null;draw();renderModules();renderProps();}}
+
+// Clipboard
+var _clipboard=null;
+document.addEventListener('keydown',function(e){
+  // Delete
+  if((e.key==='Delete'||e.key==='Backspace')&&_selected!==null&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='SELECT'){
+    e.preventDefault();deleteModule();return;
+  }
+  if(!e.ctrlKey&&!e.metaKey) return;
+  var key=e.key.toLowerCase();
+  // Copy
+  if(key==='c'&&_selected!==null){e.preventDefault();_clipboard=JSON.parse(JSON.stringify(_modules[_selected]));return;}
+  // Cut
+  if(key==='x'&&_selected!==null){e.preventDefault();_clipboard=JSON.parse(JSON.stringify(_modules[_selected]));deleteModule();return;}
+  // Paste
+  if(key==='v'&&_clipboard){e.preventDefault();saveHistory();var m=JSON.parse(JSON.stringify(_clipboard));m.x+=50;m.y+=50;_modules.push(m);draw();renderModules();selectModule(_modules.length-1);return;}
+  // Undo
+  if(key==='z'&&!e.shiftKey){e.preventDefault();undo();return;}
+  // Redo
+  if(key==='y'||(key==='z'&&e.shiftKey)){e.preventDefault();redo();return;}
+});
 
 // Export
 function exportPNG(){
