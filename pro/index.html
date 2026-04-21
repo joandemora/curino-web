@@ -27,6 +27,7 @@ nav.scrolled{border-bottom-color:var(--line-soft)}
 nav .inner{display:flex;justify-content:space-between;align-items:center;max-width:1240px;margin:0 auto;padding:0 40px}
 .logo{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.03em;color:var(--ink);text-decoration:none;font-style:italic}
 .logo::after{content:'.';color:var(--coral)}
+.nav-right{display:flex;align-items:center;gap:40px}
 nav ul{display:flex;gap:40px;list-style:none}
 nav a{color:var(--ink-soft);text-decoration:none;font-size:14.5px;font-weight:400;transition:color .2s}
 nav a:hover{color:var(--ink)}
@@ -152,9 +153,8 @@ footer a:hover{color:var(--ink)}
 @media(max-width:900px){
   .container{padding:0 24px}
   nav .inner{padding:0 24px}
-  nav ul{display:none}
+  .nav-right{display:none}
   .hamburger{display:flex}
-  .nav-ctas{display:none}
   .pro-hero{padding:0}
   .hero-grid{grid-template-columns:1fr;min-height:auto}
   .hero-left{padding:3rem 0 2rem}
@@ -173,16 +173,18 @@ footer a:hover{color:var(--ink)}
 <nav id="nav">
   <div class="container inner">
     <a href="/pro/" class="logo">curino</a>
-    <ul>
-      <li><a href="#pricing">Planes</a></li>
-      <li><a href="#para-quien">Para qui&eacute;n</a></li>
-      <li><a href="#como">C&oacute;mo funciona</a></li>
-      <li><a href="#features">Producto</a></li>
-      <li><a href="#demo">Configurador</a></li>
-    </ul>
-    <div class="nav-ctas">
-      <a href="mailto:pro@casacurino.com" class="btn btn-outline">Contactar con ventas</a>
-      <a href="#pricing" class="btn btn-primary">Probar Curino</a>
+    <div class="nav-right">
+      <ul>
+        <li><a href="#pricing">Planes</a></li>
+        <li><a href="#para-quien">Para qui&eacute;n</a></li>
+        <li><a href="#como">C&oacute;mo funciona</a></li>
+        <li><a href="#features">Producto</a></li>
+        <li><a href="#demo">Configurador</a></li>
+      </ul>
+      <div class="nav-ctas">
+        <a href="mailto:pro@casacurino.com" class="btn btn-outline">Contactar con ventas</a>
+        <a href="#pricing" class="btn btn-primary">Probar Curino</a>
+      </div>
     </div>
     <button class="hamburger" onclick="toggleMenu()" id="hamburger"><span></span><span></span><span></span></button>
   </div>
