@@ -122,31 +122,20 @@ nav a:hover{color:var(--ink)}
 .for-who-card p{font-size:14.5px;color:var(--ink-soft);line-height:1.6}
 
 /* Node diagram */
-.node-diagram{position:relative;min-height:520px;overflow:visible}
-.node-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--serif);font-size:28px;font-weight:400;font-style:italic;letter-spacing:-.02em;z-index:2}
-.node-center::after{content:'.';color:var(--coral)}
-.node-group{position:absolute;z-index:1}
-.node-name{font-family:var(--serif);font-size:18px;font-weight:300;font-style:italic;color:var(--ink);margin-bottom:4px;white-space:nowrap}
-.node-tags{display:flex;flex-wrap:wrap;gap:4px 8px;max-width:160px}
-.node-tag{font-size:11px;color:var(--ink-mute);white-space:nowrap}
-.node-lines{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
-.node-lines line{stroke:var(--line);stroke-width:1}
-
-/* Node positions */
-.node-g1{top:6%;left:8%}
-.node-g2{top:4%;right:8%}
-.node-g3{bottom:4%;right:5%}
-.node-g4{bottom:8%;left:5%}
-.node-g5{top:42%;right:0}
-
-/* Node animation */
-.node-group{opacity:1}
-@keyframes nodeFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-.node-g1{animation:nodeFloat 4s ease-in-out infinite 0s}
-.node-g2{animation:nodeFloat 4s ease-in-out infinite .8s}
-.node-g3{animation:nodeFloat 4s ease-in-out infinite 1.6s}
-.node-g4{animation:nodeFloat 4s ease-in-out infinite 2.4s}
-.node-g5{animation:nodeFloat 4s ease-in-out infinite 3.2s}
+.node-diagram{width:100%;aspect-ratio:1.15}
+.node-diagram svg{width:100%;height:100%;overflow:visible}
+.node-diagram .nd-line{stroke:#ccc;stroke-width:.5;fill:none}
+.node-diagram .nd-center{font-family:var(--serif);font-size:28px;font-weight:400;font-style:italic;fill:var(--ink)}
+.node-diagram .nd-dot{fill:var(--coral)}
+.node-diagram .nd-node{font-family:var(--font);font-size:16px;font-weight:600;fill:var(--ink)}
+.node-diagram .nd-kw{font-family:var(--font);font-size:10.5px;fill:#8C8A82;font-weight:400}
+.node-diagram .nd-kw-u{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+@keyframes svgFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.nd-float1{animation:svgFloat 5s ease-in-out infinite 0s}
+.nd-float2{animation:svgFloat 5s ease-in-out infinite 1s}
+.nd-float3{animation:svgFloat 5s ease-in-out infinite 2s}
+.nd-float4{animation:svgFloat 5s ease-in-out infinite 3s}
+.nd-float5{animation:svgFloat 5s ease-in-out infinite 4s}
 
 /* ── HOW IT WORKS ── */
 .how{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
@@ -220,7 +209,6 @@ footer a:hover{color:var(--ink)}
   .hero-left{padding:3rem 0 2rem}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
   .for-who-layout{grid-template-columns:1fr;gap:40px}
-  .node-diagram{min-height:400px}
   .features-grid{grid-template-columns:1fr}
   .how-grid{grid-template-columns:1fr}
   .pricing-grid{grid-template-columns:1fr;max-width:480px;margin-left:auto;margin-right:auto}
@@ -396,34 +384,88 @@ footer a:hover{color:var(--ink)}
         </div>
       </div>
       <div class="node-diagram reveal-scroll">
-        <svg class="node-lines" viewBox="0 0 600 520" preserveAspectRatio="xMidYMid meet">
-          <line x1="300" y1="260" x2="90" y2="60"/>
-          <line x1="300" y1="260" x2="480" y2="50"/>
-          <line x1="300" y1="260" x2="510" y2="440"/>
-          <line x1="300" y1="260" x2="80" y2="430"/>
-          <line x1="300" y1="260" x2="540" y2="250"/>
+        <svg viewBox="0 0 700 610">
+          <!-- Lines: center to nodes -->
+          <line class="nd-line" x1="350" y1="305" x2="80" y2="120"/>
+          <line class="nd-line" x1="350" y1="305" x2="580" y2="80"/>
+          <line class="nd-line" x1="350" y1="305" x2="610" y2="480"/>
+          <line class="nd-line" x1="350" y1="305" x2="100" y2="490"/>
+          <line class="nd-line" x1="350" y1="305" x2="640" y2="280"/>
+          <!-- Lines: nodes to keywords -->
+          <!-- Dise&ntilde;o -->
+          <line class="nd-line" x1="80" y1="120" x2="20" y2="40"/><line class="nd-line" x1="80" y1="120" x2="140" y2="35"/>
+          <line class="nd-line" x1="80" y1="120" x2="10" y2="170"/><line class="nd-line" x1="80" y1="120" x2="160" y2="160"/>
+          <line class="nd-line" x1="80" y1="120" x2="50" y2="210"/>
+          <!-- Proyecto -->
+          <line class="nd-line" x1="580" y1="80" x2="480" y2="20"/><line class="nd-line" x1="580" y1="80" x2="620" y2="18"/>
+          <line class="nd-line" x1="580" y1="80" x2="680" y2="60"/><line class="nd-line" x1="580" y1="80" x2="510" y2="130"/>
+          <line class="nd-line" x1="580" y1="80" x2="640" y2="140"/>
+          <!-- Presupuesto -->
+          <line class="nd-line" x1="610" y1="480" x2="540" y2="420"/><line class="nd-line" x1="610" y1="480" x2="680" y2="420"/>
+          <line class="nd-line" x1="610" y1="480" x2="540" y2="540"/><line class="nd-line" x1="610" y1="480" x2="680" y2="540"/>
+          <line class="nd-line" x1="610" y1="480" x2="610" y2="580"/>
+          <!-- Materiales -->
+          <line class="nd-line" x1="100" y1="490" x2="30" y2="420"/><line class="nd-line" x1="100" y1="490" x2="180" y2="430"/>
+          <line class="nd-line" x1="100" y1="490" x2="20" y2="550"/><line class="nd-line" x1="100" y1="490" x2="160" y2="560"/>
+          <line class="nd-line" x1="100" y1="490" x2="80" y2="600"/>
+          <!-- Embed -->
+          <line class="nd-line" x1="640" y1="280" x2="680" y2="210"/><line class="nd-line" x1="640" y1="280" x2="690" y2="260"/>
+          <line class="nd-line" x1="640" y1="280" x2="690" y2="310"/><line class="nd-line" x1="640" y1="280" x2="680" y2="350"/>
+          <line class="nd-line" x1="640" y1="280" x2="620" y2="350"/>
+
+          <!-- Center -->
+          <text class="nd-center" x="350" y="310" text-anchor="middle">curino<tspan class="nd-dot">.</tspan></text>
+
+          <!-- Node: Dise&ntilde;o (top-left) -->
+          <g class="nd-float1">
+            <text class="nd-node" x="80" y="118">Dise&#241;o</text>
+            <text class="nd-kw" x="20" y="38">Alzados</text>
+            <text class="nd-kw nd-kw-u" x="135" y="33">Planta</text>
+            <text class="nd-kw" x="5" y="175">Precisi&#243;n</text>
+            <text class="nd-kw" x="150" y="165">T&#233;cnica</text>
+            <text class="nd-kw nd-kw-u" x="40" y="215">Detalle</text>
+          </g>
+
+          <!-- Node: Proyecto (top-right) -->
+          <g class="nd-float2">
+            <text class="nd-node" x="555" y="83">Proyecto</text>
+            <text class="nd-kw" x="465" y="18">Planos</text>
+            <text class="nd-kw nd-kw-u" x="610" y="16">Memoria</text>
+            <text class="nd-kw" x="670" y="58">Materiales</text>
+            <text class="nd-kw" x="495" y="135">Cliente</text>
+            <text class="nd-kw nd-kw-u" x="630" y="145">Marca</text>
+          </g>
+
+          <!-- Node: Presupuesto (bottom-right) -->
+          <g class="nd-float3">
+            <text class="nd-node" x="565" y="485">Presupuesto</text>
+            <text class="nd-kw" x="520" y="418">Oferta</text>
+            <text class="nd-kw nd-kw-u" x="665" y="418">Desglose</text>
+            <text class="nd-kw" x="515" y="545">Rentabilidad</text>
+            <text class="nd-kw" x="670" y="545">Control</text>
+            <text class="nd-kw nd-kw-u" x="590" y="585">Partidas</text>
+          </g>
+
+          <!-- Node: Materiales (bottom-left) -->
+          <g class="nd-float4">
+            <text class="nd-node" x="60" y="493">Materiales</text>
+            <text class="nd-kw nd-kw-u" x="5" y="418">Optimizaci&#243;n</text>
+            <text class="nd-kw" x="165" y="428">Merma</text>
+            <text class="nd-kw" x="5" y="555">Herrajes</text>
+            <text class="nd-kw nd-kw-u" x="150" y="565">Corte</text>
+            <text class="nd-kw" x="65" y="605">Lista</text>
+          </g>
+
+          <!-- Node: Embed (mid-right) -->
+          <g class="nd-float5">
+            <text class="nd-node" x="625" y="283">Embed</text>
+            <text class="nd-kw" x="665" y="208">Online</text>
+            <text class="nd-kw nd-kw-u" x="680" y="258">Configurador</text>
+            <text class="nd-kw" x="682" y="313">Marca</text>
+            <text class="nd-kw" x="668" y="353">Lead</text>
+            <text class="nd-kw nd-kw-u" x="600" y="355">Conversi&#243;n</text>
+          </g>
         </svg>
-        <div class="node-center">curino</div>
-        <div class="node-group node-g1">
-          <div class="node-name">Dise&ntilde;o</div>
-          <div class="node-tags"><span class="node-tag">Alzados</span><span class="node-tag">Planta</span><span class="node-tag">Precisi&oacute;n</span><span class="node-tag">T&eacute;cnica</span><span class="node-tag">Detalle</span></div>
-        </div>
-        <div class="node-group node-g2">
-          <div class="node-name">Proyecto</div>
-          <div class="node-tags"><span class="node-tag">Planos</span><span class="node-tag">Memoria</span><span class="node-tag">Materiales</span><span class="node-tag">Cliente</span><span class="node-tag">Marca</span></div>
-        </div>
-        <div class="node-group node-g3">
-          <div class="node-name">Presupuesto</div>
-          <div class="node-tags"><span class="node-tag">Oferta</span><span class="node-tag">Desglose</span><span class="node-tag">Rentabilidad</span><span class="node-tag">Control</span><span class="node-tag">Partidas</span></div>
-        </div>
-        <div class="node-group node-g4">
-          <div class="node-name">Materiales</div>
-          <div class="node-tags"><span class="node-tag">Optimizaci&oacute;n</span><span class="node-tag">Merma</span><span class="node-tag">Herrajes</span><span class="node-tag">Corte</span><span class="node-tag">Lista</span></div>
-        </div>
-        <div class="node-group node-g5">
-          <div class="node-name">Embed</div>
-          <div class="node-tags"><span class="node-tag">Online</span><span class="node-tag">Configurador</span><span class="node-tag">Marca</span><span class="node-tag">Lead</span><span class="node-tag">Conversi&oacute;n</span></div>
-        </div>
       </div>
     </div>
   </div>
