@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curino Pro &mdash; Configura, presupuesta y entrega mobiliario a medida</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;--mid:#888;--light:#c0c0c0;--border:#e5e5e5;--bg:#f8f8f6;--white:#fff;
+  --font:'Open Sans',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
+.nav-links{display:flex;gap:1.8rem;align-items:center}
+.nav-links a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-links a:hover{color:#999}
+.nav-icons{display:flex;gap:1.2rem;align-items:center}
+.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-icons svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
+.nav-icons svg:hover{stroke:#999}
+.user-icon-link{display:flex;align-items:center}
+.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+.nav-mobile-right{display:none}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+.nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.megamenu{position:fixed;top:80px;left:0;right:0;z-index:99;width:100%;background:var(--white);padding:32px;display:flex;justify-content:flex-start;gap:180px;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;border-top:1px solid var(--border)}
+.mega-col{margin-bottom:32px}
+.mega-col-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
+.mega-col a{display:block;font-size:14px;letter-spacing:0.14px;line-height:19.88px;color:#000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px;transition:color .2s}
+.mega-col a:hover{color:#999}
+.mega-imgs{margin-left:auto;display:flex;gap:16px;flex-shrink:0}
+.mega-img{display:flex;flex-direction:column;align-items:center;flex-shrink:0;position:relative}
+.mega-img img{width:300px;height:300px;object-fit:cover;display:block}
+.mega-img a{display:inline-block;margin-top:12px;font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;border-bottom:1px solid #000;padding-bottom:3px}
+.mega-img a:hover{color:#999;border-color:#999}
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:var(--white);padding:1.5rem 2rem;z-index:99;flex-direction:column;gap:0;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.mobile-accordion{border-bottom:1px solid var(--border)}
+.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;font-weight:400}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'\2212'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:800px}
+.mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
+.mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+
+/* ── EDITORIAL EXTENSIONS ── */
+.container{max-width:1200px;margin:0 auto;padding:0 32px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:1.5rem}
+.display{font-size:clamp(36px,5.5vw,64px);font-weight:300;line-height:1.08;text-transform:uppercase;letter-spacing:-.02em;margin-bottom:1.5rem}
+.display em{font-weight:400;font-style:italic}
+.lead{font-size:clamp(16px,1.2vw,18px);color:var(--mid);line-height:1.6;max-width:54ch}
+.section-title{font-size:clamp(28px,4vw,44px);font-weight:300;line-height:1.1;text-transform:uppercase;letter-spacing:-.01em;margin-bottom:1rem}
+.section-title em{font-weight:400;font-style:italic}
+
+/* Buttons */
+.btn{display:inline-block;padding:14px 28px;font-family:var(--font);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:400;border:none;cursor:pointer;transition:all .2s;text-decoration:none;text-align:center}
+.btn-primary{background:var(--black);color:var(--white)}
+.btn-primary:hover{background:#333}
+.btn-outline{background:transparent;color:var(--black);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--black)}
+
+/* Reveal */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:none}
+
+/* ── HERO ── */
+.pro-hero{margin-top:80px;padding:6rem 0 4rem}
+.pro-hero .lead{margin-bottom:2.5rem}
+.hero-actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.hero-meta{font-size:12px;color:var(--mid);margin-left:.5rem}
+
+/* ── DEMO CONFIGURATOR ── */
+.demo{margin:0 auto 6rem;max-width:1100px;padding:0 32px}
+.demo-window{border:1px solid var(--border);overflow:hidden}
+.demo-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--bg);border-bottom:1px solid var(--border);font-size:12px;color:var(--mid)}
+.demo-dots{display:flex;gap:5px;margin-right:12px}
+.demo-dots span{width:10px;height:10px;border-radius:50%;background:var(--border)}
+.demo-bar-left{display:flex;align-items:center}
+.demo-body{display:grid;grid-template-columns:1fr 320px}
+.demo-main{padding:2.5rem}
+.demo-step-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
+.demo-main h3{font-size:24px;font-weight:300;text-transform:uppercase;margin-bottom:.5rem}
+.demo-main p.demo-sub{font-size:13px;color:var(--mid);margin-bottom:2rem}
+
+/* Demo cards */
+.demo-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem}
+.demo-card{border:1px solid var(--border);padding:1.25rem 1rem;text-align:center;cursor:pointer;transition:border-color .2s}
+.demo-card:hover{border-color:var(--black)}
+.demo-card.active{border-color:var(--black);background:var(--bg)}
+.demo-card-icon{font-size:24px;margin-bottom:.5rem}
+.demo-card-name{font-size:13px;font-weight:600}
+
+/* Demo sliders */
+.demo-slider-group{margin-bottom:1.5rem}
+.demo-slider-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:.5rem}
+.demo-slider-label span:last-child{font-weight:600}
+.demo-slider{width:100%;-webkit-appearance:none;appearance:none;height:2px;background:var(--border);outline:none}
+.demo-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--black);border-radius:50%;cursor:pointer}
+.demo-slider::-moz-range-thumb{width:16px;height:16px;background:var(--black);border-radius:50%;cursor:pointer;border:none}
+
+/* Demo swatches */
+.demo-swatches{display:flex;gap:.75rem}
+.demo-swatch{width:48px;height:48px;border:2px solid var(--border);cursor:pointer;transition:border-color .2s}
+.demo-swatch:hover{border-color:var(--black)}
+.demo-swatch.active{border-color:var(--black);box-shadow:0 0 0 2px var(--white),0 0 0 4px var(--black)}
+.demo-swatch-info{margin-left:1rem;display:flex;flex-direction:column;justify-content:center}
+.demo-swatch-name{font-size:13px;font-weight:600}
+.demo-swatch-desc{font-size:11px;color:var(--mid)}
+.demo-swatches-row{display:flex;align-items:center;margin-bottom:1.5rem}
+
+/* Demo sidebar */
+.demo-sidebar{background:var(--bg);border-left:1px solid var(--border);padding:2rem;display:flex;flex-direction:column}
+.demo-sidebar-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:1.5rem}
+.demo-sidebar-project{font-size:18px;font-weight:300;text-transform:uppercase;margin-bottom:1.5rem}
+.demo-line{display:flex;justify-content:space-between;padding:.6rem 0;font-size:13px;color:var(--mid);border-bottom:1px solid var(--border)}
+.demo-line span:last-child{color:var(--black);font-weight:600}
+.demo-total{margin-top:auto;padding-top:1.5rem;border-top:2px solid var(--black)}
+.demo-total-label{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem}
+.demo-total-price{font-size:36px;font-weight:300;letter-spacing:-.02em}
+.demo-total-note{font-size:11px;color:var(--mid);margin-top:.5rem;line-height:1.5}
+.demo-sidebar .btn{margin-top:1.5rem;width:100%;padding:14px;justify-content:center}
+
+/* Demo steps nav */
+.demo-steps-nav{display:flex;gap:0;margin-bottom:2rem}
+.demo-step-btn{flex:1;padding:.75rem;font-family:var(--font);font-size:11px;letter-spacing:.08em;text-transform:uppercase;text-align:center;background:none;border:1px solid var(--border);border-right:none;cursor:pointer;color:var(--mid);transition:all .2s}
+.demo-step-btn:last-child{border-right:1px solid var(--border)}
+.demo-step-btn.active{background:var(--black);color:var(--white);border-color:var(--black)}
+.demo-panel{display:none}
+.demo-panel.active{display:block}
+
+/* ── FOR WHO ── */
+.for-who{padding:6rem 0;border-top:1px solid var(--border)}
+.for-who-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:3rem}
+.for-who-card{padding:2rem 0;border-top:1px solid var(--border)}
+.for-who-card h4{font-size:16px;font-weight:600;margin-bottom:.75rem}
+.for-who-card p{font-size:14px;color:var(--mid);line-height:1.7}
+
+/* ── HOW IT WORKS ── */
+.how{padding:6rem 0;background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:3rem}
+.how-step{padding:2.5rem;border-right:1px solid var(--border)}
+.how-step:last-child{border-right:none}
+.how-num{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin-bottom:1.5rem}
+.how-step h4{font-size:18px;font-weight:400;text-transform:uppercase;margin-bottom:.75rem}
+.how-step p{font-size:14px;color:var(--mid);line-height:1.7}
+
+/* ── FEATURES ── */
+.features{padding:6rem 0}
+.features-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:3rem}
+.feature{padding-top:1.5rem;border-top:1px solid var(--border)}
+.feature-num{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:1rem}
+.feature h4{font-size:18px;font-weight:400;text-transform:uppercase;margin-bottom:.75rem}
+.feature p{font-size:14px;color:var(--mid);line-height:1.7}
+
+/* ── PRICING ── */
+/* PRECIOS TENTATIVOS — AJUSTAR ANTES DE LANZAR */
+.pricing{padding:6rem 0;background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:3rem;border:1px solid var(--border)}
+.plan{padding:2.5rem;background:var(--white);border-right:1px solid var(--border)}
+.plan:last-child{border-right:none}
+.plan.featured{background:var(--black);color:var(--white)}
+.plan.featured .plan-price-period,.plan.featured .plan-feature{color:rgba(255,255,255,.6)}
+.plan.featured .btn{background:var(--white);color:var(--black)}
+.plan.featured .btn:hover{background:var(--bg)}
+.plan-badge{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem;height:18px}
+.plan-name{font-size:18px;font-weight:600;margin-bottom:.5rem}
+.plan-price{font-size:36px;font-weight:300;letter-spacing:-.02em}
+.plan-price-period{font-size:13px;color:var(--mid);margin-bottom:1.5rem}
+.plan-features{list-style:none;margin-bottom:2rem}
+.plan-feature{padding:.5rem 0;font-size:13px;border-bottom:1px solid var(--border)}
+.plan.featured .plan-feature{border-color:rgba(255,255,255,.1)}
+.plan .btn{width:100%;padding:12px}
+
+/* ── TESTIMONIAL ── */
+.testimonial{padding:6rem 0;text-align:center}
+.testimonial blockquote{font-size:clamp(22px,3vw,32px);font-weight:300;font-style:italic;line-height:1.35;max-width:720px;margin:0 auto 2rem}
+.testimonial cite{font-style:normal;font-size:13px;color:var(--mid)}
+.testimonial cite strong{color:var(--black);font-weight:600}
+
+/* ── CTA FINAL ── */
+.final-cta{padding:6rem 0;text-align:center;border-top:1px solid var(--border)}
+.final-cta .section-title{margin-bottom:1rem}
+.final-cta .lead{margin:0 auto 2.5rem;text-align:center}
+.final-cta .hero-meta{display:block;margin-top:1rem;margin-left:0}
+
+/* ── FOOTER ── */
+footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
+.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
+.footer-col a:hover{color:#999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px}
+.footer-newsletter button:hover{color:#999;border-color:#999}
+.footer-links{display:block}
+.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){
+  nav{padding:0 16px;height:60px}
+  .nav-logo img{height:20px}
+  .nav-right{display:none}
+  .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  .nav-mobile-right .nav-hamburger{display:flex}
+  .pro-hero{margin-top:60px;padding:4rem 0 3rem}
+  .container{padding:0 16px}
+  .demo-body{grid-template-columns:1fr}
+  .demo-sidebar{border-left:none;border-top:1px solid var(--border)}
+  .demo-cards{grid-template-columns:1fr}
+  .for-who-grid,.how-grid,.features-grid{grid-template-columns:1fr}
+  .how-step{border-right:none;border-bottom:1px solid var(--border)}
+  .how-step:last-child{border-bottom:none}
+  .pricing-grid{grid-template-columns:1fr}
+  .plan{border-right:none;border-bottom:1px solid var(--border)}
+  .plan:last-child{border-bottom:none}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
+  .footer-col.open h4::after{content:'\2212'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <div class="nav-right">
+  <div class="nav-links">
+    <a href="#demo">Configurador</a>
+    <a href="#para-quien">Para qui&eacute;n</a>
+    <a href="#como">C&oacute;mo funciona</a>
+    <a href="#features">Producto</a>
+    <a href="#pricing">Precios</a>
+  </div>
+  <div class="nav-icons">
+    <a href="#pricing" class="btn btn-primary" style="padding:8px 18px;font-size:11px">Empezar gratis</a>
+  </div>
+  </div>
+  <div class="nav-mobile-right">
+    <a href="#pricing" class="btn btn-primary" style="padding:8px 14px;font-size:10px">Empezar</a>
+    <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#demo">Configurador</a>
+  <a href="#para-quien">Para qui&eacute;n</a>
+  <a href="#como">C&oacute;mo funciona</a>
+  <a href="#features">Producto</a>
+  <a href="#pricing">Precios</a>
+</div>
+
+<!-- HERO -->
+<section class="pro-hero">
+  <div class="container">
+    <div class="eyebrow reveal">Curino Pro &mdash; Configurador profesional</div>
+    <h1 class="display reveal">Deja de presupuestar<br>con <em>Excel</em>.</h1>
+    <p class="lead reveal">Configura armarios, cocinas y cualquier mueble a medida en minutos. Precio al instante, presupuesto PDF con tu marca, listo para el cliente. Sin plantillas, sin errores, sin llamadas.</p>
+    <div class="hero-actions reveal">
+      <a href="#pricing" class="btn btn-primary">Probar 14 d&iacute;as gratis &rarr;</a>
+      <a href="#pricing" class="btn btn-outline">Ver planes</a>
+      <span class="hero-meta">Sin tarjeta de cr&eacute;dito &middot; Cancela cuando quieras</span>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO CONFIGURATOR -->
+<div class="demo" id="demo">
+  <div class="demo-window reveal">
+    <div class="demo-bar">
+      <div class="demo-bar-left"><div class="demo-dots"><span></span><span></span><span></span></div>app.curino.pro</div>
+      <div>Paso <span id="demoStepNum">1</span> de 3</div>
+    </div>
+    <div class="demo-body">
+      <div class="demo-main">
+        <div class="demo-steps-nav">
+          <button class="demo-step-btn active" onclick="demoGoStep(1)">1. Tipo</button>
+          <button class="demo-step-btn" onclick="demoGoStep(2)">2. Medidas</button>
+          <button class="demo-step-btn" onclick="demoGoStep(3)">3. Material</button>
+        </div>
+
+        <!-- Step 1: Type -->
+        <div class="demo-panel active" id="demoPanel1">
+          <div class="demo-step-label">Tipo de mueble</div>
+          <h3>&iquest;Qu&eacute; vas a dise&ntilde;ar?</h3>
+          <p class="demo-sub">Selecciona el tipo de proyecto.</p>
+          <div class="demo-cards">
+            <div class="demo-card active" onclick="demoSelectType(this,'armario',800)"><div class="demo-card-icon">&#9635;</div><div class="demo-card-name">Armario</div></div>
+            <div class="demo-card" onclick="demoSelectType(this,'cocina',1200)"><div class="demo-card-icon">&#9683;</div><div class="demo-card-name">Cocina</div></div>
+            <div class="demo-card" onclick="demoSelectType(this,'libreria',600)"><div class="demo-card-icon">&#9636;</div><div class="demo-card-name">Librer&iacute;a</div></div>
+          </div>
+        </div>
+
+        <!-- Step 2: Dimensions -->
+        <div class="demo-panel" id="demoPanel2">
+          <div class="demo-step-label">Dimensiones</div>
+          <h3>Define las medidas</h3>
+          <p class="demo-sub">Ajusta ancho y alto del mueble.</p>
+          <div class="demo-slider-group">
+            <div class="demo-slider-label"><span>Ancho</span><span id="demoW">200 cm</span></div>
+            <input type="range" class="demo-slider" min="60" max="400" value="200" step="10" oninput="demoUpdateDim()">
+          </div>
+          <div class="demo-slider-group">
+            <div class="demo-slider-label"><span>Alto</span><span id="demoH">240 cm</span></div>
+            <input type="range" class="demo-slider" min="200" max="300" value="240" step="10" oninput="demoUpdateDim()">
+          </div>
+        </div>
+
+        <!-- Step 3: Material -->
+        <div class="demo-panel" id="demoPanel3">
+          <div class="demo-step-label">Acabado</div>
+          <h3>Elige el material</h3>
+          <p class="demo-sub">El acabado define el car&aacute;cter del mueble.</p>
+          <div class="demo-swatches-row">
+            <div class="demo-swatch active" style="background:#3d2b1f" onclick="demoSelectMat(this,'Wengue',1.0)"></div>
+            <div class="demo-swatch" style="background:#8B7355" onclick="demoSelectMat(this,'Nogal',1.15)"></div>
+            <div class="demo-swatch" style="background:#D4C4A8" onclick="demoSelectMat(this,'Roble claro',1.25)"></div>
+            <div class="demo-swatch-info"><div class="demo-swatch-name" id="demoMatName">Wengue</div><div class="demo-swatch-desc">Madera maciza</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="demo-sidebar">
+        <div class="demo-sidebar-label">Resumen del proyecto</div>
+        <div class="demo-sidebar-project" id="demoProject">Armario a medida</div>
+        <div class="demo-line"><span>Tipo</span><span id="demoSumType">Armario</span></div>
+        <div class="demo-line"><span>Dimensiones</span><span id="demoSumDims">200 &times; 240 cm</span></div>
+        <div class="demo-line"><span>Material</span><span id="demoSumMat">Wengue</span></div>
+        <div class="demo-total">
+          <div class="demo-total-label">Precio estimado</div>
+          <div class="demo-total-price" id="demoPrice">1.336 &euro;</div>
+          <div class="demo-total-note">Estimaci&oacute;n &mdash; el configurador Pro incluye c&aacute;lculo exacto con tus m&aacute;rgenes.</div>
+        </div>
+        <a href="#pricing" class="btn btn-primary">Crear este proyecto en Curino Pro &rarr;</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOR WHO -->
+<section class="for-who" id="para-quien">
+  <div class="container">
+    <div class="eyebrow reveal">Para qui&eacute;n es</div>
+    <h2 class="section-title reveal">Una herramienta para cada <em>profesional</em>.</h2>
+    <div class="for-who-grid">
+      <div class="for-who-card reveal">
+        <h4>Carpinteros y talleres</h4>
+        <p>Presupuesta proyectos en minutos en lugar de horas. Tu cliente ve el mueble configurado y el precio antes de decidir. Sin hojas de c&aacute;lculo, sin errores manuales.</p>
+      </div>
+      <div class="for-who-card reveal">
+        <h4>Interioristas y arquitectos</h4>
+        <p>Presenta propuestas profesionales con planos, materiales y presupuesto integrado. Sin depender del fabricante para cada cotizaci&oacute;n.</p>
+      </div>
+      <div class="for-who-card reveal">
+        <h4>Estudios y marcas</h4>
+        <p>Integra el configurador en tu propia web con la opci&oacute;n Embed. Tus clientes dise&ntilde;an y presupuestan desde tu dominio, con tu marca.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="como">
+  <div class="container">
+    <div class="eyebrow reveal">C&oacute;mo funciona</div>
+    <h2 class="section-title reveal">Tres pasos. Un presupuesto <em>profesional</em>.</h2>
+    <div class="how-grid">
+      <div class="how-step reveal">
+        <div class="how-num">01</div>
+        <h4>Dise&ntilde;a</h4>
+        <p>Configura cualquier mueble a medida: armarios, cocinas, librer&iacute;as, vestidores. Elige dimensiones, interior y acabado.</p>
+      </div>
+      <div class="how-step reveal">
+        <div class="how-num">02</div>
+        <h4>Presupuesta</h4>
+        <p>El precio se calcula al instante. Genera un presupuesto PDF profesional con tu logo, tus m&aacute;rgenes y las condiciones de tu taller.</p>
+      </div>
+      <div class="how-step reveal">
+        <div class="how-num">03</div>
+        <h4>Entrega</h4>
+        <p>Env&iacute;a el presupuesto al cliente directamente desde la plataforma. Sin copiar y pegar, sin formatear documentos a mano.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="eyebrow reveal">Producto</div>
+    <h2 class="section-title reveal">Todo lo que necesitas para <em>presupuestar</em>.</h2>
+    <div class="features-grid">
+      <div class="feature reveal">
+        <div class="feature-num">01</div>
+        <h4>Todo tipo de mobiliario</h4>
+        <p>Armarios, cocinas, librer&iacute;as, vestidores, muebles de ba&ntilde;o. Un solo configurador para todos tus proyectos de carpinter&iacute;a.</p>
+      </div>
+      <div class="feature reveal">
+        <div class="feature-num">02</div>
+        <h4>Presupuestos con tu marca</h4>
+        <p>PDF profesional con tu logo, colores y condiciones. Tu cliente recibe un documento con la imagen de tu taller, no de un tercero.</p>
+      </div>
+      <div class="feature reveal">
+        <div class="feature-num">03</div>
+        <h4>Embed en tu web</h4>
+        <p>Integra el configurador en tu propia p&aacute;gina con una l&iacute;nea de c&oacute;digo. Tus clientes dise&ntilde;an desde tu dominio, t&uacute; recibes el proyecto.</p>
+      </div>
+      <div class="feature reveal">
+        <div class="feature-num">04</div>
+        <h4>F&aacute;cil de usar</h4>
+        <p>Si sabes usar un navegador, sabes usar Curino Pro. Sin formaci&oacute;n, sin manual, sin curva de aprendizaje. Funciona desde el primer d&iacute;a.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<!-- PRECIOS TENTATIVOS — AJUSTAR ANTES DE LANZAR -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="eyebrow reveal">Precios</div>
+    <h2 class="section-title reveal">Elige tu plan. Empieza <em>hoy</em>.</h2>
+    <p class="lead reveal" style="margin-bottom:0">14 d&iacute;as gratis en todos los planes. Sin tarjeta de cr&eacute;dito.</p>
+    <div class="pricing-grid reveal">
+      <div class="plan">
+        <div class="plan-badge">&nbsp;</div>
+        <div class="plan-name">Starter</div>
+        <div class="plan-price" data-plan-price="29">29 &euro;</div>
+        <div class="plan-price-period">al mes</div>
+        <ul class="plan-features">
+          <li class="plan-feature">10 proyectos / mes</li>
+          <li class="plan-feature">Solo armarios</li>
+          <li class="plan-feature">Presupuesto PDF</li>
+          <li class="plan-feature">1 usuario</li>
+        </ul>
+        <a href="#" class="btn btn-outline">Empezar con Starter</a>
+      </div>
+      <div class="plan featured">
+        <div class="plan-badge">M&aacute;s popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price" data-plan-price="79">79 &euro;</div>
+        <div class="plan-price-period">al mes</div>
+        <ul class="plan-features">
+          <li class="plan-feature">Proyectos ilimitados</li>
+          <li class="plan-feature">Todo tipo de mueble</li>
+          <li class="plan-feature">PDF con tu marca</li>
+          <li class="plan-feature">3 usuarios</li>
+        </ul>
+        <a href="#" class="btn btn-primary">Empezar con Pro</a>
+      </div>
+      <div class="plan">
+        <div class="plan-badge">&nbsp;</div>
+        <div class="plan-name">Studio</div>
+        <div class="plan-price" data-plan-price="199">199 &euro;</div>
+        <div class="plan-price-period">al mes</div>
+        <ul class="plan-features">
+          <li class="plan-feature">Proyectos ilimitados</li>
+          <li class="plan-feature">Todo tipo de mueble</li>
+          <li class="plan-feature">PDF con tu marca</li>
+          <li class="plan-feature">Embed en tu web</li>
+          <li class="plan-feature">Usuarios ilimitados</li>
+        </ul>
+        <a href="#" class="btn btn-outline">Empezar con Studio</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<section class="testimonial reveal">
+  <div class="container">
+    <blockquote>Por primera vez puedo prometer a un cliente exactamente lo que va a recibir &mdash; y cumplirlo sin excepciones.</blockquote>
+    <cite><strong>Laura M.</strong> &mdash; Interiorista, Barcelona</cite>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="final-cta">
+  <div class="container">
+    <h2 class="section-title reveal">Tu pr&oacute;ximo presupuesto empieza <em>aqu&iacute;</em>.</h2>
+    <p class="lead reveal">Configura, presupuesta y entrega mobiliario a medida con la herramienta que usan los profesionales que no pierden el tiempo.</p>
+    <a href="#pricing" class="btn btn-primary reveal">Probar 14 d&iacute;as gratis &rarr;</a>
+    <span class="hero-meta reveal">Sin tarjeta de cr&eacute;dito &middot; Cancela cuando quieras</span>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Curino Pro &mdash; Configurador profesional de mobiliario a medida. Dise&ntilde;a, presupuesta y entrega desde una sola herramienta.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta"><h4 onclick="this.parentElement.classList.toggle('open')">Producto</h4><div class="footer-links"><a href="#demo">Configurador</a><a href="#features">Features</a><a href="#pricing">Precios</a><a href="#">Embed</a></div></div>
+  <div class="footer-col" style="grid-area:corp"><h4 onclick="this.parentElement.classList.toggle('open')">Recursos</h4><div class="footer-links"><a href="#">Documentaci&oacute;n</a><a href="#">API</a><a href="#">Casos de uso</a></div></div>
+  <div class="footer-col" style="grid-area:empleo"><h4 onclick="this.parentElement.classList.toggle('open')">Empresa</h4><div class="footer-links"><a href="#">Sobre Curino</a><a href="#">Partners</a></div></div>
+  <div class="footer-col" style="grid-area:prensa"><h4 onclick="this.parentElement.classList.toggle('open')">Legal</h4><div class="footer-links"><a href="#">Privacidad</a><a href="#">T&eacute;rminos</a></div></div>
+  <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="mailto:pro@casacurino.com">pro@casacurino.com</a></div></div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
+</footer>
+<div class="footer-bottom"><span>&copy; 2026 Curino Pro</span><div class="footer-legal"><span>Sistema & Curino, S.L.U.</span></div><span>casacurino.com/pro</span></div>
+
+<script>
+function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');document.getElementById('hamburger').classList.toggle('open');}
+
+// Reveal
+var io=new IntersectionObserver(function(entries){
+  entries.forEach(function(e,i){
+    if(e.isIntersecting){setTimeout(function(){e.target.classList.add('visible');},i*70);io.unobserve(e.target);}
+  });
+},{threshold:0.07});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+
+// ── DEMO CONFIGURATOR ──
+var _demo={type:'armario',base:800,w:200,h:240,mat:'Wengue',matMul:1.0};
+
+function demoGoStep(n){
+  document.querySelectorAll('.demo-step-btn').forEach(function(b,i){b.classList.toggle('active',i===n-1);});
+  document.querySelectorAll('.demo-panel').forEach(function(p,i){p.classList.toggle('active',i===n-1);});
+  document.getElementById('demoStepNum').textContent=n;
+}
+
+function demoSelectType(el,name,base){
+  document.querySelectorAll('.demo-card').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+  _demo.type=name;_demo.base=base;
+  document.getElementById('demoSumType').textContent=name.charAt(0).toUpperCase()+name.slice(1);
+  document.getElementById('demoProject').textContent=name.charAt(0).toUpperCase()+name.slice(1)+' a medida';
+  demoCalcPrice();
+  setTimeout(function(){demoGoStep(2);},300);
+}
+
+function demoUpdateDim(){
+  var sliders=document.querySelectorAll('.demo-slider');
+  _demo.w=parseInt(sliders[0].value);_demo.h=parseInt(sliders[1].value);
+  document.getElementById('demoW').textContent=_demo.w+' cm';
+  document.getElementById('demoH').textContent=_demo.h+' cm';
+  document.getElementById('demoSumDims').textContent=_demo.w+' \u00D7 '+_demo.h+' cm';
+  demoCalcPrice();
+}
+
+function demoSelectMat(el,name,mul){
+  document.querySelectorAll('.demo-swatch').forEach(function(s){s.classList.remove('active');});
+  el.classList.add('active');
+  _demo.mat=name;_demo.matMul=mul;
+  document.getElementById('demoMatName').textContent=name;
+  document.getElementById('demoSumMat').textContent=name;
+  demoCalcPrice();
+}
+
+function demoCalcPrice(){
+  var area=(_demo.w/100)*(_demo.h/100);
+  var price=Math.round(_demo.base+area*320*_demo.matMul);
+  var parts=price.toFixed(0);
+  parts=parts.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  document.getElementById('demoPrice').textContent=parts+' \u20AC';
+}
+
+demoCalcPrice();
+</script>
+
+</body>
+</html>
