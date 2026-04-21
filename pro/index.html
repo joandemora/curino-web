@@ -69,13 +69,17 @@ nav a:hover{color:var(--ink)}
 .reveal-scroll.visible{opacity:1;transform:none}
 
 /* ── HERO ── */
-.pro-hero{padding:100px 0 80px;position:relative}
-.pro-hero .lead{margin-bottom:44px}
+.pro-hero{padding:80px 0 0;position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:42% 58%;gap:0;align-items:center;min-height:calc(100vh - 160px)}
+.hero-left{padding-right:4vw}
+.hero-left .lead{margin-bottom:36px}
+.hero-right{position:relative;padding:40px 0 40px 0}
+.hero-right .demo-window{transform:translateX(40px);max-width:none}
 .hero-actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.hero-meta{margin-left:8px;font-size:13.5px;color:var(--ink-mute)}
+.hero-meta{display:block;margin-top:16px;font-size:13px;color:var(--ink-mute)}
 
 /* ── DEMO CONFIGURATOR ── */
-.demo{margin:90px auto 0;max-width:1240px;padding:0 40px}
+.demo{}
 .demo-window{background:var(--paper);border:1px solid var(--line-soft);border-radius:20px;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.02),0 30px 60px -30px rgba(31,30,28,.15)}
 .demo-bar{display:flex;justify-content:space-between;align-items:center;padding:20px 28px;background:var(--bg-deep);border-bottom:1px solid var(--line-soft);font-size:13.5px;color:var(--ink-soft)}
 .demo-dots{display:flex;gap:6px;margin-right:14px}
@@ -203,8 +207,10 @@ footer a:hover{color:var(--ink)}
   nav .inner{padding:0 24px}
   nav ul{display:none}
   .hamburger{display:flex}
-  .pro-hero{padding:60px 0 40px}
-  .demo{padding:0 24px;margin-top:60px}
+  .pro-hero{padding:40px 0 0}
+  .hero-grid{grid-template-columns:1fr;min-height:auto}
+  .hero-left{padding-right:0;padding-bottom:2rem}
+  .hero-right{display:none}
   .demo-body{grid-template-columns:1fr}
   .demo-sidebar{border-left:none;border-top:1px solid var(--line-soft)}
   .demo-cards{grid-template-columns:1fr}
@@ -242,21 +248,21 @@ footer a:hover{color:var(--ink)}
 </div>
 
 <!-- HERO -->
-<section class="pro-hero">
+<section class="pro-hero" id="demo">
   <div class="container">
-    <div class="eyebrow reveal d1"><span class="dot"></span> Curino Pro &mdash; Configurador profesional</div>
-    <h1 class="display serif reveal d2">Dise&ntilde;a como<br>un <em>Pro</em>. En minutos.</h1>
-    <p class="lead reveal d3">El mueble exacto para tu espacio. Llega a todos los rincones.</p>
-    <div class="hero-actions reveal d4">
-      <a href="#pricing" class="btn btn-primary">Probar gratis &rarr;</a>
-      <a href="#pricing" class="btn btn-outline">Ver planes</a>
-      <span class="hero-meta">Acceso beta limitado &middot; Sin tarjeta de cr&eacute;dito &middot; Cancela cuando quieras</span>
-    </div>
-  </div>
-</section>
-
-<!-- DEMO CONFIGURATOR -->
-<div class="demo" id="demo">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <div class="eyebrow reveal d1"><span class="dot"></span> Curino Pro &mdash; Configurador profesional</div>
+        <h1 class="display serif reveal d2">Dise&ntilde;a como<br>un <em>Pro</em>. En minutos.</h1>
+        <p class="lead reveal d3">El mueble exacto para tu espacio. Llega a todos los rincones.</p>
+        <div class="hero-actions reveal d4">
+          <a href="#pricing" class="btn btn-primary">Probar gratis &rarr;</a>
+          <a href="#pricing" class="btn btn-outline">Ver planes</a>
+          <span class="hero-meta">Acceso beta limitado &middot; Sin tarjeta de cr&eacute;dito &middot; Cancela cuando quieras</span>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="demo">
   <div class="demo-window reveal d5">
     <div class="demo-bar">
       <div class="demo-bar-left"><div class="demo-dots"><span></span><span></span><span></span></div>app.curino.pro</div>
@@ -328,6 +334,11 @@ footer a:hover{color:var(--ink)}
     </div>
   </div>
 </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- FOR WHO -->
 <section class="for-who" id="para-quien">
