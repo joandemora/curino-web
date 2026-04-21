@@ -30,6 +30,7 @@ nav .inner{display:flex;justify-content:space-between;align-items:center;max-wid
 nav ul{display:flex;gap:40px;list-style:none}
 nav a{color:var(--ink-soft);text-decoration:none;font-size:14.5px;font-weight:400;transition:color .2s}
 nav a:hover{color:var(--ink)}
+.nav-ctas{display:flex;gap:10px;align-items:center}
 /* mobile nav */
 .mobile-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);padding:5rem 2rem 2rem;z-index:98;flex-direction:column;gap:0;overflow-y:auto}
 .mobile-menu.open{display:flex}
@@ -57,7 +58,7 @@ nav a:hover{color:var(--ink)}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:999px;font-family:var(--font);font-size:14.5px;font-weight:500;text-decoration:none;transition:all .2s ease;cursor:pointer;border:none}
 .btn-primary{background:var(--ink);color:var(--bg)}
 .btn-primary:hover{background:var(--coral);transform:translateY(-1px)}
-.btn-outline{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn-outline{background:transparent;color:var(--ink);border:1px solid var(--ink)}
 .btn-outline:hover{border-color:var(--ink)}
 
 /* Reveal */
@@ -148,6 +149,7 @@ footer a:hover{color:var(--ink)}
   nav .inner{padding:0 24px}
   nav ul{display:none}
   .hamburger{display:flex}
+  .nav-ctas{display:none}
   .pro-hero{padding:0}
   .hero-grid{grid-template-columns:1fr;min-height:auto}
   .hero-left{padding:3rem 0 2rem}
@@ -167,22 +169,25 @@ footer a:hover{color:var(--ink)}
   <div class="container inner">
     <a href="/pro/" class="logo">curino</a>
     <ul>
-      <li><a href="#demo">Configurador</a></li>
+      <li><a href="#pricing">Planes</a></li>
       <li><a href="#para-quien">Para qui&eacute;n</a></li>
       <li><a href="#como">C&oacute;mo funciona</a></li>
       <li><a href="#features">Producto</a></li>
-      <li><a href="#pricing">Precios</a></li>
+      <li><a href="#demo">Configurador</a></li>
     </ul>
-    <a href="#pricing" class="btn btn-primary">Empezar gratis</a>
+    <div class="nav-ctas">
+      <a href="mailto:pro@casacurino.com" class="btn btn-outline">Contactar con ventas</a>
+      <a href="#pricing" class="btn btn-primary">Probar gratis</a>
+    </div>
     <button class="hamburger" onclick="toggleMenu()" id="hamburger"><span></span><span></span><span></span></button>
   </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
-  <a href="#demo" onclick="toggleMenu()">Configurador</a>
+  <a href="#pricing" onclick="toggleMenu()">Planes</a>
   <a href="#para-quien" onclick="toggleMenu()">Para qui&eacute;n</a>
   <a href="#como" onclick="toggleMenu()">C&oacute;mo funciona</a>
   <a href="#features" onclick="toggleMenu()">Producto</a>
-  <a href="#pricing" onclick="toggleMenu()">Precios</a>
+  <a href="#demo" onclick="toggleMenu()">Configurador</a>
 </div>
 
 <!-- HERO -->
