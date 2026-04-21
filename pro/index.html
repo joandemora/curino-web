@@ -468,7 +468,7 @@ document.getElementById('btnEmail').addEventListener('click',async function(){
   this.disabled=true;this.textContent='Enviando\u2026';
   try{
     var sb=await initSupabase();
-    var res=await sb.auth.signInWithOtp({email:email});
+    var res=await sb.auth.signInWithOtp({email:email,options:{shouldCreateUser:true}});
     if(res.error)throw res.error;
     showOtpStep(email);
   }catch(e){alert(e.message||'Error al enviar el c\u00F3digo');}
@@ -493,7 +493,7 @@ document.getElementById('btnResend').addEventListener('click',async function(ev)
   ev.preventDefault();
   try{
     var sb=await initSupabase();
-    await sb.auth.signInWithOtp({email:_otpEmail});
+    await sb.auth.signInWithOtp({email:_otpEmail,options:{shouldCreateUser:true}});
     this.textContent='C\u00F3digo reenviado.';
     setTimeout(function(){document.getElementById('btnResend').textContent='\u00BFNo ve el correo en su bandeja de entrada? Intente enviarlo de nuevo.';},3000);
   }catch(e){alert(e.message||'Error al reenviar');}
