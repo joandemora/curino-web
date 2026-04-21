@@ -102,6 +102,8 @@ nav a:hover{color:var(--ink)}
 .login-card .btn-email:hover{opacity:.85}
 .login-card .legal{font-size:12px;color:var(--ink-mute);margin-top:16px;line-height:1.5}
 .login-card .legal a{color:var(--ink-soft);text-decoration:underline}
+.login-card .otp-msg{font-size:14px;color:var(--ink);margin-bottom:16px;line-height:1.5}
+.login-card .login-error{font-size:13px;color:#c0392b;margin-top:12px}
 
 /* ── FOR WHO ── */
 .for-who{padding:120px 0}
@@ -183,6 +185,7 @@ footer a:hover{color:var(--ink)}
   footer .inner{padding:0 8px}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -222,14 +225,25 @@ footer a:hover{color:var(--ink)}
         <h1 class="display serif reveal d1">Dise&ntilde;a como<br>un <em>Pro</em>. En minutos.</h1>
         <p class="lead reveal d3">Democratizamos el dise&ntilde;o. Ahora para todos.</p>
         <div class="login-card reveal d4">
-          <button class="btn-google" type="button">
-            <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            Continuar con Google
-          </button>
-          <div class="divider">o</div>
-          <input type="email" class="input-email" placeholder="Introduce tu email">
-          <button class="btn-email" type="button">Continuar con correo electr&oacute;nico</button>
-          <p class="legal">Al continuar, reconoces la <a href="/privacidad/">Pol&iacute;tica de Privacidad</a> de Curino.</p>
+          <!-- Step 1: Email / Google -->
+          <div id="loginStep1">
+            <button class="btn-google" type="button" id="btnGoogle">
+              <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Continuar con Google
+            </button>
+            <div class="divider">o</div>
+            <input type="email" class="input-email" id="inputEmail" placeholder="Introduce tu email">
+            <button class="btn-email" type="button" id="btnEmail">Continuar con correo electr&oacute;nico</button>
+            <p class="legal">Al continuar, reconoces la <a href="/privacidad/">Pol&iacute;tica de Privacidad</a> de Curino.</p>
+          </div>
+          <!-- Step 2: OTP verification -->
+          <div id="loginStep2" style="display:none">
+            <p class="otp-msg">Introduce el c&oacute;digo de verificaci&oacute;n enviado a <strong id="otpEmail"></strong></p>
+            <input type="text" class="input-email" id="inputOtp" placeholder="Introduzca el c&oacute;digo de verificaci&oacute;n" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+            <button class="btn-email" type="button" id="btnVerify">Verificar direcci&oacute;n de correo electr&oacute;nico</button>
+            <p class="login-error" id="otpError" style="display:none"></p>
+            <p class="legal"><a href="#" id="btnResend">&iquest;No ve el correo en su bandeja de entrada? Intente enviarlo de nuevo.</a></p>
+          </div>
         </div>
       </div>
       <div class="hero-right">
@@ -420,6 +434,82 @@ var io=new IntersectionObserver(function(entries){
   });
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
+
+// ── AUTH ──
+var _sb=null,_otpEmail='';
+
+async function initSupabase(){
+  if(_sb) return _sb;
+  var r=await fetch('/api/config',{redirect:'follow'});
+  var c=await r.json();
+  _sb=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+  return _sb;
+}
+
+function showOtpStep(email){
+  _otpEmail=email;
+  document.getElementById('otpEmail').textContent=email;
+  document.getElementById('loginStep1').style.display='none';
+  document.getElementById('loginStep2').style.display='block';
+  document.getElementById('inputOtp').value='';
+  document.getElementById('otpError').style.display='none';
+  document.getElementById('inputOtp').focus();
+}
+
+function showError(msg){
+  var el=document.getElementById('otpError');
+  el.textContent=msg;el.style.display='block';
+}
+
+// Email OTP
+document.getElementById('btnEmail').addEventListener('click',async function(){
+  var email=document.getElementById('inputEmail').value.trim();
+  if(!email)return;
+  this.disabled=true;this.textContent='Enviando\u2026';
+  try{
+    var sb=await initSupabase();
+    var res=await sb.auth.signInWithOtp({email:email});
+    if(res.error)throw res.error;
+    showOtpStep(email);
+  }catch(e){alert(e.message||'Error al enviar el c\u00F3digo');}
+  this.disabled=false;this.textContent='Continuar con correo electr\u00F3nico';
+});
+
+// Verify OTP
+document.getElementById('btnVerify').addEventListener('click',async function(){
+  var token=document.getElementById('inputOtp').value.trim();
+  if(!token)return;
+  this.disabled=true;this.textContent='Verificando\u2026';
+  try{
+    var sb=await initSupabase();
+    var res=await sb.auth.verifyOtp({email:_otpEmail,token:token,type:'email'});
+    if(res.error)throw res.error;
+    window.location.href='/configurador-2d/';
+  }catch(e){showError(e.message||'C\u00F3digo incorrecto');this.disabled=false;this.textContent='Verificar direcci\u00F3n de correo electr\u00F3nico';}
+});
+
+// Resend OTP
+document.getElementById('btnResend').addEventListener('click',async function(ev){
+  ev.preventDefault();
+  try{
+    var sb=await initSupabase();
+    await sb.auth.signInWithOtp({email:_otpEmail});
+    this.textContent='C\u00F3digo reenviado.';
+    setTimeout(function(){document.getElementById('btnResend').textContent='\u00BFNo ve el correo en su bandeja de entrada? Intente enviarlo de nuevo.';},3000);
+  }catch(e){alert(e.message||'Error al reenviar');}
+});
+
+// Google OAuth
+document.getElementById('btnGoogle').addEventListener('click',async function(){
+  try{
+    var sb=await initSupabase();
+    await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/api/auth/callback?redirect='+encodeURIComponent('/configurador-2d/')}});
+  }catch(e){alert(e.message||'Error con Google');}
+});
+
+// Enter key on inputs
+document.getElementById('inputEmail').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btnEmail').click();});
+document.getElementById('inputOtp').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btnVerify').click();});
 
 </script>
 
