@@ -130,21 +130,27 @@ nav a:hover{color:var(--ink)}
 
 /* ── PRICING ── */
 /* PRECIOS TENTATIVOS — AJUSTAR ANTES DE LANZAR */
-.pricing{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:16px;overflow:hidden;margin-top:60px}
-.plan{padding:40px 32px;background:var(--paper)}
-.plan.featured{background:var(--ink);color:var(--bg)}
-.plan.featured .plan-price-period,.plan.featured .plan-feature{color:rgba(250,249,245,.5)}
-.plan.featured .plan-feature{border-color:rgba(250,249,245,.1)}
-.plan.featured .btn{background:var(--paper);color:var(--ink)}
-.plan.featured .btn:hover{background:var(--bg);transform:translateY(-1px)}
-.plan-badge{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--coral);margin-bottom:1rem;height:18px}
-.plan-name{font-family:var(--serif);font-size:22px;font-weight:500;margin-bottom:.5rem}
-.plan-price{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
-.plan-price-period{font-size:13px;color:var(--ink-mute);margin-bottom:1.5rem}
-.plan-features{list-style:none;margin-bottom:2rem}
-.plan-feature{padding:10px 0;font-size:14px;border-bottom:1px solid var(--line)}
-.plan .btn{width:100%;padding:14px;justify-content:center}
+.pricing{padding:120px 0}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:60px}
+.plan{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:40px 32px;display:flex;flex-direction:column}
+.plan.featured{transform:translateY(-8px);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.plan-icon{margin-bottom:24px}
+.plan-icon svg{width:48px;height:48px;stroke:var(--ink);stroke-width:1.2;fill:none}
+.plan-name{font-family:var(--font);font-size:24px;font-weight:600;margin-bottom:4px}
+.plan-desc{font-size:14px;color:var(--ink-mute);margin-bottom:20px}
+.plan-price{font-family:var(--font);font-size:40px;font-weight:700;letter-spacing:-.025em}
+.plan-price-period{font-size:13px;color:var(--ink-mute);margin-bottom:24px}
+.plan .btn-plan{display:block;width:100%;padding:14px;border-radius:8px;font-family:var(--font);font-size:14px;font-weight:500;text-align:center;text-decoration:none;cursor:pointer;border:none;transition:opacity .2s}
+.plan .btn-plan-outline{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+.plan .btn-plan-outline:hover{background:#f3f4f6}
+.plan .btn-plan-solid{background:#000;color:#fff}
+.plan .btn-plan-solid:hover{opacity:.85}
+.plan-meta{font-size:12px;color:var(--ink-mute);text-align:center;margin-top:12px}
+.plan-divider{border:none;border-top:1px solid #e5e5e5;margin:24px 0}
+.plan-includes{font-size:13px;font-weight:600;margin-bottom:16px}
+.plan-features{list-style:none;flex:1}
+.plan-feature{display:flex;gap:10px;font-size:14px;line-height:1.5;padding:6px 0;color:var(--ink-soft)}
+.plan-feature::before{content:'\2713';color:var(--ink);font-weight:600;flex-shrink:0}
 
 /* ── TESTIMONIAL ── */
 .testimonial-section{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
@@ -180,7 +186,8 @@ footer a:hover{color:var(--ink)}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
   .for-who-grid,.features-grid{grid-template-columns:1fr}
   .how-grid{grid-template-columns:1fr}
-  .pricing-grid{grid-template-columns:1fr}
+  .pricing-grid{grid-template-columns:1fr;max-width:480px;margin-left:auto;margin-right:auto}
+  .plan.featured{transform:none}
   .for-who,.features,.how,.pricing,.testimonial-section,.final-cta{padding:80px 0}
   footer .inner{padding:0 8px}
 }
@@ -261,53 +268,67 @@ footer a:hover{color:var(--ink)}
   <div class="container">
     <div class="eyebrow reveal-scroll">Precios</div>
     <h2 class="section-title reveal-scroll">Elige tu plan. Empieza <em>hoy</em>.</h2>
-    <p class="section-lead reveal-scroll">Acceso beta limitado. Sin tarjeta de cr&eacute;dito. Cancela cuando quieras.</p>
+    <p class="section-lead reveal-scroll">Acceso beta limitado. Cancela cuando quieras.</p>
     <div class="pricing-grid reveal-scroll">
+
+      <!-- GO -->
       <div class="plan">
-        <div class="plan-badge">&nbsp;</div>
+        <div class="plan-icon"><svg viewBox="0 0 48 48" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="18" r="8"/><path d="M24 26v10"/><path d="M18 30h12"/></svg></div>
         <div class="plan-name">Go</div>
-        <div class="plan-price" data-plan-price="18">18 &euro;</div>
+        <div class="plan-desc">Para particulares y bricolaje</div>
+        <div class="plan-price">18 &euro;</div>
         <div class="plan-price-period">al mes</div>
+        <a href="#" class="btn-plan btn-plan-outline">Empezar con Go</a>
+        <div class="plan-meta">Sin compromiso &middot; Cancela cuando quieras</div>
+        <hr class="plan-divider">
         <ul class="plan-features">
-          <li class="plan-feature">Para particulares que quieren el mueble exacto para su espacio</li>
+          <li class="plan-feature">Dise&ntilde;o de armarios, cocinas y vestidores</li>
           <li class="plan-feature">3 proyectos / mes</li>
-          <li class="plan-feature">Armarios, cocinas, vestidores</li>
           <li class="plan-feature">Exportar PDF con planos</li>
           <li class="plan-feature">1 usuario</li>
-          <li class="plan-feature">Cancela cuando quieras</li>
         </ul>
-        <a href="#" class="btn btn-outline">Empezar con Go</a>
       </div>
+
+      <!-- PRO -->
       <div class="plan featured">
-        <div class="plan-badge">M&aacute;s popular</div>
+        <div class="plan-icon"><svg viewBox="0 0 48 48" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="14" r="6"/><path d="M24 20v8"/><path d="M16 28h16"/><circle cx="16" cy="34" r="4"/><circle cx="32" cy="34" r="4"/><path d="M24 28v-2"/></svg></div>
         <div class="plan-name">Pro</div>
-        <div class="plan-price" data-plan-price="159">159 &euro;</div>
+        <div class="plan-desc">Para profesionales del mueble</div>
+        <div class="plan-price">159 &euro;</div>
         <div class="plan-price-period">al mes</div>
+        <a href="#" class="btn-plan btn-plan-solid">Empezar con Pro</a>
+        <div class="plan-meta">Sin compromiso &middot; Cancela cuando quieras</div>
+        <hr class="plan-divider">
+        <div class="plan-includes">Todo lo incluido en Go, m&aacute;s:</div>
         <ul class="plan-features">
-          <li class="plan-feature">Para carpinteros, interioristas y reformistas</li>
           <li class="plan-feature">Proyectos ilimitados</li>
-          <li class="plan-feature">Todo tipo de mueble</li>
           <li class="plan-feature">PDF con tu marca y logo</li>
-          <li class="plan-feature">C&aacute;lculo de materiales autom&aacute;tico</li>
+          <li class="plan-feature">C&aacute;lculo de materiales</li>
           <li class="plan-feature">5 usuarios</li>
+          <li class="plan-feature">Soporte prioritario</li>
         </ul>
-        <a href="#" class="btn btn-primary">Empezar con Pro</a>
       </div>
+
+      <!-- ENTERPRISE -->
       <div class="plan">
-        <div class="plan-badge">&nbsp;</div>
+        <div class="plan-icon"><svg viewBox="0 0 48 48" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="16" width="28" height="22" rx="2"/><path d="M18 16v-4a6 6 0 0 1 12 0v4"/><circle cx="24" cy="28" r="3"/><path d="M24 31v4"/></svg></div>
         <div class="plan-name">Enterprise</div>
-        <div class="plan-price" data-plan-price="359">Desde 359 &euro;</div>
+        <div class="plan-desc">Para tiendas y estudios</div>
+        <div class="plan-price">Desde 359 &euro;</div>
         <div class="plan-price-period">al mes</div>
+        <a href="mailto:pro@casacurino.com" class="btn-plan btn-plan-outline">Empezar con Enterprise</a>
+        <div class="plan-meta">Sin compromiso &middot; Cancela cuando quieras</div>
+        <hr class="plan-divider">
+        <div class="plan-includes">Todo lo incluido en Pro, m&aacute;s:</div>
         <ul class="plan-features">
-          <li class="plan-feature">Para tiendas, estudios y marcas</li>
-          <li class="plan-feature">Embed en tu web con tu marca</li>
+          <li class="plan-feature">Embed en tu web</li>
           <li class="plan-feature">Usuarios ilimitados</li>
-          <li class="plan-feature">Cat&aacute;logo de materiales propio</li>
-          <li class="plan-feature">Account manager dedicado</li>
-          <li class="plan-feature">Precio personalizado seg&uacute;n volumen</li>
+          <li class="plan-feature">Cat&aacute;logo propio</li>
+          <li class="plan-feature">Account manager</li>
+          <li class="plan-feature">Precio personalizado</li>
         </ul>
-        <a href="mailto:pro@casacurino.com" class="btn btn-outline">Contactar</a>
       </div>
+
     </div>
   </div>
 </section>
