@@ -672,8 +672,8 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
   if(!scribble) return;
   var sio=new IntersectionObserver(function(entries){
     if(entries[0].isIntersecting){scribble.classList.add('is-drawn');sio.disconnect();}
-  },{threshold:0.3});
-  sio.observe(document.getElementById('fwOuter'));
+  },{threshold:0.1});
+  sio.observe(document.querySelector('.fw-graph'));
 })();
 
 // ── SCROLL-PINNED PROFILES ──
