@@ -636,6 +636,13 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
+// ── MOBILE GRAPH VIEWBOX ──
+(function(){
+  if(window.innerWidth>=900) return;
+  var svg=document.querySelector('.fw-graph svg');
+  if(svg) svg.setAttribute('viewBox','-60 100 1200 820');
+})();
+
 // ── SCROLL-PINNED PROFILES ──
 (function(){
   var outer=document.getElementById('fwOuter');
