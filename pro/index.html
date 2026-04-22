@@ -155,18 +155,20 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-lns[data-s="0"]{opacity:.4}
 .fw-graph .g-lns[data-s="0"] .g-line{stroke:#A89F8E}
 
-/* Mobile fallback */
-.fw-mobile{display:none}
-.fw-mobile .fwm-card{padding:32px 0;border-top:1px solid var(--line)}
-.fw-mobile .fwm-card:last-child{border-bottom:1px solid var(--line)}
-.fw-mobile h4{font-family:var(--font);font-size:18px;font-weight:600;margin-bottom:4px}
-.fw-mobile .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:12px}
-.fw-mobile blockquote{font-family:var(--serif);font-size:18px;font-weight:300;font-style:italic;line-height:1.45;color:var(--ink);margin-bottom:10px}
-.fw-mobile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
-.fwm-graph{margin-top:24px;width:100%}
-.fwm-graph svg{width:100%;height:auto;overflow:visible}
-.fwm-graph .g-node{font-size:20px}
-.fwm-graph .g-kw{font-size:15px}
+/* prefers-reduced-motion fallback */
+.fw-rm{display:none}
+.fw-rm .fwm-card{padding:32px 0;border-top:1px solid var(--line)}
+.fw-rm .fwm-card:last-child{border-bottom:1px solid var(--line)}
+.fw-rm h4{font-family:var(--font);font-size:18px;font-weight:600;margin-bottom:4px}
+.fw-rm .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:12px}
+.fw-rm blockquote{font-family:var(--serif);font-size:18px;font-weight:300;font-style:italic;line-height:1.45;color:var(--ink);margin-bottom:10px}
+.fw-rm cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
+@media(prefers-reduced-motion:reduce){
+  .fw-outer{height:auto!important}
+  .fw-pinned{position:static!important;height:auto!important}
+  .fw-body{display:none}
+  .fw-rm{display:block}
+}
 
 /* ── HOW IT WORKS ── */
 .how{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
@@ -239,10 +241,14 @@ footer a:hover{color:var(--ink)}
   .hero-grid{grid-template-columns:1fr;min-height:auto}
   .hero-left{padding:3rem 0 2rem}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
-  .fw-outer{height:auto!important}
-  .fw-pinned{position:static!important;height:auto!important}
-  .fw-body{display:none}
-  .fw-mobile{display:block}
+  .fw-body{grid-template-columns:1fr;gap:24px}
+  .fw-slot{min-height:180px}
+  .fw-header{margin-bottom:20px}
+  .fw-header .section-title{font-size:clamp(28px,6vw,36px)}
+  .fw-profile h4{font-size:18px}
+  .fw-graph .g-node{font-size:20px}
+  .fw-graph .g-kw{font-size:14px}
+  .fw-graph .g-line{stroke-width:1.2}
   .features-grid{grid-template-columns:1fr}
   .how-grid{grid-template-columns:1fr}
   .pricing-grid{grid-template-columns:1fr;max-width:480px;margin-left:auto;margin-right:auto}
@@ -536,7 +542,7 @@ footer a:hover{color:var(--ink)}
           </div>
         </div>
         <!-- Mobile fallback -->
-        <div class="fw-mobile">
+        <div class="fw-rm">
           <div class="fwm-card"><h4>Personal / Estudiantes</h4><blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote><cite>&mdash; Particular, Barcelona</cite></div>
           <div class="fwm-card"><h4>Madera</h4><div class="fw-sub">Carpinteros, ebanistas, almacenes, distribuidores</div><blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote><cite>&mdash; Carpintero, Valencia</cite></div>
           <div class="fwm-card"><h4>Dise&ntilde;o</h4><div class="fw-sub">Interioristas, arquitectos</div><blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote><cite>&mdash; Interiorista, Madrid</cite></div>
@@ -649,30 +655,11 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
-// ── MOBILE GRAPHS ──
-(function(){
-  if(window.innerWidth>=1024&&!window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
-  var src=document.querySelector('.fw-graph svg');
-  if(!src) return;
-  var cards=document.querySelectorAll('.fwm-card');
-  cards.forEach(function(card,idx){
-    var wrap=document.createElement('div');
-    wrap.className='fwm-graph';
-    wrap.setAttribute('aria-hidden','true');
-    var clone=src.cloneNode(true);
-    clone.querySelectorAll('[data-gi]').forEach(function(el){
-      el.setAttribute('data-s',parseInt(el.getAttribute('data-gi'))===idx?'1':'0');
-    });
-    wrap.appendChild(clone);
-    card.appendChild(wrap);
-  });
-})();
-
 // ── SCROLL-PINNED PROFILES ──
 (function(){
   var outer=document.getElementById('fwOuter');
   var pinned=outer?outer.querySelector('.fw-pinned'):null;
-  if(!outer||!pinned||window.innerWidth<1024||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  if(!outer||!pinned||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
 
   var profiles=document.querySelectorAll('.fw-profile');
   var dots=document.querySelectorAll('.fw-dot');
