@@ -119,7 +119,6 @@ nav a:hover{color:var(--ink)}
 .fw-body{display:grid;grid-template-columns:45fr 55fr;gap:48px;align-items:center}
 
 /* Profiles — one at a time */
-.fw-slot{position:relative;min-height:240px}
 .fw-profile{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;opacity:0;transform:translateY(20px);transition:opacity .4s ease-out,transform .4s ease-out;pointer-events:none}
 .fw-profile.is-active{opacity:1;transform:none;pointer-events:auto}
 .fw-profile.is-exiting{opacity:0;transform:translateY(-20px)}
@@ -129,11 +128,13 @@ nav a:hover{color:var(--ink)}
 .fw-profile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
 
 /* Navigation arrows */
-.fw-arrows{display:flex;flex-direction:column;gap:4px;margin-top:24px}
+.fw-left{display:flex;align-items:flex-start;gap:16px}
+.fw-arrows{display:flex;flex-direction:column;gap:2px;flex-shrink:0;padding-top:2px}
 .fw-arrow{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;background:none;border:none;cursor:pointer;color:var(--ink);opacity:.5;transition:opacity .2s}
 .fw-arrow:hover:not(:disabled){opacity:1}
 .fw-arrow:disabled{opacity:.2;cursor:default}
 .fw-arrow svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.fw-slot{position:relative;min-height:240px;flex:1}
 
 /* Graph */
 .fw-graph{width:100%}
@@ -411,8 +412,12 @@ footer a:hover{color:var(--ink)}
           <h2 class="section-title">Una herramienta para cada <em>profesional</em>.</h2>
         </div>
         <div class="fw-body">
-          <!-- Left: one profile at a time -->
-          <div>
+          <!-- Left: arrows + one profile at a time -->
+          <div class="fw-left">
+            <div class="fw-arrows">
+              <button class="fw-arrow" id="fwUp" aria-label="Perfil anterior" disabled><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></button>
+              <button class="fw-arrow" id="fwDown" aria-label="Perfil siguiente"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
             <div class="fw-slot">
               <div class="fw-profile is-active" data-fi="0">
                 <h4>Personal / Estudiantes</h4>
@@ -443,10 +448,6 @@ footer a:hover{color:var(--ink)}
                 <blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote>
                 <cite>&mdash; Reformista, Sevilla</cite>
               </div>
-            </div>
-            <div class="fw-arrows">
-              <button class="fw-arrow" id="fwUp" aria-label="Perfil anterior" disabled><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></button>
-              <button class="fw-arrow" id="fwDown" aria-label="Perfil siguiente"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
             </div>
           </div>
           <!-- Right: graph -->
