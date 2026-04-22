@@ -698,9 +698,15 @@ function buildConnector(){
     var oh=mr.height*0.9;
     var oleft=mx-ow;
 
+    // Organic curve: two control points offset from the straight line
+    var dx=oleft-sx;
+    var cp1x=sx+dx*0.35;
+    var cp1y=sy-35;
+    var cp2x=sx+dx*0.7;
+    var cp2y=sy+25;
+
     var d='M '+sx+','+sy
-      +' L '+oleft+','+sy
-      +' Q '+(oleft-15)+','+sy+' '+(oleft-15)+','+(my)
+      +' C '+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+oleft+','+my
       +' L '+(oleft-15)+','+(my-oh)
       +' Q '+(oleft-15)+','+(my-oh-20)+' '+(mx)+','+(my-oh-20)
       +' Q '+(mx+ow+15)+','+(my-oh-20)+' '+(mx+ow+15)+','+(my)
@@ -711,13 +717,13 @@ function buildConnector(){
     path.setAttribute('d',d);
 
     var total=path.getTotalLength();
-    var seg=total*0.18;
+    var seg=total*0.32;
     path.style.strokeDasharray=seg+' '+total;
 
     if(!_connStarted){
       var kf='@keyframes fwTravel{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-'+(total+seg)+'}}';
       var s=document.createElement('style');s.textContent=kf;document.head.appendChild(s);
-      path.style.animation='fwTravel 3s linear infinite';
+      path.style.animation='fwTravel 5.5s linear infinite';
       _connStarted=true;
     }
   });
