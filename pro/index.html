@@ -111,31 +111,34 @@ nav a:hover{color:var(--ink)}
 
 /* ── FOR WHO ── */
 .for-who{padding:120px 0}
-.for-who-layout{display:grid;grid-template-columns:35fr 65fr;gap:80px;margin-top:60px;align-items:start}
+.for-who-layout{display:grid;grid-template-columns:38fr 62fr;gap:60px;margin-top:60px;align-items:start}
 .for-who-list{display:flex;flex-direction:column}
-.for-who-card{padding:28px 0;border-top:1px solid var(--line)}
+.for-who-card{padding:48px 0;border-top:1px solid var(--line);opacity:0;transform:translateY(12px);transition:opacity .5s ease-out,transform .5s ease-out}
 .for-who-card:last-child{border-bottom:1px solid var(--line)}
-.for-who-card-title{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.for-who-card-title .fw-icon{flex-shrink:0;width:24px;height:24px}
-.for-who-card-title .fw-icon svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.for-who-card-title h4{font-family:var(--font);font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
-.for-who-card p{font-size:14.5px;color:var(--ink-soft);line-height:1.6}
+.for-who-card.in-view{opacity:1;transform:none}
+.for-who-card h4{font-family:var(--font);font-size:20px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-bottom:4px}
+.for-who-card .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:16px}
+.for-who-card blockquote{font-family:var(--serif);font-size:19px;font-weight:300;font-style:italic;line-height:1.45;letter-spacing:-.01em;color:var(--ink);margin-bottom:12px}
+.for-who-card cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
 
-/* Node diagram */
-.node-diagram{width:100%;aspect-ratio:1.15}
-.node-diagram svg{width:100%;height:100%;overflow:visible}
-.node-diagram .nd-line{stroke:#ccc;stroke-width:.5;fill:none}
-.node-diagram .nd-center{font-family:var(--serif);font-size:28px;font-weight:400;font-style:italic;fill:var(--ink)}
-.node-diagram .nd-dot{fill:var(--coral)}
-.node-diagram .nd-node{font-family:var(--font);font-size:16px;font-weight:600;fill:var(--ink)}
-.node-diagram .nd-kw{font-family:var(--font);font-size:10.5px;fill:#8C8A82;font-weight:400}
-.node-diagram .nd-kw-u{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
-@keyframes svgFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-.nd-float1{animation:svgFloat 5s ease-in-out infinite 0s}
-.nd-float2{animation:svgFloat 5s ease-in-out infinite 1s}
-.nd-float3{animation:svgFloat 5s ease-in-out infinite 2s}
-.nd-float4{animation:svgFloat 5s ease-in-out infinite 3s}
-.nd-float5{animation:svgFloat 5s ease-in-out infinite 4s}
+/* Graph */
+.fw-graph{position:sticky;top:calc(50vh - 280px);width:100%;height:560px}
+.fw-graph svg{width:100%;height:100%;overflow:visible}
+.fw-graph .g-line{stroke:#d1d0cb;stroke-width:.7;fill:none;transition:opacity .5s ease}
+.fw-graph .g-center{font-family:var(--serif);font-size:30px;font-weight:400;font-style:italic;fill:var(--ink)}
+.fw-graph .g-dot{fill:var(--coral)}
+.fw-graph .g-node{font-family:var(--font);font-size:15px;font-weight:600;transition:opacity .5s ease}
+.fw-graph .g-kw{font-family:var(--font);font-size:10.5px;font-weight:400;transition:opacity .5s ease}
+.fw-graph .g-kw-u{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+.fw-graph .g-group{fill:var(--ink)}
+.fw-graph .g-group .g-kw{fill:#8C8A82}
+/* States */
+.fw-graph .g-group[data-state="unseen"]{opacity:.12}
+.fw-graph .g-group[data-state="visited"]{opacity:.45}
+.fw-graph .g-group[data-state="active"]{opacity:1}
+.fw-graph .g-lines-set[data-state="unseen"]{opacity:.1}
+.fw-graph .g-lines-set[data-state="visited"]{opacity:.35}
+.fw-graph .g-lines-set[data-state="active"]{opacity:1}
 
 /* ── HOW IT WORKS ── */
 .how{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
@@ -209,6 +212,9 @@ footer a:hover{color:var(--ink)}
   .hero-left{padding:3rem 0 2rem}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
   .for-who-layout{grid-template-columns:1fr;gap:40px}
+  .fw-graph{position:static;height:auto;aspect-ratio:1.15;margin-top:40px}
+  .for-who-card{opacity:1;transform:none}
+  .fw-graph .g-group,.fw-graph .g-lines-set{opacity:.6!important}
   .features-grid{grid-template-columns:1fr}
   .how-grid{grid-template-columns:1fr}
   .pricing-grid{grid-template-columns:1fr;max-width:480px;margin-left:auto;margin-right:auto}
@@ -362,111 +368,129 @@ footer a:hover{color:var(--ink)}
 <!-- FOR WHO -->
 <section class="for-who" id="para-quien">
   <div class="container">
-    <div class="eyebrow reveal-scroll">Para qui&eacute;n es</div>
+    <div class="eyebrow reveal-scroll">Para qui&eacute;n es curino</div>
     <h2 class="section-title reveal-scroll">Una herramienta para cada <em>profesional</em>.</h2>
     <div class="for-who-layout">
       <div class="for-who-list">
-        <div class="for-who-card reveal-scroll">
-          <div class="for-who-card-title"><span class="fw-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21c0-4.4-3.6-8-8-8s-8 3.6-8 8"/></svg></span><h4>Particulares y estudiantes</h4></div>
-          <p>Sin limitarte a cat&aacute;logos. Dise&ntilde;a el mueble exacto para tu espacio &mdash; armarios, cocinas, vestidores. A medida, sin compromisos.</p>
+
+        <div class="for-who-card" data-graph="0">
+          <h4>Personal / Estudiantes</h4>
+          <blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote>
+          <cite>&mdash; Particular, Barcelona</cite>
         </div>
-        <div class="for-who-card reveal-scroll">
-          <div class="for-who-card-title"><span class="fw-icon"><svg viewBox="0 0 24 24"><path d="M2 20h20"/><path d="M6 20V4h4v16"/><path d="M14 20V10h4v10"/><path d="M18 10l-2-2-2 2"/></svg></span><h4>Profesionales de la madera</h4></div>
-          <p>Presupuesta proyectos de carpinter&iacute;a o ebanister&iacute;a en minutos, no en horas. Tu cliente ve el mueble configurado y el precio antes de decidir.</p>
+
+        <div class="for-who-card" data-graph="1">
+          <h4>Madera</h4>
+          <div class="fw-sub">Carpinteros, ebanistas, almacenes, distribuidores</div>
+          <blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote>
+          <cite>&mdash; Carpintero, Valencia</cite>
         </div>
-        <div class="for-who-card reveal-scroll">
-          <div class="for-who-card-title"><span class="fw-icon"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg></span><h4>Interioristas y arquitectos</h4></div>
-          <p>Presenta 10 veces m&aacute;s propuestas con planos, materiales y presupuesto integrado. Sin depender del fabricante para cada cotizaci&oacute;n.</p>
+
+        <div class="for-who-card" data-graph="2">
+          <h4>Dise&ntilde;o</h4>
+          <div class="fw-sub">Interioristas, arquitectos</div>
+          <blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote>
+          <cite>&mdash; Interiorista, Madrid</cite>
         </div>
-        <div class="for-who-card reveal-scroll">
-          <div class="for-who-card-title"><span class="fw-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M12 12v.01"/></svg></span><h4>Estudios y marcas</h4></div>
-          <p>Integra el configurador en tu web con la opci&oacute;n Embed. Tus clientes dise&ntilde;an desde tu dominio &mdash; t&uacute; recibes el proyecto listo para producir.</p>
+
+        <div class="for-who-card" data-graph="3">
+          <h4>Marcas</h4>
+          <div class="fw-sub">Tiendas de muebles, showrooms, cocinas</div>
+          <blockquote>&ldquo;Mis clientes dise&ntilde;an desde mi web. Yo recibo el proyecto listo para producir.&rdquo;</blockquote>
+          <cite>&mdash; Tienda de cocinas, Bilbao</cite>
         </div>
+
+        <div class="for-who-card" data-graph="4">
+          <h4>Obra</h4>
+          <div class="fw-sub">Reformistas, constructoras, jefes de obra</div>
+          <blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote>
+          <cite>&mdash; Reformista, Sevilla</cite>
+        </div>
+
       </div>
-      <div class="node-diagram reveal-scroll">
-        <svg viewBox="0 0 700 610">
-          <!-- Lines: center to nodes -->
-          <line class="nd-line" x1="350" y1="305" x2="80" y2="120"/>
-          <line class="nd-line" x1="350" y1="305" x2="580" y2="80"/>
-          <line class="nd-line" x1="350" y1="305" x2="610" y2="480"/>
-          <line class="nd-line" x1="350" y1="305" x2="100" y2="490"/>
-          <line class="nd-line" x1="350" y1="305" x2="640" y2="280"/>
-          <!-- Lines: nodes to keywords -->
-          <!-- Dise&ntilde;o -->
-          <line class="nd-line" x1="80" y1="120" x2="20" y2="40"/><line class="nd-line" x1="80" y1="120" x2="140" y2="35"/>
-          <line class="nd-line" x1="80" y1="120" x2="10" y2="170"/><line class="nd-line" x1="80" y1="120" x2="160" y2="160"/>
-          <line class="nd-line" x1="80" y1="120" x2="50" y2="210"/>
-          <!-- Proyecto -->
-          <line class="nd-line" x1="580" y1="80" x2="480" y2="20"/><line class="nd-line" x1="580" y1="80" x2="620" y2="18"/>
-          <line class="nd-line" x1="580" y1="80" x2="680" y2="60"/><line class="nd-line" x1="580" y1="80" x2="510" y2="130"/>
-          <line class="nd-line" x1="580" y1="80" x2="640" y2="140"/>
-          <!-- Presupuesto -->
-          <line class="nd-line" x1="610" y1="480" x2="540" y2="420"/><line class="nd-line" x1="610" y1="480" x2="680" y2="420"/>
-          <line class="nd-line" x1="610" y1="480" x2="540" y2="540"/><line class="nd-line" x1="610" y1="480" x2="680" y2="540"/>
-          <line class="nd-line" x1="610" y1="480" x2="610" y2="580"/>
-          <!-- Materiales -->
-          <line class="nd-line" x1="100" y1="490" x2="30" y2="420"/><line class="nd-line" x1="100" y1="490" x2="180" y2="430"/>
-          <line class="nd-line" x1="100" y1="490" x2="20" y2="550"/><line class="nd-line" x1="100" y1="490" x2="160" y2="560"/>
-          <line class="nd-line" x1="100" y1="490" x2="80" y2="600"/>
-          <!-- Embed -->
-          <line class="nd-line" x1="640" y1="280" x2="680" y2="210"/><line class="nd-line" x1="640" y1="280" x2="690" y2="260"/>
-          <line class="nd-line" x1="640" y1="280" x2="690" y2="310"/><line class="nd-line" x1="640" y1="280" x2="680" y2="350"/>
-          <line class="nd-line" x1="640" y1="280" x2="620" y2="350"/>
+
+      <!-- Sticky graph -->
+      <div class="fw-graph">
+        <svg viewBox="0 0 700 560">
+          <!-- Lines per group -->
+          <g class="g-lines-set" data-gi="0" data-state="unseen">
+            <line class="g-line" x1="350" y1="280" x2="100" y2="90"/>
+            <line class="g-line" x1="100" y1="90" x2="30" y2="30"/><line class="g-line" x1="100" y1="90" x2="170" y2="25"/>
+            <line class="g-line" x1="100" y1="90" x2="20" y2="140"/><line class="g-line" x1="100" y1="90" x2="180" y2="130"/>
+            <line class="g-line" x1="100" y1="90" x2="60" y2="175"/>
+          </g>
+          <g class="g-lines-set" data-gi="1" data-state="unseen">
+            <line class="g-line" x1="350" y1="280" x2="590" y2="90"/>
+            <line class="g-line" x1="590" y1="90" x2="520" y2="25"/><line class="g-line" x1="590" y1="90" x2="660" y2="30"/>
+            <line class="g-line" x1="590" y1="90" x2="530" y2="145"/><line class="g-line" x1="590" y1="90" x2="670" y2="140"/>
+          </g>
+          <g class="g-lines-set" data-gi="2" data-state="unseen">
+            <line class="g-line" x1="350" y1="280" x2="620" y2="300"/>
+            <line class="g-line" x1="620" y1="300" x2="680" y2="240"/><line class="g-line" x1="620" y1="300" x2="695" y2="285"/>
+            <line class="g-line" x1="620" y1="300" x2="695" y2="320"/><line class="g-line" x1="620" y1="300" x2="680" y2="365"/>
+          </g>
+          <g class="g-lines-set" data-gi="3" data-state="unseen">
+            <line class="g-line" x1="350" y1="280" x2="560" y2="470"/>
+            <line class="g-line" x1="560" y1="470" x2="490" y2="420"/><line class="g-line" x1="560" y1="470" x2="640" y2="420"/>
+            <line class="g-line" x1="560" y1="470" x2="500" y2="530"/><line class="g-line" x1="560" y1="470" x2="640" y2="530"/>
+          </g>
+          <g class="g-lines-set" data-gi="4" data-state="unseen">
+            <line class="g-line" x1="350" y1="280" x2="120" y2="460"/>
+            <line class="g-line" x1="120" y1="460" x2="40" y2="405"/><line class="g-line" x1="120" y1="460" x2="200" y2="410"/>
+            <line class="g-line" x1="120" y1="460" x2="40" y2="520"/><line class="g-line" x1="120" y1="460" x2="190" y2="525"/>
+          </g>
 
           <!-- Center -->
-          <text class="nd-center" x="350" y="310" text-anchor="middle">curino<tspan class="nd-dot">.</tspan></text>
+          <text class="g-center" x="350" y="286" text-anchor="middle">curino<tspan class="g-dot">.</tspan></text>
 
-          <!-- Node: Dise&ntilde;o (top-left) -->
-          <g class="nd-float1">
-            <text class="nd-node" x="80" y="118">Dise&#241;o</text>
-            <text class="nd-kw" x="20" y="38">Alzados</text>
-            <text class="nd-kw nd-kw-u" x="135" y="33">Planta</text>
-            <text class="nd-kw" x="5" y="175">Precisi&#243;n</text>
-            <text class="nd-kw" x="150" y="165">T&#233;cnica</text>
-            <text class="nd-kw nd-kw-u" x="40" y="215">Detalle</text>
+          <!-- Node 0: Personal -->
+          <g class="g-group" data-gi="0" data-state="unseen">
+            <text class="g-node" x="65" y="90">Personal</text>
+            <text class="g-kw" x="15" y="28">Armario</text>
+            <text class="g-kw g-kw-u" x="150" y="22">Cocina</text>
+            <text class="g-kw" x="5" y="145">Vestidor</text>
+            <text class="g-kw g-kw-u" x="165" y="135">Medidas</text>
+            <text class="g-kw" x="45" y="180">Precio</text>
           </g>
 
-          <!-- Node: Proyecto (top-right) -->
-          <g class="nd-float2">
-            <text class="nd-node" x="555" y="83">Proyecto</text>
-            <text class="nd-kw" x="465" y="18">Planos</text>
-            <text class="nd-kw nd-kw-u" x="610" y="16">Memoria</text>
-            <text class="nd-kw" x="670" y="58">Materiales</text>
-            <text class="nd-kw" x="495" y="135">Cliente</text>
-            <text class="nd-kw nd-kw-u" x="630" y="145">Marca</text>
+          <!-- Node 1: Madera -->
+          <g class="g-group" data-gi="1" data-state="unseen">
+            <text class="g-node" x="560" y="90">Madera</text>
+            <text class="g-kw g-kw-u" x="500" y="22">Presupuesto</text>
+            <text class="g-kw" x="648" y="28">Minutos</text>
+            <text class="g-kw" x="515" y="150">Cliente</text>
+            <text class="g-kw g-kw-u" x="655" y="145">Cierre</text>
           </g>
 
-          <!-- Node: Presupuesto (bottom-right) -->
-          <g class="nd-float3">
-            <text class="nd-node" x="565" y="485">Presupuesto</text>
-            <text class="nd-kw" x="520" y="418">Oferta</text>
-            <text class="nd-kw nd-kw-u" x="665" y="418">Desglose</text>
-            <text class="nd-kw" x="515" y="545">Rentabilidad</text>
-            <text class="nd-kw" x="670" y="545">Control</text>
-            <text class="nd-kw nd-kw-u" x="590" y="585">Partidas</text>
+          <!-- Node 2: Dise&ntilde;o -->
+          <g class="g-group" data-gi="2" data-state="unseen">
+            <text class="g-node" x="610" y="300">Dise&#241;o</text>
+            <text class="g-kw" x="668" y="238">Planos</text>
+            <text class="g-kw g-kw-u" x="685" y="283">Materiales</text>
+            <text class="g-kw" x="685" y="323">Propuesta</text>
+            <text class="g-kw g-kw-u" x="660" y="370">Autonom&#237;a</text>
           </g>
 
-          <!-- Node: Materiales (bottom-left) -->
-          <g class="nd-float4">
-            <text class="nd-node" x="60" y="493">Materiales</text>
-            <text class="nd-kw nd-kw-u" x="5" y="418">Optimizaci&#243;n</text>
-            <text class="nd-kw" x="165" y="428">Merma</text>
-            <text class="nd-kw" x="5" y="555">Herrajes</text>
-            <text class="nd-kw nd-kw-u" x="150" y="565">Corte</text>
-            <text class="nd-kw" x="65" y="605">Lista</text>
+          <!-- Node 3: Marcas -->
+          <g class="g-group" data-gi="3" data-state="unseen">
+            <text class="g-node" x="530" y="470">Marcas</text>
+            <text class="g-kw g-kw-u" x="475" y="418">Embed</text>
+            <text class="g-kw" x="625" y="418">Dominio</text>
+            <text class="g-kw" x="485" y="535">Lead</text>
+            <text class="g-kw g-kw-u" x="620" y="535">Producci&#243;n</text>
           </g>
 
-          <!-- Node: Embed (mid-right) -->
-          <g class="nd-float5">
-            <text class="nd-node" x="625" y="283">Embed</text>
-            <text class="nd-kw" x="665" y="208">Online</text>
-            <text class="nd-kw nd-kw-u" x="680" y="258">Configurador</text>
-            <text class="nd-kw" x="682" y="313">Marca</text>
-            <text class="nd-kw" x="668" y="353">Lead</text>
-            <text class="nd-kw nd-kw-u" x="600" y="355">Conversi&#243;n</text>
+          <!-- Node 4: Obra -->
+          <g class="g-group" data-gi="4" data-state="unseen">
+            <text class="g-node" x="85" y="460">Obra</text>
+            <text class="g-kw" x="20" y="403">Medici&#243;n</text>
+            <text class="g-kw g-kw-u" x="180" y="408">Partidas</text>
+            <text class="g-kw g-kw-u" x="22" y="525">Control</text>
+            <text class="g-kw" x="170" y="530">Certificaci&#243;n</text>
           </g>
         </svg>
       </div>
+
     </div>
   </div>
 </section>
@@ -572,6 +596,31 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
+// ── GRAPH SCROLL REVEAL ──
+(function(){
+  var cards=document.querySelectorAll('.for-who-card[data-graph]');
+  if(!cards.length||window.innerWidth<1024) return;
+  var visited=new Set();
+  var active=null;
+
+  function setState(gi,state){
+    document.querySelectorAll('[data-gi="'+gi+'"]').forEach(function(el){el.setAttribute('data-state',state);});
+  }
+
+  var gio=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var idx=parseInt(e.target.getAttribute('data-graph'));
+      e.target.classList.add('in-view');
+      if(active!==null&&active!==idx) setState(active,'visited');
+      active=idx;
+      visited.add(idx);
+      setState(idx,'active');
+    });
+  },{threshold:0,rootMargin:'-50% 0px -50% 0px'});
+
+  cards.forEach(function(c){gio.observe(c);});
+})();
 
 // ── AUTH ──
 var _sb=null,_otpEmail='';
