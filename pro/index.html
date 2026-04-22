@@ -142,6 +142,8 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-line{stroke:#A89F8E;stroke-width:1;fill:none;transition:stroke .4s ease-out,opacity .4s ease-out}
 .fw-graph .g-center{font-family:var(--serif);font-size:134px;font-weight:400;font-style:italic;fill:var(--coral);stroke:var(--bg);stroke-width:24px;paint-order:stroke fill;letter-spacing:-.03em;font-variation-settings:'opsz' 58}
 .fw-graph .g-dot{fill:var(--ink)}
+.fw-graph .g-scribble{stroke:#0E7F5C;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1600;stroke-dashoffset:1600}
+.fw-graph .g-scribble.is-drawn{stroke-dashoffset:0;transition:stroke-dashoffset 1.5s ease-out}
 .fw-graph .g-grp{transition:opacity .4s ease-out,fill .4s ease-out}
 .fw-graph .g-node{font-family:var(--serif);font-size:55px;font-weight:500;letter-spacing:-.02em;stroke:var(--bg);stroke-width:12px;paint-order:stroke fill}
 .fw-graph .g-kw{font-family:var(--font);font-size:32px;font-weight:400;transition:font-size .4s ease-out,fill .4s ease-out}
@@ -182,7 +184,7 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(3){animation-delay:-3.5s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(4){animation-delay:-0.3s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(5){animation-delay:-5.0s}
-@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}.fw-graph .g-scribble{stroke-dashoffset:0!important;stroke-dasharray:none!important}}
 
 /* prefers-reduced-motion fallback */
 .fw-rm{display:none}
@@ -511,6 +513,8 @@ footer a:hover{color:var(--ink)}
 
               <!-- Center wordmark -->
               <text class="g-center" x="500" y="443" text-anchor="middle">Maestro</text>
+              <!-- Hand-drawn oval around Maestro -->
+              <path class="g-scribble" d="M 290,420 C 270,395 285,360 340,350 C 400,338 460,335 510,336 C 570,337 640,342 680,355 C 720,370 735,395 725,425 C 718,450 700,468 660,478 C 615,490 550,494 500,493 C 440,492 370,488 330,475 C 300,465 282,450 290,420 Z" fill="none"/>
 
               <!-- Node 0: Personal — top-left (180,80) -->
               <g class="g-grp" data-gi="0" data-s="1">
@@ -661,6 +665,16 @@ var io=new IntersectionObserver(function(entries){
   });
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
+
+// ── SCRIBBLE DRAW ──
+(function(){
+  var scribble=document.querySelector('.g-scribble');
+  if(!scribble) return;
+  var sio=new IntersectionObserver(function(entries){
+    if(entries[0].isIntersecting){scribble.classList.add('is-drawn');sio.disconnect();}
+  },{threshold:0.3});
+  sio.observe(document.getElementById('fwOuter'));
+})();
 
 // ── SCROLL-PINNED PROFILES ──
 (function(){
