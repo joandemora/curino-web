@@ -158,6 +158,32 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-lns[data-s="0"]{opacity:.4}
 .fw-graph .g-lns[data-s="0"] .g-line{stroke:#A89F8E}
 
+/* Graph drift animation */
+@keyframes graphDrift{0%,100%{transform:translate(0,0)}25%{transform:translate(1.5px,-2px)}50%{transform:translate(-2px,1px)}75%{transform:translate(2px,1.5px)}}
+.fw-graph .g-center{animation:graphDrift 10s ease-in-out infinite -3s;transform-box:fill-box;transform-origin:center}
+.fw-graph .g-grp .g-node{animation:graphDrift 9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fw-graph .g-grp .g-kw{animation:graphDrift 8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fw-graph .g-grp[data-gi="0"] .g-node{animation-delay:-1.2s}
+.fw-graph .g-grp[data-gi="0"] .g-kw:nth-child(2){animation-delay:-0.5s}
+.fw-graph .g-grp[data-gi="0"] .g-kw:nth-child(3){animation-delay:-2.8s}
+.fw-graph .g-grp[data-gi="0"] .g-kw:nth-child(4){animation-delay:-4.1s}
+.fw-graph .g-grp[data-gi="1"] .g-node{animation-delay:-3.7s}
+.fw-graph .g-grp[data-gi="1"] .g-kw:nth-child(2){animation-delay:-1.9s}
+.fw-graph .g-grp[data-gi="1"] .g-kw:nth-child(3){animation-delay:-5.3s}
+.fw-graph .g-grp[data-gi="1"] .g-kw:nth-child(4){animation-delay:-0.8s}
+.fw-graph .g-grp[data-gi="1"] .g-kw:nth-child(5){animation-delay:-6.2s}
+.fw-graph .g-grp[data-gi="2"] .g-node{animation-delay:-5.5s}
+.fw-graph .g-grp[data-gi="2"] .g-kw:nth-child(2){animation-delay:-2.3s}
+.fw-graph .g-grp[data-gi="2"] .g-kw:nth-child(3){animation-delay:-7.1s}
+.fw-graph .g-grp[data-gi="2"] .g-kw:nth-child(4){animation-delay:-4.4s}
+.fw-graph .g-grp[data-gi="2"] .g-kw:nth-child(5){animation-delay:-1.6s}
+.fw-graph .g-grp[data-gi="3"] .g-node{animation-delay:-2.1s}
+.fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(2){animation-delay:-6.8s}
+.fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(3){animation-delay:-3.5s}
+.fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(4){animation-delay:-0.3s}
+.fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(5){animation-delay:-5.0s}
+@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}}
+
 /* prefers-reduced-motion fallback */
 .fw-rm{display:none}
 .fw-rm .fwm-card{padding:32px 0;border-top:1px solid var(--line)}
