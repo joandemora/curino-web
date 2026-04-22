@@ -142,8 +142,13 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-line{stroke:#A89F8E;stroke-width:1;fill:none;transition:stroke .4s ease-out,opacity .4s ease-out}
 .fw-graph .g-center{font-family:var(--serif);font-size:134px;font-weight:400;font-style:italic;fill:var(--coral);stroke:var(--bg);stroke-width:24px;paint-order:stroke fill;letter-spacing:-.03em;font-variation-settings:'opsz' 58}
 .fw-graph .g-dot{fill:var(--ink)}
-.fw-graph .g-scribble{stroke:#0E7F5C;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1600;stroke-dashoffset:1600}
-.fw-graph .g-scribble.is-drawn{stroke-dashoffset:0;transition:stroke-dashoffset .4s cubic-bezier(.645,.045,.355,1)}
+/* Connector line overlay */
+.fw-connector{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5}
+.fw-connector svg{width:100%;height:100%;overflow:visible}
+.fw-connector path{fill:none;stroke:#0E7F5C;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2000;stroke-dashoffset:2000}
+.fw-connector path.is-drawn{stroke-dashoffset:0;transition:stroke-dashoffset .8s cubic-bezier(.645,.045,.355,1)}
+@keyframes connPulse{0%,100%{opacity:.6}50%{opacity:1}}
+.fw-connector path.is-pulsing{animation:connPulse 2s ease-in-out infinite}
 .fw-graph .g-grp{transition:opacity .4s ease-out,fill .4s ease-out}
 .fw-graph .g-node{font-family:var(--serif);font-size:55px;font-weight:500;letter-spacing:-.02em;stroke:var(--bg);stroke-width:12px;paint-order:stroke fill}
 .fw-graph .g-kw{font-family:var(--font);font-size:32px;font-weight:400;transition:font-size .4s ease-out,fill .4s ease-out}
@@ -184,7 +189,7 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(3){animation-delay:-3.5s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(4){animation-delay:-0.3s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(5){animation-delay:-5.0s}
-@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}.fw-graph .g-scribble{stroke-dashoffset:0!important;stroke-dasharray:none!important}}
+@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}.fw-connector path{stroke-dashoffset:0!important;stroke-dasharray:none!important;animation:none!important}}
 
 /* prefers-reduced-motion fallback */
 .fw-rm{display:none}
@@ -198,6 +203,7 @@ nav a:hover{color:var(--ink)}
   .fw-outer{height:auto!important}
   .fw-pinned{position:static!important;height:auto!important}
   .fw-body{display:none}
+  .fw-connector{display:none}
   .fw-rm{display:block}
 }
 
@@ -513,8 +519,6 @@ footer a:hover{color:var(--ink)}
 
               <!-- Center wordmark -->
               <text class="g-center" x="500" y="443" text-anchor="middle">Maestro</text>
-              <!-- Hand-drawn oval around Maestro -->
-              <path class="g-scribble" d="M 290,420 C 270,395 285,360 340,350 C 400,338 460,335 510,336 C 570,337 640,342 680,355 C 720,370 735,395 725,425 C 718,450 700,468 660,478 C 615,490 550,494 500,493 C 440,492 370,488 330,475 C 300,465 282,450 290,420 Z" fill="none"/>
 
               <!-- Node 0: Personal — top-left (180,80) -->
               <g class="g-grp" data-gi="0" data-s="1">
@@ -560,6 +564,10 @@ footer a:hover{color:var(--ink)}
           <div class="fwm-card"><h4>Carpinter&iacute;a</h4><div class="fw-sub">Carpinteros &middot; Ebanistas &middot; Almacenes &middot; Distribuidores</div><blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote><cite>&mdash; Carpintero, Valencia</cite></div>
           <div class="fwm-card"><h4>Construcci&oacute;n</h4><div class="fw-sub">Reformistas &middot; Constructoras &middot; Jefes de obra &middot; Promotoras</div><blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote><cite>&mdash; Reformista, Sevilla</cite></div>
         </div>
+      </div>
+      <!-- Connector overlay (desktop only) -->
+      <div class="fw-connector" id="fwConnector">
+        <svg><path id="fwConnPath"/></svg>
       </div>
     </div>
   </div>
@@ -666,14 +674,72 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
-// ── SCRIBBLE DRAW ──
+// ── CONNECTOR LINE ──
 (function(){
-  var scribble=document.querySelector('.g-scribble');
-  if(!scribble) return;
-  var sio=new IntersectionObserver(function(entries){
-    if(entries[0].isIntersecting){scribble.classList.add('is-drawn');sio.disconnect();}
+  var path=document.getElementById('fwConnPath');
+  var pinned=document.querySelector('.fw-pinned');
+  var maestroText=document.querySelector('.g-center');
+  if(!path||!pinned||!maestroText||window.innerWidth<900) return;
+
+  var drawn=false;
+
+  function updatePath(){
+    var active=document.querySelector('.fw-profile.is-active');
+    if(!active) return;
+    var pr=pinned.getBoundingClientRect();
+    var ar=active.getBoundingClientRect();
+    var mr=maestroText.getBoundingClientRect();
+
+    // Start: right edge of active profile, vertically centered
+    var sx=ar.right-pr.left;
+    var sy=ar.top+ar.height/2-pr.top;
+
+    // End: center of Maestro text
+    var mx=mr.left+mr.width/2-pr.left;
+    var my=mr.top+mr.height/2-pr.top;
+
+    // Oval dimensions around Maestro
+    var ow=mr.width*0.7;
+    var oh=mr.height*0.9;
+
+    // Path: horizontal line → arrive at left of oval → oval around Maestro
+    var oleft=mx-ow;
+    var d='M '+sx+','+sy
+      +' L '+oleft+','+sy
+      +' Q '+(oleft-15)+','+sy+' '+(oleft-15)+','+(my)
+      +' L '+(oleft-15)+','+(my-oh)
+      +' Q '+(oleft-15)+','+(my-oh-20)+' '+(mx)+','+(my-oh-20)
+      +' Q '+(mx+ow+15)+','+(my-oh-20)+' '+(mx+ow+15)+','+(my)
+      +' Q '+(mx+ow+15)+','+(my+oh+20)+' '+(mx)+','+(my+oh+20)
+      +' Q '+(oleft-15)+','+(my+oh+20)+' '+(oleft-15)+','+(my+oh)
+      +' L '+(oleft-15)+','+(my);
+
+    path.setAttribute('d',d);
+
+    if(!drawn){
+      // Trigger draw
+      requestAnimationFrame(function(){
+        path.classList.add('is-drawn');
+        setTimeout(function(){path.classList.add('is-pulsing');},850);
+      });
+      drawn=true;
+    }
+  }
+
+  // Observe the graph to trigger
+  var cio=new IntersectionObserver(function(entries){
+    if(entries[0].isIntersecting){updatePath();cio.disconnect();}
   },{threshold:0.1});
-  sio.observe(document.querySelector('.fw-graph'));
+  cio.observe(document.querySelector('.fw-graph'));
+
+  // Recalculate on profile change
+  var mo=new MutationObserver(function(){if(drawn)updatePath();});
+  document.querySelectorAll('.fw-profile').forEach(function(p){
+    mo.observe(p,{attributes:true,attributeFilter:['class']});
+  });
+
+  // Recalculate on resize
+  window.addEventListener('resize',function(){if(drawn)updatePath();});
 })();
 
 // ── SCROLL-PINNED PROFILES ──
