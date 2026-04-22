@@ -163,6 +163,10 @@ nav a:hover{color:var(--ink)}
 .fw-mobile .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:12px}
 .fw-mobile blockquote{font-family:var(--serif);font-size:18px;font-weight:300;font-style:italic;line-height:1.45;color:var(--ink);margin-bottom:10px}
 .fw-mobile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
+.fwm-graph{margin-top:24px;width:100%}
+.fwm-graph svg{width:100%;height:auto;overflow:visible}
+.fwm-graph .g-node{font-size:20px}
+.fwm-graph .g-kw{font-size:15px}
 
 /* ── HOW IT WORKS ── */
 .how{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
@@ -644,6 +648,25 @@ var io=new IntersectionObserver(function(entries){
   });
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
+
+// ── MOBILE GRAPHS ──
+(function(){
+  if(window.innerWidth>=1024&&!window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  var src=document.querySelector('.fw-graph svg');
+  if(!src) return;
+  var cards=document.querySelectorAll('.fwm-card');
+  cards.forEach(function(card,idx){
+    var wrap=document.createElement('div');
+    wrap.className='fwm-graph';
+    wrap.setAttribute('aria-hidden','true');
+    var clone=src.cloneNode(true);
+    clone.querySelectorAll('[data-gi]').forEach(function(el){
+      el.setAttribute('data-s',parseInt(el.getAttribute('data-gi'))===idx?'1':'0');
+    });
+    wrap.appendChild(clone);
+    card.appendChild(wrap);
+  });
+})();
 
 // ── SCROLL-PINNED PROFILES ──
 (function(){
