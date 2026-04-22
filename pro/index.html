@@ -109,36 +109,52 @@ nav a:hover{color:var(--ink)}
 .login-card .otp-msg{font-size:14px;color:var(--ink);margin-bottom:16px;line-height:1.5}
 .login-card .login-error{font-size:13px;color:#c0392b;margin-top:12px}
 
-/* ── FOR WHO ── */
-.for-who{padding:120px 0}
-.for-who-layout{display:grid;grid-template-columns:38fr 62fr;gap:60px;margin-top:60px;align-items:start}
-.for-who-list{display:flex;flex-direction:column}
-.for-who-card{padding:48px 0;border-top:1px solid var(--line);opacity:0;transform:translateY(12px);transition:opacity .5s ease-out,transform .5s ease-out}
-.for-who-card:last-child{border-bottom:1px solid var(--line)}
-.for-who-card.in-view{opacity:1;transform:none}
-.for-who-card h4{font-family:var(--font);font-size:20px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-bottom:4px}
-.for-who-card .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:16px}
-.for-who-card blockquote{font-family:var(--serif);font-size:19px;font-weight:300;font-style:italic;line-height:1.45;letter-spacing:-.01em;color:var(--ink);margin-bottom:12px}
-.for-who-card cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
+/* ── FOR WHO (scroll-pinned) ── */
+.fw-outer{height:500vh;position:relative}
+.fw-pinned{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.fw-header{text-align:left;margin-bottom:40px}
+.fw-body{display:grid;grid-template-columns:38fr 62fr;gap:60px;align-items:center}
+
+/* Profiles — one at a time */
+.fw-slot{position:relative;min-height:220px}
+.fw-profile{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;opacity:0;transform:translateY(20px);transition:opacity .4s ease-out,transform .4s ease-out;pointer-events:none}
+.fw-profile.is-active{opacity:1;transform:none;pointer-events:auto}
+.fw-profile.is-exiting{opacity:0;transform:translateY(-20px)}
+.fw-profile h4{font-family:var(--font);font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-bottom:4px}
+.fw-profile .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:18px}
+.fw-profile blockquote{font-family:var(--serif);font-size:clamp(18px,2vw,22px);font-weight:300;font-style:italic;line-height:1.45;letter-spacing:-.01em;color:var(--ink);margin-bottom:14px}
+.fw-profile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
+
+/* Progress dots */
+.fw-dots{display:flex;gap:8px;margin-top:24px}
+.fw-dot{width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .3s}
+.fw-dot.is-active{background:var(--ink)}
 
 /* Graph */
-.fw-graph{position:sticky;top:calc(50vh - 280px);width:100%;height:560px}
+.fw-graph{width:100%;max-height:70vh}
 .fw-graph svg{width:100%;height:100%;overflow:visible}
-.fw-graph .g-line{stroke:#d1d0cb;stroke-width:.7;fill:none;transition:opacity .5s ease}
+.fw-graph .g-line{stroke:#A89F8E;stroke-width:.7;fill:none}
 .fw-graph .g-center{font-family:var(--serif);font-size:30px;font-weight:400;font-style:italic;fill:var(--ink)}
 .fw-graph .g-dot{fill:var(--coral)}
-.fw-graph .g-node{font-family:var(--font);font-size:15px;font-weight:600;transition:opacity .5s ease}
-.fw-graph .g-kw{font-family:var(--font);font-size:10.5px;font-weight:400;transition:opacity .5s ease}
+.fw-graph .g-grp{fill:var(--ink);transition:opacity .4s ease-out}
+.fw-graph .g-grp .g-kw{fill:#8C8A82}
+.fw-graph .g-node{font-family:var(--font);font-size:15px;font-weight:600}
+.fw-graph .g-kw{font-family:var(--font);font-size:10.5px;font-weight:400}
 .fw-graph .g-kw-u{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
-.fw-graph .g-group{fill:var(--ink)}
-.fw-graph .g-group .g-kw{fill:#8C8A82}
+.fw-graph .g-lns{transition:opacity .4s ease-out}
 /* States */
-.fw-graph .g-group[data-state="unseen"]{opacity:.12}
-.fw-graph .g-group[data-state="visited"]{opacity:.45}
-.fw-graph .g-group[data-state="active"]{opacity:1}
-.fw-graph .g-lines-set[data-state="unseen"]{opacity:.1}
-.fw-graph .g-lines-set[data-state="visited"]{opacity:.35}
-.fw-graph .g-lines-set[data-state="active"]{opacity:1}
+.fw-graph [data-s="0"]{opacity:.15}
+.fw-graph [data-s="1"]{opacity:1}
+.fw-graph [data-s="2"]{opacity:.4}
+
+/* Mobile fallback */
+.fw-mobile{display:none}
+.fw-mobile .fwm-card{padding:32px 0;border-top:1px solid var(--line)}
+.fw-mobile .fwm-card:last-child{border-bottom:1px solid var(--line)}
+.fw-mobile h4{font-family:var(--font);font-size:18px;font-weight:600;margin-bottom:4px}
+.fw-mobile .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:12px}
+.fw-mobile blockquote{font-family:var(--serif);font-size:18px;font-weight:300;font-style:italic;line-height:1.45;color:var(--ink);margin-bottom:10px}
+.fw-mobile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
 
 /* ── HOW IT WORKS ── */
 .how{padding:120px 0;background:var(--bg-deep);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
@@ -211,10 +227,10 @@ footer a:hover{color:var(--ink)}
   .hero-grid{grid-template-columns:1fr;min-height:auto}
   .hero-left{padding:3rem 0 2rem}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
-  .for-who-layout{grid-template-columns:1fr;gap:40px}
-  .fw-graph{position:static;height:auto;aspect-ratio:1.15;margin-top:40px}
-  .for-who-card{opacity:1;transform:none}
-  .fw-graph .g-group,.fw-graph .g-lines-set{opacity:.6!important}
+  .fw-outer{height:auto}
+  .fw-pinned{position:static;height:auto}
+  .fw-body{display:none}
+  .fw-mobile{display:block}
   .features-grid{grid-template-columns:1fr}
   .how-grid{grid-template-columns:1fr}
   .pricing-grid{grid-template-columns:1fr;max-width:480px;margin-left:auto;margin-right:auto}
@@ -365,132 +381,80 @@ footer a:hover{color:var(--ink)}
   </div>
 </section>
 
-<!-- FOR WHO -->
-<section class="for-who" id="para-quien">
-  <div class="container">
-    <div class="eyebrow reveal-scroll">Para qui&eacute;n es curino</div>
-    <h2 class="section-title reveal-scroll">Una herramienta para cada <em>profesional</em>.</h2>
-    <div class="for-who-layout">
-      <div class="for-who-list">
-
-        <div class="for-who-card" data-graph="0">
-          <h4>Personal / Estudiantes</h4>
-          <blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote>
-          <cite>&mdash; Particular, Barcelona</cite>
+<!-- FOR WHO — scroll-pinned -->
+<section id="para-quien">
+  <div class="fw-outer" id="fwOuter">
+    <div class="fw-pinned">
+      <div class="container">
+        <div class="fw-header">
+          <div class="eyebrow">Para qui&eacute;n es curino</div>
+          <h2 class="section-title">Una herramienta para cada <em>profesional</em>.</h2>
         </div>
-
-        <div class="for-who-card" data-graph="1">
-          <h4>Madera</h4>
-          <div class="fw-sub">Carpinteros, ebanistas, almacenes, distribuidores</div>
-          <blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote>
-          <cite>&mdash; Carpintero, Valencia</cite>
+        <div class="fw-body">
+          <!-- Left: one profile at a time -->
+          <div>
+            <div class="fw-slot">
+              <div class="fw-profile is-active" data-fi="0">
+                <h4>Personal / Estudiantes</h4>
+                <blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote>
+                <cite>&mdash; Particular, Barcelona</cite>
+              </div>
+              <div class="fw-profile" data-fi="1">
+                <h4>Madera</h4>
+                <div class="fw-sub">Carpinteros, ebanistas, almacenes, distribuidores</div>
+                <blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote>
+                <cite>&mdash; Carpintero, Valencia</cite>
+              </div>
+              <div class="fw-profile" data-fi="2">
+                <h4>Dise&ntilde;o</h4>
+                <div class="fw-sub">Interioristas, arquitectos</div>
+                <blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote>
+                <cite>&mdash; Interiorista, Madrid</cite>
+              </div>
+              <div class="fw-profile" data-fi="3">
+                <h4>Marcas</h4>
+                <div class="fw-sub">Tiendas de muebles, showrooms, cocinas</div>
+                <blockquote>&ldquo;Mis clientes dise&ntilde;an desde mi web. Yo recibo el proyecto listo para producir.&rdquo;</blockquote>
+                <cite>&mdash; Tienda de cocinas, Bilbao</cite>
+              </div>
+              <div class="fw-profile" data-fi="4">
+                <h4>Obra</h4>
+                <div class="fw-sub">Reformistas, constructoras, jefes de obra</div>
+                <blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote>
+                <cite>&mdash; Reformista, Sevilla</cite>
+              </div>
+            </div>
+            <div class="fw-dots"><span class="fw-dot is-active"></span><span class="fw-dot"></span><span class="fw-dot"></span><span class="fw-dot"></span><span class="fw-dot"></span></div>
+          </div>
+          <!-- Right: graph -->
+          <div class="fw-graph" aria-hidden="true">
+            <svg viewBox="0 0 700 560">
+              <!-- Lines -->
+              <g class="g-lns" data-gi="0" data-s="1"><line class="g-line" x1="350" y1="280" x2="100" y2="90"/><line class="g-line" x1="100" y1="90" x2="30" y2="30"/><line class="g-line" x1="100" y1="90" x2="170" y2="25"/><line class="g-line" x1="100" y1="90" x2="20" y2="140"/><line class="g-line" x1="100" y1="90" x2="180" y2="130"/><line class="g-line" x1="100" y1="90" x2="60" y2="175"/></g>
+              <g class="g-lns" data-gi="1" data-s="0"><line class="g-line" x1="350" y1="280" x2="590" y2="90"/><line class="g-line" x1="590" y1="90" x2="520" y2="25"/><line class="g-line" x1="590" y1="90" x2="660" y2="30"/><line class="g-line" x1="590" y1="90" x2="530" y2="145"/><line class="g-line" x1="590" y1="90" x2="670" y2="140"/></g>
+              <g class="g-lns" data-gi="2" data-s="0"><line class="g-line" x1="350" y1="280" x2="620" y2="300"/><line class="g-line" x1="620" y1="300" x2="680" y2="240"/><line class="g-line" x1="620" y1="300" x2="695" y2="285"/><line class="g-line" x1="620" y1="300" x2="695" y2="320"/><line class="g-line" x1="620" y1="300" x2="680" y2="365"/></g>
+              <g class="g-lns" data-gi="3" data-s="0"><line class="g-line" x1="350" y1="280" x2="560" y2="470"/><line class="g-line" x1="560" y1="470" x2="490" y2="420"/><line class="g-line" x1="560" y1="470" x2="640" y2="420"/><line class="g-line" x1="560" y1="470" x2="500" y2="530"/><line class="g-line" x1="560" y1="470" x2="640" y2="530"/></g>
+              <g class="g-lns" data-gi="4" data-s="0"><line class="g-line" x1="350" y1="280" x2="120" y2="460"/><line class="g-line" x1="120" y1="460" x2="40" y2="405"/><line class="g-line" x1="120" y1="460" x2="200" y2="410"/><line class="g-line" x1="120" y1="460" x2="40" y2="520"/><line class="g-line" x1="120" y1="460" x2="190" y2="525"/></g>
+              <!-- Center -->
+              <text class="g-center" x="350" y="286" text-anchor="middle">curino<tspan class="g-dot">.</tspan></text>
+              <!-- Nodes -->
+              <g class="g-grp" data-gi="0" data-s="1"><text class="g-node" x="65" y="90">Personal</text><text class="g-kw" x="15" y="28">Armario</text><text class="g-kw g-kw-u" x="150" y="22">Cocina</text><text class="g-kw" x="5" y="145">Vestidor</text><text class="g-kw g-kw-u" x="165" y="135">Medidas</text><text class="g-kw" x="45" y="180">Precio</text></g>
+              <g class="g-grp" data-gi="1" data-s="0"><text class="g-node" x="560" y="90">Madera</text><text class="g-kw g-kw-u" x="500" y="22">Presupuesto</text><text class="g-kw" x="648" y="28">Minutos</text><text class="g-kw" x="515" y="150">Cliente</text><text class="g-kw g-kw-u" x="655" y="145">Cierre</text></g>
+              <g class="g-grp" data-gi="2" data-s="0"><text class="g-node" x="610" y="300">Dise&#241;o</text><text class="g-kw" x="668" y="238">Planos</text><text class="g-kw g-kw-u" x="685" y="283">Materiales</text><text class="g-kw" x="685" y="323">Propuesta</text><text class="g-kw g-kw-u" x="660" y="370">Autonom&#237;a</text></g>
+              <g class="g-grp" data-gi="3" data-s="0"><text class="g-node" x="530" y="470">Marcas</text><text class="g-kw g-kw-u" x="475" y="418">Embed</text><text class="g-kw" x="625" y="418">Dominio</text><text class="g-kw" x="485" y="535">Lead</text><text class="g-kw g-kw-u" x="620" y="535">Producci&#243;n</text></g>
+              <g class="g-grp" data-gi="4" data-s="0"><text class="g-node" x="85" y="460">Obra</text><text class="g-kw" x="20" y="403">Medici&#243;n</text><text class="g-kw g-kw-u" x="180" y="408">Partidas</text><text class="g-kw g-kw-u" x="22" y="525">Control</text><text class="g-kw" x="170" y="530">Certificaci&#243;n</text></g>
+            </svg>
+          </div>
         </div>
-
-        <div class="for-who-card" data-graph="2">
-          <h4>Dise&ntilde;o</h4>
-          <div class="fw-sub">Interioristas, arquitectos</div>
-          <blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote>
-          <cite>&mdash; Interiorista, Madrid</cite>
+        <!-- Mobile fallback -->
+        <div class="fw-mobile">
+          <div class="fwm-card"><h4>Personal / Estudiantes</h4><blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote><cite>&mdash; Particular, Barcelona</cite></div>
+          <div class="fwm-card"><h4>Madera</h4><div class="fw-sub">Carpinteros, ebanistas, almacenes, distribuidores</div><blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote><cite>&mdash; Carpintero, Valencia</cite></div>
+          <div class="fwm-card"><h4>Dise&ntilde;o</h4><div class="fw-sub">Interioristas, arquitectos</div><blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote><cite>&mdash; Interiorista, Madrid</cite></div>
+          <div class="fwm-card"><h4>Marcas</h4><div class="fw-sub">Tiendas de muebles, showrooms, cocinas</div><blockquote>&ldquo;Mis clientes dise&ntilde;an desde mi web. Yo recibo el proyecto listo para producir.&rdquo;</blockquote><cite>&mdash; Tienda de cocinas, Bilbao</cite></div>
+          <div class="fwm-card"><h4>Obra</h4><div class="fw-sub">Reformistas, constructoras, jefes de obra</div><blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote><cite>&mdash; Reformista, Sevilla</cite></div>
         </div>
-
-        <div class="for-who-card" data-graph="3">
-          <h4>Marcas</h4>
-          <div class="fw-sub">Tiendas de muebles, showrooms, cocinas</div>
-          <blockquote>&ldquo;Mis clientes dise&ntilde;an desde mi web. Yo recibo el proyecto listo para producir.&rdquo;</blockquote>
-          <cite>&mdash; Tienda de cocinas, Bilbao</cite>
-        </div>
-
-        <div class="for-who-card" data-graph="4">
-          <h4>Obra</h4>
-          <div class="fw-sub">Reformistas, constructoras, jefes de obra</div>
-          <blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote>
-          <cite>&mdash; Reformista, Sevilla</cite>
-        </div>
-
       </div>
-
-      <!-- Sticky graph -->
-      <div class="fw-graph">
-        <svg viewBox="0 0 700 560">
-          <!-- Lines per group -->
-          <g class="g-lines-set" data-gi="0" data-state="unseen">
-            <line class="g-line" x1="350" y1="280" x2="100" y2="90"/>
-            <line class="g-line" x1="100" y1="90" x2="30" y2="30"/><line class="g-line" x1="100" y1="90" x2="170" y2="25"/>
-            <line class="g-line" x1="100" y1="90" x2="20" y2="140"/><line class="g-line" x1="100" y1="90" x2="180" y2="130"/>
-            <line class="g-line" x1="100" y1="90" x2="60" y2="175"/>
-          </g>
-          <g class="g-lines-set" data-gi="1" data-state="unseen">
-            <line class="g-line" x1="350" y1="280" x2="590" y2="90"/>
-            <line class="g-line" x1="590" y1="90" x2="520" y2="25"/><line class="g-line" x1="590" y1="90" x2="660" y2="30"/>
-            <line class="g-line" x1="590" y1="90" x2="530" y2="145"/><line class="g-line" x1="590" y1="90" x2="670" y2="140"/>
-          </g>
-          <g class="g-lines-set" data-gi="2" data-state="unseen">
-            <line class="g-line" x1="350" y1="280" x2="620" y2="300"/>
-            <line class="g-line" x1="620" y1="300" x2="680" y2="240"/><line class="g-line" x1="620" y1="300" x2="695" y2="285"/>
-            <line class="g-line" x1="620" y1="300" x2="695" y2="320"/><line class="g-line" x1="620" y1="300" x2="680" y2="365"/>
-          </g>
-          <g class="g-lines-set" data-gi="3" data-state="unseen">
-            <line class="g-line" x1="350" y1="280" x2="560" y2="470"/>
-            <line class="g-line" x1="560" y1="470" x2="490" y2="420"/><line class="g-line" x1="560" y1="470" x2="640" y2="420"/>
-            <line class="g-line" x1="560" y1="470" x2="500" y2="530"/><line class="g-line" x1="560" y1="470" x2="640" y2="530"/>
-          </g>
-          <g class="g-lines-set" data-gi="4" data-state="unseen">
-            <line class="g-line" x1="350" y1="280" x2="120" y2="460"/>
-            <line class="g-line" x1="120" y1="460" x2="40" y2="405"/><line class="g-line" x1="120" y1="460" x2="200" y2="410"/>
-            <line class="g-line" x1="120" y1="460" x2="40" y2="520"/><line class="g-line" x1="120" y1="460" x2="190" y2="525"/>
-          </g>
-
-          <!-- Center -->
-          <text class="g-center" x="350" y="286" text-anchor="middle">curino<tspan class="g-dot">.</tspan></text>
-
-          <!-- Node 0: Personal -->
-          <g class="g-group" data-gi="0" data-state="unseen">
-            <text class="g-node" x="65" y="90">Personal</text>
-            <text class="g-kw" x="15" y="28">Armario</text>
-            <text class="g-kw g-kw-u" x="150" y="22">Cocina</text>
-            <text class="g-kw" x="5" y="145">Vestidor</text>
-            <text class="g-kw g-kw-u" x="165" y="135">Medidas</text>
-            <text class="g-kw" x="45" y="180">Precio</text>
-          </g>
-
-          <!-- Node 1: Madera -->
-          <g class="g-group" data-gi="1" data-state="unseen">
-            <text class="g-node" x="560" y="90">Madera</text>
-            <text class="g-kw g-kw-u" x="500" y="22">Presupuesto</text>
-            <text class="g-kw" x="648" y="28">Minutos</text>
-            <text class="g-kw" x="515" y="150">Cliente</text>
-            <text class="g-kw g-kw-u" x="655" y="145">Cierre</text>
-          </g>
-
-          <!-- Node 2: Dise&ntilde;o -->
-          <g class="g-group" data-gi="2" data-state="unseen">
-            <text class="g-node" x="610" y="300">Dise&#241;o</text>
-            <text class="g-kw" x="668" y="238">Planos</text>
-            <text class="g-kw g-kw-u" x="685" y="283">Materiales</text>
-            <text class="g-kw" x="685" y="323">Propuesta</text>
-            <text class="g-kw g-kw-u" x="660" y="370">Autonom&#237;a</text>
-          </g>
-
-          <!-- Node 3: Marcas -->
-          <g class="g-group" data-gi="3" data-state="unseen">
-            <text class="g-node" x="530" y="470">Marcas</text>
-            <text class="g-kw g-kw-u" x="475" y="418">Embed</text>
-            <text class="g-kw" x="625" y="418">Dominio</text>
-            <text class="g-kw" x="485" y="535">Lead</text>
-            <text class="g-kw g-kw-u" x="620" y="535">Producci&#243;n</text>
-          </g>
-
-          <!-- Node 4: Obra -->
-          <g class="g-group" data-gi="4" data-state="unseen">
-            <text class="g-node" x="85" y="460">Obra</text>
-            <text class="g-kw" x="20" y="403">Medici&#243;n</text>
-            <text class="g-kw g-kw-u" x="180" y="408">Partidas</text>
-            <text class="g-kw g-kw-u" x="22" y="525">Control</text>
-            <text class="g-kw" x="170" y="530">Certificaci&#243;n</text>
-          </g>
-        </svg>
-      </div>
-
     </div>
   </div>
 </section>
@@ -596,30 +560,42 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
-// ── GRAPH SCROLL REVEAL ──
+// ── SCROLL-PINNED PROFILES ──
 (function(){
-  var cards=document.querySelectorAll('.for-who-card[data-graph]');
-  if(!cards.length||window.innerWidth<1024) return;
-  var visited=new Set();
-  var active=null;
+  var outer=document.getElementById('fwOuter');
+  if(!outer||window.innerWidth<1024||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
 
-  function setState(gi,state){
-    document.querySelectorAll('[data-gi="'+gi+'"]').forEach(function(el){el.setAttribute('data-state',state);});
+  var profiles=document.querySelectorAll('.fw-profile');
+  var dots=document.querySelectorAll('.fw-dot');
+  var prev=-1;
+
+  function setIndex(idx){
+    if(idx===prev) return;
+    profiles.forEach(function(p,i){
+      p.classList.remove('is-active','is-exiting');
+      if(i===idx) p.classList.add('is-active');
+      else if(i===prev) p.classList.add('is-exiting');
+    });
+    dots.forEach(function(d,i){d.classList.toggle('is-active',i===idx);});
+    // Graph: active=1, visited=2, unseen=0
+    for(var i=0;i<5;i++){
+      var s=i===idx?'1':i<idx?'2':'0';
+      document.querySelectorAll('[data-gi="'+i+'"]').forEach(function(el){el.setAttribute('data-s',s);});
+    }
+    prev=idx;
   }
 
-  var gio=new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if(!e.isIntersecting) return;
-      var idx=parseInt(e.target.getAttribute('data-graph'));
-      e.target.classList.add('in-view');
-      if(active!==null&&active!==idx) setState(active,'visited');
-      active=idx;
-      visited.add(idx);
-      setState(idx,'active');
-    });
-  },{threshold:0,rootMargin:'-50% 0px -50% 0px'});
+  function onScroll(){
+    var rect=outer.getBoundingClientRect();
+    var total=outer.offsetHeight-window.innerHeight;
+    var scrolled=-rect.top;
+    var progress=Math.max(0,Math.min(1,scrolled/total));
+    var idx=Math.min(4,Math.floor(progress*5));
+    setIndex(idx);
+  }
 
-  cards.forEach(function(c){gio.observe(c);});
+  window.addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
 })();
 
 // ── AUTH ──
