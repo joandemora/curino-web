@@ -122,8 +122,6 @@ nav a:hover{color:var(--ink)}
 .fw-profile{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;opacity:0;transform:translateY(20px);transition:opacity .4s ease-out,transform .4s ease-out;pointer-events:none}
 .fw-profile.is-active{opacity:1;transform:none;pointer-events:auto}
 .fw-profile.is-exiting{opacity:0;transform:translateY(-20px)}
-.fw-profile h4{font-family:var(--font);font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.2;margin-bottom:4px}
-.fw-profile .fw-sub{font-size:13px;color:var(--ink-mute);margin-bottom:18px}
 .fw-profile blockquote{font-family:var(--serif);font-size:clamp(18px,2vw,22px);font-weight:300;font-style:italic;line-height:1.45;letter-spacing:-.01em;color:var(--ink);margin-bottom:14px}
 .fw-profile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
 
@@ -274,7 +272,6 @@ footer a:hover{color:var(--ink)}
   .fw-slot{min-height:180px}
   .fw-header{margin-bottom:20px}
   .fw-header .section-title{font-size:clamp(28px,6vw,36px)}
-  .fw-profile h4{font-size:18px}
   .fw-graph .g-center{font-size:92px;stroke-width:18px;font-variation-settings:'opsz' 28}
   .fw-graph .g-node{font-size:38px;stroke-width:10px}
   .fw-graph .g-kw{font-size:32px}
@@ -448,26 +445,18 @@ footer a:hover{color:var(--ink)}
             </div>
             <div class="fw-slot">
               <div class="fw-profile is-active" data-fi="0">
-                <h4>Personal</h4>
-                <div class="fw-sub">Particulares &middot; Estudiantes &middot; DIY</div>
                 <blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote>
                 <cite>&mdash; Particular, Barcelona</cite>
               </div>
               <div class="fw-profile" data-fi="1">
-                <h4>Dise&ntilde;o</h4>
-                <div class="fw-sub">Interioristas &middot; Arquitectos &middot; Decoradores &middot; Estudios</div>
                 <blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote>
                 <cite>&mdash; Interiorista, Madrid</cite>
               </div>
               <div class="fw-profile" data-fi="2">
-                <h4>Carpinter&iacute;a</h4>
-                <div class="fw-sub">Carpinteros &middot; Ebanistas &middot; Almacenes &middot; Distribuidores</div>
                 <blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote>
                 <cite>&mdash; Carpintero, Valencia</cite>
               </div>
               <div class="fw-profile" data-fi="3">
-                <h4>Construcci&oacute;n</h4>
-                <div class="fw-sub">Reformistas &middot; Constructoras &middot; Jefes de obra &middot; Promotoras</div>
                 <blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote>
                 <cite>&mdash; Reformista, Sevilla</cite>
               </div>
@@ -551,10 +540,10 @@ footer a:hover{color:var(--ink)}
         </div>
         <!-- Mobile fallback -->
         <div class="fw-rm">
-          <div class="fwm-card"><h4>Personal</h4><div class="fw-sub">Particulares &middot; Estudiantes &middot; DIY</div><blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote><cite>&mdash; Particular, Barcelona</cite></div>
-          <div class="fwm-card"><h4>Dise&ntilde;o</h4><div class="fw-sub">Interioristas &middot; Arquitectos &middot; Decoradores &middot; Estudios</div><blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote><cite>&mdash; Interiorista, Madrid</cite></div>
-          <div class="fwm-card"><h4>Carpinter&iacute;a</h4><div class="fw-sub">Carpinteros &middot; Ebanistas &middot; Almacenes &middot; Distribuidores</div><blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote><cite>&mdash; Carpintero, Valencia</cite></div>
-          <div class="fwm-card"><h4>Construcci&oacute;n</h4><div class="fw-sub">Reformistas &middot; Constructoras &middot; Jefes de obra &middot; Promotoras</div><blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote><cite>&mdash; Reformista, Sevilla</cite></div>
+          <div class="fwm-card"><blockquote>&ldquo;Quer&iacute;a un armario a medida sin pelearme con cat&aacute;logos. Lo dise&ntilde;&eacute; yo, con el precio delante.&rdquo;</blockquote><cite>&mdash; Particular, Barcelona</cite></div>
+          <div class="fwm-card"><blockquote>&ldquo;Presento diez propuestas en el tiempo que antes me llevaba una. Sin depender del fabricante.&rdquo;</blockquote><cite>&mdash; Interiorista, Madrid</cite></div>
+          <div class="fwm-card"><blockquote>&ldquo;Antes tardaba una tarde en presupuestar. Ahora el cliente ve el mueble y el precio antes de irse.&rdquo;</blockquote><cite>&mdash; Carpintero, Valencia</cite></div>
+          <div class="fwm-card"><blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote><cite>&mdash; Reformista, Sevilla</cite></div>
         </div>
       </div>
     </div>
