@@ -672,20 +672,23 @@ var io=new IntersectionObserver(function(entries){
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
 // ── TRAVELING SEGMENT CONNECTOR ──
-(function(){
+var _connStarted=false;
+function buildConnector(){
   var path=document.getElementById('fwConnPath');
   var pinned=document.querySelector('.fw-pinned');
   var maestroText=document.querySelector('.g-center');
   if(!path||!pinned||!maestroText||window.innerWidth<900) return;
 
-  var started=false;
+  var active=document.querySelector('.fw-profile.is-active');
+  if(!active) return;
 
-  function buildPath(){
-    var active=document.querySelector('.fw-profile.is-active');
-    if(!active) return;
+  // Wait a frame so position:fixed is applied
+  requestAnimationFrame(function(){
     var pr=pinned.getBoundingClientRect();
     var ar=active.getBoundingClientRect();
     var mr=maestroText.getBoundingClientRect();
+
+    if(mr.width===0||ar.width===0) return; // not rendered yet
 
     var sx=ar.right-pr.left;
     var sy=ar.top+ar.height/2-pr.top;
@@ -709,32 +712,17 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
 
     var total=path.getTotalLength();
     var seg=total*0.18;
-    var gap=total;
-    path.style.strokeDasharray=seg+' '+gap;
+    path.style.strokeDasharray=seg+' '+total;
 
-    if(!started){
-      var dur=3;
+    if(!_connStarted){
       var kf='@keyframes fwTravel{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-'+(total+seg)+'}}';
-      var style=document.createElement('style');
-      style.textContent=kf;
-      document.head.appendChild(style);
-      path.style.animation='fwTravel '+dur+'s linear infinite';
-      started=true;
+      var s=document.createElement('style');s.textContent=kf;document.head.appendChild(s);
+      path.style.animation='fwTravel 3s linear infinite';
+      _connStarted=true;
     }
-  }
-
-  var cio=new IntersectionObserver(function(entries){
-    if(entries[0].isIntersecting){buildPath();cio.disconnect();}
-  },{threshold:0.1});
-  cio.observe(document.querySelector('.fw-graph'));
-
-  var mo=new MutationObserver(function(){if(started)buildPath();});
-  document.querySelectorAll('.fw-profile').forEach(function(p){
-    mo.observe(p,{attributes:true,attributeFilter:['class']});
   });
-
-  window.addEventListener('resize',function(){if(started)buildPath();});
-})();
+}
+window.addEventListener('resize',function(){if(_connStarted)buildConnector();});
 
 // ── SCROLL-PINNED PROFILES ──
 (function(){
@@ -772,6 +760,7 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
       document.querySelectorAll('[data-gi="'+i+'"]').forEach(function(el){el.setAttribute('data-s',s);});
     }
     prev=idx;
+    if(_connStarted)buildConnector();
   }
 
   function onScroll(){
@@ -791,7 +780,7 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
 
     if(mode!==prevMode){
       pinned.classList.remove('is-fixed','is-bottom');
-      if(mode==='during') pinned.classList.add('is-fixed');
+      if(mode==='during'){pinned.classList.add('is-fixed');buildConnector();}
       else if(mode==='after') pinned.classList.add('is-bottom');
       prevMode=mode;
     }
