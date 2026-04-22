@@ -145,10 +145,7 @@ nav a:hover{color:var(--ink)}
 /* Connector line overlay */
 .fw-connector{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5}
 .fw-connector svg{width:100%;height:100%;overflow:visible}
-.fw-connector path{fill:none;stroke:#0E7F5C;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2000;stroke-dashoffset:2000}
-.fw-connector path.is-drawn{stroke-dashoffset:0;transition:stroke-dashoffset .8s cubic-bezier(.645,.045,.355,1)}
-@keyframes connPulse{0%,100%{opacity:.6}50%{opacity:1}}
-.fw-connector path.is-pulsing{animation:connPulse 2s ease-in-out infinite}
+.fw-connector path{fill:none;stroke:#0E7F5C;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
 .fw-graph .g-grp{transition:opacity .4s ease-out,fill .4s ease-out}
 .fw-graph .g-node{font-family:var(--serif);font-size:55px;font-weight:500;letter-spacing:-.02em;stroke:var(--bg);stroke-width:12px;paint-order:stroke fill}
 .fw-graph .g-kw{font-family:var(--font);font-size:32px;font-weight:400;transition:font-size .4s ease-out,fill .4s ease-out}
@@ -189,7 +186,7 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(3){animation-delay:-3.5s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(4){animation-delay:-0.3s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(5){animation-delay:-5.0s}
-@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}.fw-connector path{stroke-dashoffset:0!important;stroke-dasharray:none!important;animation:none!important}}
+@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}.fw-connector path{animation:none!important;stroke-dasharray:none!important;stroke-dashoffset:0!important;opacity:.5}}
 
 /* prefers-reduced-motion fallback */
 .fw-rm{display:none}
@@ -674,36 +671,30 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
-// ── CONNECTOR LINE ──
+// ── TRAVELING SEGMENT CONNECTOR ──
 (function(){
   var path=document.getElementById('fwConnPath');
   var pinned=document.querySelector('.fw-pinned');
   var maestroText=document.querySelector('.g-center');
   if(!path||!pinned||!maestroText||window.innerWidth<900) return;
 
-  var drawn=false;
+  var started=false;
 
-  function updatePath(){
+  function buildPath(){
     var active=document.querySelector('.fw-profile.is-active');
     if(!active) return;
     var pr=pinned.getBoundingClientRect();
     var ar=active.getBoundingClientRect();
     var mr=maestroText.getBoundingClientRect();
 
-    // Start: right edge of active profile, vertically centered
     var sx=ar.right-pr.left;
     var sy=ar.top+ar.height/2-pr.top;
-
-    // End: center of Maestro text
     var mx=mr.left+mr.width/2-pr.left;
     var my=mr.top+mr.height/2-pr.top;
-
-    // Oval dimensions around Maestro
     var ow=mr.width*0.7;
     var oh=mr.height*0.9;
-
-    // Path: horizontal line → arrive at left of oval → oval around Maestro
     var oleft=mx-ow;
+
     var d='M '+sx+','+sy
       +' L '+oleft+','+sy
       +' Q '+(oleft-15)+','+sy+' '+(oleft-15)+','+(my)
@@ -716,30 +707,33 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
 
     path.setAttribute('d',d);
 
-    if(!drawn){
-      // Trigger draw
-      requestAnimationFrame(function(){
-        path.classList.add('is-drawn');
-        setTimeout(function(){path.classList.add('is-pulsing');},850);
-      });
-      drawn=true;
+    var total=path.getTotalLength();
+    var seg=total*0.18;
+    var gap=total;
+    path.style.strokeDasharray=seg+' '+gap;
+
+    if(!started){
+      var dur=3;
+      var kf='@keyframes fwTravel{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-'+(total+seg)+'}}';
+      var style=document.createElement('style');
+      style.textContent=kf;
+      document.head.appendChild(style);
+      path.style.animation='fwTravel '+dur+'s linear infinite';
+      started=true;
     }
   }
 
-  // Observe the graph to trigger
   var cio=new IntersectionObserver(function(entries){
-    if(entries[0].isIntersecting){updatePath();cio.disconnect();}
+    if(entries[0].isIntersecting){buildPath();cio.disconnect();}
   },{threshold:0.1});
   cio.observe(document.querySelector('.fw-graph'));
 
-  // Recalculate on profile change
-  var mo=new MutationObserver(function(){if(drawn)updatePath();});
+  var mo=new MutationObserver(function(){if(started)buildPath();});
   document.querySelectorAll('.fw-profile').forEach(function(p){
     mo.observe(p,{attributes:true,attributeFilter:['class']});
   });
 
-  // Recalculate on resize
-  window.addEventListener('resize',function(){if(drawn)updatePath();});
+  window.addEventListener('resize',function(){if(started)buildPath();});
 })();
 
 // ── SCROLL-PINNED PROFILES ──
