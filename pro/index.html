@@ -111,12 +111,14 @@ nav a:hover{color:var(--ink)}
 
 /* ── FOR WHO (scroll-pinned) ── */
 .fw-outer{height:500vh;position:relative}
-.fw-pinned{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.fw-pinned{height:100vh;display:flex;flex-direction:column;justify-content:center}
+.fw-pinned.is-fixed{position:fixed;top:0;left:0;right:0;z-index:10}
+.fw-pinned.is-bottom{position:absolute;bottom:0;left:0;right:0}
 .fw-header{text-align:left;margin-bottom:40px}
-.fw-body{display:grid;grid-template-columns:38fr 62fr;gap:60px;align-items:center}
+.fw-body{display:grid;grid-template-columns:45fr 55fr;gap:48px;align-items:center;max-width:1440px;margin:0 auto;padding:0 8px}
 
 /* Profiles — one at a time */
-.fw-slot{position:relative;min-height:220px}
+.fw-slot{position:relative;min-height:240px}
 .fw-profile{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;opacity:0;transform:translateY(20px);transition:opacity .4s ease-out,transform .4s ease-out;pointer-events:none}
 .fw-profile.is-active{opacity:1;transform:none;pointer-events:auto}
 .fw-profile.is-exiting{opacity:0;transform:translateY(-20px)}
@@ -131,21 +133,26 @@ nav a:hover{color:var(--ink)}
 .fw-dot.is-active{background:var(--ink)}
 
 /* Graph */
-.fw-graph{width:100%;max-height:70vh}
-.fw-graph svg{width:100%;height:100%;overflow:visible}
-.fw-graph .g-line{stroke:#A89F8E;stroke-width:.7;fill:none}
-.fw-graph .g-center{font-family:var(--serif);font-size:30px;font-weight:400;font-style:italic;fill:var(--ink)}
+.fw-graph{width:100%}
+.fw-graph svg{width:100%;height:auto;overflow:visible}
+.fw-graph .g-line{stroke:#A89F8E;stroke-width:1;fill:none;transition:stroke .4s ease-out,opacity .4s ease-out}
+.fw-graph .g-center{font-family:var(--serif);font-size:36px;font-weight:400;font-style:italic;fill:var(--ink)}
 .fw-graph .g-dot{fill:var(--coral)}
-.fw-graph .g-grp{fill:var(--ink);transition:opacity .4s ease-out}
-.fw-graph .g-grp .g-kw{fill:#8C8A82}
-.fw-graph .g-node{font-family:var(--font);font-size:15px;font-weight:600}
-.fw-graph .g-kw{font-family:var(--font);font-size:10.5px;font-weight:400}
-.fw-graph .g-kw-u{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
-.fw-graph .g-lns{transition:opacity .4s ease-out}
-/* States */
-.fw-graph [data-s="0"]{opacity:.15}
-.fw-graph [data-s="1"]{opacity:1}
-.fw-graph [data-s="2"]{opacity:.4}
+.fw-graph .g-grp{transition:opacity .4s ease-out,fill .4s ease-out}
+.fw-graph .g-node{font-family:var(--font);font-size:18px;font-weight:600}
+.fw-graph .g-kw{font-family:var(--font);font-size:13px;font-weight:400}
+.fw-graph .g-kw-u{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.fw-graph .g-lns{transition:opacity .4s ease-out,stroke .4s ease-out}
+/* Active state */
+.fw-graph .g-grp[data-s="1"]{fill:#1A1A1A;opacity:1}
+.fw-graph .g-grp[data-s="1"] .g-kw{fill:#1A1A1A}
+.fw-graph .g-lns[data-s="1"]{opacity:1}
+.fw-graph .g-lns[data-s="1"] .g-line{stroke:#1A1A1A}
+/* Inactive state */
+.fw-graph .g-grp[data-s="0"]{fill:#A89F8E;opacity:.4}
+.fw-graph .g-grp[data-s="0"] .g-kw{fill:#A89F8E}
+.fw-graph .g-lns[data-s="0"]{opacity:.4}
+.fw-graph .g-lns[data-s="0"] .g-line{stroke:#A89F8E}
 
 /* Mobile fallback */
 .fw-mobile{display:none}
@@ -227,8 +234,8 @@ footer a:hover{color:var(--ink)}
   .hero-grid{grid-template-columns:1fr;min-height:auto}
   .hero-left{padding:3rem 0 2rem}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
-  .fw-outer{height:auto}
-  .fw-pinned{position:static;height:auto}
+  .fw-outer{height:auto!important}
+  .fw-pinned{position:static!important;height:auto!important}
   .fw-body{display:none}
   .fw-mobile{display:block}
   .features-grid{grid-template-columns:1fr}
@@ -428,21 +435,98 @@ footer a:hover{color:var(--ink)}
           </div>
           <!-- Right: graph -->
           <div class="fw-graph" aria-hidden="true">
-            <svg viewBox="0 0 700 560">
-              <!-- Lines -->
-              <g class="g-lns" data-gi="0" data-s="1"><line class="g-line" x1="350" y1="280" x2="100" y2="90"/><line class="g-line" x1="100" y1="90" x2="30" y2="30"/><line class="g-line" x1="100" y1="90" x2="170" y2="25"/><line class="g-line" x1="100" y1="90" x2="20" y2="140"/><line class="g-line" x1="100" y1="90" x2="180" y2="130"/><line class="g-line" x1="100" y1="90" x2="60" y2="175"/></g>
-              <g class="g-lns" data-gi="1" data-s="0"><line class="g-line" x1="350" y1="280" x2="590" y2="90"/><line class="g-line" x1="590" y1="90" x2="520" y2="25"/><line class="g-line" x1="590" y1="90" x2="660" y2="30"/><line class="g-line" x1="590" y1="90" x2="530" y2="145"/><line class="g-line" x1="590" y1="90" x2="670" y2="140"/></g>
-              <g class="g-lns" data-gi="2" data-s="0"><line class="g-line" x1="350" y1="280" x2="620" y2="300"/><line class="g-line" x1="620" y1="300" x2="680" y2="240"/><line class="g-line" x1="620" y1="300" x2="695" y2="285"/><line class="g-line" x1="620" y1="300" x2="695" y2="320"/><line class="g-line" x1="620" y1="300" x2="680" y2="365"/></g>
-              <g class="g-lns" data-gi="3" data-s="0"><line class="g-line" x1="350" y1="280" x2="560" y2="470"/><line class="g-line" x1="560" y1="470" x2="490" y2="420"/><line class="g-line" x1="560" y1="470" x2="640" y2="420"/><line class="g-line" x1="560" y1="470" x2="500" y2="530"/><line class="g-line" x1="560" y1="470" x2="640" y2="530"/></g>
-              <g class="g-lns" data-gi="4" data-s="0"><line class="g-line" x1="350" y1="280" x2="120" y2="460"/><line class="g-line" x1="120" y1="460" x2="40" y2="405"/><line class="g-line" x1="120" y1="460" x2="200" y2="410"/><line class="g-line" x1="120" y1="460" x2="40" y2="520"/><line class="g-line" x1="120" y1="460" x2="190" y2="525"/></g>
-              <!-- Center -->
-              <text class="g-center" x="350" y="286" text-anchor="middle">curino<tspan class="g-dot">.</tspan></text>
-              <!-- Nodes -->
-              <g class="g-grp" data-gi="0" data-s="1"><text class="g-node" x="65" y="90">Personal</text><text class="g-kw" x="15" y="28">Armario</text><text class="g-kw g-kw-u" x="150" y="22">Cocina</text><text class="g-kw" x="5" y="145">Vestidor</text><text class="g-kw g-kw-u" x="165" y="135">Medidas</text><text class="g-kw" x="45" y="180">Precio</text></g>
-              <g class="g-grp" data-gi="1" data-s="0"><text class="g-node" x="560" y="90">Madera</text><text class="g-kw g-kw-u" x="500" y="22">Presupuesto</text><text class="g-kw" x="648" y="28">Minutos</text><text class="g-kw" x="515" y="150">Cliente</text><text class="g-kw g-kw-u" x="655" y="145">Cierre</text></g>
-              <g class="g-grp" data-gi="2" data-s="0"><text class="g-node" x="610" y="300">Dise&#241;o</text><text class="g-kw" x="668" y="238">Planos</text><text class="g-kw g-kw-u" x="685" y="283">Materiales</text><text class="g-kw" x="685" y="323">Propuesta</text><text class="g-kw g-kw-u" x="660" y="370">Autonom&#237;a</text></g>
-              <g class="g-grp" data-gi="3" data-s="0"><text class="g-node" x="530" y="470">Marcas</text><text class="g-kw g-kw-u" x="475" y="418">Embed</text><text class="g-kw" x="625" y="418">Dominio</text><text class="g-kw" x="485" y="535">Lead</text><text class="g-kw g-kw-u" x="620" y="535">Producci&#243;n</text></g>
-              <g class="g-grp" data-gi="4" data-s="0"><text class="g-node" x="85" y="460">Obra</text><text class="g-kw" x="20" y="403">Medici&#243;n</text><text class="g-kw g-kw-u" x="180" y="408">Partidas</text><text class="g-kw g-kw-u" x="22" y="525">Control</text><text class="g-kw" x="170" y="530">Certificaci&#243;n</text></g>
+            <svg viewBox="0 0 1000 700">
+              <!-- Lines: center (500,350) to each node -->
+              <!-- Personal (250,150) -->
+              <g class="g-lns" data-gi="0" data-s="1">
+                <line class="g-line" x1="500" y1="350" x2="250" y2="150"/>
+                <line class="g-line" x1="250" y1="150" x2="120" y2="60"/>
+                <line class="g-line" x1="250" y1="150" x2="310" y2="50"/>
+                <line class="g-line" x1="250" y1="150" x2="100" y2="150"/>
+                <line class="g-line" x1="250" y1="150" x2="150" y2="220"/>
+                <line class="g-line" x1="250" y1="150" x2="300" y2="230"/>
+              </g>
+              <!-- Madera (780,150) -->
+              <g class="g-lns" data-gi="1" data-s="0">
+                <line class="g-line" x1="500" y1="350" x2="780" y2="150"/>
+                <line class="g-line" x1="780" y1="150" x2="700" y2="55"/>
+                <line class="g-line" x1="780" y1="150" x2="880" y2="60"/>
+                <line class="g-line" x1="780" y1="150" x2="910" y2="150"/>
+                <line class="g-line" x1="780" y1="150" x2="850" y2="230"/>
+              </g>
+              <!-- Dise&ntilde;o (850,380) -->
+              <g class="g-lns" data-gi="2" data-s="0">
+                <line class="g-line" x1="500" y1="350" x2="850" y2="380"/>
+                <line class="g-line" x1="850" y1="380" x2="940" y2="300"/>
+                <line class="g-line" x1="850" y1="380" x2="960" y2="370"/>
+                <line class="g-line" x1="850" y1="380" x2="960" y2="420"/>
+                <line class="g-line" x1="850" y1="380" x2="920" y2="470"/>
+              </g>
+              <!-- Marcas (720,580) -->
+              <g class="g-lns" data-gi="3" data-s="0">
+                <line class="g-line" x1="500" y1="350" x2="720" y2="580"/>
+                <line class="g-line" x1="720" y1="580" x2="630" y2="630"/>
+                <line class="g-line" x1="720" y1="580" x2="820" y2="620"/>
+                <line class="g-line" x1="720" y1="580" x2="680" y2="670"/>
+                <line class="g-line" x1="720" y1="580" x2="810" y2="680"/>
+              </g>
+              <!-- Obra (230,560) -->
+              <g class="g-lns" data-gi="4" data-s="0">
+                <line class="g-line" x1="500" y1="350" x2="230" y2="560"/>
+                <line class="g-line" x1="230" y1="560" x2="100" y2="520"/>
+                <line class="g-line" x1="230" y1="560" x2="320" y2="510"/>
+                <line class="g-line" x1="230" y1="560" x2="110" y2="630"/>
+                <line class="g-line" x1="230" y1="560" x2="290" y2="660"/>
+              </g>
+
+              <!-- Center wordmark -->
+              <text class="g-center" x="500" y="358" text-anchor="middle">curino<tspan class="g-dot">.</tspan></text>
+
+              <!-- Node 0: Personal (250,150) — branches fan up-left -->
+              <g class="g-grp" data-gi="0" data-s="1">
+                <text class="g-node" x="215" y="148">Personal</text>
+                <text class="g-kw" x="90" y="52">Armario</text>
+                <text class="g-kw g-kw-u" x="300" y="42">Cocina</text>
+                <text class="g-kw" x="55" y="152">Vestidor</text>
+                <text class="g-kw g-kw-u" x="120" y="225">Medidas</text>
+                <text class="g-kw" x="290" y="238">Precio</text>
+              </g>
+
+              <!-- Node 1: Madera (780,150) — branches fan up-right -->
+              <g class="g-grp" data-gi="1" data-s="0">
+                <text class="g-node" x="748" y="148">Madera</text>
+                <text class="g-kw g-kw-u" x="660" y="48">Presupuesto</text>
+                <text class="g-kw" x="870" y="52">Minutos</text>
+                <text class="g-kw" x="910" y="152">Cliente</text>
+                <text class="g-kw g-kw-u" x="840" y="238">Cierre</text>
+              </g>
+
+              <!-- Node 2: Dise&#241;o (850,380) — branches fan right -->
+              <g class="g-grp" data-gi="2" data-s="0">
+                <text class="g-node" x="830" y="378">Dise&#241;o</text>
+                <text class="g-kw" x="935" y="295">Planos</text>
+                <text class="g-kw g-kw-u" x="958" y="365">Materiales</text>
+                <text class="g-kw" x="955" y="425">Propuesta</text>
+                <text class="g-kw g-kw-u" x="910" y="478">Autonom&#237;a</text>
+              </g>
+
+              <!-- Node 3: Marcas (720,580) — branches fan down-right -->
+              <g class="g-grp" data-gi="3" data-s="0">
+                <text class="g-node" x="695" y="578">Marcas</text>
+                <text class="g-kw g-kw-u" x="598" y="635">Embed</text>
+                <text class="g-kw" x="815" y="615">Dominio</text>
+                <text class="g-kw" x="650" y="678">Lead</text>
+                <text class="g-kw g-kw-u" x="800" y="688">Producci&#243;n</text>
+              </g>
+
+              <!-- Node 4: Obra (230,560) — branches fan down-left -->
+              <g class="g-grp" data-gi="4" data-s="0">
+                <text class="g-node" x="205" y="558">Obra</text>
+                <text class="g-kw g-kw-u" x="55" y="515">Medici&#243;n</text>
+                <text class="g-kw" x="300" y="505">Partidas</text>
+                <text class="g-kw" x="68" y="638">Control</text>
+                <text class="g-kw g-kw-u" x="268" y="668">Certificaci&#243;n</text>
+              </g>
             </svg>
           </div>
         </div>
@@ -563,11 +647,13 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
 // ── SCROLL-PINNED PROFILES ──
 (function(){
   var outer=document.getElementById('fwOuter');
-  if(!outer||window.innerWidth<1024||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  var pinned=outer?outer.querySelector('.fw-pinned'):null;
+  if(!outer||!pinned||window.innerWidth<1024||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
 
   var profiles=document.querySelectorAll('.fw-profile');
   var dots=document.querySelectorAll('.fw-dot');
   var prev=-1;
+  var prevMode='';
 
   function setIndex(idx){
     if(idx===prev) return;
@@ -577,9 +663,8 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
       else if(i===prev) p.classList.add('is-exiting');
     });
     dots.forEach(function(d,i){d.classList.toggle('is-active',i===idx);});
-    // Graph: active=1, visited=2, unseen=0
     for(var i=0;i<5;i++){
-      var s=i===idx?'1':i<idx?'2':'0';
+      var s=i===idx?'1':'0';
       document.querySelectorAll('[data-gi="'+i+'"]').forEach(function(el){el.setAttribute('data-s',s);});
     }
     prev=idx;
@@ -589,6 +674,25 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
     var rect=outer.getBoundingClientRect();
     var total=outer.offsetHeight-window.innerHeight;
     var scrolled=-rect.top;
+
+    // Pin mode: before=static, during=fixed, after=absolute bottom
+    var mode;
+    if(rect.top>0){
+      mode='before';
+    }else if(scrolled>=total){
+      mode='after';
+    }else{
+      mode='during';
+    }
+
+    if(mode!==prevMode){
+      pinned.classList.remove('is-fixed','is-bottom');
+      if(mode==='during') pinned.classList.add('is-fixed');
+      else if(mode==='after') pinned.classList.add('is-bottom');
+      prevMode=mode;
+    }
+
+    // Profile index
     var progress=Math.max(0,Math.min(1,scrolled/total));
     var idx=Math.min(4,Math.floor(progress*5));
     setIndex(idx);
