@@ -128,10 +128,12 @@ nav a:hover{color:var(--ink)}
 .fw-profile blockquote{font-family:var(--serif);font-size:clamp(18px,2vw,22px);font-weight:300;font-style:italic;line-height:1.45;letter-spacing:-.01em;color:var(--ink);margin-bottom:14px}
 .fw-profile cite{font-style:normal;font-size:13px;color:var(--ink-mute)}
 
-/* Progress dots */
-.fw-dots{display:flex;gap:8px;margin-top:24px}
-.fw-dot{width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .3s}
-.fw-dot.is-active{background:var(--ink)}
+/* Navigation arrows */
+.fw-arrows{display:flex;flex-direction:column;gap:4px;margin-top:24px}
+.fw-arrow{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;background:none;border:none;cursor:pointer;color:var(--ink);opacity:.5;transition:opacity .2s}
+.fw-arrow:hover:not(:disabled){opacity:1}
+.fw-arrow:disabled{opacity:.2;cursor:default}
+.fw-arrow svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
 /* Graph */
 .fw-graph{width:100%}
@@ -442,7 +444,10 @@ footer a:hover{color:var(--ink)}
                 <cite>&mdash; Reformista, Sevilla</cite>
               </div>
             </div>
-            <div class="fw-dots"><span class="fw-dot is-active"></span><span class="fw-dot"></span><span class="fw-dot"></span><span class="fw-dot"></span><span class="fw-dot"></span></div>
+            <div class="fw-arrows">
+              <button class="fw-arrow" id="fwUp" aria-label="Perfil anterior" disabled><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></button>
+              <button class="fw-arrow" id="fwDown" aria-label="Perfil siguiente"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
           </div>
           <!-- Right: graph -->
           <div class="fw-graph" aria-hidden="true">
@@ -662,9 +667,20 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
   if(!outer||!pinned||window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
 
   var profiles=document.querySelectorAll('.fw-profile');
-  var dots=document.querySelectorAll('.fw-dot');
+  var btnUp=document.getElementById('fwUp');
+  var btnDown=document.getElementById('fwDown');
   var prev=-1;
   var prevMode='';
+
+  function scrollToIdx(target){
+    var t=Math.max(0,Math.min(4,target));
+    var sTop=outer.offsetTop;
+    var sH=outer.offsetHeight-window.innerHeight;
+    window.scrollTo({top:sTop+(sH/5)*t+1,behavior:'smooth'});
+  }
+
+  btnUp.addEventListener('click',function(){if(prev>0)scrollToIdx(prev-1);});
+  btnDown.addEventListener('click',function(){if(prev<4)scrollToIdx(prev+1);});
 
   function setIndex(idx){
     if(idx===prev) return;
@@ -673,7 +689,8 @@ document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);
       if(i===idx) p.classList.add('is-active');
       else if(i===prev) p.classList.add('is-exiting');
     });
-    dots.forEach(function(d,i){d.classList.toggle('is-active',i===idx);});
+    btnUp.disabled=(idx===0);
+    btnDown.disabled=(idx===4);
     for(var i=0;i<5;i++){
       var s=i===idx?'1':'0';
       document.querySelectorAll('[data-gi="'+i+'"]').forEach(function(el){el.setAttribute('data-s',s);});
