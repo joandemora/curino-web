@@ -142,10 +142,6 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-line{stroke:#A89F8E;stroke-width:1;fill:none;transition:stroke .4s ease-out,opacity .4s ease-out}
 .fw-graph .g-center{font-family:var(--serif);font-size:134px;font-weight:400;font-style:italic;fill:var(--coral);stroke:var(--bg);stroke-width:24px;paint-order:stroke fill;letter-spacing:-.03em;font-variation-settings:'opsz' 58}
 .fw-graph .g-dot{fill:var(--ink)}
-/* Connector line overlay */
-.fw-connector{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5}
-.fw-connector svg{width:100%;height:100%;overflow:visible}
-.fw-connector path{fill:none;stroke:#0E7F5C;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
 .fw-graph .g-grp{transition:opacity .4s ease-out,fill .4s ease-out}
 .fw-graph .g-node{font-family:var(--serif);font-size:55px;font-weight:500;letter-spacing:-.02em;stroke:var(--bg);stroke-width:12px;paint-order:stroke fill}
 .fw-graph .g-kw{font-family:var(--font);font-size:32px;font-weight:400;transition:font-size .4s ease-out,fill .4s ease-out}
@@ -186,7 +182,7 @@ nav a:hover{color:var(--ink)}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(3){animation-delay:-3.5s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(4){animation-delay:-0.3s}
 .fw-graph .g-grp[data-gi="3"] .g-kw:nth-child(5){animation-delay:-5.0s}
-@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}.fw-connector path{animation:none!important;stroke-dasharray:none!important;stroke-dashoffset:0!important;opacity:.5}}
+@media(prefers-reduced-motion:reduce){.fw-graph text{animation:none!important}}
 
 /* prefers-reduced-motion fallback */
 .fw-rm{display:none}
@@ -200,7 +196,6 @@ nav a:hover{color:var(--ink)}
   .fw-outer{height:auto!important}
   .fw-pinned{position:static!important;height:auto!important}
   .fw-body{display:none}
-  .fw-connector{display:none}
   .fw-rm{display:block}
 }
 
@@ -562,10 +557,6 @@ footer a:hover{color:var(--ink)}
           <div class="fwm-card"><h4>Construcci&oacute;n</h4><div class="fw-sub">Reformistas &middot; Constructoras &middot; Jefes de obra &middot; Promotoras</div><blockquote>&ldquo;Cierro la partida de carpinter&iacute;a sin salir de la obra ni esperar al industrial.&rdquo;</blockquote><cite>&mdash; Reformista, Sevilla</cite></div>
         </div>
       </div>
-      <!-- Connector overlay (desktop only) -->
-      <div class="fw-connector" id="fwConnector">
-        <svg><path id="fwConnPath"/></svg>
-      </div>
     </div>
   </div>
 </section>
@@ -671,65 +662,6 @@ var io=new IntersectionObserver(function(entries){
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
 
-// ── TRAVELING SEGMENT CONNECTOR ──
-var _connStarted=false;
-function buildConnector(){
-  var path=document.getElementById('fwConnPath');
-  var pinned=document.querySelector('.fw-pinned');
-  var maestroText=document.querySelector('.g-center');
-  if(!path||!pinned||!maestroText||window.innerWidth<900) return;
-
-  var active=document.querySelector('.fw-profile.is-active');
-  if(!active) return;
-
-  // Wait a frame so position:fixed is applied
-  requestAnimationFrame(function(){
-    var pr=pinned.getBoundingClientRect();
-    var ar=active.getBoundingClientRect();
-    var mr=maestroText.getBoundingClientRect();
-
-    if(mr.width===0||ar.width===0) return; // not rendered yet
-
-    var sx=ar.right-pr.left;
-    var sy=ar.top+ar.height/2-pr.top;
-    var mx=mr.left+mr.width/2-pr.left;
-    var my=mr.top+mr.height/2-pr.top;
-    var ow=mr.width*0.7;
-    var oh=mr.height*0.9;
-    var oleft=mx-ow;
-
-    // Organic curve: two control points offset from the straight line
-    var dx=oleft-sx;
-    var cp1x=sx+dx*0.35;
-    var cp1y=sy-35;
-    var cp2x=sx+dx*0.7;
-    var cp2y=sy+25;
-
-    var d='M '+sx+','+sy
-      +' C '+cp1x+','+cp1y+' '+cp2x+','+cp2y+' '+oleft+','+my
-      +' L '+(oleft-15)+','+(my-oh)
-      +' Q '+(oleft-15)+','+(my-oh-20)+' '+(mx)+','+(my-oh-20)
-      +' Q '+(mx+ow+15)+','+(my-oh-20)+' '+(mx+ow+15)+','+(my)
-      +' Q '+(mx+ow+15)+','+(my+oh+20)+' '+(mx)+','+(my+oh+20)
-      +' Q '+(oleft-15)+','+(my+oh+20)+' '+(oleft-15)+','+(my+oh)
-      +' L '+(oleft-15)+','+(my);
-
-    path.setAttribute('d',d);
-
-    var total=path.getTotalLength();
-    var seg=total*0.32;
-    path.style.strokeDasharray=seg+' '+total;
-
-    if(!_connStarted){
-      var kf='@keyframes fwTravel{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-'+(total+seg)+'}}';
-      var s=document.createElement('style');s.textContent=kf;document.head.appendChild(s);
-      path.style.animation='fwTravel 5.5s linear infinite';
-      _connStarted=true;
-    }
-  });
-}
-window.addEventListener('resize',function(){if(_connStarted)buildConnector();});
-
 // ── SCROLL-PINNED PROFILES ──
 (function(){
   var outer=document.getElementById('fwOuter');
@@ -766,7 +698,6 @@ window.addEventListener('resize',function(){if(_connStarted)buildConnector();});
       document.querySelectorAll('[data-gi="'+i+'"]').forEach(function(el){el.setAttribute('data-s',s);});
     }
     prev=idx;
-    if(_connStarted)buildConnector();
   }
 
   function onScroll(){
@@ -786,7 +717,7 @@ window.addEventListener('resize',function(){if(_connStarted)buildConnector();});
 
     if(mode!==prevMode){
       pinned.classList.remove('is-fixed','is-bottom');
-      if(mode==='during'){pinned.classList.add('is-fixed');buildConnector();}
+      if(mode==='during') pinned.classList.add('is-fixed');
       else if(mode==='after') pinned.classList.add('is-bottom');
       prevMode=mode;
     }
