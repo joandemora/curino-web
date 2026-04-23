@@ -706,7 +706,38 @@ function startGroupResize(e,pos,bx,by,bw,bh){
     var m=_modules[i];
     originals.push({idx:i,x:m.x,y:m.y,w:m.w,h:m.h,d:m.d||600,pz:m.pz||0});
   });
-  _groupResize={pos:pos,startX:e.clientX,startY:e.clientY,bx:bx,by:by,bw:bw,bh:bh,originals:originals};
+  // Detect coincidences between element edges and internal lines of other elements
+  var coincidences=[];
+  var SNAP_TOL=2; // tolerance in mm
+  function internalLines(o){
+    var t=_modules[o.idx].type,lines={x:[],y:[]};
+    if(t==='modulo'){
+      lines.x.push(o.x+19,o.x+o.w-19);
+      lines.y.push(o.y+70,o.y+40,o.y+o.h-19);
+    }
+    if(t==='barra'){lines.x.push(o.x+20,o.x+o.w-20);var bm=o.y+o.h/2;lines.y.push(bm-15,bm+15);}
+    if(t==='cajon'||t==='cajon_cocina'){lines.y.push(o.y+o.h-30);lines.x.push(o.x+30,o.x+o.w-30);}
+    if(t==='zapatero'){lines.y.push(o.y+30);}
+    return lines;
+  }
+  originals.forEach(function(a){
+    var aEdgesX=[a.x,a.x+a.w],aEdgesY=[a.y,a.y+a.h];
+    originals.forEach(function(b){
+      if(a.idx===b.idx) return;
+      var il=internalLines(b);
+      aEdgesX.forEach(function(ex,ei){
+        il.x.forEach(function(lx,li){
+          if(Math.abs(ex-lx)<=SNAP_TOL) coincidences.push({elem:a.idx,axis:'x',edgeIdx:ei,ref:b.idx,refType:_modules[b.idx].type,lineIdx:li});
+        });
+      });
+      aEdgesY.forEach(function(ey,ei){
+        il.y.forEach(function(ly,li){
+          if(Math.abs(ey-ly)<=SNAP_TOL) coincidences.push({elem:a.idx,axis:'y',edgeIdx:ei,ref:b.idx,refType:_modules[b.idx].type,lineIdx:li});
+        });
+      });
+    });
+  });
+  _groupResize={pos:pos,startX:e.clientX,startY:e.clientY,bx:bx,by:by,bw:bw,bh:bh,originals:originals,coincidences:coincidences};
   saveHistory();
   document.addEventListener('mousemove',groupResizeMove);
   document.addEventListener('mouseup',groupResizeEnd);
@@ -749,6 +780,40 @@ function groupResizeMove(e){
       else m.h=Math.max(GRID,Math.round(o.h*sy));
     }
   });
+
+  // Post-process: restore internal-line coincidences
+  if(g.coincidences.length>0){
+    g.coincidences.forEach(function(c){
+      var m=_modules[c.elem],ref=_modules[c.ref];
+      // Recalculate the internal line position on the resized ref element
+      var target;
+      if(c.axis==='x'){
+        var il=[];
+        if(ref.type==='modulo'){il.push(ref.x+19,ref.x+ref.w-19);}
+        if(ref.type==='barra'){il.push(ref.x+20,ref.x+ref.w-20);}
+        if(ref.type==='cajon'||ref.type==='cajon_cocina'){il.push(ref.x+30,ref.x+ref.w-30);}
+        target=il[c.lineIdx];
+        if(target==null) return;
+        var edge=c.edgeIdx===0?m.x:m.x+m.w;
+        var delta=target-edge;
+        if(c.edgeIdx===0){m.x+=delta;}
+        else{m.w+=delta;if(m.w<GRID)m.w=GRID;}
+      }else{
+        var il=[];
+        if(ref.type==='modulo'){il.push(ref.y+70,ref.y+40,ref.y+ref.h-19);}
+        if(ref.type==='barra'){var bm=ref.y+ref.h/2;il.push(bm-15,bm+15);}
+        if(ref.type==='cajon'||ref.type==='cajon_cocina'){il.push(ref.y+ref.h-30);}
+        if(ref.type==='zapatero'){il.push(ref.y+30);}
+        target=il[c.lineIdx];
+        if(target==null) return;
+        var edge=c.edgeIdx===0?m.y:m.y+m.h;
+        var delta=target-edge;
+        if(c.edgeIdx===0){m.y+=delta;}
+        else{m.h+=delta;if(m.h<GRID)m.h=GRID;}
+      }
+    });
+  }
+
   renderModules();renderProps();
 }
 function groupResizeEnd(){
