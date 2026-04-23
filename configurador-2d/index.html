@@ -241,7 +241,9 @@ function s(){return SCALE*_zoom;}
 function origin(){
   var vw=_view==='planta'?_furW:_furW;
   var vh=_view==='planta'?_furD:_furH;
-  return{x:(wrap.clientWidth-vw*s())/2+_panX,y:(wrap.clientHeight-vh*s())/2+_panY};
+  var pr=paperRect();
+  // Center furniture within the paper frame
+  return{x:pr.x+(pr.w-vw*s())/2+_panX,y:pr.y+(pr.h-vh*s())/2+_panY};
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
 
@@ -251,17 +253,26 @@ window.addEventListener('resize',resizeCanvas);
 function resizeFurniture(){
   draw();renderModules();
 }
-function applyPaperScale(){
-  // Calculate zoom so that the paper at the given scale fits the canvas
-  // Paper size in mm (landscape). At scale 1:S, 1mm on paper = S mm real.
-  // So paper covers: paperW*S × paperH*S mm of real space.
-  // We want that area to fill the canvas viewport.
+function paperRect(){
+  // Paper rectangle in screen pixels, centered, filling 85% of canvas
   var p=PAPERS[_paper];
-  var realW=p.w*_drawScale, realH=p.h*_drawScale;
-  // Fit to canvas: zoom so realW/realH fills wrap dimensions
-  var zx=wrap.clientWidth/(realW*SCALE);
-  var zy=wrap.clientHeight/(realH*SCALE);
-  _zoom=Math.min(zx,zy)*0.9; // 90% to leave margin
+  var aspect=p.w/p.h; // landscape
+  var maxW=wrap.clientWidth*0.85, maxH=wrap.clientHeight*0.85;
+  var pw,ph;
+  if(maxW/aspect<=maxH){pw=maxW;ph=maxW/aspect;}
+  else{ph=maxH;pw=ph*aspect;}
+  var px=(wrap.clientWidth-pw)/2, py=(wrap.clientHeight-ph)/2;
+  return{x:px,y:py,w:pw,h:ph};
+}
+function applyPaperScale(){
+  // Zoom = paper pixels / real mm covered by paper
+  // At 1:S, paper covers paperW_mm * S real mm in width
+  var p=PAPERS[_paper];
+  var pr=paperRect();
+  var realW=p.w*_drawScale; // mm of real space the paper width represents
+  // zoom so that realW mm of real space = pr.w pixels
+  // sc = SCALE * _zoom = pr.w / realW → _zoom = pr.w / (realW * SCALE)
+  _zoom=pr.w/(realW*SCALE);
   _panX=0;_panY=0;
   draw();renderModules();
 }
@@ -279,14 +290,31 @@ function changeScale(){
 function draw(){
   var w=cvs.width,h=cvs.height,sc=s(),o=origin();
   ctx.clearRect(0,0,w,h);
-  // Grid
-  ctx.strokeStyle='#e0e0e0';ctx.lineWidth=0.5;
+
+  // Paper frame (fixed visual size, acts as reference)
+  var pr=paperRect();
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.06)';
+  ctx.fillRect(pr.x+4,pr.y+4,pr.w,pr.h);
+  // Paper background
+  ctx.fillStyle='#fff';
+  ctx.fillRect(pr.x,pr.y,pr.w,pr.h);
+  // Paper border
+  ctx.strokeStyle='#ccc';ctx.lineWidth=1;
+  ctx.strokeRect(pr.x,pr.y,pr.w,pr.h);
+
+  // Grid (within paper area)
+  ctx.save();
+  ctx.beginPath();ctx.rect(pr.x,pr.y,pr.w,pr.h);ctx.clip();
+  ctx.strokeStyle='#e8e8e8';ctx.lineWidth=0.5;
   var gp=GRID*sc;
   if(gp>3){
     for(var x=o.x%gp;x<w;x+=gp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
     for(var y=o.y%gp;y<h;y+=gp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
   }
-  // Outline
+  ctx.restore();
+
+  // Furniture outline
   var vw=_view==='planta'?_furW:_furW;
   var vh=_view==='planta'?_furD:_furH;
   ctx.strokeStyle='#000';ctx.lineWidth=2;
