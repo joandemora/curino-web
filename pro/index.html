@@ -269,7 +269,7 @@ footer a:hover{color:var(--ink)}
   .hero-left{padding:3rem 0 2rem}
   .hero-right{min-height:50vh;height:auto;margin:0;border-radius:12px}
   .fw-body{grid-template-columns:1fr;gap:24px}
-  .fw-graph{order:-1}
+  .fw-graph{order:-1;margin-top:60px;aspect-ratio:1495/885}
   .fw-left{order:1}
   .fw-slot{min-height:180px}
   .fw-header{margin-bottom:20px}
@@ -652,6 +652,9 @@ var io=new IntersectionObserver(function(entries){
   });
 },{threshold:0.07});
 document.querySelectorAll('.reveal-scroll').forEach(function(el){io.observe(el);});
+
+// ── MOBILE VIEWBOX ──
+if(window.innerWidth<900){var svg=document.querySelector('.fw-graph svg');if(svg)svg.setAttribute('viewBox','-60 -20 1495 885');}
 
 // ── SCROLL-PINNED PROFILES ──
 (function(){
