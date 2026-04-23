@@ -727,7 +727,9 @@ function groupResizeMove(e){
   if(p==='b'||p==='bl'||p==='br'){ah=Math.max(GRID,g.bh-dy);ay=g.by+g.bh-ah;}
 
   var dw=aw-g.bw,dh=ah-g.bh;
-  var oax=g.bx,oay=g.by; // original anchor
+  // Position: proportional scaling to maintain relative distribution
+  var sx=g.bw>0?aw/g.bw:1;
+  var sy=g.bh>0?ah/g.bh:1;
 
   var fixedH={'barra':40,'zapatero':200};
   var fixedD={'barra':40,'tapeta':19,'zocalo':19};
@@ -735,17 +737,18 @@ function groupResizeMove(e){
   var clampH={'estante':{min:19,max:40}};
   g.originals.forEach(function(o){
     var m=_modules[o.idx],t=m.type;
-    // X axis: same absolute delta for all (except divisor width)
-    m.x=Math.round(o.x+(ax-oax));
+    // Position: proportional (preserves relative spacing)
+    m.x=Math.round(ax+(o.x-g.bx)*sx);
+    // Size: absolute delta (all elements grow the same amount)
     if(t!=='divisor') m.w=Math.max(GRID,Math.round(o.w+dw));
     // Y axis
     if(_view==='planta'){
-      m.pz=Math.round(o.pz+(ay-oay));
+      m.pz=Math.round(ay+(o.pz-g.by)*sy);
       if(t in fixedD){/*keep*/}
       else if(t in clampD) m.d=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d+dh)));
       else m.d=Math.max(GRID,Math.round(o.d+dh));
     }else{
-      m.y=Math.round(o.y+(ay-oay));
+      m.y=Math.round(ay+(o.y-g.by)*sy);
       if(t in fixedH){
         // Fixed height: keep original, don't scale
       }else if(t in clampH){
