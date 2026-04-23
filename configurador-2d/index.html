@@ -272,29 +272,17 @@ function applyPaperScale(){
   _zoom=pr.w/(realW*SCALE);
   draw();renderModules();
 }
-function scaleFromZoom(){
-  // Derive _drawScale from current _zoom
-  var p=PAPERS[_paper];
-  var pr=paperRect();
-  return pr.w/(_zoom*SCALE*p.w);
+var SCALE_STEPS=[10,20,25,30,50,75,100];
+function scaleIdx(){
+  for(var i=0;i<SCALE_STEPS.length;i++){if(SCALE_STEPS[i]===_drawScale) return i;}
+  return 3; // default to 1:30
 }
-function updateScaleIndicator(){
-  var ds=scaleFromZoom();
-  var sel=document.getElementById('scaleSelect');
-  // Snap to standard values if within 8%
-  var standards=[10,20,25,30,50,75,100];
-  var snapped=ds;
-  for(var i=0;i<standards.length;i++){
-    if(Math.abs(ds-standards[i])/standards[i]<0.08){snapped=standards[i];break;}
-  }
-  _drawScale=snapped;
-  localStorage.setItem('c2d_scale',Math.round(_drawScale).toString());
-  // Update dropdown: select matching value or show custom
-  var found=false;
-  for(var i=0;i<sel.options.length;i++){
-    if(parseInt(sel.options[i].value)===Math.round(snapped)){sel.selectedIndex=i;found=true;break;}
-  }
-  if(!found) sel.selectedIndex=-1;
+function setScale(idx){
+  idx=Math.max(0,Math.min(SCALE_STEPS.length-1,idx));
+  _drawScale=SCALE_STEPS[idx];
+  localStorage.setItem('c2d_scale',_drawScale.toString());
+  document.getElementById('scaleSelect').value=_drawScale;
+  applyPaperScale();
 }
 function changePaper(){
   _paper=document.getElementById('paperFormat').value;
@@ -1127,9 +1115,9 @@ function switchView(v){
 }
 
 // Zoom
-function zoomIn(){_zoom*=1.2;updateScaleIndicator();draw();renderModules();}
-function zoomOut(){_zoom/=1.2;updateScaleIndicator();draw();renderModules();}
-function zoomFit(){_drawScale=30;_panX=0;_panY=0;applyPaperScale();updateScaleIndicator();}
+function zoomIn(){setScale(scaleIdx()-1);} // lower number = more detail
+function zoomOut(){setScale(scaleIdx()+1);} // higher number = more overview
+function zoomFit(){_panX=0;_panY=0;setScale(3);} // 1:30
 
 // Scroll wheel zoom (centered on cursor)
 wrap.addEventListener('wheel',function(e){
@@ -1140,12 +1128,18 @@ wrap.addEventListener('wheel',function(e){
   var o=origin();
   var worldX=(mx-o.x)/s();
   var worldY=(my-o.y)/s();
-  // Apply zoom — directly changes drawing scale
-  if(e.deltaY<0) _zoom*=1.1;
-  else _zoom/=1.1;
-  updateScaleIndicator();
+  // Jump to next/prev discrete scale step
+  var idx=scaleIdx();
+  if(e.deltaY<0) idx--;  // zoom in = lower scale number
+  else idx++;
+  idx=Math.max(0,Math.min(SCALE_STEPS.length-1,idx));
+  if(SCALE_STEPS[idx]===_drawScale) return; // already at limit
+  _drawScale=SCALE_STEPS[idx];
+  localStorage.setItem('c2d_scale',_drawScale.toString());
+  document.getElementById('scaleSelect').value=_drawScale;
+  var p=PAPERS[_paper],pr=paperRect();
+  _zoom=pr.w/(p.w*_drawScale*SCALE);
   // Adjust pan so same world point stays under cursor
-  var pr=paperRect();
   var vw=_view==='planta'?_furW:_furW;
   var vh=_view==='planta'?_furD:_furH;
   var newCX=pr.x+(pr.w-vw*s())/2;
