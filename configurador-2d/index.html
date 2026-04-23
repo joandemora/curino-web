@@ -745,8 +745,10 @@ function startGroupResize(e,pos,bx,by,bw,bh){
 function groupResizeMove(e){
   if(!_groupResize) return;
   var g=_groupResize,sc=s(),p=g.pos;
-  var dx=(e.clientX-g.startX)/sc,dy=(e.clientY-g.startY)/sc;
+  var dyRaw=(e.clientY-g.startY)/sc;
+  var dx=(e.clientX-g.startX)/sc,dy=dyRaw;
   if(_view!=='planta') dy=-dy;
+  console.log('handle='+p+' dyRaw='+dyRaw.toFixed(1)+' dyInv='+dy.toFixed(1)+' view='+_view);
 
   // Anchor = fixed corner (opposite to handle being dragged)
   // anchorX: right side fixed when dragging left, left side fixed when dragging right
@@ -756,6 +758,7 @@ function groupResizeMove(e){
   var ay=g.by,ah=g.bh;
   if(p==='t'||p==='tl'||p==='tr'){ah=Math.max(GRID,g.bh+dy);}
   if(p==='b'||p==='bl'||p==='br'){ah=Math.max(GRID,g.bh-dy);ay=g.by+g.bh-ah;}
+  console.log('g.by='+g.by+' g.bh='+g.bh+' ay='+ay.toFixed(1)+' ah='+ah.toFixed(1));
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
