@@ -120,6 +120,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
   <div class="c2d-toolbar">
     <button onclick="zoomIn()">+</button>
     <button onclick="zoomOut()">&minus;</button>
+    <button onclick="zoomFit()">Ajustar</button>
     <button onclick="undo()">Deshacer</button>
     <button onclick="redo()">Rehacer</button>
     <button onclick="exportPNG()">PNG</button>
@@ -218,7 +219,9 @@ var _modules=[];
 var _sel=new Set(); // selected indices
 var _history=[];
 var _historyIdx=-1;
-var _zoom=1;
+var _baseZoom=1; // calculated from paper+scale
+var _userZoom=1;  // user-controlled via wheel/buttons
+var _zoom=1;      // effective = _baseZoom * _userZoom
 var _view='alzado';
 var _furW=2000,_furH=2400,_furD=600;
 var SCALE=0.25; // px per mm at zoom=1
@@ -265,14 +268,11 @@ function paperRect(){
   return{x:px,y:py,w:pw,h:ph};
 }
 function applyPaperScale(){
-  // Zoom = paper pixels / real mm covered by paper
-  // At 1:S, paper covers paperW_mm * S real mm in width
   var p=PAPERS[_paper];
   var pr=paperRect();
-  var realW=p.w*_drawScale; // mm of real space the paper width represents
-  // zoom so that realW mm of real space = pr.w pixels
-  // sc = SCALE * _zoom = pr.w / realW → _zoom = pr.w / (realW * SCALE)
-  _zoom=pr.w/(realW*SCALE);
+  var realW=p.w*_drawScale;
+  _baseZoom=pr.w/(realW*SCALE);
+  _zoom=_baseZoom*_userZoom;
   _panX=0;_panY=0;
   draw();renderModules();
 }
@@ -1106,8 +1106,9 @@ function switchView(v){
 }
 
 // Zoom
-function zoomIn(){_zoom=Math.min(_zoom*1.2,4);draw();renderModules();}
-function zoomOut(){_zoom=Math.max(_zoom/1.2,0.3);draw();renderModules();}
+function zoomIn(){_userZoom=Math.min(_userZoom*1.2,8);_zoom=_baseZoom*_userZoom;draw();renderModules();}
+function zoomOut(){_userZoom=Math.max(_userZoom/1.2,0.1);_zoom=_baseZoom*_userZoom;draw();renderModules();}
+function zoomFit(){_userZoom=1;_zoom=_baseZoom;_panX=0;_panY=0;draw();renderModules();}
 
 // Scroll wheel zoom (centered on cursor)
 wrap.addEventListener('wheel',function(e){
@@ -1118,16 +1119,17 @@ wrap.addEventListener('wheel',function(e){
   var o=origin();
   var worldX=(mx-o.x)/s();
   var worldY=(my-o.y)/s();
-  // Apply zoom
+  // Apply zoom to _userZoom
   var oldZoom=_zoom;
-  if(e.deltaY<0) _zoom=Math.min(_zoom*1.1,4);
-  else _zoom=Math.max(_zoom/1.1,0.3);
-  // New origin without pan change
+  if(e.deltaY<0) _userZoom=Math.min(_userZoom*1.1,8);
+  else _userZoom=Math.max(_userZoom/1.1,0.1);
+  _zoom=_baseZoom*_userZoom;
+  // Adjust pan so same world point stays under cursor
+  var pr=paperRect();
   var vw=_view==='planta'?_furW:_furW;
   var vh=_view==='planta'?_furD:_furH;
-  var newCX=(wrap.clientWidth-vw*s())/2;
-  var newCY=(wrap.clientHeight-vh*s())/2;
-  // Adjust pan so same world point stays under cursor
+  var newCX=pr.x+(pr.w-vw*s())/2;
+  var newCY=pr.y+(pr.h-vh*s())/2;
   _panX=mx-newCX-worldX*s();
   _panY=my-newCY-worldY*s();
   draw();renderModules();
