@@ -6,18 +6,18 @@
 <title>Configurador 2D &mdash; Curino</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--black:#0a0a0a;--mid:#888;--light:#c0c0c0;--border:#e5e5e5;--bg:#f5f5f3;--white:#fff;--accent:#2563eb;--font:'Open Sans',system-ui,sans-serif}
-body{font-family:var(--font);color:var(--black);background:var(--white);overflow:hidden;height:100vh}
+:root{--black:#1F1E1C;--mid:#8C8A82;--light:#c0c0c0;--border:#E8E6DE;--bg:#FAF9F5;--bg-deep:#F0EEE6;--white:#fff;--accent:#007354;--coral:#CC785C;--font:'Inter',-apple-system,sans-serif;--serif:'Fraunces',Georgia,serif;--line-soft:#F0EEE6}
+body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hidden;height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 
 /* Header */
 .c2d-header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:48px;border-bottom:1px solid var(--border);background:var(--white)}
-.c2d-logo{height:20px}
+.c2d-logo{height:28px}
 .c2d-toolbar{display:flex;align-items:center;gap:.5rem}
-.c2d-toolbar button{background:none;border:1px solid var(--border);font-family:var(--font);font-size:11px;padding:4px 10px;cursor:pointer;transition:border-color .2s}
-.c2d-toolbar button:hover{border-color:var(--black)}
+.c2d-toolbar button{background:none;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:11px;padding:4px 10px;cursor:pointer;transition:all .2s}
+.c2d-toolbar button:hover{border-color:var(--black);background:var(--bg)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims input{width:50px;border:1px solid var(--border);padding:2px 4px;font-family:var(--font);font-size:11px;text-align:center}
 
@@ -25,7 +25,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-layout{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 48px)}
 
 /* Left panel */
-.c2d-left{border-right:1px solid var(--border);overflow-y:auto;padding:.75rem}
+.c2d-left{border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:var(--white)}
 .c2d-section{border-bottom:1px solid var(--border);padding-bottom:0}
 .c2d-section:last-child{border-bottom:none}
 .c2d-section-title{display:flex;justify-content:space-between;align-items:center;padding:.6rem .25rem;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--black)}
@@ -39,28 +39,28 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-sub.open .c2d-sub-title::after{content:'\2212'}
 .c2d-sub-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
 .c2d-sub.open .c2d-sub-body{max-height:500px}
-.c2d-mod{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border:1px solid var(--border);margin-bottom:.35rem;cursor:grab;font-size:11px;transition:border-color .2s;user-select:none}
+.c2d-mod{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.35rem;cursor:grab;font-size:11px;transition:border-color .2s;user-select:none}
 .c2d-mod:hover{border-color:var(--black)}
 .c2d-mod:active{cursor:grabbing}
 .c2d-mod-icon{width:22px;height:22px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:var(--mid);flex-shrink:0}
 .c2d-mod-size{font-size:9px;color:var(--mid);margin-left:auto}
 
 /* Canvas area */
-.c2d-center{background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
+.c2d-center{background:var(--bg-deep);position:relative;overflow:hidden;display:flex;flex-direction:column}
 .c2d-canvas-wrap{flex:1;position:relative;overflow:hidden}
 .c2d-canvas-wrap canvas{position:absolute;top:0;left:0}
 .c2d-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--white)}
 .c2d-tab{padding:.5rem 1rem;font-size:11px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;color:var(--mid)}
-.c2d-tab.active{color:var(--black);border-bottom-color:var(--black)}
+.c2d-tab.active{color:var(--black);border-bottom-color:var(--accent)}
 
 /* Right panel */
-.c2d-right{border-left:1px solid var(--border);overflow-y:auto;padding:1rem}
+.c2d-right{border-left:1px solid var(--border);overflow-y:auto;padding:1rem;background:var(--white)}
 .c2d-right h3{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
 .c2d-prop{margin-bottom:.75rem}
 .c2d-prop label{display:block;font-size:11px;color:var(--mid);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.05em}
-.c2d-prop input,.c2d-prop select{width:100%;border:1px solid var(--border);padding:6px 8px;font-family:var(--font);font-size:13px}
+.c2d-prop input,.c2d-prop select{width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:var(--font);font-size:13px}
 .c2d-prop input:focus,.c2d-prop select:focus{outline:none;border-color:var(--black)}
-.c2d-btn-del{width:100%;padding:8px;background:none;border:1px solid #fecaca;color:#dc2626;font-family:var(--font);font-size:11px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-top:1rem;transition:background .2s}
+.c2d-btn-del{width:100%;padding:8px;background:none;border:1px solid #fecaca;border-radius:6px;color:#dc2626;font-family:var(--font);font-size:11px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;margin-top:1rem;transition:background .2s}
 .c2d-btn-del:hover{background:#fef2f2}
 .c2d-empty{font-size:12px;color:var(--mid);padding:1rem 0}
 
@@ -84,12 +84,12 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 .c2d-handle-r{top:50%;margin-top:-4px;right:-4px;cursor:ew-resize}
 .c2d-bbox{position:absolute;border:1px dashed var(--accent);pointer-events:none;z-index:3}
 .c2d-bbox .c2d-handle{pointer-events:auto}
-.c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(37,99,235,.06);pointer-events:none;z-index:5}
+.c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(0,115,84,.06);pointer-events:none;z-index:5}
 .c2d-snapline{position:absolute;background:#e53e3e;pointer-events:none;z-index:4}
 .c2d-snapline-h{height:1px;left:0;right:0}
 .c2d-snapline-v{width:1px;top:0;bottom:0}
 /* Context menu */
-.c2d-ctx{position:fixed;z-index:999;background:var(--white);border:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:160px;padding:4px 0;display:none}
+.c2d-ctx{position:fixed;z-index:999;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);min-width:160px;padding:4px 0;display:none}
 .c2d-ctx.open{display:block}
 .c2d-ctx-item{padding:6px 14px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .1s}
 .c2d-ctx-item:hover{background:var(--bg)}
@@ -107,7 +107,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);overflow
 
 <!-- HEADER -->
 <div class="c2d-header">
-  <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino" class="c2d-logo"></a>
+  <a href="/"><img src="/assets/imagenes/logo-curino.png" alt="Curino" class="c2d-logo"></a>
   <div class="c2d-dims">
     <span>Ancho:</span><input type="number" id="dimW" value="2000" min="600" max="6000" step="50" onchange="resizeFurniture()">
     <span>Alto:</span><input type="number" id="dimH" value="2400" min="600" max="3000" step="50" onchange="resizeFurniture()">
