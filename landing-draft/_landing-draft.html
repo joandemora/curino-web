@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curino — Configura tu plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f5f1e8;
+    --cream-deep: #efe9dc;
+    --paper: #faf7f0;
+    --ink: #2c2416;
+    --ink-soft: #5a4f3f;
+    --ink-mute: #8a7f6f;
+    --coral: #cc785c;
+    --coral-deep: #b8604a;
+    --coral-soft: #e8a590;
+    --line: #d9d0bc;
+    --line-soft: #e8e0cc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .serif {
+    font-family: 'Fraunces', Georgia, serif;
+    font-feature-settings: "ss01", "ss02";
+    letter-spacing: -0.02em;
+  }
+
+  .container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* ---------- NAV ---------- */
+  nav {
+    padding: 28px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(245, 241, 232, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 100;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s;
+  }
+  nav.scrolled { border-bottom-color: var(--line-soft); }
+  nav .inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    text-decoration: none;
+    font-style: italic;
+  }
+  .logo::after {
+    content: '.';
+    color: var(--coral);
+  }
+  nav ul {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+  nav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 14.5px;
+    font-weight: 400;
+    transition: color 0.2s;
+  }
+  nav a:hover { color: var(--ink); }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 999px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .btn-primary:hover {
+    background: var(--coral);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover {
+    border-color: var(--ink);
+  }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    padding: 100px 0 80px;
+    position: relative;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 28px;
+  }
+  .eyebrow .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--coral);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  h1.display {
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 300;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    margin-bottom: 32px;
+    max-width: 14ch;
+  }
+  h1.display em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--coral);
+  }
+  .hero-sub {
+    font-size: clamp(17px, 1.3vw, 20px);
+    color: var(--ink-soft);
+    max-width: 52ch;
+    line-height: 1.55;
+    margin-bottom: 44px;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hero-meta {
+    margin-left: 8px;
+    font-size: 13.5px;
+    color: var(--ink-mute);
+  }
+
+  /* ---------- CONFIGURADOR DEMO ---------- */
+  .builder {
+    margin-top: 90px;
+    background: var(--paper);
+    border: 1px solid var(--line-soft);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 30px 60px -30px rgba(44, 36, 22, 0.15);
+  }
+  .builder-head {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--cream-deep);
+  }
+  .builder-head-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+  .window-dots {
+    display: flex;
+    gap: 6px;
+    margin-right: 14px;
+  }
+  .window-dots span {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+  .builder-head-right { font-size: 13px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  .builder-body {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    min-height: 480px;
+  }
+  .builder-main { padding: 40px 44px; }
+  .builder-step {
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-mute);
+    margin-bottom: 14px;
+  }
+  .builder-main h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 34px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+    line-height: 1.1;
+  }
+  .builder-main p.lead {
+    color: var(--ink-soft);
+    margin-bottom: 32px;
+    font-size: 15px;
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .opt {
+    border: 1px solid var(--line);
+    background: var(--cream);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    position: relative;
+  }
+  .opt:hover { border-color: var(--ink-soft); transform: translateY(-1px); }
+  .opt.selected {
+    border-color: var(--coral);
+    background: #fef6f2;
+    box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.12);
+  }
+  .opt-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    letter-spacing: -0.015em;
+  }
+  .opt-desc { font-size: 13px; color: var(--ink-soft); }
+  .opt-price {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label .name { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+  .toggle-label .hint { font-size: 13px; color: var(--ink-mute); }
+  .toggle {
+    width: 40px;
+    height: 22px;
+    background: var(--line);
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .toggle.on { background: var(--coral); }
+  .toggle.on::after { left: 20px; }
+
+  /* summary sidebar */
+  .summary {
+    background: var(--cream-deep);
+    border-left: 1px solid var(--line-soft);
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+  }
+  .summary-label {
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 24px;
+  }
+  .summary-plan {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    font-style: italic;
+  }
+  .summary-list {
+    list-style: none;
+    margin-bottom: auto;
+  }
+  .summary-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+    border-bottom: 1px dashed var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-list li span:last-child { color: var(--ink); font-weight: 500; }
+  .summary-total {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 2px solid var(--ink);
+  }
+  .summary-total-label { font-size: 13px; color: var(--ink-soft); margin-bottom: 4px; }
+  .summary-total-value {
+    font-family: 'Fraunces', serif;
+    font-size: 44px;
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-total-value .cents { font-size: 22px; color: var(--ink-soft); }
+  .summary-total-period { font-size: 13px; color: var(--ink-mute); margin-top: 6px; }
+  .summary .btn { margin-top: 24px; justify-content: center; width: 100%; padding: 14px; }
+
+  /* ---------- SOCIAL PROOF ---------- */
+  .logos {
+    padding: 80px 0 40px;
+    text-align: center;
+  }
+  .logos-label {
+    font-size: 13px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .logos-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 50px;
+    opacity: 0.55;
+  }
+  .logos-grid span {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section.content {
+    padding: 120px 0;
+  }
+  .section-head {
+    margin-bottom: 80px;
+    max-width: 680px;
+  }
+  .section-head .eyebrow { margin-bottom: 20px; }
+  h2.section-title {
+    font-size: clamp(36px, 4.5vw, 58px);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  h2.section-title em {
+    font-style: italic;
+    color: var(--coral);
+    font-weight: 400;
+  }
+  .section-lead {
+    font-size: 18px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    max-width: 56ch;
+  }
+
+  /* how it works */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .step {
+    background: var(--cream);
+    padding: 44px 36px 52px;
+  }
+  .step-num {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    color: var(--coral);
+    margin-bottom: 28px;
+    display: block;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+  }
+  .step h4 {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+    line-height: 1.15;
+  }
+  .step p { color: var(--ink-soft); font-size: 15px; line-height: 1.55; }
+
+  /* features */
+  .features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px 60px;
+  }
+  .feature {
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+  }
+  .feature-num {
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .feature h4 {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+    line-height: 1.15;
+  }
+  .feature p { color: var(--ink-soft); font-size: 15.5px; line-height: 1.6; }
+
+  /* testimonial */
+  .testimonial-section {
+    padding: 120px 0;
+    background: var(--cream-deep);
+    border-top: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .testimonial {
+    max-width: 820px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .testimonial blockquote {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(26px, 3vw, 40px);
+    font-weight: 300;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 36px;
+    font-style: italic;
+  }
+  .testimonial blockquote::before {
+    content: '"';
+    color: var(--coral);
+    font-size: 1.3em;
+    line-height: 0;
+    vertical-align: -0.25em;
+    margin-right: 4px;
+  }
+  .testimonial blockquote::after {
+    content: '"';
+    color: var(--coral);
+    font-size: 1.3em;
+    line-height: 0;
+    vertical-align: -0.25em;
+  }
+  .testimonial cite {
+    font-style: normal;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+  .testimonial cite strong { color: var(--ink); font-weight: 500; }
+
+  /* CTA final */
+  .final-cta {
+    padding: 160px 0;
+    text-align: center;
+  }
+  .final-cta h2 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(44px, 6vw, 80px);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    margin-bottom: 28px;
+  }
+  .final-cta h2 em { font-style: italic; color: var(--coral); font-weight: 400; }
+  .final-cta p {
+    font-size: 18px;
+    color: var(--ink-soft);
+    margin-bottom: 44px;
+    max-width: 48ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .final-cta .btn { padding: 16px 34px; font-size: 15.5px; }
+
+  /* footer */
+  footer {
+    border-top: 1px solid var(--line-soft);
+    padding: 48px 0 40px;
+    color: var(--ink-mute);
+    font-size: 13.5px;
+  }
+  footer .inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  footer .links { display: flex; gap: 28px; }
+  footer a { color: var(--ink-soft); text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+
+  /* page reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  .d1 { animation-delay: 0.05s; }
+  .d2 { animation-delay: 0.18s; }
+  .d3 { animation-delay: 0.32s; }
+  .d4 { animation-delay: 0.48s; }
+  .d5 { animation-delay: 0.65s; }
+
+  /* responsive */
+  @media (max-width: 900px) {
+    .container { padding: 0 24px; }
+    nav ul { display: none; }
+    .builder-body { grid-template-columns: 1fr; }
+    .summary { border-left: none; border-top: 1px solid var(--line-soft); }
+    .options { grid-template-columns: 1fr; }
+    .features, .steps { grid-template-columns: 1fr; }
+    .hero { padding: 60px 0 40px; }
+    section.content, .testimonial-section, .final-cta { padding: 80px 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="container inner">
+    <a href="#" class="logo">curino</a>
+    <ul>
+      <li><a href="#como">Cómo funciona</a></li>
+      <li><a href="#configurador">Configurador</a></li>
+      <li><a href="#features">Producto</a></li>
+      <li><a href="#">Precios</a></li>
+    </ul>
+    <a href="#configurador" class="btn btn-primary">Empezar</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container">
+    <div class="eyebrow reveal d1"><span class="dot"></span> Configurador 2.0 — disponible hoy</div>
+    <h1 class="display serif reveal d2">
+      Un plan <em>hecho a medida</em><br>en dos minutos.
+    </h1>
+    <p class="hero-sub reveal d3">
+      Curino convierte el pricing en una conversación. Tus clientes eligen solo lo que necesitan, ven el precio al instante y firman sin pasar por comercial. Sin llamadas. Sin plantillas genéricas.
+    </p>
+    <div class="hero-actions reveal d4">
+      <a href="#configurador" class="btn btn-primary">Probar el configurador →</a>
+      <a href="#como" class="btn btn-ghost">Ver cómo funciona</a>
+      <span class="hero-meta">14 días gratis · sin tarjeta</span>
+    </div>
+
+    <!-- CONFIGURADOR EN VIVO -->
+    <div class="builder reveal d5" id="configurador">
+      <div class="builder-head">
+        <div class="builder-head-left">
+          <div class="window-dots"><span></span><span></span><span></span></div>
+          <span>configurador.curino.app</span>
+        </div>
+        <div class="builder-head-right">Paso 2 de 3 · <span id="progress">66%</span></div>
+      </div>
+      <div class="builder-body">
+        <div class="builder-main">
+          <div class="builder-step">Elige tu plan base</div>
+          <h3 class="serif">¿Cuánto vas a crecer este año?</h3>
+          <p class="lead">Ajusta los módulos a tu ritmo real. Podrás cambiar todo más tarde.</p>
+
+          <div class="options">
+            <div class="opt" data-price="29" data-name="Starter">
+              <div class="opt-title serif">Starter</div>
+              <div class="opt-desc">Hasta 1.000 contactos</div>
+              <div class="opt-price">29 €</div>
+            </div>
+            <div class="opt selected" data-price="79" data-name="Growth">
+              <div class="opt-title serif">Growth</div>
+              <div class="opt-desc">Hasta 10.000 contactos</div>
+              <div class="opt-price">79 €</div>
+            </div>
+            <div class="opt" data-price="149" data-name="Scale">
+              <div class="opt-title serif">Scale</div>
+              <div class="opt-desc">Hasta 50.000 contactos</div>
+              <div class="opt-price">149 €</div>
+            </div>
+            <div class="opt" data-price="249" data-name="Studio">
+              <div class="opt-title serif">Studio</div>
+              <div class="opt-desc">Volumen ilimitado</div>
+              <div class="opt-price">249 €</div>
+            </div>
+          </div>
+
+          <div class="toggles">
+            <div class="toggle-row">
+              <div class="toggle-label">
+                <div class="name">Automatizaciones avanzadas</div>
+                <div class="hint">Workflows sin límite + ramificación condicional</div>
+              </div>
+              <div class="toggle on" data-price="19"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-label">
+                <div class="name">Integraciones API</div>
+                <div class="hint">Conecta con tu stack: Stripe, HubSpot, Notion…</div>
+              </div>
+              <div class="toggle" data-price="14"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-label">
+                <div class="name">Soporte prioritario</div>
+                <div class="hint">Respuesta en menos de 2h, lunes a viernes</div>
+              </div>
+              <div class="toggle on" data-price="9"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="summary">
+          <div class="summary-label">Tu plan</div>
+          <div class="summary-plan serif" id="plan-name">Growth</div>
+          <ul class="summary-list" id="addons-list">
+            <li><span>Plan base</span><span>79 €</span></li>
+            <li><span>Automatizaciones</span><span>19 €</span></li>
+            <li><span>Soporte prioritario</span><span>9 €</span></li>
+          </ul>
+          <div class="summary-total">
+            <div class="summary-total-label">Total mensual</div>
+            <div class="summary-total-value">
+              <span id="total">107</span> <span class="cents">€ / mes</span>
+            </div>
+            <div class="summary-total-period">Facturación mensual · IVA no incluido</div>
+          </div>
+          <a href="#" class="btn btn-primary">Contratar este plan</a>
+        </aside>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- SOCIAL PROOF -->
+<section class="logos">
+  <div class="container">
+    <div class="logos-label">Usado por equipos que venden a diario</div>
+    <div class="logos-grid">
+      <span>Hoja&Co</span>
+      <span>Nebular</span>
+      <span>Atrio.</span>
+      <span>Ferment</span>
+      <span>Kilter&nbsp;Studio</span>
+      <span>Paso&nbsp;Doble</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="content" id="como">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow"><span class="dot"></span> Cómo funciona</div>
+      <h2 class="section-title serif">Del formulario de contacto<br>al <em>cliente cerrado</em>.</h2>
+      <p class="section-lead">Tres pasos. Sin equipo comercial. Sin plantillas de Excel. El cliente configura, acepta y paga en la misma pantalla.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01 —</span>
+        <h4 class="serif">Diseña tu oferta</h4>
+        <p>Define planes base, módulos extra, descuentos por volumen y reglas de negocio. Todo sin código, con vista previa en vivo.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">02 —</span>
+        <h4 class="serif">Incrusta el configurador</h4>
+        <p>Pégalo en tu landing, en un email, en Notion. Se adapta a tu marca con un par de variables CSS.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">03 —</span>
+        <h4 class="serif">Cobra al instante</h4>
+        <p>Stripe, firma digital y alta automática. El cliente entra en tu producto antes de que tu comercial abra el portátil.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="content" id="features" style="padding-top: 0;">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow"><span class="dot"></span> Producto</div>
+      <h2 class="section-title serif">Lo que no verás<br>en otro <em>pricing builder</em>.</h2>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-num">01 · Lógica condicional</div>
+        <h4 class="serif">Precios que reaccionan</h4>
+        <p>Si el cliente marca "enterprise", aparece el módulo SSO. Si elige mensual, se oculta el descuento anual. Reglas encadenadas sin tocar código.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">02 · A/B nativo</div>
+        <h4 class="serif">Testea dos ofertas a la vez</h4>
+        <p>Duplica un configurador, cambia precios o estructura, y mide conversión real. El ganador se promueve con un clic.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">03 · Multi-moneda</div>
+        <h4 class="serif">Precios locales, sin trampas</h4>
+        <p>Detecta la geografía del visitante y muestra €, $, £, MXN con tasas reales. Sin "aproximadamente". Lo que ve es lo que paga.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">04 · Analytics de abandono</div>
+        <h4 class="serif">Descubre dónde se caen</h4>
+        <p>Mapa de calor por paso, producto más descartado, combinaciones más compradas. Entiende tu pricing como entiendes tu funnel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<section class="testimonial-section">
+  <div class="container">
+    <div class="testimonial">
+      <blockquote>Cambiamos tres páginas de pricing, un PDF de tarifas y cuatro reuniones semanales por un solo configurador. El MRR subió un 34% en el primer trimestre.</blockquote>
+      <cite><strong>Marta Giralt</strong> — Head of Revenue, Ferment</cite>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="container">
+    <h2 class="serif">Deja que tu pricing <em>venda solo</em>.</h2>
+    <p>Monta tu primer configurador en menos de una tarde. Si no conviertes más, te devolvemos los dos meses.</p>
+    <a href="#configurador" class="btn btn-primary">Empezar gratis →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container inner">
+    <div>© 2026 Curino · Hecho con cuidado en Barcelona</div>
+    <div class="links">
+      <a href="#">Documentación</a>
+      <a href="#">Changelog</a>
+      <a href="#">Privacidad</a>
+      <a href="#">Contacto</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Nav sticky border
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  // Configurator logic
+  const opts = document.querySelectorAll('.opt');
+  const toggles = document.querySelectorAll('.toggle');
+  const totalEl = document.getElementById('total');
+  const planNameEl = document.getElementById('plan-name');
+  const addonsList = document.getElementById('addons-list');
+
+  function recalc() {
+    const selected = document.querySelector('.opt.selected');
+    const basePrice = parseInt(selected.dataset.price);
+    const baseName = selected.dataset.name;
+    planNameEl.textContent = baseName;
+
+    let rows = `<li><span>Plan base</span><span>${basePrice} €</span></li>`;
+    let total = basePrice;
+
+    toggles.forEach(t => {
+      if (t.classList.contains('on')) {
+        const p = parseInt(t.dataset.price);
+        const label = t.closest('.toggle-row').querySelector('.name').textContent;
+        rows += `<li><span>${label}</span><span>${p} €</span></li>`;
+        total += p;
+      }
+    });
+
+    addonsList.innerHTML = rows;
+    totalEl.textContent = total;
+  }
+
+  opts.forEach(o => o.addEventListener('click', () => {
+    opts.forEach(x => x.classList.remove('selected'));
+    o.classList.add('selected');
+    recalc();
+  }));
+
+  toggles.forEach(t => t.addEventListener('click', () => {
+    t.classList.toggle('on');
+    recalc();
+  }));
+</script>
+
+</body>
+</html>
