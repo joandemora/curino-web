@@ -15,6 +15,5 @@
       }
     </style>
   </defs>
-  <rect width="600" height="200" fill="#ffffff"/>
   <text x="300" y="130" text-anchor="middle" class="logo-text"><tspan class="amp">&amp;</tspan> Curino</text>
 </svg>
