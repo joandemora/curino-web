@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">
+  <defs>
+    <style type="text/css">
+      @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400,100&amp;display=swap');
+      .logo-text {
+        font-family: 'Fraunces', serif;
+        font-variation-settings: "SOFT" 100, "opsz" 144;
+        font-weight: 400;
+        font-size: 96px;
+        fill: #1a1a1a;
+        letter-spacing: -1px;
+      }
+      .amp {
+        fill: #007354;
+      }
+    </style>
+  </defs>
+  <rect width="600" height="200" fill="#ffffff"/>
+  <text x="300" y="130" text-anchor="middle" class="logo-text"><tspan class="amp">&amp;</tspan> Curino</text>
+</svg>
