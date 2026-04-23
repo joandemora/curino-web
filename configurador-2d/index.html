@@ -763,25 +763,127 @@ function groupResizeMove(e){
   var fixedD={'barra':40,'tapeta':19,'zocalo':19};
   var clampD={'puerta_batiente':{min:19,max:30}};
   var clampH={'estante':{min:19,max:40}};
-  console.log('--- groupResize sy='+sy.toFixed(6)+' ay='+ay+' g.by='+g.by+' ah='+ah+' g.bh='+g.bh+' ---');
+  var ADJ_TOL=2; // adjacency tolerance in mm
+
+  // Pass 1: compute sizes for all elements (proportional with clamps)
+  var sized={};
   g.originals.forEach(function(o){
-    var m=_modules[o.idx],t=m.type;
-    var _oy=o.y,_oh=o.h,_otop=o.y+o.h;
-    // Full proportional: position and size scale together
-    m.x=Math.round(ax+(o.x-g.bx)*sx);
-    if(t!=='divisor') m.w=Math.max(GRID,Math.round(o.w*sx));
+    var t=_modules[o.idx].type;
+    var nw=(t==='divisor')?o.w:Math.max(GRID,Math.round(o.w*sx));
+    var nh,nd;
     if(_view==='planta'){
-      m.pz=Math.round(ay+(o.pz-g.by)*sy);
-      if(t in fixedD){/*keep*/}
-      else if(t in clampD) m.d=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d*sy)));
-      else m.d=Math.max(GRID,Math.round(o.d*sy));
+      if(t in fixedD) nd=o.d;
+      else if(t in clampD) nd=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d*sy)));
+      else nd=Math.max(GRID,Math.round(o.d*sy));
+      nh=o.h; // h unchanged in planta
     }else{
-      m.y=Math.round(ay+(o.y-g.by)*sy);
-      if(t in fixedH){/*keep*/}
-      else if(t in clampH) m.h=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
-      else m.h=Math.max(GRID,Math.round(o.h*sy));
+      if(t in fixedH) nh=o.h;
+      else if(t in clampH) nh=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
+      else nh=Math.max(GRID,Math.round(o.h*sy));
+      nd=o.d;
     }
-    console.log('['+t+'] orig: y='+_oy+' h='+_oh+' top='+_otop+' | calc: y='+m.y+' h='+m.h+' top='+(m.y+m.h)+' | raw_y='+(ay+(o.y-g.by)*sy).toFixed(4)+' raw_h='+(o.h*sy).toFixed(4));
+    sized[o.idx]={w:nw,h:nh,d:nd};
+  });
+
+  // Pass 2: detect adjacency chains and compute positions
+  // Build Y-chains: groups of elements where o[i].y+o[i].h ≈ o[j].y
+  var yProcessed={},xProcessed={};
+
+  // Sort originals by Y (or pz in planta) for chain detection
+  var yKey=_view==='planta'?'pz':'y',hKey=_view==='planta'?'d':'h';
+  var sortedY=g.originals.slice().sort(function(a,b){return a[yKey]-b[yKey];});
+  var yChains=[];
+  var inChainY={};
+  for(var i=0;i<sortedY.length;i++){
+    if(inChainY[sortedY[i].idx]) continue;
+    var chain=[sortedY[i]];
+    inChainY[sortedY[i].idx]=true;
+    for(var j=i+1;j<sortedY.length;j++){
+      if(inChainY[sortedY[j].idx]) continue;
+      var last=chain[chain.length-1];
+      if(Math.abs((last[yKey]+last[hKey])-sortedY[j][yKey])<=ADJ_TOL){
+        chain.push(sortedY[j]);
+        inChainY[sortedY[j].idx]=true;
+      }
+    }
+    if(chain.length>1) yChains.push(chain);
+  }
+
+  // Same for X-chains
+  var sortedX=g.originals.slice().sort(function(a,b){return a.x-b.x;});
+  var inChainX={};
+  var xChains=[];
+  for(var i=0;i<sortedX.length;i++){
+    if(inChainX[sortedX[i].idx]) continue;
+    var chain=[sortedX[i]];
+    inChainX[sortedX[i].idx]=true;
+    for(var j=i+1;j<sortedX.length;j++){
+      if(inChainX[sortedX[j].idx]) continue;
+      var last=chain[chain.length-1];
+      if(Math.abs((last.x+last.w)-sortedX[j].x)<=ADJ_TOL){
+        chain.push(sortedX[j]);
+        inChainX[sortedX[j].idx]=true;
+      }
+    }
+    if(chain.length>1) xChains.push(chain);
+  }
+
+  // Apply Y-chains: first element uses proportional position, rest accumulate
+  yChains.forEach(function(chain){
+    var first=chain[0];
+    var m0=_modules[first.idx];
+    if(_view==='planta'){
+      m0.pz=Math.round(ay+(first.pz-g.by)*sy);
+      m0.d=sized[first.idx].d;
+    }else{
+      m0.y=Math.round(ay+(first.y-g.by)*sy);
+      m0.h=sized[first.idx].h;
+    }
+    yProcessed[first.idx]=true;
+    for(var k=1;k<chain.length;k++){
+      var prev=_modules[chain[k-1].idx];
+      var cur=_modules[chain[k].idx];
+      if(_view==='planta'){
+        cur.pz=prev.pz+(prev.d||600);
+        cur.d=sized[chain[k].idx].d;
+      }else{
+        cur.y=prev.y+prev.h;
+        cur.h=sized[chain[k].idx].h;
+      }
+      yProcessed[chain[k].idx]=true;
+    }
+  });
+
+  // Apply X-chains: same logic
+  xChains.forEach(function(chain){
+    var first=chain[0];
+    var m0=_modules[first.idx];
+    m0.x=Math.round(ax+(first.x-g.bx)*sx);
+    m0.w=sized[first.idx].w;
+    xProcessed[first.idx]=true;
+    for(var k=1;k<chain.length;k++){
+      var prev=_modules[chain[k-1].idx];
+      var cur=_modules[chain[k].idx];
+      cur.x=prev.x+prev.w;
+      cur.w=sized[chain[k].idx].w;
+      xProcessed[chain[k].idx]=true;
+    }
+  });
+
+  // Pass 3: apply proportional position to unchained elements
+  g.originals.forEach(function(o){
+    var m=_modules[o.idx];
+    if(!xProcessed[o.idx]){
+      m.x=Math.round(ax+(o.x-g.bx)*sx);
+    }
+    m.w=sized[o.idx].w;
+    if(_view==='planta'){
+      if(!yProcessed[o.idx]) m.pz=Math.round(ay+(o.pz-g.by)*sy);
+      m.d=sized[o.idx].d;
+    }else{
+      if(!yProcessed[o.idx]) m.y=Math.round(ay+(o.y-g.by)*sy);
+      m.h=sized[o.idx].h;
+    }
   });
 
   // Post-process: restore internal-line coincidences
