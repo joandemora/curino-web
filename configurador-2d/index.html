@@ -706,45 +706,33 @@ function startGroupResize(e,pos,bx,by,bw,bh){
     var m=_modules[i];
     originals.push({idx:i,x:m.x,y:m.y,w:m.w,h:m.h,d:m.d||600,pz:m.pz||0});
   });
-  // Detect ALL coincidences: edge↔edge, edge↔internal, internal↔internal
-  var SNAP_TOL=2;
-  function getLines(o){
-    // Returns {x:[...], y:[...]} with ALL lines: edges + internal
-    // Each entry: {v: value, type:'edge'|'int', eIdx:0|1 (for edges), fixed:bool}
-    var t=_modules[o.idx].type, lx=[], ly=[];
-    // Edges (eIdx 0=left/bottom, 1=right/top)
-    lx.push({v:o.x,type:'edge',eIdx:0},{v:o.x+o.w,type:'edge',eIdx:1});
-    ly.push({v:o.y,type:'edge',eIdx:0},{v:o.y+o.h,type:'edge',eIdx:1});
-    // Internal lines (fixed offsets from edges — survive resize unchanged)
-    // lineIdx tracks position within the type's internal line array for curLineVal lookup
-    if(t==='modulo'){
-      lx.push({v:o.x+19,type:'int',fixed:true,lineIdx:0},{v:o.x+o.w-19,type:'int',fixed:true,lineIdx:1});
-      ly.push({v:o.y+70,type:'int',fixed:true,lineIdx:0},{v:o.y+40,type:'int',fixed:true,lineIdx:1},{v:o.y+o.h-19,type:'int',fixed:true,lineIdx:2});
-    }
-    if(t==='barra'){lx.push({v:o.x+20,type:'int',fixed:true,lineIdx:0},{v:o.x+o.w-20,type:'int',fixed:true,lineIdx:1});var bm=o.y+o.h/2;ly.push({v:bm-15,type:'int',fixed:false,lineIdx:0},{v:bm+15,type:'int',fixed:false,lineIdx:1});}
-    if(t==='cajon'||t==='cajon_cocina'){ly.push({v:o.y+o.h-30,type:'int',fixed:true,lineIdx:0});lx.push({v:o.x+30,type:'int',fixed:true,lineIdx:0},{v:o.x+o.w-30,type:'int',fixed:true,lineIdx:1});}
-    if(t==='zapatero'){ly.push({v:o.y+30,type:'int',fixed:true,lineIdx:0});}
-    return {x:lx,y:ly};
-  }
+  // Detect coincidences between element edges and internal lines of other elements
   var coincidences=[];
+  var SNAP_TOL=2; // tolerance in mm
+  function internalLines(o){
+    var t=_modules[o.idx].type,lines={x:[],y:[]};
+    if(t==='modulo'){
+      lines.x.push(o.x+19,o.x+o.w-19);
+      lines.y.push(o.y+70,o.y+40,o.y+o.h-19);
+    }
+    if(t==='barra'){lines.x.push(o.x+20,o.x+o.w-20);var bm=o.y+o.h/2;lines.y.push(bm-15,bm+15);}
+    if(t==='cajon'||t==='cajon_cocina'){lines.y.push(o.y+o.h-30);lines.x.push(o.x+30,o.x+o.w-30);}
+    if(t==='zapatero'){lines.y.push(o.y+30);}
+    return lines;
+  }
   originals.forEach(function(a){
-    var aL=getLines(a);
+    var aEdgesX=[a.x,a.x+a.w],aEdgesY=[a.y,a.y+a.h];
     originals.forEach(function(b){
-      if(a.idx>=b.idx) return; // avoid duplicates and self
-      var bL=getLines(b);
-      ['x','y'].forEach(function(axis){
-        aL[axis].forEach(function(al){
-          bL[axis].forEach(function(bl){
-            if(Math.abs(al.v-bl.v)<=SNAP_TOL){
-              // Priority: fixed internal lines win over edges
-              // Store both sides so post-process can decide which to move
-              coincidences.push({
-                a:{idx:a.idx,type:al.type,eIdx:al.eIdx,fixed:al.fixed,lineIdx:al.lineIdx},
-                b:{idx:b.idx,type:bl.type,eIdx:bl.eIdx,fixed:bl.fixed,lineIdx:bl.lineIdx},
-                axis:axis
-              });
-            }
-          });
+      if(a.idx===b.idx) return;
+      var il=internalLines(b);
+      aEdgesX.forEach(function(ex,ei){
+        il.x.forEach(function(lx,li){
+          if(Math.abs(ex-lx)<=SNAP_TOL) coincidences.push({elem:a.idx,axis:'x',edgeIdx:ei,ref:b.idx,refType:_modules[b.idx].type,lineIdx:li});
+        });
+      });
+      aEdgesY.forEach(function(ey,ei){
+        il.y.forEach(function(ly,li){
+          if(Math.abs(ey-ly)<=SNAP_TOL) coincidences.push({elem:a.idx,axis:'y',edgeIdx:ei,ref:b.idx,refType:_modules[b.idx].type,lineIdx:li});
         });
       });
     });
@@ -793,83 +781,37 @@ function groupResizeMove(e){
     }
   });
 
-  // Post-process: restore ALL coincidences with cascade propagation
-  // Helper: get current line value for a module after resize
-  function curLineVal(idx,info,axis){
-    var m=_modules[idx],t=m.type;
-    if(info.type==='edge'){
-      if(axis==='x') return info.eIdx===0?m.x:m.x+m.w;
-      else return info.eIdx===0?m.y:m.y+m.h;
-    }
-    // Internal line: recalculate from current resized position + fixed offset
-    var li=info.lineIdx||0;
-    if(axis==='x'){
-      var il=[];
-      if(t==='modulo') il=[m.x+19,m.x+m.w-19];
-      if(t==='barra') il=[m.x+20,m.x+m.w-20];
-      if(t==='cajon'||t==='cajon_cocina') il=[m.x+30,m.x+m.w-30];
-      return li<il.length?il[li]:null;
-    }else{
-      var il=[];
-      if(t==='modulo') il=[m.y+70,m.y+40,m.y+m.h-19];
-      if(t==='barra'){var bm=m.y+m.h/2;il=[bm-15,bm+15];}
-      if(t==='cajon'||t==='cajon_cocina') il=[m.y+m.h-30];
-      if(t==='zapatero') il=[m.y+30];
-      return li<il.length?il[li]:null;
-    }
-  }
-  // Helper: apply a delta to an element's edge
-  // Priority rule: fixed internal lines (tarima, panels) win — don't move the
-  // element that owns them. Move the other side of the coincidence instead.
-  function applySnap(idx,info,axis,delta){
-    if(Math.abs(delta)<1) return;
-    var m=_modules[idx],t=m.type;
-    if(info.type==='int') return; // don't move element to satisfy its own internal line
-    // Respect fixed-height types: only adjust position, never height
-    var fixedH={'barra':1,'zapatero':1};
-    if(axis==='x'){
-      if(info.eIdx===0) m.x+=delta;
-      else{m.w+=delta;if(m.w<GRID)m.w=GRID;}
-    }else{
-      if(info.eIdx===0) m.y+=delta;
-      else if(!(t in fixedH)){m.h+=delta;if(m.h<GRID)m.h=GRID;}
-    }
-  }
+  // Post-process: restore internal-line coincidences
   if(g.coincidences.length>0){
-    // Iterative cascade: repeat until convergence or max iterations
-    // Each pass fixes coincidences; moved elements may break others → re-check
-    var MAX_ITER=5;
-    for(var iter=0;iter<MAX_ITER;iter++){
-      var moved=false;
-      g.coincidences.forEach(function(c){
-        var va=curLineVal(c.a.idx,c.a,c.axis);
-        var vb=curLineVal(c.b.idx,c.b,c.axis);
-        if(va==null||vb==null) return;
-        var delta=va-vb;
-        if(Math.abs(delta)<1) return;
-        moved=true;
-        // Decide which side to move:
-        // Rule: fixed internal lines have highest priority (don't move their owner)
-        // Then: internal lines > edges (prefer moving the edge side)
-        if(c.a.fixed&&c.a.type==='int'){
-          // a owns a fixed line → move b to match a
-          applySnap(c.b.idx,c.b,c.axis,-delta);
-        }else if(c.b.fixed&&c.b.type==='int'){
-          // b owns a fixed line → move a to match b
-          applySnap(c.a.idx,c.a,c.axis,delta);
-        }else if(c.a.type==='int'){
-          applySnap(c.b.idx,c.b,c.axis,-delta);
-        }else if(c.b.type==='int'){
-          applySnap(c.a.idx,c.a,c.axis,delta);
-        }else{
-          // Both are edges: move the one with higher eIdx (top/right edge = size change)
-          // to preserve the position of the bottom/left element
-          if(c.a.eIdx>=c.b.eIdx) applySnap(c.a.idx,c.a,c.axis,delta);
-          else applySnap(c.b.idx,c.b,c.axis,-delta);
-        }
-      });
-      if(!moved) break; // converged
-    }
+    g.coincidences.forEach(function(c){
+      var m=_modules[c.elem],ref=_modules[c.ref];
+      // Recalculate the internal line position on the resized ref element
+      var target;
+      if(c.axis==='x'){
+        var il=[];
+        if(ref.type==='modulo'){il.push(ref.x+19,ref.x+ref.w-19);}
+        if(ref.type==='barra'){il.push(ref.x+20,ref.x+ref.w-20);}
+        if(ref.type==='cajon'||ref.type==='cajon_cocina'){il.push(ref.x+30,ref.x+ref.w-30);}
+        target=il[c.lineIdx];
+        if(target==null) return;
+        var edge=c.edgeIdx===0?m.x:m.x+m.w;
+        var delta=target-edge;
+        if(c.edgeIdx===0){m.x+=delta;}
+        else{m.w+=delta;if(m.w<GRID)m.w=GRID;}
+      }else{
+        var il=[];
+        if(ref.type==='modulo'){il.push(ref.y+70,ref.y+40,ref.y+ref.h-19);}
+        if(ref.type==='barra'){var bm=ref.y+ref.h/2;il.push(bm-15,bm+15);}
+        if(ref.type==='cajon'||ref.type==='cajon_cocina'){il.push(ref.y+ref.h-30);}
+        if(ref.type==='zapatero'){il.push(ref.y+30);}
+        target=il[c.lineIdx];
+        if(target==null) return;
+        var edge=c.edgeIdx===0?m.y:m.y+m.h;
+        var delta=target-edge;
+        if(c.edgeIdx===0){m.y+=delta;}
+        else{m.h+=delta;if(m.h<GRID)m.h=GRID;}
+      }
+    });
   }
 
   renderModules();renderProps();
