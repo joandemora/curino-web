@@ -763,8 +763,10 @@ function groupResizeMove(e){
   var fixedD={'barra':40,'tapeta':19,'zocalo':19};
   var clampD={'puerta_batiente':{min:19,max:30}};
   var clampH={'estante':{min:19,max:40}};
+  console.log('--- groupResize sy='+sy.toFixed(6)+' ay='+ay+' g.by='+g.by+' ah='+ah+' g.bh='+g.bh+' ---');
   g.originals.forEach(function(o){
     var m=_modules[o.idx],t=m.type;
+    var _oy=o.y,_oh=o.h,_otop=o.y+o.h;
     // Full proportional: position and size scale together
     m.x=Math.round(ax+(o.x-g.bx)*sx);
     if(t!=='divisor') m.w=Math.max(GRID,Math.round(o.w*sx));
@@ -779,6 +781,7 @@ function groupResizeMove(e){
       else if(t in clampH) m.h=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
       else m.h=Math.max(GRID,Math.round(o.h*sy));
     }
+    console.log('['+t+'] orig: y='+_oy+' h='+_oh+' top='+_otop+' | calc: y='+m.y+' h='+m.h+' top='+(m.y+m.h)+' | raw_y='+(ay+(o.y-g.by)*sy).toFixed(4)+' raw_h='+(o.h*sy).toFixed(4));
   });
 
   // Post-process: restore internal-line coincidences
