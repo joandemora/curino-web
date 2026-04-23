@@ -828,18 +828,73 @@ function groupResizeMove(e){
     if(chain.length>1) xChains.push(chain);
   }
 
-  // Apply Y-chains: first element uses proportional position, rest accumulate
-  yChains.forEach(function(chain){
-    var first=chain[0];
-    var m0=_modules[first.idx];
-    if(_view==='planta'){
-      m0.pz=Math.round(ay+(first.pz-g.by)*sy);
-      m0.d=sized[first.idx].d;
-    }else{
-      m0.y=Math.round(ay+(first.y-g.by)*sy);
-      m0.h=sized[first.idx].h;
+  // Collect chain starter indices and unchained indices (eligible for internal-line snap)
+  var yChainStarters={},xChainStarters={};
+  yChains.forEach(function(c){yChainStarters[c[0].idx]=true;});
+  xChains.forEach(function(c){xChainStarters[c[0].idx]=true;});
+
+  // Pass 3a: proportional position for chain starters + unchained elements, apply sizes
+  g.originals.forEach(function(o){
+    var m=_modules[o.idx];
+    m.w=sized[o.idx].w;
+    if(!inChainX[o.idx]||xChainStarters[o.idx]){
+      m.x=Math.round(ax+(o.x-g.bx)*sx);
     }
-    yProcessed[first.idx]=true;
+    if(_view==='planta'){
+      m.d=sized[o.idx].d;
+      if(!inChainY[o.idx]||yChainStarters[o.idx]){
+        m.pz=Math.round(ay+(o.pz-g.by)*sy);
+      }
+    }else{
+      m.h=sized[o.idx].h;
+      if(!inChainY[o.idx]||yChainStarters[o.idx]){
+        m.y=Math.round(ay+(o.y-g.by)*sy);
+      }
+    }
+  });
+
+  // Pass 3b: snap chain starters and unchained elements to internal lines
+  // Only snaps elements whose edges originally coincided with internal lines
+  // of other selected elements. Does NOT touch chain followers.
+  function curInternalLines(idx,axis){
+    var m=_modules[idx],t=m.type,il=[];
+    if(axis==='x'){
+      if(t==='modulo') il=[m.x+19,m.x+m.w-19];
+      if(t==='barra') il=[m.x+20,m.x+m.w-20];
+      if(t==='cajon'||t==='cajon_cocina') il=[m.x+30,m.x+m.w-30];
+    }else{
+      if(t==='modulo') il=[m.y+70,m.y+40,m.y+m.h-19];
+      if(t==='barra'){var bm=m.y+m.h/2;il=[bm-15,bm+15];}
+      if(t==='cajon'||t==='cajon_cocina') il=[m.y+m.h-30];
+      if(t==='zapatero') il=[m.y+30];
+    }
+    return il;
+  }
+  g.coincidences.forEach(function(c){
+    // Only snap if elem is a chain starter or unchained (not a chain follower)
+    if(inChainY[c.elem]&&!yChainStarters[c.elem]&&c.axis==='y') return;
+    if(inChainX[c.elem]&&!xChainStarters[c.elem]&&c.axis==='x') return;
+    var m=_modules[c.elem],ref=_modules[c.ref];
+    var il=curInternalLines(c.ref,c.axis);
+    var target=il[c.lineIdx];
+    if(target==null) return;
+    if(c.axis==='x'){
+      var edge=c.edgeIdx===0?m.x:m.x+m.w;
+      var delta=target-edge;
+      if(Math.abs(delta)<1) return;
+      if(c.edgeIdx===0) m.x+=delta;
+      else{m.w+=delta;if(m.w<GRID)m.w=GRID;}
+    }else{
+      var edge=c.edgeIdx===0?m.y:m.y+m.h;
+      var delta=target-edge;
+      if(Math.abs(delta)<1) return;
+      if(c.edgeIdx===0) m.y+=delta;
+      else{var ft={'barra':1,'zapatero':1};if(!(m.type in ft)){m.h+=delta;if(m.h<GRID)m.h=GRID;}}
+    }
+  });
+
+  // Pass 3c: accumulate chain followers from (now-snapped) starters
+  yChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
       var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
@@ -850,39 +905,14 @@ function groupResizeMove(e){
         cur.y=prev.y+prev.h;
         cur.h=sized[chain[k].idx].h;
       }
-      yProcessed[chain[k].idx]=true;
     }
   });
-
-  // Apply X-chains: same logic
   xChains.forEach(function(chain){
-    var first=chain[0];
-    var m0=_modules[first.idx];
-    m0.x=Math.round(ax+(first.x-g.bx)*sx);
-    m0.w=sized[first.idx].w;
-    xProcessed[first.idx]=true;
     for(var k=1;k<chain.length;k++){
       var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
       cur.x=prev.x+prev.w;
       cur.w=sized[chain[k].idx].w;
-      xProcessed[chain[k].idx]=true;
-    }
-  });
-
-  // Pass 3: apply proportional position to unchained elements
-  g.originals.forEach(function(o){
-    var m=_modules[o.idx];
-    if(!xProcessed[o.idx]){
-      m.x=Math.round(ax+(o.x-g.bx)*sx);
-    }
-    m.w=sized[o.idx].w;
-    if(_view==='planta'){
-      if(!yProcessed[o.idx]) m.pz=Math.round(ay+(o.pz-g.by)*sy);
-      m.d=sized[o.idx].d;
-    }else{
-      if(!yProcessed[o.idx]) m.y=Math.round(ay+(o.y-g.by)*sy);
-      m.h=sized[o.idx].h;
     }
   });
 
