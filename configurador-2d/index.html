@@ -219,9 +219,7 @@ var _modules=[];
 var _sel=new Set(); // selected indices
 var _history=[];
 var _historyIdx=-1;
-var _baseZoom=1; // calculated from paper+scale
-var _userZoom=1;  // user-controlled via wheel/buttons
-var _zoom=1;      // effective = _baseZoom * _userZoom
+var _zoom=1; // derived from _drawScale + paper size
 var _view='alzado';
 var _furW=2000,_furH=2400,_furD=600;
 var SCALE=0.25; // px per mm at zoom=1
@@ -271,14 +269,37 @@ function applyPaperScale(){
   var p=PAPERS[_paper];
   var pr=paperRect();
   var realW=p.w*_drawScale;
-  _baseZoom=pr.w/(realW*SCALE);
-  _zoom=_baseZoom*_userZoom;
-  _panX=0;_panY=0;
+  _zoom=pr.w/(realW*SCALE);
   draw();renderModules();
+}
+function scaleFromZoom(){
+  // Derive _drawScale from current _zoom
+  var p=PAPERS[_paper];
+  var pr=paperRect();
+  return pr.w/(_zoom*SCALE*p.w);
+}
+function updateScaleIndicator(){
+  var ds=scaleFromZoom();
+  var sel=document.getElementById('scaleSelect');
+  // Snap to standard values if within 8%
+  var standards=[10,20,25,30,50,75,100];
+  var snapped=ds;
+  for(var i=0;i<standards.length;i++){
+    if(Math.abs(ds-standards[i])/standards[i]<0.08){snapped=standards[i];break;}
+  }
+  _drawScale=snapped;
+  localStorage.setItem('c2d_scale',Math.round(_drawScale).toString());
+  // Update dropdown: select matching value or show custom
+  var found=false;
+  for(var i=0;i<sel.options.length;i++){
+    if(parseInt(sel.options[i].value)===Math.round(snapped)){sel.selectedIndex=i;found=true;break;}
+  }
+  if(!found) sel.selectedIndex=-1;
 }
 function changePaper(){
   _paper=document.getElementById('paperFormat').value;
   localStorage.setItem('c2d_paper',_paper);
+  _panX=0;_panY=0;
   applyPaperScale();
 }
 function changeScale(){
@@ -1106,9 +1127,9 @@ function switchView(v){
 }
 
 // Zoom
-function zoomIn(){_userZoom=Math.min(_userZoom*1.2,8);_zoom=_baseZoom*_userZoom;draw();renderModules();}
-function zoomOut(){_userZoom=Math.max(_userZoom/1.2,0.1);_zoom=_baseZoom*_userZoom;draw();renderModules();}
-function zoomFit(){_userZoom=1;_zoom=_baseZoom;_panX=0;_panY=0;draw();renderModules();}
+function zoomIn(){_zoom*=1.2;updateScaleIndicator();draw();renderModules();}
+function zoomOut(){_zoom/=1.2;updateScaleIndicator();draw();renderModules();}
+function zoomFit(){_drawScale=30;_panX=0;_panY=0;applyPaperScale();updateScaleIndicator();}
 
 // Scroll wheel zoom (centered on cursor)
 wrap.addEventListener('wheel',function(e){
@@ -1119,11 +1140,10 @@ wrap.addEventListener('wheel',function(e){
   var o=origin();
   var worldX=(mx-o.x)/s();
   var worldY=(my-o.y)/s();
-  // Apply zoom to _userZoom
-  var oldZoom=_zoom;
-  if(e.deltaY<0) _userZoom=Math.min(_userZoom*1.1,8);
-  else _userZoom=Math.max(_userZoom/1.1,0.1);
-  _zoom=_baseZoom*_userZoom;
+  // Apply zoom — directly changes drawing scale
+  if(e.deltaY<0) _zoom*=1.1;
+  else _zoom/=1.1;
+  updateScaleIndicator();
   // Adjust pan so same world point stays under cursor
   var pr=paperRect();
   var vw=_view==='planta'?_furW:_furW;
