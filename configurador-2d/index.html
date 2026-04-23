@@ -19,7 +19,9 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar button{background:none;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:11px;padding:4px 10px;cursor:pointer;transition:all .2s}
 .c2d-toolbar button:hover{border-color:var(--black);background:var(--bg)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
-.c2d-dims input{width:50px;border:1px solid var(--border);padding:2px 4px;font-family:var(--font);font-size:11px;text-align:center}
+.c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
+.c2d-scale-indicator{position:absolute;bottom:12px;left:12px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mid);background:rgba(255,255,255,.85);padding:4px 10px;border-radius:6px;border:1px solid var(--border);z-index:6}
+.c2d-scale-indicator select{border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
 /* Layout */
 .c2d-layout{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 48px)}
@@ -109,10 +111,11 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 <div class="c2d-header">
   <a href="/"><img src="/assets/imagenes/logo-curino.png" alt="Curino" class="c2d-logo"></a>
   <div class="c2d-dims">
-    <span>Ancho:</span><input type="number" id="dimW" value="2000" min="600" max="6000" step="50" onchange="resizeFurniture()">
-    <span>Alto:</span><input type="number" id="dimH" value="2400" min="600" max="3000" step="50" onchange="resizeFurniture()">
-    <span>Fondo:</span><input type="number" id="dimD" value="600" min="300" max="800" step="50" onchange="resizeFurniture()">
-    <span>mm</span>
+    <span>Papel:</span>
+    <select id="paperFormat" onchange="changePaper()">
+      <option value="A4" selected>DIN A4</option>
+      <option value="A3">DIN A3</option>
+    </select>
   </div>
   <div class="c2d-toolbar">
     <button onclick="zoomIn()">+</button>
@@ -182,6 +185,18 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <div class="c2d-canvas-wrap" id="canvasWrap">
       <canvas id="cvs"></canvas>
       <div id="modulesLayer"></div>
+      <div class="c2d-scale-indicator">
+        <span>Escala:</span>
+        <select id="scaleSelect" onchange="changeScale()">
+          <option value="10">1:10</option>
+          <option value="20">1:20</option>
+          <option value="25">1:25</option>
+          <option value="30" selected>1:30</option>
+          <option value="50">1:50</option>
+          <option value="75">1:75</option>
+          <option value="100">1:100</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -207,6 +222,10 @@ var _zoom=1;
 var _view='alzado';
 var _furW=2000,_furH=2400,_furD=600;
 var SCALE=0.25; // px per mm at zoom=1
+// Paper & scale
+var PAPERS={A4:{w:297,h:210},A3:{w:420,h:297}}; // landscape orientation (w>h)
+var _paper=localStorage.getItem('c2d_paper')||'A4';
+var _drawScale=parseInt(localStorage.getItem('c2d_scale'))||30;
 var GRID=50; // snap grid in mm
 var SNAP_RADIUS=5; // magnetic snap radius in px
 var _dragData=null;
@@ -230,10 +249,31 @@ function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;
 window.addEventListener('resize',resizeCanvas);
 
 function resizeFurniture(){
-  _furW=parseInt(document.getElementById('dimW').value)||2000;
-  _furH=parseInt(document.getElementById('dimH').value)||2400;
-  _furD=parseInt(document.getElementById('dimD').value)||600;
   draw();renderModules();
+}
+function applyPaperScale(){
+  // Calculate zoom so that the paper at the given scale fits the canvas
+  // Paper size in mm (landscape). At scale 1:S, 1mm on paper = S mm real.
+  // So paper covers: paperW*S × paperH*S mm of real space.
+  // We want that area to fill the canvas viewport.
+  var p=PAPERS[_paper];
+  var realW=p.w*_drawScale, realH=p.h*_drawScale;
+  // Fit to canvas: zoom so realW/realH fills wrap dimensions
+  var zx=wrap.clientWidth/(realW*SCALE);
+  var zy=wrap.clientHeight/(realH*SCALE);
+  _zoom=Math.min(zx,zy)*0.9; // 90% to leave margin
+  _panX=0;_panY=0;
+  draw();renderModules();
+}
+function changePaper(){
+  _paper=document.getElementById('paperFormat').value;
+  localStorage.setItem('c2d_paper',_paper);
+  applyPaperScale();
+}
+function changeScale(){
+  _drawScale=parseInt(document.getElementById('scaleSelect').value)||30;
+  localStorage.setItem('c2d_scale',_drawScale.toString());
+  applyPaperScale();
 }
 
 function draw(){
@@ -251,11 +291,6 @@ function draw(){
   var vh=_view==='planta'?_furD:_furH;
   ctx.strokeStyle='#000';ctx.lineWidth=2;
   ctx.strokeRect(o.x,o.y,vw*sc,vh*sc);
-  // Cotas
-  ctx.fillStyle='#000';ctx.font='11px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';
-  ctx.fillText((_view==='planta'?_furW:_furW)+' mm',o.x+vw*sc/2,o.y-12);
-  ctx.save();ctx.translate(o.x-14,o.y+vh*sc/2);ctx.rotate(-Math.PI/2);
-  ctx.fillText((_view==='planta'?_furD:_furH)+' mm',0,0);ctx.restore();
 }
 
 function renderModules(){
@@ -1113,6 +1148,10 @@ function exportPNG(){
 }
 
 saveHistory();resizeCanvas();
+// Restore paper & scale from localStorage
+document.getElementById('paperFormat').value=_paper;
+document.getElementById('scaleSelect').value=_drawScale;
+applyPaperScale();
 
 // ── CONTEXT MENU ──
 var _ctxMenu=document.getElementById('ctxMenu');
