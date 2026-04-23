@@ -726,7 +726,8 @@ function groupResizeMove(e){
   if(p==='t'||p==='tl'||p==='tr'){ah=Math.max(GRID,g.bh+dy);}
   if(p==='b'||p==='bl'||p==='br'){ah=Math.max(GRID,g.bh-dy);ay=g.by+g.bh-ah;}
 
-  var sx=aw/g.bw,sy=ah/g.bh;
+  var dw=aw-g.bw,dh=ah-g.bh;
+  var oax=g.bx,oay=g.by; // original anchor
 
   var fixedH={'barra':40,'zapatero':200};
   var fixedD={'barra':40,'tapeta':19,'zocalo':19};
@@ -734,23 +735,23 @@ function groupResizeMove(e){
   var clampH={'estante':{min:19,max:40}};
   g.originals.forEach(function(o){
     var m=_modules[o.idx],t=m.type;
-    // X axis: scale all (except divisor width)
-    m.x=Math.round(ax+(o.x-g.bx)*sx);
-    if(t!=='divisor') m.w=Math.max(GRID,Math.round(o.w*sx));
+    // X axis: same absolute delta for all (except divisor width)
+    m.x=Math.round(o.x+(ax-oax));
+    if(t!=='divisor') m.w=Math.max(GRID,Math.round(o.w+dw));
     // Y axis
     if(_view==='planta'){
-      m.pz=Math.round(ay+(o.pz-g.by)*sy);
+      m.pz=Math.round(o.pz+(ay-oay));
       if(t in fixedD){/*keep*/}
-      else if(t in clampD) m.d=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d*sy)));
-      else m.d=Math.max(GRID,Math.round(o.d*sy));
+      else if(t in clampD) m.d=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d+dh)));
+      else m.d=Math.max(GRID,Math.round(o.d+dh));
     }else{
-      m.y=Math.round(ay+(o.y-g.by)*sy);
+      m.y=Math.round(o.y+(ay-oay));
       if(t in fixedH){
         // Fixed height: keep original, don't scale
       }else if(t in clampH){
-        m.h=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
+        m.h=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h+dh)));
       }else{
-        m.h=Math.max(GRID,Math.round(o.h*sy));
+        m.h=Math.max(GRID,Math.round(o.h+dh));
       }
     }
   });
