@@ -281,22 +281,24 @@ function contentSizeMM(){
   return{w:usableW*_drawScale, h:usableH*_drawScale};
 }
 function origin(){
-  // World (0,0) mapped so content is centered in the content area at pan=0, zoom=100%.
-  // At higher zoom, content overflows symmetrically and pan navigates.
+  // World (0,0) mapped so total content (including cajetin) is centered
+  // in the content area at pan=0, zoom=100%.
   var ca=contentArea();
   var cs=contentSizeMM();
+  var p=PAPERS[_paper];
+  var cjMM=p.h*CAJETIN_H_RATIO*_drawScale;
   var sc=s();
-  // Center of content area on screen
   var cx=ca.x+ca.w/2, cy=ca.y+ca.h/2;
+  // Total vertical center: content goes from -cjMM to +csH
+  // Center = (-cjMM + csH) / 2 = (csH - cjMM) / 2
+  var totalCenterY=(cs.h-cjMM)/2;
   if(_view==='planta'){
-    // World (0,0) at top-left, world grows right+down
-    // Center of world content = (cs.w/2, cs.h/2)
     return{x:cx-cs.w/2*sc+_panX, y:cy-cs.h/2*sc+_panY};
   }else{
-    // Alzado: world (0,0) at bottom-left, Y grows up (screen Y down)
-    // Center of world content = (cs.w/2, cs.h/2)
-    // Screen: world center maps to content area center
-    return{x:cx-cs.w/2*sc+_panX, y:cy+cs.h/2*sc+_panY};
+    // Alzado: world Y up, screen Y down. origin.y = screen position of world Y=0.
+    // World center Y mapped to screen center: cy = origin.y - totalCenterY * sc
+    // → origin.y = cy + totalCenterY * sc
+    return{x:cx-cs.w/2*sc+_panX, y:cy+totalCenterY*sc+_panY};
   }
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
