@@ -369,7 +369,12 @@ function paperRect(){
 function applyPaperScale(){
   var ca=contentArea();
   var cs=contentSizeMM();
-  _baseZoom=ca.w/(cs.w*SCALE);
+  var p=PAPERS[_paper];
+  var cjMM=p.h*CAJETIN_H_RATIO*_drawScale;
+  var totalH=cs.h+cjMM;
+  var bzX=ca.w/(cs.w*SCALE);
+  var bzY=ca.h/(totalH*SCALE);
+  _baseZoom=Math.min(bzX,bzY);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
 }
