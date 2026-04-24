@@ -721,7 +721,11 @@ wrap.addEventListener('drop',function(e){
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
   var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
+  console.log('DROP: clientXY=',e.clientX,e.clientY,'wrapOff=',rect.left,rect.top,'origin=',o.x.toFixed(1),o.y.toFixed(1),'sc=',sc.toFixed(4),'world x=',x,'y=',y,'pz=',pz);
+  var b=paperBounds();
+  console.log('BOUNDS: left=',b.left.toFixed(0),'right=',b.right.toFixed(0),'bottom=',b.bottom.toFixed(0),'top=',b.top.toFixed(0));
   clampToPaper(newMod);
+  console.log('AFTER CLAMP: x=',newMod.x,'y=',newMod.y,'w=',newMod.w,'h=',newMod.h);
   _modules.push(newMod);
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
