@@ -1113,9 +1113,8 @@ function groupResizeMove(e){
     for(var k=1;k<chain.length;k++){
       var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
-              cur.y=prev.y+prev.h;
-        cur.h=sized[chain[k].idx].h;
-      }
+      cur.y=prev.y+prev.h;
+      cur.h=sized[chain[k].idx].h;
     }
   });
   xChains.forEach(function(chain){
@@ -1241,11 +1240,6 @@ function marqueeEnd(e){
   _marquee=null;
   document.removeEventListener('mousemove',marqueeMove);
   document.removeEventListener('mouseup',marqueeEnd);
-}
-
-// Views
-);
-  draw();renderModules();
 }
 
 // Zoom (+/- buttons control _userZoom)
