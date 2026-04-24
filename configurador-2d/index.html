@@ -256,6 +256,30 @@ function origin(){
   return{x:pr.x+(pr.w-vw*s())/2+_panX,y:pr.y+(pr.h-vh*s())/2+_panY};
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
+function paperBounds(){
+  // Paper bounds in world mm. Paper is centered on the furniture center.
+  var p=PAPERS[_paper];
+  var pw=p.w*_drawScale, ph=p.h*_drawScale; // real mm the paper covers
+  var vw=_view==='planta'?_furW:_furW;
+  var vh=_view==='planta'?_furD:_furH;
+  var cx=vw/2, cy=vh/2; // furniture center in world
+  return{left:cx-pw/2, right:cx+pw/2, bottom:cy-ph/2, top:cy+ph/2};
+}
+function clampToPaper(m){
+  var b=paperBounds();
+  var yKey=_view==='planta'?'pz':'y';
+  var hKey=_view==='planta'?'d':'h';
+  // Clamp size to paper
+  if(m.w>b.right-b.left) m.w=Math.round(b.right-b.left);
+  var mh=m[hKey]||0;
+  if(mh>b.top-b.bottom) m[hKey]=Math.round(b.top-b.bottom);
+  // Clamp position
+  if(m.x<b.left) m.x=Math.round(b.left);
+  if(m.x+m.w>b.right) m.x=Math.round(b.right-m.w);
+  var y=m[yKey]||0;
+  if(y<b.bottom) m[yKey]=Math.round(b.bottom);
+  if(y+(m[hKey]||0)>b.top) m[yKey]=Math.round(b.top-(m[hKey]||0));
+}
 
 function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;draw();}
 window.addEventListener('resize',resizeCanvas);
@@ -570,7 +594,9 @@ wrap.addEventListener('drop',function(e){
   saveHistory();
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
-  _modules.push({type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz});
+  var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
+  clampToPaper(newMod);
+  _modules.push(newMod);
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
@@ -689,11 +715,13 @@ function dragModuleMove(e){
     }
     yOff=finalY-ref.y;
   }
-  // Apply offsets to all selected
+  // Apply offsets to all selected + clamp to paper
   _dragMod.origins.forEach(function(o){
-    _modules[o.idx].x=o.x+xOff;
-    if(_view==='planta') _modules[o.idx].pz=o.pz+yOff;
-    else _modules[o.idx].y=o.y+yOff;
+    var m=_modules[o.idx];
+    m.x=o.x+xOff;
+    if(_view==='planta') m.pz=o.pz+yOff;
+    else m.y=o.y+yOff;
+    clampToPaper(m);
   });
   renderModules();renderProps();
 }
@@ -768,6 +796,7 @@ function resizeMove(e){
       if(nh2>=hMin){m.y=topEdge-nh2;m.h=nh2;if(snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
     }
   }
+  clampToPaper(m);
   renderModules();renderProps();
 }
 function resizeEnd(){
@@ -1031,6 +1060,9 @@ function groupResizeMove(e){
       }
     });
   }
+
+  // Clamp all selected to paper bounds
+  g.originals.forEach(function(o){clampToPaper(_modules[o.idx]);});
 
   renderModules();renderProps();
 }
