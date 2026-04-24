@@ -211,7 +211,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 <div class="c2d-ctx" id="ctxMenu"></div>
 
 <script>
-console.log('[DBG] SCRIPT START');
 // State (all dimensions in mm)
 var _modules=[];
 var _sel=new Set(); // selected indices
@@ -325,7 +324,7 @@ function clampToPaper(m){
   if(y+(m[hKey]||0)>b.top) m[yKey]=Math.round(b.top-(m[hKey]||0));
 }
 
-function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;console.log('[DBG] resizeCanvas: wrap=',wrap.clientWidth,'x',wrap.clientHeight,'cvs=',cvs.width,'x',cvs.height);draw();}
+function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;draw();}
 function saveMeta(){localStorage.setItem('c2d_meta',JSON.stringify(_meta));}
 // Click on cajetin to edit fields
 cvs.addEventListener('dblclick',function(e){
@@ -411,7 +410,6 @@ function changeScale(){
 
 function draw(){
   var w=cvs.width,h=cvs.height,sc=s(),o=origin();
-  console.log('[DBG] draw: cvs=',w,'x',h,'sc=',sc,'origin=',o);
   ctx.clearRect(0,0,w,h);
 
   // Paper frame (fixed visual size, acts as reference)
@@ -1326,7 +1324,7 @@ function exportPNG(){
   var a=document.createElement('a');a.download='curino-2d.png';a.href=cvs.toDataURL('image/png');a.click();draw();
 }
 
-console.log('[DBG] INIT: script reached init block');saveHistory();resizeCanvas();
+saveHistory();resizeCanvas();
 // Restore paper & scale from localStorage
 document.getElementById('paperFormat').value=_paper;
 document.getElementById('scaleSelect').value=_drawScale;
