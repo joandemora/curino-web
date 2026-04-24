@@ -255,7 +255,7 @@ function clampPan(){
   var ca=contentArea(), sc=s();
   var cs=contentSizeMM();
   var p=PAPERS[_paper];
-  var cjMM=p.h*(1-2*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
+  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
   var totalW=cs.w*sc;
   var totalH=(cs.h+cjMM)*sc;
   // Overflow = rendered size minus visible area
@@ -266,10 +266,10 @@ function clampPan(){
 }
 function s(){return SCALE*_zoom;}
 function marginRect(){
-  // Inner margin rect: paper inset by 2% on all 4 sides (equidistant)
+  // Inner margin rect: uniform visual margin on all 4 sides
   var pr=paperRect();
-  var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
-  return{x:pr.x+mx, y:pr.y+my, w:pr.w-2*mx, h:pr.h-2*my};
+  var m=Math.min(pr.w,pr.h)*PAPER_MARGIN;
+  return{x:pr.x+m, y:pr.y+m, w:pr.w-2*m, h:pr.h-2*m};
 }
 function cajetinScreenH(){
   // Cajetin height as fraction of margin rect height
@@ -283,10 +283,11 @@ function contentArea(){
   return{x:mr.x, y:mr.y, w:mr.w, h:mr.h-cjH};
 }
 function contentSizeMM(){
-  // Real mm the content area represents
+  // Real mm the content area represents (uniform margin on all sides)
   var p=PAPERS[_paper];
-  var innerW=p.w*(1-2*PAPER_MARGIN);
-  var innerH=p.h*(1-2*PAPER_MARGIN);
+  var mMM=Math.min(p.w,p.h)*PAPER_MARGIN; // uniform margin in paper mm
+  var innerW=p.w-2*mMM;
+  var innerH=p.h-2*mMM;
   var drawH=innerH*(1-CAJETIN_H_RATIO);
   return{w:innerW*_drawScale, h:drawH*_drawScale};
 }
@@ -296,7 +297,7 @@ function origin(){
   var ca=contentArea();
   var cs=contentSizeMM();
   var p=PAPERS[_paper];
-  var cjMM=p.h*(1-2*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
+  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
   var sc=s();
   var cx=ca.x+ca.w/2, cy=ca.y+ca.h/2;
   var totalCenterY=(cs.h-cjMM)/2;
@@ -378,7 +379,7 @@ function applyPaperScale(){
   var ca=contentArea();
   var cs=contentSizeMM();
   var p=PAPERS[_paper];
-  var cjMM=p.h*(1-2*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
+  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
   var totalH=cs.h+cjMM;
   var bzX=ca.w/(cs.w*SCALE);
   var bzY=ca.h/(totalH*SCALE);
@@ -454,7 +455,7 @@ function draw(){
   // World coord helpers
   var cs=contentSizeMM();
   var p=PAPERS[_paper];
-  var cjMM=p.h*(1-2*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
+  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
   function wx(v){return o.x+v*sc;}
   function wy(v){return _view==='planta'?o.y+v*sc:o.y-v*sc;}
 
@@ -1358,7 +1359,7 @@ wrap.addEventListener('wheel',function(e){
   if(_view==='planta'){
     baseOY=cyo-cs2.h/2*sc1;
   }else{
-    var p2=PAPERS[_paper], cj2=p2.h*(1-2*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
+    var p2=PAPERS[_paper], cj2=(p2.h-2*Math.min(p2.w,p2.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
     baseOY=cyo+(cs2.h-cj2)/2*sc1;
   }
   _panX=mx-baseOX-wx*sc1;
