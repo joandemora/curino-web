@@ -380,11 +380,20 @@ function applyPaperScale(){
 function updateZoomSelect(){
   var pct=Math.round(_userZoom*100);
   var sel=document.getElementById('zoomSelect');
+  // Remove previous custom option if any
+  var custom=sel.querySelector('option[data-custom]');
+  if(custom) custom.remove();
+  // Try to match a preset
   var found=false;
   for(var i=0;i<sel.options.length;i++){
     if(parseInt(sel.options[i].value)===pct){sel.selectedIndex=i;found=true;break;}
   }
-  if(!found) sel.selectedIndex=-1;
+  if(!found){
+    var opt=document.createElement('option');
+    opt.value=pct;opt.textContent=pct+'%';opt.setAttribute('data-custom','1');
+    sel.insertBefore(opt,sel.firstChild);
+    sel.selectedIndex=0;
+  }
 }
 function changeZoomSelect(){
   // Anchor = paper geometric center
