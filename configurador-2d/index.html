@@ -251,39 +251,33 @@ var layer=document.getElementById('modulesLayer');
 var _panX=0,_panY=0;
 var _cajetinRect=null;
 function clampPan(){
-  // Ensure paper edges stay within (or fill) the viewport.
-  // Paper at _userZoom=1 fills 85%. At higher zoom, pan is limited
-  // so the paper always covers the visible canvas area.
-  var p=PAPERS[_paper],aspect=p.w/p.h;
-  var maxW=wrap.clientWidth*0.85,maxH=wrap.clientHeight*0.85;
-  var baseW,baseH;
-  if(maxW/aspect<=maxH){baseW=maxW;baseH=maxW/aspect;}
-  else{baseH=maxH;baseW=baseH*aspect;}
-  var pw=baseW*_userZoom, ph=baseH*_userZoom;
-  var cx=(wrap.clientWidth-pw)/2, cy=(wrap.clientHeight-ph)/2;
-  // Paper left edge = cx + _panX. Must be <= 0 (paper fills left).
-  // Paper right edge = cx + _panX + pw. Must be >= wrap.clientWidth.
-  if(pw>=wrap.clientWidth){
-    if(cx+_panX>0) _panX=-cx;
-    if(cx+_panX+pw<wrap.clientWidth) _panX=wrap.clientWidth-cx-pw;
-  }else{
-    // Paper smaller than viewport at this zoom (shouldn't happen with min 100%)
-    _panX=0;
-  }
-  if(ph>=wrap.clientHeight){
-    if(cy+_panY>0) _panY=-cy;
-    if(cy+_panY+ph<wrap.clientHeight) _panY=wrap.clientHeight-cy-ph;
-  }else{
-    _panY=0;
-  }
+  // Pan moves content inside fixed paper. Limit so content doesn't
+  // scroll past its own edges (at _userZoom>1, only part is visible).
+  if(_userZoom<=1){_panX=0;_panY=0;return;}
+  var pr=paperRect();
+  var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
+  var cjH=pr.h*CAJETIN_H_RATIO;
+  // Content area in paper pixels
+  var cw=pr.w-2*mx, ch=pr.h-2*my-cjH;
+  // Scaled content is _userZoom times larger than the visible area
+  var maxPanX=cw*(_userZoom-1)/2;
+  var maxPanY=ch*(_userZoom-1)/2;
+  _panX=Math.max(-maxPanX,Math.min(maxPanX,_panX));
+  _panY=Math.max(-maxPanY,Math.min(maxPanY,_panY));
 }
 function s(){return SCALE*_zoom;}
 function origin(){
   var vw=_view==='planta'?_furW:_furW;
   var vh=_view==='planta'?_furD:_furH;
   var pr=paperRect();
-  // Center furniture within the paper frame
-  return{x:pr.x+(pr.w-vw*s())/2+_panX,y:pr.y+(pr.h-vh*s())/2+_panY};
+  var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
+  var cjH=pr.h*CAJETIN_H_RATIO;
+  // Content area within paper (minus margins and cajetin)
+  var cw=pr.w-2*mx, ch=pr.h-2*my-cjH;
+  // Center furniture in content area, apply _userZoom and pan
+  var cx=pr.x+mx+cw/2;
+  var cy=pr.y+my+ch/2;
+  return{x:cx-vw*s()/2+_panX, y:cy-vh*s()/2+_panY};
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
 function paperBounds(){
@@ -348,30 +342,21 @@ function resizeFurniture(){
   draw();renderModules();
 }
 function paperRect(){
-  // Paper rectangle in screen pixels. At _userZoom=1 fills 85% of canvas.
-  // Scales with _userZoom so paper grows/shrinks with user zoom.
+  // Paper rectangle in screen pixels. Fixed size, centered. Never scales.
   var p=PAPERS[_paper];
   var aspect=p.w/p.h;
   var maxW=wrap.clientWidth*0.85, maxH=wrap.clientHeight*0.85;
-  var baseW,baseH;
-  if(maxW/aspect<=maxH){baseW=maxW;baseH=maxW/aspect;}
-  else{baseH=maxH;baseW=baseH*aspect;}
-  var pw=baseW*_userZoom, ph=baseH*_userZoom;
-  var px=(wrap.clientWidth-pw)/2+_panX, py=(wrap.clientHeight-ph)/2+_panY;
+  var pw,ph;
+  if(maxW/aspect<=maxH){pw=maxW;ph=maxW/aspect;}
+  else{ph=maxH;pw=ph*aspect;}
+  var px=(wrap.clientWidth-pw)/2, py=(wrap.clientHeight-ph)/2;
   return{x:px,y:py,w:pw,h:ph};
-}
-function basePaperWidth(){
-  // Paper width at _userZoom=1 (for _baseZoom calculation)
-  var p=PAPERS[_paper],aspect=p.w/p.h;
-  var maxW=wrap.clientWidth*0.85,maxH=wrap.clientHeight*0.85;
-  if(maxW/aspect<=maxH) return maxW;
-  return maxH*aspect;
 }
 function applyPaperScale(){
   var p=PAPERS[_paper];
-  var bpw=basePaperWidth();
+  var pr=paperRect();
   var realW=p.w*_drawScale;
-  _baseZoom=bpw/(realW*SCALE);
+  _baseZoom=pr.w/(realW*SCALE);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
 }
@@ -418,9 +403,15 @@ function draw(){
   ctx.strokeStyle='#ccc';ctx.lineWidth=1;
   ctx.strokeRect(pr.x,pr.y,pr.w,pr.h);
 
-  // Grid (within paper area)
+  // Content area (paper minus margins minus cajetin)
+  var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
+  var cjH=pr.h*CAJETIN_H_RATIO;
+  var contentX=pr.x+mx, contentY=pr.y+my;
+  var contentW=pr.w-2*mx, contentH=pr.h-2*my-cjH;
+
+  // Grid + content clipped to content area
   ctx.save();
-  ctx.beginPath();ctx.rect(pr.x,pr.y,pr.w,pr.h);ctx.clip();
+  ctx.beginPath();ctx.rect(contentX,contentY,contentW,contentH);ctx.clip();
   ctx.strokeStyle='#e8e8e8';ctx.lineWidth=0.5;
   var gp=GRID*sc;
   if(gp>3){
@@ -495,6 +486,10 @@ function draw(){
 
 function renderModules(){
   layer.innerHTML='';
+  // Clip modules layer to content area within paper
+  var pr=paperRect(),pmx=pr.w*PAPER_MARGIN,pmy=pr.h*PAPER_MARGIN;
+  var pcjH=pr.h*CAJETIN_H_RATIO;
+  layer.style.clipPath='inset('+(pr.y+pmy)+'px '+(wrap.clientWidth-pr.x-pr.w+pmx)+'px '+(wrap.clientHeight-pr.y-pr.h+pmy+pcjH)+'px '+(pr.x+pmx)+'px)';
   var sc=s(),o=origin();
   _modules.forEach(function(m,i){
     var div=document.createElement('div');
