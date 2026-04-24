@@ -410,22 +410,17 @@ function draw(){
   ctx.strokeStyle='#ccc';ctx.lineWidth=1;
   ctx.strokeRect(pr.x,pr.y,pr.w,pr.h);
 
-  // Content area (paper minus margins minus cajetin)
-  var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
-  var cjH=pr.h*CAJETIN_H_RATIO;
-  var contentX=pr.x+mx, contentY=pr.y+my;
-  var contentW=pr.w-2*mx, contentH=pr.h-2*my-cjH;
-
-  // Grid + content clipped to content area
+  // Clip all scaled content to paper
   ctx.save();
-  ctx.beginPath();ctx.rect(contentX,contentY,contentW,contentH);ctx.clip();
+  ctx.beginPath();ctx.rect(pr.x,pr.y,pr.w,pr.h);ctx.clip();
+
+  // Grid (clipped to paper, scales with content)
   ctx.strokeStyle='#e8e8e8';ctx.lineWidth=0.5;
   var gp=GRID*sc;
   if(gp>3){
     for(var x=o.x%gp;x<w;x+=gp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
     for(var y=o.y%gp;y<h;y+=gp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
   }
-  ctx.restore();
 
   // Margin lines (2% inset, scale with zoom)
   var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
@@ -500,6 +495,8 @@ function draw(){
 
   // Store cajetin rect for click detection
   _cajetinRect={x:cjX,y:cjY,w:cjW,h:cjH,rowH:rowH,col3:col,col4:col4};
+
+  ctx.restore(); // end paper clip
 }
 
 function renderModules(){
