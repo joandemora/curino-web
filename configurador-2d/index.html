@@ -250,71 +250,75 @@ var layer=document.getElementById('modulesLayer');
 
 var _panX=0,_panY=0;
 var _cajetinRect=null;
-function clampPan(){
-  if(_userZoom<=1){_panX=0;_panY=0;return;}
-  var ca=contentArea(), sc=s();
-  var cs=contentSizeMM();
-  var p=PAPERS[_paper];
-  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
-  var totalW=cs.w*sc;
-  var totalH=(cs.h+cjMM)*sc;
-  // Overflow = rendered size minus visible area
-  var overflowX=Math.max(0,totalW-ca.w);
-  var overflowY=Math.max(0,totalH-ca.h);
-  _panX=Math.max(-overflowX/2,Math.min(overflowX/2,_panX));
-  _panY=Math.max(-overflowY/2,Math.min(overflowY/2,_panY));
-}
 function s(){return SCALE*_zoom;}
+
+// ── PAPER GEOMETRY (single source of truth) ──
+// Paper → marginRect (2% uniform inset) → drawingRect (top) + cartoucheRect (bottom 12%)
+
 function marginRect(){
-  // Inner margin rect: uniform visual margin on all 4 sides
   var pr=paperRect();
   var m=Math.min(pr.w,pr.h)*PAPER_MARGIN;
   return{x:pr.x+m, y:pr.y+m, w:pr.w-2*m, h:pr.h-2*m};
 }
-function cajetinScreenH(){
-  // Cajetin height as fraction of margin rect height
+function cartoucheRect(){
   var mr=marginRect();
-  return mr.h*CAJETIN_H_RATIO;
+  var cjH=mr.h*CAJETIN_H_RATIO;
+  return{x:mr.x, y:mr.y+mr.h-cjH, w:mr.w, h:cjH};
 }
-function contentArea(){
-  // Drawing area: margin rect minus cajetin at bottom
+function drawingRect(){
   var mr=marginRect();
-  var cjH=cajetinScreenH();
+  var cjH=mr.h*CAJETIN_H_RATIO;
   return{x:mr.x, y:mr.y, w:mr.w, h:mr.h-cjH};
 }
-function contentSizeMM(){
-  // Real mm the content area represents (uniform margin on all sides)
+
+// Paper dimensions in mm (for world coordinate mapping)
+function marginMM(){
   var p=PAPERS[_paper];
-  var mMM=Math.min(p.w,p.h)*PAPER_MARGIN; // uniform margin in paper mm
-  var innerW=p.w-2*mMM;
-  var innerH=p.h-2*mMM;
-  var drawH=innerH*(1-CAJETIN_H_RATIO);
-  return{w:innerW*_drawScale, h:drawH*_drawScale};
+  return Math.min(p.w,p.h)*PAPER_MARGIN;
 }
-function origin(){
-  // World (0,0) mapped so total content (drawing + cajetin) is centered
-  // in the content area at pan=0, zoom=100%.
-  var ca=contentArea();
-  var cs=contentSizeMM();
-  var p=PAPERS[_paper];
-  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
-  var sc=s();
-  var cx=ca.x+ca.w/2, cy=ca.y+ca.h/2;
-  var totalCenterY=(cs.h-cjMM)/2;
-  if(_view==='planta'){
-    return{x:cx-cs.w/2*sc+_panX, y:cy-cs.h/2*sc+_panY};
-  }else{
-    // Alzado: world Y up, screen Y down. origin.y = screen position of world Y=0.
-    // World center Y mapped to screen center: cy = origin.y - totalCenterY * sc
-    // → origin.y = cy + totalCenterY * sc
-    return{x:cx-cs.w/2*sc+_panX, y:cy+totalCenterY*sc+_panY};
-  }
+function drawingSizeMM(){
+  var p=PAPERS[_paper], m=marginMM();
+  var innerW=p.w-2*m, innerH=p.h-2*m;
+  return{w:innerW*_drawScale, h:innerH*(1-CAJETIN_H_RATIO)*_drawScale};
+}
+function cartoucheHMM(){
+  var p=PAPERS[_paper], m=marginMM();
+  return(p.h-2*m)*CAJETIN_H_RATIO*_drawScale;
+}
+function totalContentHMM(){
+  var ds=drawingSizeMM();
+  return ds.h+cartoucheHMM();
+}
+
+// World bounds for module clamping (drawing area only)
+function paperBounds(){
+  var ds=drawingSizeMM();
+  return{left:0, right:ds.w, bottom:0, top:ds.h};
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
-function paperBounds(){
-  // World bounds = content area in mm. World (0,0) = bottom-left.
-  var cs=contentSizeMM();
-  return{left:0, right:cs.w, bottom:0, top:cs.h};
+
+// Origin: centers total content (drawing + cartouche) in drawingRect
+function origin(){
+  var dr=drawingRect(), ds=drawingSizeMM(), cjMM=cartoucheHMM(), sc=s();
+  var cx=dr.x+dr.w/2, cy=dr.y+dr.h/2;
+  var totalCenterY=(ds.h-cjMM)/2;
+  if(_view==='planta'){
+    return{x:cx-ds.w/2*sc+_panX, y:cy-ds.h/2*sc+_panY};
+  }else{
+    return{x:cx-ds.w/2*sc+_panX, y:cy+totalCenterY*sc+_panY};
+  }
+}
+
+// Pan clamping
+function clampPan(){
+  if(_userZoom<=1){_panX=0;_panY=0;return;}
+  var dr=drawingRect(), sc=s(), ds=drawingSizeMM();
+  var totalW=ds.w*sc;
+  var totalH=totalContentHMM()*sc;
+  var overflowX=Math.max(0,totalW-dr.w);
+  var overflowY=Math.max(0,totalH-dr.h);
+  _panX=Math.max(-overflowX/2,Math.min(overflowX/2,_panX));
+  _panY=Math.max(-overflowY/2,Math.min(overflowY/2,_panY));
 }
 function clampToPaper(m){
   var b=paperBounds();
@@ -376,13 +380,11 @@ function paperRect(){
   return{x:px,y:py,w:pw,h:ph};
 }
 function applyPaperScale(){
-  var ca=contentArea();
-  var cs=contentSizeMM();
-  var p=PAPERS[_paper];
-  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
-  var totalH=cs.h+cjMM;
-  var bzX=ca.w/(cs.w*SCALE);
-  var bzY=ca.h/(totalH*SCALE);
+  var dr=drawingRect();
+  var ds=drawingSizeMM();
+  var totalH=totalContentHMM();
+  var bzX=dr.w/(ds.w*SCALE);
+  var bzY=dr.h/(totalH*SCALE);
   _baseZoom=Math.min(bzX,bzY);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
@@ -453,16 +455,15 @@ function draw(){
   ctx.setLineDash([]);
 
   // World coord helpers
-  var cs=contentSizeMM();
-  var p=PAPERS[_paper];
-  var cjMM=(p.h-2*Math.min(p.w,p.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
+  var ds=drawingSizeMM();
+  var cjMM=cartoucheHMM();
   function wx(v){return o.x+v*sc;}
   function wy(v){return _view==='planta'?o.y+v*sc:o.y-v*sc;}
 
-  // Cajetin: sits below content area in world (Y < 0 in alzado)
+  // Cajetin: sits below drawing area in world (Y < 0 in alzado)
   var cjTop=0, cjBot=-cjMM;
   var cjScrX=wx(0), cjScrY=Math.min(wy(cjTop),wy(cjBot));
-  var cjScrW=Math.abs(wx(cs.w)-wx(0)), cjScrH=Math.abs(wy(cjTop)-wy(cjBot));
+  var cjScrW=Math.abs(wx(ds.w)-wx(0)), cjScrH=Math.abs(wy(cjTop)-wy(cjBot));
 
   ctx.fillStyle='#fafafa';ctx.fillRect(cjScrX,cjScrY,cjScrW,cjScrH);
   ctx.strokeStyle='#999';ctx.lineWidth=0.7;
@@ -1351,16 +1352,16 @@ wrap.addEventListener('wheel',function(e){
   updateZoomSelect();
   // Recalculate pan so (wx,wy) stays under cursor
   // Compute origin without pan (same formula as origin() but panX/Y=0)
-  var ca=contentArea(), sc1=s();
-  var cs2=contentSizeMM();
-  var cxo=ca.x+ca.w/2, cyo=ca.y+ca.h/2;
-  var baseOX=cxo-cs2.w/2*sc1;
+  // Base origin without pan (same formula as origin())
+  var dr=drawingRect(), sc1=s();
+  var ds2=drawingSizeMM(), cj2=cartoucheHMM();
+  var cxo=dr.x+dr.w/2, cyo=dr.y+dr.h/2;
+  var baseOX=cxo-ds2.w/2*sc1;
   var baseOY;
   if(_view==='planta'){
-    baseOY=cyo-cs2.h/2*sc1;
+    baseOY=cyo-ds2.h/2*sc1;
   }else{
-    var p2=PAPERS[_paper], cj2=(p2.h-2*Math.min(p2.w,p2.h)*PAPER_MARGIN)*CAJETIN_H_RATIO*_drawScale;
-    baseOY=cyo+(cs2.h-cj2)/2*sc1;
+    baseOY=cyo+(ds2.h-cj2)/2*sc1;
   }
   _panX=mx-baseOX-wx*sc1;
   _panY=my-baseOY-wy*sc1;
