@@ -377,9 +377,17 @@ function updateZoomSelect(){
   if(!found) sel.selectedIndex=-1;
 }
 function changeZoomSelect(){
+  // Zoom from viewport center
+  var cx=wrap.clientWidth/2, cy=wrap.clientHeight/2;
+  var o=origin(), sc0=s();
+  var wx=(cx-o.x)/sc0, wy=(cy-o.y)/sc0;
   _userZoom=parseInt(document.getElementById('zoomSelect').value)/100;
   _zoom=_baseZoom*_userZoom;
-  _panX=0;_panY=0;
+  var ca=contentArea(), sc1=s();
+  var baseOX=ca.x, baseOY=_view==='planta'?ca.y:ca.y+ca.h;
+  _panX=cx-baseOX-wx*sc1;
+  _panY=cy-baseOY-wy*sc1;
+  clampPan();
   draw();renderModules();
 }
 function changePaper(){
@@ -1302,29 +1310,43 @@ function switchView(v){
 }
 
 // Zoom (+/- buttons control _userZoom)
-function zoomIn(){_userZoom=Math.min(_userZoom*1.25,3);_zoom=_baseZoom*_userZoom;updateZoomSelect();clampPan();draw();renderModules();}
-function zoomOut(){_userZoom=Math.max(_userZoom/1.25,1);_zoom=_baseZoom*_userZoom;updateZoomSelect();clampPan();draw();renderModules();}
+function zoomFromCenter(newUZ){
+  var cx=wrap.clientWidth/2, cy=wrap.clientHeight/2;
+  var o=origin(), sc0=s();
+  var wx=(cx-o.x)/sc0, wy=(cy-o.y)/sc0;
+  _userZoom=newUZ;_zoom=_baseZoom*_userZoom;
+  var ca=contentArea(), sc1=s();
+  var baseOX=ca.x, baseOY=_view==='planta'?ca.y:ca.y+ca.h;
+  _panX=cx-baseOX-wx*sc1;
+  _panY=cy-baseOY-wy*sc1;
+  updateZoomSelect();clampPan();draw();renderModules();
+}
+function zoomIn(){zoomFromCenter(Math.min(_userZoom*1.25,3));}
+function zoomOut(){zoomFromCenter(Math.max(_userZoom/1.25,1));}
 function zoomFit(){_userZoom=1;_zoom=_baseZoom;_panX=0;_panY=0;updateZoomSelect();draw();renderModules();}
 
-// Scroll wheel zoom (centered on cursor, controls _userZoom)
+// Scroll wheel zoom (anchored to cursor position)
 wrap.addEventListener('wheel',function(e){
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
-  var mx=e.clientX-rect.left,my=e.clientY-rect.top;
-  var o=origin();
-  var worldX=(mx-o.x)/s();
-  var worldY=(my-o.y)/s();
-  // Adjust _userZoom
+  var mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  // World coords under cursor before zoom
+  var o=origin(), sc0=s();
+  var wx=(mx-o.x)/sc0;
+  var wy=(my-o.y)/sc0; // in alzado: negative = up from origin
+  // Apply new zoom
   if(e.deltaY<0) _userZoom=Math.min(_userZoom*1.1,3);
   else _userZoom=Math.max(_userZoom/1.1,1);
   _zoom=_baseZoom*_userZoom;
   updateZoomSelect();
-  // Adjust pan so same world point stays under cursor
-  // New origin without pan:
-  var ca=contentArea();
-  var newOX=ca.x, newOY=_view==='planta'?ca.y:ca.y+ca.h;
-  _panX=mx-newOX-worldX*s();
-  _panY=my-newOY+(_view==='planta'?-worldY*s():worldY*s());
+  // Recalculate pan so (wx,wy) stays under cursor
+  // origin = (ca.x + panX, ca.y [+ca.h in alzado] + panY)
+  // screen = origin + world * sc
+  // mx = ca.x + panX + wx * sc_new → panX = mx - ca.x - wx * sc_new
+  var ca=contentArea(), sc1=s();
+  var baseOX=ca.x, baseOY=_view==='planta'?ca.y:ca.y+ca.h;
+  _panX=mx-baseOX-wx*sc1;
+  _panY=my-baseOY-wy*sc1;
   clampPan();
   draw();renderModules();
 },{passive:false});
