@@ -526,9 +526,8 @@ function renderModules(){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
-          mw=m.w*sc;mh=m.h*sc;
-      mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
-    }
+    mw=m.w*sc;mh=m.h*sc;
+    mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
     div.style.left=(mx-layerOffX)+'px';div.style.top=(my-layerOffY)+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
@@ -640,8 +639,7 @@ function renderModules(){
     var bx1=Infinity,by1=Infinity,bx2=-Infinity,by2=-Infinity;
     _sel.forEach(function(i){
       var m=_modules[i],mx,my,mw,mh;
-
-      else{mx=m.x;my=m.y;mw=m.w;mh=m.h;}
+      mx=m.x;my=m.y;mw=m.w;mh=m.h;
       bx1=Math.min(bx1,mx);by1=Math.min(by1,my);
       bx2=Math.max(bx2,mx+mw);by2=Math.max(by2,my+mh);
     });
