@@ -493,11 +493,18 @@ function draw(){
 
 function renderModules(){
   layer.innerHTML='';
-  // Clip modules layer to content area within paper
-  var pr=paperRect(),pmx=pr.w*PAPER_MARGIN,pmy=pr.h*PAPER_MARGIN;
-  var pcjH=pr.h*CAJETIN_H_RATIO;
-  layer.style.clipPath='inset('+(pr.y+pmy)+'px '+(wrap.clientWidth-pr.x-pr.w+pmx)+'px '+(wrap.clientHeight-pr.y-pr.h+pmy+pcjH)+'px '+(pr.x+pmx)+'px)';
+  // Position and clip modules layer to content area within paper
+  var ca=contentArea();
+  layer.style.position='absolute';
+  layer.style.left=ca.x+'px';
+  layer.style.top=ca.y+'px';
+  layer.style.width=ca.w+'px';
+  layer.style.height=ca.h+'px';
+  layer.style.overflow='hidden';
   var sc=s(),o=origin();
+  // Offset: modules use left/top relative to layer, but origin is relative to wrap
+  // So adjust: module screen pos = (o.x + m.x*sc) relative to wrap, but layer starts at ca.x
+  var layerOffX=ca.x, layerOffY=ca.y;
   _modules.forEach(function(m,i){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
@@ -509,7 +516,7 @@ function renderModules(){
       mw=m.w*sc;mh=m.h*sc;
       mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
     }
-    div.style.left=mx+'px';div.style.top=my+'px';
+    div.style.left=(mx-layerOffX)+'px';div.style.top=(my-layerOffY)+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
@@ -630,7 +637,7 @@ function renderModules(){
     var screenY=_view==='planta'?o.y+by1*sc:o.y-(by2)*sc;
     var bbox=document.createElement('div');
     bbox.className='c2d-bbox';
-    bbox.style.left=screenX+'px';bbox.style.top=screenY+'px';
+    bbox.style.left=(screenX-layerOffX)+'px';bbox.style.top=(screenY-layerOffY)+'px';
     bbox.style.width=(bw*sc)+'px';bbox.style.height=(bh*sc)+'px';
     ['tl','t','tr','l','r','bl','b','br'].forEach(function(pos){
       var hd=document.createElement('div');
@@ -728,22 +735,8 @@ wrap.addEventListener('drop',function(e){
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
   var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
-  var ca=contentArea(),pb=paperBounds();
-  console.log('--- DROP ---');
-  console.log('client:',e.clientX,e.clientY,'wrapOff:',rect.left.toFixed(0),rect.top.toFixed(0));
-  console.log('contentArea: x='+ca.x.toFixed(0)+' y='+ca.y.toFixed(0)+' w='+ca.w.toFixed(0)+' h='+ca.h.toFixed(0));
-  console.log('origin: x='+o.x.toFixed(1)+' y='+o.y.toFixed(1)+' sc='+sc.toFixed(5));
-  console.log('world BEFORE clamp: x='+x+' y='+y+' w='+newMod.w+' h='+newMod.h);
-  console.log('paperBounds: L='+pb.left.toFixed(0)+' R='+pb.right.toFixed(0)+' B='+pb.bottom.toFixed(0)+' T='+pb.top.toFixed(0));
   clampToPaper(newMod);
-  console.log('world AFTER clamp: x='+newMod.x+' y='+newMod.y+' w='+newMod.w+' h='+newMod.h);
-  // Screen position check
-  var smx=o.x+newMod.x*sc, smy=o.y-(newMod.y+newMod.h)*sc;
-  console.log('screen pos: left='+smx.toFixed(0)+' top='+smy.toFixed(0)+' right='+(smx+newMod.w*sc).toFixed(0)+' bottom='+(smy+newMod.h*sc).toFixed(0));
-  console.log('clip area: top='+(ca.y).toFixed(0)+' right='+(ca.x+ca.w).toFixed(0)+' bottom='+(ca.y+ca.h).toFixed(0)+' left='+ca.x.toFixed(0));
-  console.log('modules count BEFORE:',_modules.length);
   _modules.push(newMod);
-  console.log('modules count AFTER:',_modules.length);
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
@@ -806,15 +799,15 @@ function getSnapEdges(axis,skipIndices){
 var _snapLines=[];
 function clearSnapLines(){_snapLines.forEach(function(el){el.remove();});_snapLines=[];}
 function showSnapLine(val,axis){
-  var sc=s(),o=origin(),el=document.createElement('div');
+  var sc=s(),o=origin(),ca=contentArea(),el=document.createElement('div');
   el.className='c2d-snapline';
   if(axis==='x'){
     el.classList.add('c2d-snapline-v');
-    el.style.left=(o.x+val*sc)+'px';
+    el.style.left=(o.x+val*sc-ca.x)+'px';
   }else{
     el.classList.add('c2d-snapline-h');
     var yPx=_view==='planta'?(o.y+val*sc):(o.y-val*sc);
-    el.style.top=yPx+'px';
+    el.style.top=(yPx-ca.y)+'px';
   }
   layer.appendChild(el);_snapLines.push(el);
 }
