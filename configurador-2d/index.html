@@ -324,21 +324,30 @@ function resizeFurniture(){
   draw();renderModules();
 }
 function paperRect(){
-  // Paper rectangle in screen pixels, centered, filling 85% of canvas
+  // Paper rectangle in screen pixels. At _userZoom=1 fills 85% of canvas.
+  // Scales with _userZoom so paper grows/shrinks with user zoom.
   var p=PAPERS[_paper];
-  var aspect=p.w/p.h; // landscape
+  var aspect=p.w/p.h;
   var maxW=wrap.clientWidth*0.85, maxH=wrap.clientHeight*0.85;
-  var pw,ph;
-  if(maxW/aspect<=maxH){pw=maxW;ph=maxW/aspect;}
-  else{ph=maxH;pw=ph*aspect;}
-  var px=(wrap.clientWidth-pw)/2, py=(wrap.clientHeight-ph)/2;
+  var baseW,baseH;
+  if(maxW/aspect<=maxH){baseW=maxW;baseH=maxW/aspect;}
+  else{baseH=maxH;baseW=baseH*aspect;}
+  var pw=baseW*_userZoom, ph=baseH*_userZoom;
+  var px=(wrap.clientWidth-pw)/2+_panX, py=(wrap.clientHeight-ph)/2+_panY;
   return{x:px,y:py,w:pw,h:ph};
+}
+function basePaperWidth(){
+  // Paper width at _userZoom=1 (for _baseZoom calculation)
+  var p=PAPERS[_paper],aspect=p.w/p.h;
+  var maxW=wrap.clientWidth*0.85,maxH=wrap.clientHeight*0.85;
+  if(maxW/aspect<=maxH) return maxW;
+  return maxH*aspect;
 }
 function applyPaperScale(){
   var p=PAPERS[_paper];
-  var pr=paperRect();
+  var bpw=basePaperWidth();
   var realW=p.w*_drawScale;
-  _baseZoom=pr.w/(realW*SCALE);
+  _baseZoom=bpw/(realW*SCALE);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
 }
