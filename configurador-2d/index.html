@@ -1348,10 +1348,18 @@ wrap.addEventListener('wheel',function(e){
   _zoom=_baseZoom*_userZoom;
   updateZoomSelect();
   // Recalculate pan so (wx,wy) stays under cursor
-  // Origin without pan = contentArea edges (fixed, doesn't depend on pan)
+  // Compute origin without pan (same formula as origin() but panX/Y=0)
   var ca=contentArea(), sc1=s();
-  var baseOX=ca.x;
-  var baseOY=_view==='planta'?ca.y:ca.y+ca.h;
+  var cs2=contentSizeMM();
+  var cxo=ca.x+ca.w/2, cyo=ca.y+ca.h/2;
+  var baseOX=cxo-cs2.w/2*sc1;
+  var baseOY;
+  if(_view==='planta'){
+    baseOY=cyo-cs2.h/2*sc1;
+  }else{
+    var p2=PAPERS[_paper], cj2=p2.h*CAJETIN_H_RATIO*_drawScale;
+    baseOY=cyo+(cs2.h-cj2)/2*sc1;
+  }
   _panX=mx-baseOX-wx*sc1;
   _panY=my-baseOY-wy*sc1;
   clampPan();
