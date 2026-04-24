@@ -252,13 +252,18 @@ var _panX=0,_panY=0;
 var _cajetinRect=null;
 function clampPan(){
   if(_userZoom<=1){_panX=0;_panY=0;return;}
-  var ca=contentArea();
-  // Symmetric pan in both axes, both views.
-  // Allows reaching any part of the scaled content.
-  var maxPanX=ca.w*(_userZoom-1)/2;
-  var maxPanY=ca.h*(_userZoom-1)/2;
-  _panX=Math.max(-maxPanX,Math.min(maxPanX,_panX));
-  _panY=Math.max(-maxPanY,Math.min(maxPanY,_panY));
+  var ca=contentArea(), sc=s();
+  var cs=contentSizeMM();
+  var p=PAPERS[_paper];
+  var cjMM=p.h*CAJETIN_H_RATIO*_drawScale;
+  // Total rendered size in pixels (content + cajetin in Y, content in X)
+  var totalW=cs.w*sc;
+  var totalH=(cs.h+cjMM)*sc;
+  // Overflow = rendered size minus visible area
+  var overflowX=Math.max(0,totalW-ca.w);
+  var overflowY=Math.max(0,totalH-ca.h);
+  _panX=Math.max(-overflowX/2,Math.min(overflowX/2,_panX));
+  _panY=Math.max(-overflowY/2,Math.min(overflowY/2,_panY));
 }
 function s(){return SCALE*_zoom;}
 function contentArea(){
