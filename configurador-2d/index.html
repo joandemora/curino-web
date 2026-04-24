@@ -49,9 +49,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-center{background:var(--bg-deep);position:relative;overflow:hidden;display:flex;flex-direction:column}
 .c2d-canvas-wrap{flex:1;position:relative;overflow:hidden}
 .c2d-canvas-wrap canvas{position:absolute;top:0;left:0}
-.c2d-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--white)}
-.c2d-tab{padding:.5rem 1rem;font-size:11px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;color:var(--mid)}
-.c2d-tab.active{color:var(--black);border-bottom-color:var(--accent)}
 
 /* Right panel */
 .c2d-right{border-left:1px solid var(--border);overflow-y:auto;padding:1rem;background:var(--white)}
@@ -195,10 +192,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 
   <!-- CENTER: Canvas -->
   <div class="c2d-center">
-    <div class="c2d-tabs">
-      <div class="c2d-tab active" onclick="switchView('alzado')">Alzado</div>
-      <div class="c2d-tab" onclick="switchView('planta')">Planta</div>
-    </div>
     <div class="c2d-canvas-wrap" id="canvasWrap">
       <canvas id="cvs"></canvas>
       <div id="modulesLayer"></div>
@@ -226,7 +219,6 @@ var _historyIdx=-1;
 var _baseZoom=1; // from paper + drawScale
 var _userZoom=1;  // manual zoom (1 = 100%)
 var _zoom=1;      // effective = _baseZoom * _userZoom
-var _view='alzado';
 var _furW=2000,_furH=2400,_furD=600;
 var SCALE=0.25; // px per mm at zoom=1
 // Paper & scale
@@ -302,11 +294,7 @@ function origin(){
   var dr=drawingRect(), ds=drawingSizeMM(), cjMM=cartoucheHMM(), sc=s();
   var cx=dr.x+dr.w/2, cy=dr.y+dr.h/2;
   var totalCenterY=(ds.h-cjMM)/2;
-  if(_view==='planta'){
-    return{x:cx-ds.w/2*sc+_panX, y:cy-ds.h/2*sc+_panY};
-  }else{
-    return{x:cx-ds.w/2*sc+_panX, y:cy+totalCenterY*sc+_panY};
-  }
+  return{x:cx-ds.w/2*sc+_panX, y:cy+totalCenterY*sc+_panY};
 }
 
 // Pan clamping
@@ -322,8 +310,8 @@ function clampPan(){
 }
 function clampToPaper(m){
   var b=paperBounds();
-  var yKey=_view==='planta'?'pz':'y';
-  var hKey=_view==='planta'?'d':'h';
+  var yKey='y';
+  var hKey='h';
   // Clamp size to paper
   if(m.w>b.right-b.left) m.w=Math.round(b.right-b.left);
   var mh=m[hKey]||0;
@@ -452,7 +440,7 @@ function draw(){
   var ds=drawingSizeMM();
   var cjMM=cartoucheHMM();
   function wx(v){return o.x+v*sc;}
-  function wy(v){return _view==='planta'?o.y+v*sc:o.y-v*sc;}
+  function wy(v){return o.y-v*sc;}
 
   // Margin lines in world coords (scale with zoom, move with pan)
   var mL=wx(0),mR=wx(ds.w),mT=Math.min(wy(ds.h),wy(-cjMM)),mB=Math.max(wy(ds.h),wy(-cjMM));
@@ -538,18 +526,14 @@ function renderModules(){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
-    if(_view==='planta'){
-      mw=m.w*sc;mh=(m.d||600)*sc;
-      mx=o.x+m.x*sc;my=o.y+(m.pz||0)*sc;
-    }else{
-      mw=m.w*sc;mh=m.h*sc;
+          mw=m.w*sc;mh=m.h*sc;
       mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
     }
     div.style.left=(mx-layerOffX)+'px';div.style.top=(my-layerOffY)+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
-    if(m.type==='puerta_batiente'&&_view==='alzado'){
+    if(m.type==='puerta_batiente'){
       var pw=m.w*sc,ph=m.h*sc;
       var ap=m.apertura||'derecha';
       var cy=ph/2;
@@ -572,7 +556,7 @@ function renderModules(){
       svg+='</svg>';
       inner=svg;
     }
-    if(m.type==='modulo'&&_view==='alzado'){
+    if(m.type==='modulo'){
       div.style.cssText+='border:none!important;';
       var p=19*sc,t70=70*sc,t40=40*sc;
       var hTotal=m.h*sc;
@@ -592,7 +576,7 @@ function renderModules(){
         '<div style="position:absolute;bottom:'+t70+'px;left:'+p+'px;right:'+p+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
-    if(m.type==='barra'&&_view==='alzado'){
+    if(m.type==='barra'){
       div.classList.add('no-frame');
       var supW=20*sc,supH=40*sc,gap=30*sc;
       var cy=(m.h*sc-supH)/2;
@@ -605,13 +589,13 @@ function renderModules(){
         '<div style="position:absolute;top:'+lineBot+'px;left:'+supW+'px;right:'+supW+'px;border-top:1px solid #000"></div>'+
       '</div>';
     }
-    if(m.type==='estante'&&_view==='alzado'){
+    if(m.type==='estante'){
       div.classList.add('no-frame');
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
         '<div style="position:absolute;top:0;left:0;right:0;height:'+(m.h*sc)+'px;border:1px solid #000;box-sizing:border-box"></div>'+
       '</div>';
     }
-    if(m.type==='zapatero'&&_view==='alzado'){
+    if(m.type==='zapatero'){
       div.classList.add('no-frame');
       var zH=m.h*sc,z30=30*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none">'+
@@ -622,7 +606,7 @@ function renderModules(){
         '<div style="position:absolute;top:0;right:0;bottom:0;border-right:1px solid #000"></div>'+
       '</div>';
     }
-    if((m.type==='cajon'||m.type==='cajon_cocina')&&_view==='alzado'){
+    if((m.type==='cajon'||m.type==='cajon_cocina')){
       div.classList.add('no-frame');
       var cB=30*sc,cM=30*sc;
       inner='<div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">'+
@@ -634,7 +618,7 @@ function renderModules(){
         '<div style="position:absolute;bottom:0;left:'+cM+'px;right:'+cM+'px;border-bottom:1px solid #000"></div>'+
       '</div>';
     }
-    var dims=_view==='planta'?m.w+'&times;'+(m.d||600):m.w+'&times;'+m.h;
+    var dims=m.w+'&times;'+m.h;
     div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
@@ -656,14 +640,14 @@ function renderModules(){
     var bx1=Infinity,by1=Infinity,bx2=-Infinity,by2=-Infinity;
     _sel.forEach(function(i){
       var m=_modules[i],mx,my,mw,mh;
-      if(_view==='planta'){mx=m.x;my=m.pz||0;mw=m.w;mh=m.d||600;}
+
       else{mx=m.x;my=m.y;mw=m.w;mh=m.h;}
       bx1=Math.min(bx1,mx);by1=Math.min(by1,my);
       bx2=Math.max(bx2,mx+mw);by2=Math.max(by2,my+mh);
     });
     var bw=bx2-bx1,bh=by2-by1;
     var screenX=o.x+bx1*sc;
-    var screenY=_view==='planta'?o.y+by1*sc:o.y-(by2)*sc;
+    var screenY=o.y-(by2)*sc;
     var bbox=document.createElement('div');
     bbox.className='c2d-bbox';
     bbox.style.left=(screenX-layerOffX)+'px';bbox.style.top=(screenY-layerOffY)+'px';
@@ -755,10 +739,7 @@ wrap.addEventListener('drop',function(e){
   var x=snap((e.clientX-rect.left-o.x)/sc);
   var screenY=(e.clientY-rect.top-o.y)/sc;
   var y,pz;
-  if(_view==='planta'){
-    y=0;pz=snap(screenY);
-  }else{
-    y=snap(-screenY-_dragData.h);pz=0;
+      y=snap(-screenY-_dragData.h);pz=0;
   }
   saveHistory();
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
@@ -835,7 +816,7 @@ function showSnapLine(val,axis){
     el.style.left=(o.x+val*sc-pr.x)+'px';
   }else{
     el.classList.add('c2d-snapline-h');
-    var yPx=_view==='planta'?(o.y+val*sc):(o.y-val*sc);
+    var yPx=o.y-val*sc;
     el.style.top=(yPx-pr.y)+'px';
   }
   layer.appendChild(el);_snapLines.push(el);
@@ -860,16 +841,7 @@ function dragModuleMove(e){
   var xOff=finalX-ref.x;
   // Snap Y axis
   var yOff;
-  if(_view==='planta'){
-    var pzEdges=getSnapEdges('pz',_sel);
-    var rawPZ=ref.pz+dy;
-    var snTop=magSnap(rawPZ,pzEdges,sc);
-    var snBot=magSnap(rawPZ+(m0.d||600),pzEdges,sc);
-    var finalPZ;
-    if(Math.abs(snTop-rawPZ)<Math.abs(snBot-(rawPZ+(m0.d||600)))){
-      finalPZ=snTop;if(snTop!==snap(rawPZ)) showSnapLine(snTop,'pz');
-    }else{
-      finalPZ=snBot-(m0.d||600);if(snBot!==snap(rawPZ+(m0.d||600))) showSnapLine(snBot,'pz');
+        finalPZ=snBot-(m0.d||600);if(snBot!==snap(rawPZ+(m0.d||600))) showSnapLine(snBot,'pz');
     }
     yOff=finalPZ-ref.pz;
   }else{
@@ -889,7 +861,6 @@ function dragModuleMove(e){
   _dragMod.origins.forEach(function(o){
     var m=_modules[o.idx];
     m.x=o.x+xOff;
-    if(_view==='planta') m.pz=o.pz+yOff;
     else m.y=o.y+yOff;
     clampToPaper(m);
   });
@@ -933,21 +904,7 @@ function resizeMove(e){
     if(nw>=GRID){m.x=snL;m.w=nw;if(snL!==snap(rawLeft)) showSnapLine(snL,'x');}
   }
   // Y axis
-  if(_view==='planta'){
-    var pzEdges=getSnapEdges('pz',skip);
-    if(p==='t'||p==='tl'||p==='tr'){
-      var rawTop=r.origPZ+dy;
-      var snT=magSnap(rawTop,pzEdges,sc);
-      var nd=(r.origPZ+r.origD)-snT;
-      if(nd>=GRID){m.pz=snT;m.d=nd;if(snT!==snap(rawTop)) showSnapLine(snT,'pz');}
-    }
-    if(p==='b'||p==='bl'||p==='br'){
-      var rawBot=r.origPZ+r.origD+dy;
-      var snB=magSnap(rawBot,pzEdges,sc);
-      m.d=Math.max(GRID,snB-(m.pz||0));
-      if(snB!==snap(rawBot)) showSnapLine(snB,'pz');
-    }
-  }else{
+  {
     var yEdges=getSnapEdges('y',skip);
     var hMin=m.type==='estante'?19:GRID,hMax=m.type==='estante'?40:Infinity;
     // Top handle (screen up): top edge = m.y + m.h
@@ -1025,7 +982,7 @@ function groupResizeMove(e){
   if(!_groupResize) return;
   var g=_groupResize,sc=s(),p=g.pos;
   var dx=(e.clientX-g.startX)/sc,dy=(e.clientY-g.startY)/sc;
-  if(_view!=='planta') dy=-dy;
+  dy=-dy;
 
   // Anchor = fixed corner (opposite to handle being dragged)
   // anchorX: right side fixed when dragging left, left side fixed when dragging right
@@ -1050,13 +1007,7 @@ function groupResizeMove(e){
     var t=_modules[o.idx].type;
     var nw=(t==='divisor')?o.w:Math.max(GRID,Math.round(o.w*sx));
     var nh,nd;
-    if(_view==='planta'){
-      if(t in fixedD) nd=o.d;
-      else if(t in clampD) nd=Math.max(clampD[t].min,Math.min(clampD[t].max,Math.round(o.d*sy)));
-      else nd=Math.max(GRID,Math.round(o.d*sy));
-      nh=o.h; // h unchanged in planta
-    }else{
-      if(t in fixedH) nh=o.h;
+          if(t in fixedH) nh=o.h;
       else if(t in clampH) nh=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
       else nh=Math.max(GRID,Math.round(o.h*sy));
       nd=o.d;
@@ -1068,8 +1019,8 @@ function groupResizeMove(e){
   // Build Y-chains: groups of elements where o[i].y+o[i].h ≈ o[j].y
   var yProcessed={},xProcessed={};
 
-  // Sort originals by Y (or pz in planta) for chain detection
-  var yKey=_view==='planta'?'pz':'y',hKey=_view==='planta'?'d':'h';
+  // Sort originals by Y for chain detection
+  var yKey='y',hKey='h';
   var sortedY=g.originals.slice().sort(function(a,b){return a[yKey]-b[yKey];});
   var yChains=[];
   var inChainY={};
@@ -1119,16 +1070,9 @@ function groupResizeMove(e){
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
       m.x=Math.round(ax+(o.x-g.bx)*sx);
     }
-    if(_view==='planta'){
-      m.d=sized[o.idx].d;
-      if(!inChainY[o.idx]||yChainStarters[o.idx]){
-        m.pz=Math.round(ay+(o.pz-g.by)*sy);
-      }
-    }else{
-      m.h=sized[o.idx].h;
-      if(!inChainY[o.idx]||yChainStarters[o.idx]){
-        m.y=Math.round(ay+(o.y-g.by)*sy);
-      }
+    m.h=sized[o.idx].h;
+    if(!inChainY[o.idx]||yChainStarters[o.idx]){
+      m.y=Math.round(ay+(o.y-g.by)*sy);
     }
   });
 
@@ -1177,11 +1121,7 @@ function groupResizeMove(e){
     for(var k=1;k<chain.length;k++){
       var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
-      if(_view==='planta'){
-        cur.pz=prev.pz+(prev.d||600);
-        cur.d=sized[chain[k].idx].d;
-      }else{
-        cur.y=prev.y+prev.h;
+              cur.y=prev.y+prev.h;
         cur.h=sized[chain[k].idx].h;
       }
     }
@@ -1301,10 +1241,7 @@ function marqueeEnd(e){
     if(!_marquee.shift) _sel.clear();
     _modules.forEach(function(m,i){
       var mleft,mtop,mw,mh;
-      if(_view==='planta'){
-        mleft=o.x+m.x*sc;mtop=o.y+(m.pz||0)*sc;mw=m.w*sc;mh=(m.d||600)*sc;
-      }else{
-        mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;
+              mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;
       }
       if(mleft+mw>mx1&&mleft<mx2&&mtop+mh>my1&&mtop<my2) _sel.add(i);
     });
@@ -1316,9 +1253,7 @@ function marqueeEnd(e){
 }
 
 // Views
-function switchView(v){
-  _view=v;
-  document.querySelectorAll('.c2d-tab').forEach(function(t){t.classList.toggle('active',t.textContent.toLowerCase()===v);});
+);
   draw();renderModules();
 }
 
@@ -1358,10 +1293,7 @@ wrap.addEventListener('wheel',function(e){
   var cxo=dr.x+dr.w/2, cyo=dr.y+dr.h/2;
   var baseOX=cxo-ds2.w/2*sc1;
   var baseOY;
-  if(_view==='planta'){
-    baseOY=cyo-ds2.h/2*sc1;
-  }else{
-    baseOY=cyo+(ds2.h-cj2)/2*sc1;
+      baseOY=cyo+(ds2.h-cj2)/2*sc1;
   }
   _panX=mx-baseOX-wx*sc1;
   _panY=my-baseOY-wy*sc1;
