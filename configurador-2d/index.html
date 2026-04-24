@@ -126,9 +126,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     </select>
     <span>Zoom:</span>
     <select id="zoomSelect" onchange="changeZoomSelect()">
-      <option value="25">25%</option>
-      <option value="50">50%</option>
-      <option value="75">75%</option>
       <option value="100" selected>100%</option>
       <option value="125">125%</option>
       <option value="150">150%</option>
@@ -253,6 +250,33 @@ var layer=document.getElementById('modulesLayer');
 
 var _panX=0,_panY=0;
 var _cajetinRect=null;
+function clampPan(){
+  // Ensure paper edges stay within (or fill) the viewport.
+  // Paper at _userZoom=1 fills 85%. At higher zoom, pan is limited
+  // so the paper always covers the visible canvas area.
+  var p=PAPERS[_paper],aspect=p.w/p.h;
+  var maxW=wrap.clientWidth*0.85,maxH=wrap.clientHeight*0.85;
+  var baseW,baseH;
+  if(maxW/aspect<=maxH){baseW=maxW;baseH=maxW/aspect;}
+  else{baseH=maxH;baseW=baseH*aspect;}
+  var pw=baseW*_userZoom, ph=baseH*_userZoom;
+  var cx=(wrap.clientWidth-pw)/2, cy=(wrap.clientHeight-ph)/2;
+  // Paper left edge = cx + _panX. Must be <= 0 (paper fills left).
+  // Paper right edge = cx + _panX + pw. Must be >= wrap.clientWidth.
+  if(pw>=wrap.clientWidth){
+    if(cx+_panX>0) _panX=-cx;
+    if(cx+_panX+pw<wrap.clientWidth) _panX=wrap.clientWidth-cx-pw;
+  }else{
+    // Paper smaller than viewport at this zoom (shouldn't happen with min 100%)
+    _panX=0;
+  }
+  if(ph>=wrap.clientHeight){
+    if(cy+_panY>0) _panY=-cy;
+    if(cy+_panY+ph<wrap.clientHeight) _panY=wrap.clientHeight-cy-ph;
+  }else{
+    _panY=0;
+  }
+}
 function s(){return SCALE*_zoom;}
 function origin(){
   var vw=_view==='planta'?_furW:_furW;
@@ -1206,6 +1230,7 @@ function panMove(e){
   if(!_panning) return;
   _panX=_panning.origPX+(e.clientX-_panning.startX);
   _panY=_panning.origPY+(e.clientY-_panning.startY);
+  clampPan();
   draw();renderModules();
 }
 function panEnd(e){
@@ -1262,8 +1287,8 @@ function switchView(v){
 }
 
 // Zoom (+/- buttons control _userZoom)
-function zoomIn(){_userZoom=Math.min(_userZoom*1.25,3);_zoom=_baseZoom*_userZoom;updateZoomSelect();draw();renderModules();}
-function zoomOut(){_userZoom=Math.max(_userZoom/1.25,0.25);_zoom=_baseZoom*_userZoom;updateZoomSelect();draw();renderModules();}
+function zoomIn(){_userZoom=Math.min(_userZoom*1.25,3);_zoom=_baseZoom*_userZoom;updateZoomSelect();clampPan();draw();renderModules();}
+function zoomOut(){_userZoom=Math.max(_userZoom/1.25,1);_zoom=_baseZoom*_userZoom;updateZoomSelect();clampPan();draw();renderModules();}
 function zoomFit(){_userZoom=1;_zoom=_baseZoom;_panX=0;_panY=0;updateZoomSelect();draw();renderModules();}
 
 // Scroll wheel zoom (centered on cursor, controls _userZoom)
@@ -1276,7 +1301,7 @@ wrap.addEventListener('wheel',function(e){
   var worldY=(my-o.y)/s();
   // Adjust _userZoom
   if(e.deltaY<0) _userZoom=Math.min(_userZoom*1.1,3);
-  else _userZoom=Math.max(_userZoom/1.1,0.25);
+  else _userZoom=Math.max(_userZoom/1.1,1);
   _zoom=_baseZoom*_userZoom;
   updateZoomSelect();
   // Adjust pan so same world point stays under cursor
@@ -1287,6 +1312,7 @@ wrap.addEventListener('wheel',function(e){
   var newCY=pr.y+(pr.h-vh*s())/2;
   _panX=mx-newCX-worldX*s();
   _panY=my-newCY-worldY*s();
+  clampPan();
   draw();renderModules();
 },{passive:false});
 
