@@ -251,15 +251,25 @@ var layer=document.getElementById('modulesLayer');
 var _panX=0,_panY=0;
 var _cajetinRect=null;
 function clampPan(){
-  // Pan moves content inside fixed paper. At zoom 100%, no pan needed.
   if(_userZoom<=1){_panX=0;_panY=0;return;}
-  // Content is _userZoom times larger than the content area.
-  // Max pan = half the overflow on each axis.
   var ca=contentArea();
-  var maxPanX=ca.w*(_userZoom-1)/2;
-  var maxPanY=ca.h*(_userZoom-1)/2;
-  _panX=Math.max(-maxPanX,Math.min(maxPanX,_panX));
-  _panY=Math.max(-maxPanY,Math.min(maxPanY,_panY));
+  var overflow=ca.w*(_userZoom-1);
+  // X: origin at left edge. Overflow to the right. panX<0 shows right, panX>0 invalid.
+  // But we want symmetric: allow ±overflow/2 (centered experience).
+  // To achieve this, origin() should center content. Let's allow full range:
+  _panX=Math.max(-overflow/2,Math.min(overflow/2,_panX));
+  // Y: depends on view
+  var overflowY=ca.h*(_userZoom-1);
+  if(_view==='planta'){
+    // Origin at top-left. Overflow downward. panY<0 shows bottom.
+    _panY=Math.max(-overflowY/2,Math.min(overflowY/2,_panY));
+  }else{
+    // Alzado: origin at bottom of content area. Overflow upward.
+    // panY>0 shifts origin down, showing top content.
+    // panY=0: bottom visible, top clipped if overflow.
+    // panY=overflowY: top visible, bottom clipped.
+    _panY=Math.max(0,Math.min(overflowY,_panY));
+  }
 }
 function s(){return SCALE*_zoom;}
 function contentArea(){
