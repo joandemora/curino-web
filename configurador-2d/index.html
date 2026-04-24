@@ -736,9 +736,8 @@ wrap.addEventListener('drop',function(e){
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var x=snap((e.clientX-rect.left-o.x)/sc);
   var screenY=(e.clientY-rect.top-o.y)/sc;
-  var y,pz;
-      y=snap(-screenY-_dragData.h);pz=0;
-  }
+  var y=snap(-screenY-_dragData.h);
+  var pz=0;
   saveHistory();
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
@@ -838,28 +837,22 @@ function dragModuleMove(e){
   }
   var xOff=finalX-ref.x;
   // Snap Y axis
-  var yOff;
-        finalPZ=snBot-(m0.d||600);if(snBot!==snap(rawPZ+(m0.d||600))) showSnapLine(snBot,'pz');
-    }
-    yOff=finalPZ-ref.pz;
+  var yEdges=getSnapEdges('y',_sel);
+  var rawY=ref.y-dy;
+  var snBot2=magSnap(rawY,yEdges,sc);
+  var snTop2=magSnap(rawY+m0.h,yEdges,sc);
+  var finalY;
+  if(Math.abs(snBot2-rawY)<Math.abs(snTop2-(rawY+m0.h))){
+    finalY=snBot2;if(snBot2!==snap(rawY)) showSnapLine(snBot2,'y');
   }else{
-    var yEdges=getSnapEdges('y',_sel);
-    var rawY=ref.y-dy;
-    var snBot2=magSnap(rawY,yEdges,sc);
-    var snTop2=magSnap(rawY+m0.h,yEdges,sc);
-    var finalY;
-    if(Math.abs(snBot2-rawY)<Math.abs(snTop2-(rawY+m0.h))){
-      finalY=snBot2;if(snBot2!==snap(rawY)) showSnapLine(snBot2,'y');
-    }else{
-      finalY=snTop2-m0.h;if(snTop2!==snap(rawY+m0.h)) showSnapLine(snTop2,'y');
-    }
-    yOff=finalY-ref.y;
+    finalY=snTop2-m0.h;if(snTop2!==snap(rawY+m0.h)) showSnapLine(snTop2,'y');
   }
+  var yOff=finalY-ref.y;
   // Apply offsets to all selected + clamp to paper
   _dragMod.origins.forEach(function(o){
     var m=_modules[o.idx];
     m.x=o.x+xOff;
-    else m.y=o.y+yOff;
+    m.y=o.y+yOff;
     clampToPaper(m);
   });
   renderModules();renderProps();
@@ -1005,11 +998,10 @@ function groupResizeMove(e){
     var t=_modules[o.idx].type;
     var nw=(t==='divisor')?o.w:Math.max(GRID,Math.round(o.w*sx));
     var nh,nd;
-          if(t in fixedH) nh=o.h;
-      else if(t in clampH) nh=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
-      else nh=Math.max(GRID,Math.round(o.h*sy));
-      nd=o.d;
-    }
+    if(t in fixedH) nh=o.h;
+    else if(t in clampH) nh=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
+    else nh=Math.max(GRID,Math.round(o.h*sy));
+    nd=o.d;
     sized[o.idx]={w:nw,h:nh,d:nd};
   });
 
@@ -1239,8 +1231,7 @@ function marqueeEnd(e){
     if(!_marquee.shift) _sel.clear();
     _modules.forEach(function(m,i){
       var mleft,mtop,mw,mh;
-              mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;
-      }
+      mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;
       if(mleft+mw>mx1&&mleft<mx2&&mtop+mh>my1&&mtop<my2) _sel.add(i);
     });
     renderModules();renderProps();
@@ -1290,9 +1281,7 @@ wrap.addEventListener('wheel',function(e){
   var ds2=drawingSizeMM(), cj2=cartoucheHMM();
   var cxo=dr.x+dr.w/2, cyo=dr.y+dr.h/2;
   var baseOX=cxo-ds2.w/2*sc1;
-  var baseOY;
-      baseOY=cyo+(ds2.h-cj2)/2*sc1;
-  }
+  var baseOY=cyo+(ds2.h-cj2)/2*sc1;
   _panX=mx-baseOX-wx*sc1;
   _panY=my-baseOY-wy*sc1;
   clampPan();
