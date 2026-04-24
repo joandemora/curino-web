@@ -427,24 +427,37 @@ function draw(){
   }
   ctx.restore();
 
-  // Margin lines (2% inset)
+  // Margin lines (2% inset, scale with zoom)
   var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
+  var pcx=pr.x+pr.w/2, pcy=pr.y+pr.h/2;
+  var mrgX=pcx+(pr.x+mx-pcx)*_userZoom+_panX;
+  var mrgY=pcy+(pr.y+my-pcy)*_userZoom+_panY;
+  var mrgW=(pr.w-2*mx)*_userZoom, mrgH=(pr.h-2*my)*_userZoom;
   ctx.strokeStyle='#ddd';ctx.lineWidth=0.5;ctx.setLineDash([4,3]);
-  ctx.strokeRect(pr.x+mx,pr.y+my,pr.w-2*mx,pr.h-2*my);
+  ctx.strokeRect(mrgX,mrgY,mrgW,mrgH);
   ctx.setLineDash([]);
 
-  // Cajetin (bottom of paper, inside margins)
-  var cjH=pr.h*CAJETIN_H_RATIO;
-  var cjX=pr.x+mx, cjY=pr.y+pr.h-my-cjH, cjW=pr.w-2*mx;
+  // Cajetin (scales with _userZoom, moves with pan)
+  var uz=_userZoom;
+  var baseCjH=pr.h*CAJETIN_H_RATIO;
+  var baseCjW=pr.w-2*mx;
+  var baseCjX=pr.x+mx, baseCjY=pr.y+pr.h-my-baseCjH;
+  // Scale from paper center
+  var pcx=pr.x+pr.w/2, pcy=pr.y+pr.h/2;
+  var cjX=pcx+(baseCjX-pcx)*uz+_panX;
+  var cjY=pcy+(baseCjY-pcy)*uz+_panY;
+  var cjW=baseCjW*uz, cjH=baseCjH*uz;
+
   ctx.fillStyle='#fafafa';ctx.fillRect(cjX,cjY,cjW,cjH);
   ctx.strokeStyle='#999';ctx.lineWidth=0.7;
   ctx.strokeRect(cjX,cjY,cjW,cjH);
 
   // Cajetin rows (3 rows)
-  var rowH=cjH/3.5; // rows 1-3, leaving space for note
+  var rowH=cjH/3.5;
   var noteH=cjH-rowH*3;
-  var font=Math.max(8,Math.round(cjH*0.11));
-  var smallFont=Math.max(6,Math.round(font*0.7));
+  var font=Math.max(6,Math.round(baseCjH*0.11*uz));
+  var smallFont=Math.max(5,Math.round(font*0.7));
+  var pad=6*uz;
   ctx.fillStyle='#333';ctx.textBaseline='middle';
 
   // Row 1: proyecto + logo
@@ -452,39 +465,37 @@ function draw(){
   ctx.beginPath();ctx.moveTo(cjX,cjY+rowH);ctx.lineTo(cjX+cjW,cjY+rowH);ctx.stroke();
   ctx.font='bold '+font+'px '+getComputedStyle(document.body).fontFamily;
   ctx.textAlign='left';
-  ctx.fillText(_meta.proyecto.toUpperCase(),cjX+6,cjY+rowH/2);
+  ctx.fillText(_meta.proyecto.toUpperCase(),cjX+pad,cjY+rowH/2);
   ctx.textAlign='right';
-  ctx.font='bold '+font+'px '+getComputedStyle(document.body).fontFamily;
-  ctx.fillText('& curino',cjX+cjW-6,cjY+rowH/2);
+  ctx.fillText('& curino',cjX+cjW-pad,cjY+rowH/2);
 
   // Row 2: cliente, ubicación, interiorismo
   ctx.beginPath();ctx.moveTo(cjX,cjY+rowH*2);ctx.lineTo(cjX+cjW,cjY+rowH*2);ctx.stroke();
   ctx.font=smallFont+'px '+getComputedStyle(document.body).fontFamily;
   ctx.textAlign='left';
   var col=cjW/3;
-  ctx.fillText('Cliente: '+(_meta.cliente||'—'),cjX+6,cjY+rowH+rowH/2);
-  ctx.fillText('Ubicación: '+(_meta.ubicacion||'—'),cjX+col+6,cjY+rowH+rowH/2);
-  ctx.fillText('Interiorismo: '+(_meta.interiorismo||'—'),cjX+col*2+6,cjY+rowH+rowH/2);
-  // Column separators
+  ctx.fillText('Cliente: '+(_meta.cliente||'—'),cjX+pad,cjY+rowH+rowH/2);
+  ctx.fillText('Ubicación: '+(_meta.ubicacion||'—'),cjX+col+pad,cjY+rowH+rowH/2);
+  ctx.fillText('Interiorismo: '+(_meta.interiorismo||'—'),cjX+col*2+pad,cjY+rowH+rowH/2);
   ctx.beginPath();ctx.moveTo(cjX+col,cjY+rowH);ctx.lineTo(cjX+col,cjY+rowH*2);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cjX+col*2,cjY+rowH);ctx.lineTo(cjX+col*2,cjY+rowH*2);ctx.stroke();
 
   // Row 3: plano, escala, fecha, doc obra
   ctx.beginPath();ctx.moveTo(cjX,cjY+rowH*3);ctx.lineTo(cjX+cjW,cjY+rowH*3);ctx.stroke();
   var col4=cjW/4;
-  ctx.fillText('Plano: '+(_meta.plano||'—'),cjX+6,cjY+rowH*2+rowH/2);
-  ctx.fillText('Escala: 1/'+_drawScale,cjX+col4+6,cjY+rowH*2+rowH/2);
-  ctx.fillText('Fecha: '+(_meta.fecha||'—'),cjX+col4*2+6,cjY+rowH*2+rowH/2);
-  ctx.fillText('Doc obra '+(_meta.docObra||'—'),cjX+col4*3+6,cjY+rowH*2+rowH/2);
+  ctx.fillText('Plano: '+(_meta.plano||'—'),cjX+pad,cjY+rowH*2+rowH/2);
+  ctx.fillText('Escala: 1/'+_drawScale,cjX+col4+pad,cjY+rowH*2+rowH/2);
+  ctx.fillText('Fecha: '+(_meta.fecha||'—'),cjX+col4*2+pad,cjY+rowH*2+rowH/2);
+  ctx.fillText('Doc obra '+(_meta.docObra||'—'),cjX+col4*3+pad,cjY+rowH*2+rowH/2);
   ctx.beginPath();ctx.moveTo(cjX+col4,cjY+rowH*2);ctx.lineTo(cjX+col4,cjY+rowH*3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cjX+col4*2,cjY+rowH*2);ctx.lineTo(cjX+col4*2,cjY+rowH*3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cjX+col4*3,cjY+rowH*2);ctx.lineTo(cjX+col4*3,cjY+rowH*3);ctx.stroke();
 
-  // Note (small italic below rows)
+  // Note
   if(_meta.nota){
-    ctx.font='italic '+Math.max(5,smallFont-1)+'px '+getComputedStyle(document.body).fontFamily;
+    ctx.font='italic '+Math.max(4,smallFont-1)+'px '+getComputedStyle(document.body).fontFamily;
     ctx.fillStyle='#888';
-    ctx.fillText(_meta.nota,cjX+6,cjY+rowH*3+noteH/2);
+    ctx.fillText(_meta.nota,cjX+pad,cjY+rowH*3+noteH/2);
   }
 
   // Store cajetin rect for click detection
