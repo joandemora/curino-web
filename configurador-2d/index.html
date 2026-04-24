@@ -289,10 +289,10 @@ function paperBounds(){
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
 
-// Origin: centers total content (drawing + cartouche) in drawingRect
+// Origin: centers total content (drawing + cartouche) in marginRect
 function origin(){
-  var dr=drawingRect(), ds=drawingSizeMM(), cjMM=cartoucheHMM(), sc=s();
-  var cx=dr.x+dr.w/2, cy=dr.y+dr.h/2;
+  var mr=marginRect(), ds=drawingSizeMM(), cjMM=cartoucheHMM(), sc=s();
+  var cx=mr.x+mr.w/2, cy=mr.y+mr.h/2;
   var totalCenterY=(ds.h-cjMM)/2;
   return{x:cx-ds.w/2*sc+_panX, y:cy+totalCenterY*sc+_panY};
 }
@@ -300,11 +300,11 @@ function origin(){
 // Pan clamping
 function clampPan(){
   if(_userZoom<=1){_panX=0;_panY=0;return;}
-  var dr=drawingRect(), sc=s(), ds=drawingSizeMM();
+  var mr=marginRect(), sc=s(), ds=drawingSizeMM();
   var totalW=ds.w*sc;
   var totalH=totalContentHMM()*sc;
-  var overflowX=Math.max(0,totalW-dr.w);
-  var overflowY=Math.max(0,totalH-dr.h);
+  var overflowX=Math.max(0,totalW-mr.w);
+  var overflowY=Math.max(0,totalH-mr.h);
   _panX=Math.max(-overflowX/2,Math.min(overflowX/2,_panX));
   _panY=Math.max(-overflowY/2,Math.min(overflowY/2,_panY));
 }
@@ -368,11 +368,11 @@ function paperRect(){
   return{x:px,y:py,w:pw,h:ph};
 }
 function applyPaperScale(){
-  var dr=drawingRect();
+  var mr=marginRect();
   var ds=drawingSizeMM();
   var totalH=totalContentHMM();
-  var bzX=dr.w/(ds.w*SCALE);
-  var bzY=dr.h/(totalH*SCALE);
+  var bzX=mr.w/(ds.w*SCALE);
+  var bzY=mr.h/(totalH*SCALE);
   _baseZoom=Math.min(bzX,bzY);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
@@ -1271,9 +1271,9 @@ wrap.addEventListener('wheel',function(e){
   // Recalculate pan so (wx,wy) stays under cursor
   // Compute origin without pan (same formula as origin() but panX/Y=0)
   // Base origin without pan (same formula as origin())
-  var dr=drawingRect(), sc1=s();
+  var mr2=marginRect(), sc1=s();
   var ds2=drawingSizeMM(), cj2=cartoucheHMM();
-  var cxo=dr.x+dr.w/2, cyo=dr.y+dr.h/2;
+  var cxo=mr2.x+mr2.w/2, cyo=mr2.y+mr2.h/2;
   var baseOX=cxo-ds2.w/2*sc1;
   var baseOY=cyo+(ds2.h-cj2)/2*sc1;
   _panX=mx-baseOX-wx*sc1;
