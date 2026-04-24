@@ -253,23 +253,12 @@ var _cajetinRect=null;
 function clampPan(){
   if(_userZoom<=1){_panX=0;_panY=0;return;}
   var ca=contentArea();
-  var overflow=ca.w*(_userZoom-1);
-  // X: origin at left edge. Overflow to the right. panX<0 shows right, panX>0 invalid.
-  // But we want symmetric: allow ±overflow/2 (centered experience).
-  // To achieve this, origin() should center content. Let's allow full range:
-  _panX=Math.max(-overflow/2,Math.min(overflow/2,_panX));
-  // Y: depends on view
-  var overflowY=ca.h*(_userZoom-1);
-  if(_view==='planta'){
-    // Origin at top-left. Overflow downward. panY<0 shows bottom.
-    _panY=Math.max(-overflowY/2,Math.min(overflowY/2,_panY));
-  }else{
-    // Alzado: origin at bottom of content area. Overflow upward.
-    // panY>0 shifts origin down, showing top content.
-    // panY=0: bottom visible, top clipped if overflow.
-    // panY=overflowY: top visible, bottom clipped.
-    _panY=Math.max(0,Math.min(overflowY,_panY));
-  }
+  // Symmetric pan in both axes, both views.
+  // Allows reaching any part of the scaled content.
+  var maxPanX=ca.w*(_userZoom-1)/2;
+  var maxPanY=ca.h*(_userZoom-1)/2;
+  _panX=Math.max(-maxPanX,Math.min(maxPanX,_panX));
+  _panY=Math.max(-maxPanY,Math.min(maxPanY,_panY));
 }
 function s(){return SCALE*_zoom;}
 function contentArea(){
@@ -287,16 +276,22 @@ function contentSizeMM(){
   return{w:usableW*_drawScale, h:usableH*_drawScale};
 }
 function origin(){
-  // World (0,0) = bottom-left of content area in alzado (top-left in screen)
-  // In alzado, Y=0 is bottom, screen Y is top. So world bottom = screen bottom of content.
+  // World (0,0) mapped so content is centered in the content area at pan=0, zoom=100%.
+  // At higher zoom, content overflows symmetrically and pan navigates.
   var ca=contentArea();
-  // Screen position of world (0,0):
-  // x: left edge of content area + pan
-  // y: bottom edge of content area (in screen) — but Y is inverted for alzado
+  var cs=contentSizeMM();
+  var sc=s();
+  // Center of content area on screen
+  var cx=ca.x+ca.w/2, cy=ca.y+ca.h/2;
   if(_view==='planta'){
-    return{x:ca.x+_panX, y:ca.y+_panY};
+    // World (0,0) at top-left, world grows right+down
+    // Center of world content = (cs.w/2, cs.h/2)
+    return{x:cx-cs.w/2*sc+_panX, y:cy-cs.h/2*sc+_panY};
   }else{
-    return{x:ca.x+_panX, y:ca.y+ca.h+_panY};
+    // Alzado: world (0,0) at bottom-left, Y grows up (screen Y down)
+    // Center of world content = (cs.w/2, cs.h/2)
+    // Screen: world center maps to content area center
+    return{x:cx-cs.w/2*sc+_panX, y:cy+cs.h/2*sc+_panY};
   }
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
