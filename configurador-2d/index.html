@@ -451,7 +451,11 @@ function draw(){
   // Helper: world Y to screen Y (alzado: Y up, screen Y down)
   function wy(v){return _view==='planta'?o.y+v*sc:o.y-v*sc;}
 
-  // (Margin lines drawn after clip restore — fixed to paper)
+  // Margin lines (dashed rect around content area)
+  ctx.strokeStyle='#ddd';ctx.lineWidth=0.5;ctx.setLineDash([4,3]);
+  var mL=wx(0),mR=wx(cs.w),mT=wy(cs.h),mB=wy(0);
+  ctx.strokeRect(Math.min(mL,mR),Math.min(mT,mB),Math.abs(mR-mL),Math.abs(mB-mT));
+  ctx.setLineDash([]);
 
   // Cajetin: sits below content area in world (Y < 0 in alzado)
   var cjTop=0, cjBot=-cjMM; // world Y coords
@@ -511,12 +515,6 @@ function draw(){
   _cajetinRect={x:cjScrX,y:cjScrY,w:cjScrW,h:cjScrH,rowH:rowH,col3:col,col4:col4};
 
   ctx.restore(); // end paper clip
-
-  // Margin lines: fixed 2% inset of paper, equidistant from all edges
-  var mx2=pr.w*PAPER_MARGIN, my2=pr.h*PAPER_MARGIN;
-  ctx.strokeStyle='#ddd';ctx.lineWidth=0.5;ctx.setLineDash([4,3]);
-  ctx.strokeRect(pr.x+mx2, pr.y+my2, pr.w-2*mx2, pr.h-2*my2);
-  ctx.setLineDash([]);
 }
 
 function renderModules(){
