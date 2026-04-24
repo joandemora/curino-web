@@ -380,20 +380,12 @@ function updateZoomSelect(){
   if(!found) sel.selectedIndex=-1;
 }
 function changeZoomSelect(){
-  // Zoom from viewport center
-  var cx=wrap.clientWidth/2, cy=wrap.clientHeight/2;
-  var o=origin(), sc0=s();
-  var wx=(cx-o.x)/sc0, wy=(cy-o.y)/sc0;
+  // Anchor = paper geometric center
+  var oldUZ=_userZoom;
   _userZoom=parseInt(document.getElementById('zoomSelect').value)/100;
   _zoom=_baseZoom*_userZoom;
-  var bp=basePaperSize(), sc1=s();
-  var bpw=bp.w*_userZoom, bph=bp.h*_userZoom;
-  var bpx=(wrap.clientWidth-bpw)/2, bpy=(wrap.clientHeight-bph)/2;
-  var bmx=bpw*PAPER_MARGIN, bmy=bph*PAPER_MARGIN, bcjH=bph*CAJETIN_H_RATIO;
-  var baseOX=bpx+bmx;
-  var baseOY=_view==='planta'?bpy+bmy:bpy+bph-bmy-bcjH;
-  _panX=cx-baseOX-wx*sc1;
-  _panY=cy-baseOY-wy*sc1;
+  _panX=_panX*(_userZoom/oldUZ);
+  _panY=_panY*(_userZoom/oldUZ);
   clampPan();
   draw();renderModules();
 }
@@ -1307,18 +1299,12 @@ function switchView(v){
 
 // Zoom (+/- buttons control _userZoom)
 function zoomFromCenter(newUZ){
-  var cx=wrap.clientWidth/2, cy=wrap.clientHeight/2;
-  var o=origin(), sc0=s();
-  var wx=(cx-o.x)/sc0, wy=(cy-o.y)/sc0;
+  // Anchor = paper geometric center. Paper is centered in viewport at pan=0.
+  // Scale pan proportionally so the same paper-relative point stays centered.
+  var oldUZ=_userZoom;
   _userZoom=newUZ;_zoom=_baseZoom*_userZoom;
-  var bp=basePaperSize(), sc1=s();
-  var bpw=bp.w*_userZoom, bph=bp.h*_userZoom;
-  var bpx=(wrap.clientWidth-bpw)/2, bpy=(wrap.clientHeight-bph)/2;
-  var bmx=bpw*PAPER_MARGIN, bmy=bph*PAPER_MARGIN, bcjH=bph*CAJETIN_H_RATIO;
-  var baseOX=bpx+bmx;
-  var baseOY=_view==='planta'?bpy+bmy:bpy+bph-bmy-bcjH;
-  _panX=cx-baseOX-wx*sc1;
-  _panY=cy-baseOY-wy*sc1;
+  _panX=_panX*(newUZ/oldUZ);
+  _panY=_panY*(newUZ/oldUZ);
   updateZoomSelect();clampPan();draw();renderModules();
 }
 function zoomIn(){zoomFromCenter(Math.min(_userZoom*1.25,3));}
