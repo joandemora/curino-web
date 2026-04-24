@@ -266,31 +266,38 @@ function clampPan(){
   _panY=Math.max(-maxPanY,Math.min(maxPanY,_panY));
 }
 function s(){return SCALE*_zoom;}
-function origin(){
-  var vw=_view==='planta'?_furW:_furW;
-  var vh=_view==='planta'?_furD:_furH;
+function contentArea(){
+  // Content area in screen pixels (paper minus margins minus cajetin)
   var pr=paperRect();
   var mx=pr.w*PAPER_MARGIN, my=pr.h*PAPER_MARGIN;
   var cjH=pr.h*CAJETIN_H_RATIO;
-  // Content area within paper (minus margins and cajetin)
-  var cw=pr.w-2*mx, ch=pr.h-2*my-cjH;
-  // Center furniture in content area, apply _userZoom and pan
-  var cx=pr.x+mx+cw/2;
-  var cy=pr.y+my+ch/2;
-  return{x:cx-vw*s()/2+_panX, y:cy-vh*s()/2+_panY};
+  return{x:pr.x+mx, y:pr.y+my, w:pr.w-2*mx, h:pr.h-2*my-cjH};
+}
+function contentSizeMM(){
+  // How many mm of real space the content area represents
+  var p=PAPERS[_paper];
+  var usableW=p.w*(1-2*PAPER_MARGIN);
+  var usableH=p.h*(1-2*PAPER_MARGIN)-p.h*CAJETIN_H_RATIO;
+  return{w:usableW*_drawScale, h:usableH*_drawScale};
+}
+function origin(){
+  // World (0,0) = bottom-left of content area in alzado (top-left in screen)
+  // In alzado, Y=0 is bottom, screen Y is top. So world bottom = screen bottom of content.
+  var ca=contentArea();
+  // Screen position of world (0,0):
+  // x: left edge of content area + pan
+  // y: bottom edge of content area (in screen) — but Y is inverted for alzado
+  if(_view==='planta'){
+    return{x:ca.x+_panX, y:ca.y+_panY};
+  }else{
+    return{x:ca.x+_panX, y:ca.y+ca.h+_panY};
+  }
 }
 function snap(v){return Math.round(v/GRID)*GRID;}
 function paperBounds(){
-  // Paper bounds in world mm, accounting for 2% margin + cajetin at bottom.
-  var p=PAPERS[_paper];
-  var pw=p.w*_drawScale, ph=p.h*_drawScale;
-  var mx=pw*PAPER_MARGIN, my=ph*PAPER_MARGIN;
-  var cjH=ph*CAJETIN_H_RATIO; // cajetin height in world mm
-  var vw=_view==='planta'?_furW:_furW;
-  var vh=_view==='planta'?_furD:_furH;
-  var cx=vw/2, cy=vh/2;
-  // Drawing area = paper minus margins minus cajetin at bottom
-  return{left:cx-pw/2+mx, right:cx+pw/2-mx, bottom:cy-ph/2+my+cjH, top:cy+ph/2-my};
+  // World bounds = content area in mm. World (0,0) = bottom-left.
+  var cs=contentSizeMM();
+  return{left:0, right:cs.w, bottom:0, top:cs.h};
 }
 function clampToPaper(m){
   var b=paperBounds();
@@ -353,10 +360,10 @@ function paperRect(){
   return{x:px,y:py,w:pw,h:ph};
 }
 function applyPaperScale(){
-  var p=PAPERS[_paper];
-  var pr=paperRect();
-  var realW=p.w*_drawScale;
-  _baseZoom=pr.w/(realW*SCALE);
+  var ca=contentArea();
+  var cs=contentSizeMM();
+  // _baseZoom: at _userZoom=1, content area pixels = content area mm
+  _baseZoom=ca.w/(cs.w*SCALE);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
 }
@@ -500,7 +507,7 @@ function renderModules(){
       mx=o.x+m.x*sc;my=o.y+(m.pz||0)*sc;
     }else{
       mw=m.w*sc;mh=m.h*sc;
-      mx=o.x+m.x*sc;my=o.y+(_furH-m.y-m.h)*sc;
+      mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
     }
     div.style.left=mx+'px';div.style.top=my+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
@@ -620,7 +627,7 @@ function renderModules(){
     });
     var bw=bx2-bx1,bh=by2-by1;
     var screenX=o.x+bx1*sc;
-    var screenY=_view==='planta'?o.y+by1*sc:o.y+(_furH-by2)*sc;
+    var screenY=_view==='planta'?o.y+by1*sc:o.y-(by2)*sc;
     var bbox=document.createElement('div');
     bbox.className='c2d-bbox';
     bbox.style.left=screenX+'px';bbox.style.top=screenY+'px';
@@ -715,17 +722,13 @@ wrap.addEventListener('drop',function(e){
   if(_view==='planta'){
     y=0;pz=snap(screenY);
   }else{
-    y=snap(_furH-screenY-_dragData.h);pz=0;
+    y=snap(-screenY-_dragData.h);pz=0;
   }
   saveHistory();
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
   var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
-  console.log('DROP: clientXY=',e.clientX,e.clientY,'wrapOff=',rect.left,rect.top,'origin=',o.x.toFixed(1),o.y.toFixed(1),'sc=',sc.toFixed(4),'world x=',x,'y=',y,'pz=',pz);
-  var b=paperBounds();
-  console.log('BOUNDS: left=',b.left.toFixed(0),'right=',b.right.toFixed(0),'bottom=',b.bottom.toFixed(0),'top=',b.top.toFixed(0));
   clampToPaper(newMod);
-  console.log('AFTER CLAMP: x=',newMod.x,'y=',newMod.y,'w=',newMod.w,'h=',newMod.h);
   _modules.push(newMod);
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
@@ -779,9 +782,10 @@ function getSnapEdges(axis,skipIndices){
       edges.push(m.pz||0,(m.pz||0)+(m.d||600));
     }
   });
-  // Furniture bounds
-  if(axis==='x'){edges.push(0,_furW);}
-  else if(axis==='y'){edges.push(0,_furH);}
+  // Paper bounds as snap edges
+  var _pb=paperBounds();
+  if(axis==='x'){edges.push(_pb.left,_pb.right);}
+  else if(axis==='y'){edges.push(_pb.bottom,_pb.top);}
   else if(axis==='pz'){edges.push(0,_furD);}
   return edges;
 }
@@ -795,7 +799,7 @@ function showSnapLine(val,axis){
     el.style.left=(o.x+val*sc)+'px';
   }else{
     el.classList.add('c2d-snapline-h');
-    var yPx=_view==='planta'?(o.y+val*sc):(o.y+(_furH-val)*sc);
+    var yPx=_view==='planta'?(o.y+val*sc):(o.y-val*sc);
     el.style.top=yPx+'px';
   }
   layer.appendChild(el);_snapLines.push(el);
@@ -984,10 +988,8 @@ function startGroupResize(e,pos,bx,by,bw,bh){
 function groupResizeMove(e){
   if(!_groupResize) return;
   var g=_groupResize,sc=s(),p=g.pos;
-  var dyRaw=(e.clientY-g.startY)/sc;
-  var dx=(e.clientX-g.startX)/sc,dy=dyRaw;
+  var dx=(e.clientX-g.startX)/sc,dy=(e.clientY-g.startY)/sc;
   if(_view!=='planta') dy=-dy;
-  console.log('handle='+p+' dyRaw='+dyRaw.toFixed(1)+' dyInv='+dy.toFixed(1)+' view='+_view);
 
   // Anchor = fixed corner (opposite to handle being dragged)
   // anchorX: right side fixed when dragging left, left side fixed when dragging right
@@ -997,7 +999,6 @@ function groupResizeMove(e){
   var ay=g.by,ah=g.bh;
   if(p==='t'||p==='tl'||p==='tr'){ah=Math.max(GRID,g.bh+dy);}
   if(p==='b'||p==='bl'||p==='br'){ah=Math.max(GRID,g.bh-dy);ay=g.by+g.bh-ah;}
-  console.log('g.by='+g.by+' g.bh='+g.bh+' ay='+ay.toFixed(1)+' ah='+ah.toFixed(1));
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
@@ -1267,7 +1268,7 @@ function marqueeEnd(e){
       if(_view==='planta'){
         mleft=o.x+m.x*sc;mtop=o.y+(m.pz||0)*sc;mw=m.w*sc;mh=(m.d||600)*sc;
       }else{
-        mleft=o.x+m.x*sc;mtop=o.y+(_furH-m.y-m.h)*sc;mw=m.w*sc;mh=m.h*sc;
+        mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;
       }
       if(mleft+mw>mx1&&mleft<mx2&&mtop+mh>my1&&mtop<my2) _sel.add(i);
     });
@@ -1304,13 +1305,11 @@ wrap.addEventListener('wheel',function(e){
   _zoom=_baseZoom*_userZoom;
   updateZoomSelect();
   // Adjust pan so same world point stays under cursor
-  var pr=paperRect();
-  var vw=_view==='planta'?_furW:_furW;
-  var vh=_view==='planta'?_furD:_furH;
-  var newCX=pr.x+(pr.w-vw*s())/2;
-  var newCY=pr.y+(pr.h-vh*s())/2;
-  _panX=mx-newCX-worldX*s();
-  _panY=my-newCY-worldY*s();
+  // New origin without pan:
+  var ca=contentArea();
+  var newOX=ca.x, newOY=_view==='planta'?ca.y:ca.y+ca.h;
+  _panX=mx-newOX-worldX*s();
+  _panY=my-newOY+(_view==='planta'?-worldY*s():worldY*s());
   clampPan();
   draw();renderModules();
 },{passive:false});
