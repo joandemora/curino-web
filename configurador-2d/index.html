@@ -251,13 +251,13 @@ var layer=document.getElementById('modulesLayer');
 var _panX=0,_panY=0;
 var _cajetinRect=null;
 function clampPan(){
+  // Pan moves content inside fixed paper. At zoom 100%, no pan needed.
   if(_userZoom<=1){_panX=0;_panY=0;return;}
-  var bp=basePaperSize();
-  var pw=bp.w*_userZoom, ph=bp.h*_userZoom;
-  // Paper center without pan = viewport center. With pan, paper shifts.
-  // Clamp so paper edges don't reveal empty space beyond paper.
-  var maxPanX=Math.max(0,(pw-wrap.clientWidth)/2);
-  var maxPanY=Math.max(0,(ph-wrap.clientHeight)/2);
+  // Content is _userZoom times larger than the content area.
+  // Max pan = half the overflow on each axis.
+  var ca=contentArea();
+  var maxPanX=ca.w*(_userZoom-1)/2;
+  var maxPanY=ca.h*(_userZoom-1)/2;
   _panX=Math.max(-maxPanX,Math.min(maxPanX,_panX));
   _panY=Math.max(-maxPanY,Math.min(maxPanY,_panY));
 }
@@ -344,29 +344,20 @@ window.addEventListener('resize',resizeCanvas);
 function resizeFurniture(){
   draw();renderModules();
 }
-function basePaperSize(){
-  // Paper base size at zoom 100% (85% of viewport)
+function paperRect(){
+  // Paper rectangle: fixed size, centered in viewport. Does NOT scale with zoom.
   var p=PAPERS[_paper], aspect=p.w/p.h;
   var maxW=wrap.clientWidth*0.85, maxH=wrap.clientHeight*0.85;
   var pw,ph;
   if(maxW/aspect<=maxH){pw=maxW;ph=maxW/aspect;}
   else{ph=maxH;pw=ph*aspect;}
-  return{w:pw,h:ph};
-}
-function paperRect(){
-  // Paper rectangle scaled by _userZoom, offset by pan, centered in viewport
-  var bp=basePaperSize();
-  var pw=bp.w*_userZoom, ph=bp.h*_userZoom;
-  var px=(wrap.clientWidth-pw)/2+_panX, py=(wrap.clientHeight-ph)/2+_panY;
+  var px=(wrap.clientWidth-pw)/2, py=(wrap.clientHeight-ph)/2;
   return{x:px,y:py,w:pw,h:ph};
 }
 function applyPaperScale(){
-  // _baseZoom maps content mm to content pixels at _userZoom=1
-  var bp=basePaperSize();
-  var p=PAPERS[_paper];
-  var contentW=bp.w*(1-2*PAPER_MARGIN);
+  var ca=contentArea();
   var cs=contentSizeMM();
-  _baseZoom=contentW/(cs.w*SCALE);
+  _baseZoom=ca.w/(cs.w*SCALE);
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
 }
@@ -1326,15 +1317,10 @@ wrap.addEventListener('wheel',function(e){
   _zoom=_baseZoom*_userZoom;
   updateZoomSelect();
   // Recalculate pan so (wx,wy) stays under cursor
-  // Compute origin without pan: base paper centered + margins
-  var bp=basePaperSize(), sc1=s();
-  var bpw=bp.w*_userZoom, bph=bp.h*_userZoom;
-  var bpx=(wrap.clientWidth-bpw)/2, bpy=(wrap.clientHeight-bph)/2;
-  var bmx=bpw*PAPER_MARGIN, bmy=bph*PAPER_MARGIN;
-  var bcjH=bph*CAJETIN_H_RATIO;
-  // Origin without pan (content area top-left for planta, bottom-left for alzado)
-  var baseOX=bpx+bmx;
-  var baseOY=_view==='planta'?bpy+bmy:bpy+bph-bmy-bcjH;
+  // Origin without pan = contentArea edges (fixed, doesn't depend on pan)
+  var ca=contentArea(), sc1=s();
+  var baseOX=ca.x;
+  var baseOY=_view==='planta'?ca.y:ca.y+ca.h;
   _panX=mx-baseOX-wx*sc1;
   _panY=my-baseOY-wy*sc1;
   clampPan();
