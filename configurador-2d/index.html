@@ -20,8 +20,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar button:hover{border-color:var(--black);background:var(--bg)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
-.c2d-scale-indicator{position:absolute;bottom:12px;left:12px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mid);background:rgba(255,255,255,.85);padding:4px 10px;border-radius:6px;border:1px solid var(--border);z-index:6}
-.c2d-scale-indicator select{border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
 /* Layout */
 .c2d-layout{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 48px)}
@@ -116,6 +114,16 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
       <option value="A4" selected>DIN A4</option>
       <option value="A3">DIN A3</option>
     </select>
+    <span>Escala:</span>
+    <select id="scaleSelect" onchange="changeScale()">
+      <option value="10">1:10</option>
+      <option value="20">1:20</option>
+      <option value="25">1:25</option>
+      <option value="30" selected>1:30</option>
+      <option value="50">1:50</option>
+      <option value="75">1:75</option>
+      <option value="100">1:100</option>
+    </select>
   </div>
   <div class="c2d-toolbar">
     <button onclick="zoomIn()">+</button>
@@ -186,18 +194,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <div class="c2d-canvas-wrap" id="canvasWrap">
       <canvas id="cvs"></canvas>
       <div id="modulesLayer"></div>
-      <div class="c2d-scale-indicator">
-        <span>Escala:</span>
-        <select id="scaleSelect" onchange="changeScale()">
-          <option value="10">1:10</option>
-          <option value="20">1:20</option>
-          <option value="25">1:25</option>
-          <option value="30" selected>1:30</option>
-          <option value="50">1:50</option>
-          <option value="75">1:75</option>
-          <option value="100">1:100</option>
-        </select>
-      </div>
     </div>
   </div>
 
