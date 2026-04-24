@@ -728,8 +728,22 @@ wrap.addEventListener('drop',function(e){
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
   var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
+  var ca=contentArea(),pb=paperBounds();
+  console.log('--- DROP ---');
+  console.log('client:',e.clientX,e.clientY,'wrapOff:',rect.left.toFixed(0),rect.top.toFixed(0));
+  console.log('contentArea: x='+ca.x.toFixed(0)+' y='+ca.y.toFixed(0)+' w='+ca.w.toFixed(0)+' h='+ca.h.toFixed(0));
+  console.log('origin: x='+o.x.toFixed(1)+' y='+o.y.toFixed(1)+' sc='+sc.toFixed(5));
+  console.log('world BEFORE clamp: x='+x+' y='+y+' w='+newMod.w+' h='+newMod.h);
+  console.log('paperBounds: L='+pb.left.toFixed(0)+' R='+pb.right.toFixed(0)+' B='+pb.bottom.toFixed(0)+' T='+pb.top.toFixed(0));
   clampToPaper(newMod);
+  console.log('world AFTER clamp: x='+newMod.x+' y='+newMod.y+' w='+newMod.w+' h='+newMod.h);
+  // Screen position check
+  var smx=o.x+newMod.x*sc, smy=o.y-(newMod.y+newMod.h)*sc;
+  console.log('screen pos: left='+smx.toFixed(0)+' top='+smy.toFixed(0)+' right='+(smx+newMod.w*sc).toFixed(0)+' bottom='+(smy+newMod.h*sc).toFixed(0));
+  console.log('clip area: top='+(ca.y).toFixed(0)+' right='+(ca.x+ca.w).toFixed(0)+' bottom='+(ca.y+ca.h).toFixed(0)+' left='+ca.x.toFixed(0));
+  console.log('modules count BEFORE:',_modules.length);
   _modules.push(newMod);
+  console.log('modules count AFTER:',_modules.length);
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
