@@ -151,11 +151,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     </select>
   </div>
   <div class="c2d-toolbar">
-    <button onclick="zoomIn()">+</button>
-    <button onclick="zoomOut()">&minus;</button>
-    <button onclick="zoomFit()">Ajustar</button>
-    <button onclick="undo()">Deshacer</button>
-    <button onclick="redo()">Rehacer</button>
+    <button onclick="undo()" title="Deshacer (Ctrl+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 0 1 15.36-6.36L21 9"/></svg></button>
+    <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-15.36-6.36L3 9"/></svg></button>
     <button onclick="exportPNG()">PNG</button>
     <button class="btn-save" id="btnSave" onclick="saveProject()">Guardar</button>
   </div>
