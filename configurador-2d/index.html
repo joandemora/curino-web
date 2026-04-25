@@ -476,7 +476,8 @@ function draw(){
   var cjScrX=wx(0), cjScrY=Math.min(wy(cjTop),wy(cjBot));
   var cjScrW=Math.abs(wx(ds.w)-wx(0)), cjScrH=Math.abs(wy(cjTop)-wy(cjBot));
 
-  if(_meta.showCajetin===false){_cajetinRect=null;ctx.restore();return;}
+  _cajetinRect={x:cjScrX,y:cjScrY,w:cjScrW,h:cjScrH,rowH:cjScrH/3.5,col3:cjScrW/3,col4:cjScrW/4};
+  if(_meta.showCajetin===false){ctx.restore();return;}
   ctx.fillStyle='#fafafa';ctx.fillRect(cjScrX,cjScrY,cjScrW,cjScrH);
   ctx.strokeStyle='#999';ctx.lineWidth=0.7;
   ctx.strokeRect(cjScrX,cjScrY,cjScrW,cjScrH);
