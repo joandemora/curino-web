@@ -1431,7 +1431,7 @@ function loadH2C(){return loadLib('html2canvas','https://cdnjs.cloudflare.com/aj
 function loadJsPDF(){return loadLib('jsPDF','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',function(){return window.jspdf?window.jspdf.jsPDF:null;});}
 
 function captureWrap(){
-  var exportScale=3;
+  var exportScale=4;
   // Inflate canvas pixel buffer for high-res text, keep CSS size unchanged
   var cssW=wrap.clientWidth,cssH=wrap.clientHeight;
   cvs.width=cssW*exportScale;cvs.height=cssH*exportScale;
