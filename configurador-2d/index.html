@@ -1432,12 +1432,13 @@ function loadJsPDF(){return loadLib('jsPDF','https://cdnjs.cloudflare.com/ajax/l
 
 function captureWrap(){
   var exportScale=3;
-  // Inflate canvas to high-res before capture
-  var origW=cvs.width,origH=cvs.height;
-  cvs.width=origW*exportScale;cvs.height=origH*exportScale;
-  ctx.scale(exportScale,exportScale);
+  // Inflate canvas pixel buffer for high-res text, keep CSS size unchanged
+  var cssW=wrap.clientWidth,cssH=wrap.clientHeight;
+  cvs.width=cssW*exportScale;cvs.height=cssH*exportScale;
+  cvs.style.width=cssW+'px';cvs.style.height=cssH+'px';
+  ctx.setTransform(exportScale,0,0,exportScale,0,0);
   _exportMode=true;draw();renderModules();
-  // Hide selection visuals for export
+  // Hide selection visuals
   var selected=wrap.querySelectorAll('.c2d-module.selected');
   selected.forEach(function(el){el.classList.remove('selected');});
   var bbox=wrap.querySelector('.c2d-bbox');if(bbox) bbox.style.display='none';
@@ -1452,7 +1453,9 @@ function captureWrap(){
     });
   }).then(function(resultCanvas){
     // Restore canvas to screen resolution
-    cvs.width=origW;cvs.height=origH;
+    cvs.width=cssW;cvs.height=cssH;
+    cvs.style.width='';cvs.style.height='';
+    ctx.setTransform(1,0,0,1,0,0);
     _exportMode=false;draw();renderModules();
     if(bbox) bbox.style.display='';
     return resultCanvas;
