@@ -22,10 +22,11 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
 /* Layout */
-.c2d-layout{display:grid;grid-template-columns:220px 160px 1fr 240px;height:calc(100vh - 48px)}
+.c2d-layout{display:grid;grid-template-columns:160px 1fr 240px;height:calc(100vh - 48px)}
 
-/* Left panel */
-.c2d-left{border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:var(--white)}
+/* Right panel (palette + properties overlay) */
+.c2d-right{position:relative;border-left:1px solid var(--border);overflow:hidden;background:var(--white)}
+.c2d-palette{overflow-y:auto;padding:.75rem;height:100%}
 .c2d-section{border-bottom:1px solid var(--border);padding-bottom:0}
 .c2d-section:last-child{border-bottom:none}
 .c2d-section-title{display:flex;justify-content:space-between;align-items:center;padding:.6rem .25rem;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--black)}
@@ -50,9 +51,10 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-canvas-wrap{flex:1;position:relative;overflow:hidden}
 .c2d-canvas-wrap canvas{position:absolute;top:0;left:0}
 
-/* Right panel */
-.c2d-right{border-left:1px solid var(--border);overflow-y:auto;padding:1rem;background:var(--white)}
-.c2d-right h3{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
+/* Properties overlay */
+.c2d-props-overlay{position:absolute;inset:0;background:var(--white);overflow-y:auto;padding:1rem;z-index:2;display:none}
+.c2d-props-overlay.visible{display:block}
+.c2d-props-overlay h3{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
 .c2d-prop{margin-bottom:.75rem}
 .c2d-prop label{display:block;font-size:11px;color:var(--mid);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.05em}
 .c2d-prop input,.c2d-prop select{width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:var(--font);font-size:13px}
@@ -110,7 +112,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 /* Responsive */
 @media(max-width:900px){
   .c2d-layout{grid-template-columns:1fr}
-  .c2d-left,.c2d-right,.c2d-slides{display:none}
+  .c2d-right,.c2d-slides{display:none}
 }
 </style>
 </head>
@@ -157,53 +159,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 <!-- LAYOUT -->
 <div class="c2d-layout">
 
-  <!-- LEFT: Modules -->
-  <div class="c2d-left">
-    <!-- ARMARIO -->
-    <div class="c2d-section open">
-      <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Armario</div>
-      <div class="c2d-section-body">
-        <!-- Interior -->
-        <div class="c2d-sub open">
-          <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Interior</div>
-          <div class="c2d-sub-body">
-            <div class="c2d-mod" draggable="true" data-type="modulo" data-w="600" data-h="2000"><div class="c2d-mod-icon">MD</div>M&oacute;dulo<span class="c2d-mod-size">600&times;2000</span></div>
-            <div class="c2d-mod" draggable="true" data-type="barra" data-w="600" data-h="40"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">600&times;40</span></div>
-            <div class="c2d-mod" draggable="true" data-type="estante" data-w="600" data-h="30"><div class="c2d-mod-icon">ES</div>Estante<span class="c2d-mod-size">600&times;30</span></div>
-            <div class="c2d-mod" draggable="true" data-type="cajon" data-w="600" data-h="200"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
-            <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="200"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;200</span></div>
-
-            <div class="c2d-mod" draggable="true" data-type="divisor" data-w="19" data-h="2000"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">19&times;2000</span></div>
-          </div>
-        </div>
-        <!-- Exterior -->
-        <div class="c2d-sub open">
-          <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Exterior</div>
-          <div class="c2d-sub-body">
-            <div class="c2d-mod" draggable="true" data-type="puerta_batiente" data-w="600" data-h="2000"><div class="c2d-mod-icon">PB</div>Puerta batiente<span class="c2d-mod-size">600&times;2000</span></div>
-            <div class="c2d-mod" draggable="true" data-type="tapeta" data-w="50" data-h="2000"><div class="c2d-mod-icon">TP</div>Tapeta<span class="c2d-mod-size">50&times;2000</span></div>
-            <div class="c2d-mod" draggable="true" data-type="costado" data-w="50" data-h="2000"><div class="c2d-mod-icon">CT</div>Costado<span class="c2d-mod-size">50&times;2000</span></div>
-            <div class="c2d-mod" draggable="true" data-type="zocalo" data-w="600" data-h="100"><div class="c2d-mod-icon">ZC</div>Z&oacute;calo<span class="c2d-mod-size">600&times;100</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- COCINA -->
-    <div class="c2d-section">
-      <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Cocina</div>
-      <div class="c2d-section-body">
-        <div class="c2d-mod" draggable="true" data-type="modulo_bajo" data-w="600" data-h="850"><div class="c2d-mod-icon">MB</div>M&oacute;dulo bajo<span class="c2d-mod-size">600&times;850</span></div>
-        <div class="c2d-mod" draggable="true" data-type="modulo_alto" data-w="600" data-h="700"><div class="c2d-mod-icon">MA</div>M&oacute;dulo alto<span class="c2d-mod-size">600&times;700</span></div>
-        <div class="c2d-mod" draggable="true" data-type="modulo_columna" data-w="600" data-h="2200"><div class="c2d-mod-icon">MC</div>M&oacute;dulo columna<span class="c2d-mod-size">600&times;2200</span></div>
-        <div class="c2d-mod" draggable="true" data-type="cajon_cocina" data-w="600" data-h="200"><div class="c2d-mod-icon">CC</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
-        <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="600" data-h="850"><div class="c2d-mod-icon">LV</div>Lavavajillas<span class="c2d-mod-size">600&times;850</span></div>
-        <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="600" data-h="1800"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico<span class="c2d-mod-size">600&times;1800</span></div>
-        <div class="c2d-mod" draggable="true" data-type="horno" data-w="600" data-h="600"><div class="c2d-mod-icon">HO</div>Horno<span class="c2d-mod-size">600&times;600</span></div>
-      </div>
-    </div>
-  </div>
-
   <!-- SLIDES -->
   <div class="c2d-slides">
     <div class="c2d-slides-list" id="slidesList"></div>
@@ -217,11 +172,52 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     </div>
   </div>
 
-  <!-- RIGHT: Properties -->
+  <!-- RIGHT: Palette + Properties overlay -->
   <div class="c2d-right">
-    <h3>Propiedades</h3>
-    <div id="propsPanel">
-      <div class="c2d-empty">Selecciona un m&oacute;dulo</div>
+    <div class="c2d-palette">
+      <!-- ARMARIO -->
+      <div class="c2d-section open">
+        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Armario</div>
+        <div class="c2d-section-body">
+          <div class="c2d-sub open">
+            <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Interior</div>
+            <div class="c2d-sub-body">
+              <div class="c2d-mod" draggable="true" data-type="modulo" data-w="600" data-h="2000"><div class="c2d-mod-icon">MD</div>M&oacute;dulo<span class="c2d-mod-size">600&times;2000</span></div>
+              <div class="c2d-mod" draggable="true" data-type="barra" data-w="600" data-h="40"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">600&times;40</span></div>
+              <div class="c2d-mod" draggable="true" data-type="estante" data-w="600" data-h="30"><div class="c2d-mod-icon">ES</div>Estante<span class="c2d-mod-size">600&times;30</span></div>
+              <div class="c2d-mod" draggable="true" data-type="cajon" data-w="600" data-h="200"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
+              <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="200"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;200</span></div>
+              <div class="c2d-mod" draggable="true" data-type="divisor" data-w="19" data-h="2000"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">19&times;2000</span></div>
+            </div>
+          </div>
+          <div class="c2d-sub open">
+            <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Exterior</div>
+            <div class="c2d-sub-body">
+              <div class="c2d-mod" draggable="true" data-type="puerta_batiente" data-w="600" data-h="2000"><div class="c2d-mod-icon">PB</div>Puerta batiente<span class="c2d-mod-size">600&times;2000</span></div>
+              <div class="c2d-mod" draggable="true" data-type="tapeta" data-w="50" data-h="2000"><div class="c2d-mod-icon">TP</div>Tapeta<span class="c2d-mod-size">50&times;2000</span></div>
+              <div class="c2d-mod" draggable="true" data-type="costado" data-w="50" data-h="2000"><div class="c2d-mod-icon">CT</div>Costado<span class="c2d-mod-size">50&times;2000</span></div>
+              <div class="c2d-mod" draggable="true" data-type="zocalo" data-w="600" data-h="100"><div class="c2d-mod-icon">ZC</div>Z&oacute;calo<span class="c2d-mod-size">600&times;100</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- COCINA -->
+      <div class="c2d-section">
+        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Cocina</div>
+        <div class="c2d-section-body">
+          <div class="c2d-mod" draggable="true" data-type="modulo_bajo" data-w="600" data-h="850"><div class="c2d-mod-icon">MB</div>M&oacute;dulo bajo<span class="c2d-mod-size">600&times;850</span></div>
+          <div class="c2d-mod" draggable="true" data-type="modulo_alto" data-w="600" data-h="700"><div class="c2d-mod-icon">MA</div>M&oacute;dulo alto<span class="c2d-mod-size">600&times;700</span></div>
+          <div class="c2d-mod" draggable="true" data-type="modulo_columna" data-w="600" data-h="2200"><div class="c2d-mod-icon">MC</div>M&oacute;dulo columna<span class="c2d-mod-size">600&times;2200</span></div>
+          <div class="c2d-mod" draggable="true" data-type="cajon_cocina" data-w="600" data-h="200"><div class="c2d-mod-icon">CC</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
+          <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="600" data-h="850"><div class="c2d-mod-icon">LV</div>Lavavajillas<span class="c2d-mod-size">600&times;850</span></div>
+          <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="600" data-h="1800"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico<span class="c2d-mod-size">600&times;1800</span></div>
+          <div class="c2d-mod" draggable="true" data-type="horno" data-w="600" data-h="600"><div class="c2d-mod-icon">HO</div>Horno<span class="c2d-mod-size">600&times;600</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="c2d-props-overlay" id="propsOverlay">
+      <h3>Propiedades</h3>
+      <div id="propsPanel"></div>
     </div>
   </div>
 </div>
@@ -707,7 +703,9 @@ function clearSelection(){_sel.clear();renderModules();renderProps();}
 
 function renderProps(){
   var panel=document.getElementById('propsPanel');
-  if(_sel.size===0){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
+  var overlay=document.getElementById('propsOverlay');
+  if(_sel.size===0){overlay.classList.remove('visible');panel.innerHTML='';return;}
+  overlay.classList.add('visible');
   if(_sel.size>1){panel.innerHTML='<div class="c2d-empty"><strong>'+_sel.size+'</strong> m\u00F3dulos seleccionados</div><button class="c2d-btn-del" onclick="deleteSelected()">Eliminar selecci\u00F3n</button>';return;}
   var idx=_sel.values().next().value;
   var m=_modules[idx];
