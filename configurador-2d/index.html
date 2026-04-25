@@ -8,7 +8,6 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#1F1E1C;--mid:#8C8A82;--light:#c0c0c0;--border:#E8E6DE;--bg:#FAF9F5;--bg-deep:#F0EEE6;--white:#fff;--accent:#007354;--coral:#CC785C;--font:'Inter',-apple-system,sans-serif;--serif:'Fraunces',Georgia,serif;--line-soft:#F0EEE6}
@@ -1421,9 +1420,19 @@ document.addEventListener('click',function(e){
   if(!e.target.closest('.c2d-export-wrap')) closeExportMenu();
 });
 
-function exportPDF(){
-  if(!window.jspdf){alert('jsPDF no cargado');return;}
-  var jsPDF=window.jspdf.jsPDF;
+function loadJsPDF(){
+  return new Promise(function(resolve,reject){
+    if(window.jspdf){resolve(window.jspdf.jsPDF);return;}
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=function(){resolve(window.jspdf.jsPDF);};
+    s.onerror=function(){reject(new Error('No se pudo cargar jsPDF'));};
+    document.head.appendChild(s);
+  });
+}
+async function exportPDF(){
+  var jsPDF;
+  try{jsPDF=await loadJsPDF();}catch(e){alert(e.message);return;}
   var p=PAPERS[_paper];
   // PDF in landscape, dimensions in mm
   var pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[p.w,p.h]});
