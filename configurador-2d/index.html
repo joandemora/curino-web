@@ -597,7 +597,7 @@ function renderModules(){
     if(m.type==='shape_line'){
       var lx1=Math.min(m.x1,m.x2),ly1=Math.min(m.y1,m.y2);
       var lx2=Math.max(m.x1,m.x2),ly2=Math.max(m.y1,m.y2);
-      var pad=Math.max(m.strokeWidth||1,6);
+      var pad=Math.max((m.strokeWidth||1)*sc,6);
       mw=(lx2-lx1)*sc+pad*2;mh=(ly2-ly1)*sc+pad*2;
       mx=o.x+lx1*sc-pad;my=o.y-ly2*sc-pad;
       // Store bbox offset for SVG coords
@@ -700,7 +700,7 @@ function renderModules(){
     if(isShape){
       div.classList.add('no-frame');
       var sw=m.w*sc,sh=m.h*sc;
-      var st=m.stroke||'#000';var stw=m.strokeWidth||1;var fl=m.fill||'none';
+      var st=m.stroke||'#000';var stw=(m.strokeWidth||1)*sc;var fl=m.fill||'none';
       var svgStr='<svg style="position:absolute;top:0;left:0;width:'+sw+'px;height:'+sh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+sw+' '+sh+'">';
       if(m.type==='shape_line'){
         var lpad=m._bboxPad||6;
@@ -818,13 +818,13 @@ function renderProps(){
     var shapeHTML='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+typeLabel(m.type)+'</div></div>';
     if(m.type==='shape_line'){
       var lineLen=Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)));
-      shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label><div style="font-size:13px;padding:6px 0">'+lineLen+'</div></div>';
+      shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label><input type="number" value="'+lineLen+'" step="50" onchange="updateLineLength(parseInt(this.value))"></div>';
     }else{
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>';
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro Y':'Alto')+' (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>';
     }
     shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
-      '<div class="c2d-prop"><label>Grosor trazo (px)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
+      '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
     if(m.type!=='shape_line'){
       shapeHTML+='<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
     }
@@ -898,7 +898,18 @@ function updateShapeStroke(v){
   var idx=_sel.values().next().value;
   var m=_modules[idx];
   m.strokeWidth=v;
-  if(m.type==='shape_line') m.h=Math.max(1,Math.round(v));
+  draw();renderModules();renderProps();
+}
+function updateLineLength(len){
+  if(_sel.size!==1||len<=0) return;saveHistory();
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];
+  if(m.type!=='shape_line') return;
+  var dx=m.x2-m.x1,dy=m.y2-m.y1;
+  var curLen=Math.sqrt(dx*dx+dy*dy)||1;
+  var ratio=len/curLen;
+  m.x2=Math.round(m.x1+dx*ratio);
+  m.y2=Math.round(m.y1+dy*ratio);
   draw();renderModules();renderProps();
 }
 function deleteSelected(){
