@@ -476,59 +476,71 @@ function draw(){
   var cjScrX=wx(0), cjScrY=Math.min(wy(cjTop),wy(cjBot));
   var cjScrW=Math.abs(wx(ds.w)-wx(0)), cjScrH=Math.abs(wy(cjTop)-wy(cjBot));
 
-  _cajetinRect={x:cjScrX,y:cjScrY,w:cjScrW,h:cjScrH,rowH:cjScrH/3.5,col3:cjScrW/3,col4:cjScrW/4};
+  var rowH=cjScrH/4; // 4 rows: project, client row, plano row, note
+  _cajetinRect={x:cjScrX,y:cjScrY,w:cjScrW,h:cjScrH,rowH:rowH,col3:cjScrW/3,col4:cjScrW/4};
   if(_meta.showCajetin===false){ctx.restore();return;}
-  ctx.fillStyle='#fafafa';ctx.fillRect(cjScrX,cjScrY,cjScrW,cjScrH);
-  ctx.strokeStyle='#999';ctx.lineWidth=0.7;
-  ctx.strokeRect(cjScrX,cjScrY,cjScrW,cjScrH);
 
-  // Cajetin rows
-  var rowH=cjScrH/3.5;
-  var noteH=cjScrH-rowH*3;
-  var font=Math.max(6,Math.round(cjScrH*0.11));
-  var smallFont=Math.max(5,Math.round(font*0.7));
-  var pad=Math.max(3,cjScrH*0.02);
-  ctx.fillStyle='#333';ctx.textBaseline='middle';
+  // White background, no outer border
+  ctx.fillStyle='#fff';ctx.fillRect(cjScrX,cjScrY,cjScrW,cjScrH);
 
-  // Row 1
-  ctx.strokeStyle='#ccc';ctx.lineWidth=0.5;
-  ctx.beginPath();ctx.moveTo(cjScrX,cjScrY+rowH);ctx.lineTo(cjScrX+cjScrW,cjScrY+rowH);ctx.stroke();
-  ctx.font='bold '+font+'px '+getComputedStyle(document.body).fontFamily;
+  var ff=getComputedStyle(document.body).fontFamily;
+  var titleFont=Math.max(8,Math.round(cjScrH*0.16));
+  var logoFont=Math.max(10,Math.round(cjScrH*0.22));
+  var dataFont=Math.max(6,Math.round(cjScrH*0.09));
+  var noteFont=Math.max(5,Math.round(cjScrH*0.07));
+  var pad=Math.max(4,cjScrW*0.01);
+  var lineColor='#1F1E1C';
+
+  // Row 1: Project name (left) + "& Curino" logo (right)
+  var r1y=cjScrY+rowH;
+  ctx.fillStyle='#000';ctx.textBaseline='middle';
+  ctx.font='bold '+titleFont+'px '+ff;
   ctx.textAlign='left';
-  ctx.fillText(_meta.proyecto.toUpperCase(),cjScrX+pad,cjScrY+rowH/2);
+  ctx.fillText(_meta.proyecto.toUpperCase(),cjScrX+pad,cjScrY+rowH*0.45);
+  ctx.font='bold '+logoFont+'px '+ff;
   ctx.textAlign='right';
-  ctx.fillText('& curino',cjScrX+cjScrW-pad,cjScrY+rowH/2);
+  ctx.fillText('& Curino',cjScrX+cjScrW-pad,cjScrY+rowH*0.5);
 
-  // Row 2
-  ctx.beginPath();ctx.moveTo(cjScrX,cjScrY+rowH*2);ctx.lineTo(cjScrX+cjScrW,cjScrY+rowH*2);ctx.stroke();
-  ctx.font=smallFont+'px '+getComputedStyle(document.body).fontFamily;
-  ctx.textAlign='left';
-  var col=cjScrW/3;
-  ctx.fillText('Cliente: '+(_meta.cliente||'—'),cjScrX+pad,cjScrY+rowH+rowH/2);
-  ctx.fillText('Ubicación: '+(_meta.ubicacion||'—'),cjScrX+col+pad,cjScrY+rowH+rowH/2);
-  ctx.fillText('Interiorismo: '+(_meta.interiorismo||'—'),cjScrX+col*2+pad,cjScrY+rowH+rowH/2);
-  ctx.beginPath();ctx.moveTo(cjScrX+col,cjScrY+rowH);ctx.lineTo(cjScrX+col,cjScrY+rowH*2);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cjScrX+col*2,cjScrY+rowH);ctx.lineTo(cjScrX+col*2,cjScrY+rowH*2);ctx.stroke();
+  // Line 1
+  ctx.strokeStyle=lineColor;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cjScrX,r1y);ctx.lineTo(cjScrX+cjScrW,r1y);ctx.stroke();
 
-  // Row 3
-  ctx.beginPath();ctx.moveTo(cjScrX,cjScrY+rowH*3);ctx.lineTo(cjScrX+cjScrW,cjScrY+rowH*3);ctx.stroke();
+  // Row 2: Cliente | Ubicación | Interiorismo
+  var r2y=cjScrY+rowH*2;
+  ctx.font=dataFont+'px '+ff;ctx.fillStyle='#000';ctx.textAlign='left';
+  var col3=cjScrW/3;
+  ctx.fillText('Cliente: '+(_meta.cliente||'\u2014'),cjScrX+pad,r1y+rowH*0.5);
+  ctx.fillText('Ubicaci\u00F3n: '+(_meta.ubicacion||'\u2014'),cjScrX+col3+pad,r1y+rowH*0.5);
+  ctx.fillText('Interiorismo: '+(_meta.interiorismo||'\u2014'),cjScrX+col3*2+pad,r1y+rowH*0.5);
+
+  // Line 2
+  ctx.beginPath();ctx.moveTo(cjScrX,r2y);ctx.lineTo(cjScrX+cjScrW,r2y);ctx.stroke();
+
+  // Row 3: Plano | Escala | Fecha | Doc obra
+  var r3y=cjScrY+rowH*3;
   var col4=cjScrW/4;
-  ctx.fillText('Plano: '+(_meta.plano||'—'),cjScrX+pad,cjScrY+rowH*2+rowH/2);
-  ctx.fillText('Escala: 1/'+_drawScale,cjScrX+col4+pad,cjScrY+rowH*2+rowH/2);
-  ctx.fillText('Fecha: '+(_meta.fecha||'—'),cjScrX+col4*2+pad,cjScrY+rowH*2+rowH/2);
-  ctx.fillText('Doc obra '+(_meta.docObra||'—'),cjScrX+col4*3+pad,cjScrY+rowH*2+rowH/2);
-  ctx.beginPath();ctx.moveTo(cjScrX+col4,cjScrY+rowH*2);ctx.lineTo(cjScrX+col4,cjScrY+rowH*3);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cjScrX+col4*2,cjScrY+rowH*2);ctx.lineTo(cjScrX+col4*2,cjScrY+rowH*3);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cjScrX+col4*3,cjScrY+rowH*2);ctx.lineTo(cjScrX+col4*3,cjScrY+rowH*3);ctx.stroke();
+  ctx.fillText('Plano: '+(_meta.plano||'\u2014'),cjScrX+pad,r2y+rowH*0.5);
+  ctx.fillText('Escala: 1/'+_drawScale,cjScrX+col4+pad,r2y+rowH*0.5);
+  ctx.fillText('Fecha: '+(_meta.fecha||'\u2014'),cjScrX+col4*2+pad,r2y+rowH*0.5);
+  ctx.fillText('Doc obra v: '+(_meta.docObra||'\u2014'),cjScrX+col4*3+pad,r2y+rowH*0.5);
 
-  // Note
+  // Line 3
+  ctx.beginPath();ctx.moveTo(cjScrX,r3y);ctx.lineTo(cjScrX+cjScrW,r3y);ctx.stroke();
+
+  // Row 4: Note (italic, smaller, word-wrapped)
   if(_meta.nota){
-    ctx.font='italic '+Math.max(4,smallFont-1)+'px '+getComputedStyle(document.body).fontFamily;
-    ctx.fillStyle='#888';
-    ctx.fillText(_meta.nota,cjScrX+pad,cjScrY+rowH*3+noteH/2);
+    ctx.font='italic '+noteFont+'px '+ff;
+    ctx.fillStyle='#333';
+    var maxW=cjScrW-pad*2;
+    var words=_meta.nota.split(' '),line='',ly=r3y+noteFont*1.4;
+    for(var wi=0;wi<words.length;wi++){
+      var test=line+(line?' ':'')+words[wi];
+      if(ctx.measureText(test).width>maxW&&line){
+        ctx.fillText(line,cjScrX+pad,ly);ly+=noteFont*1.3;line=words[wi];
+      }else{line=test;}
+    }
+    if(line) ctx.fillText(line,cjScrX+pad,ly);
   }
-
-  _cajetinRect={x:cjScrX,y:cjScrY,w:cjScrW,h:cjScrH,rowH:rowH,col3:col,col4:col4};
 
   ctx.restore(); // end paper clip
 }
