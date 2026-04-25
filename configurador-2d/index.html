@@ -699,22 +699,21 @@ function renderModules(){
     var isShape=m.type.startsWith('shape_');
     if(isShape){
       div.classList.add('no-frame');
-      var sw=m.w*sc,sh=m.h*sc;
       var st=m.stroke||'#000000';var stw=Math.max(1,(m.strokeWidth||1)*sc);var fl=m.fill||'none';
-      var svgStr='<svg style="position:absolute;top:0;left:0;width:'+sw+'px;height:'+sh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+sw+' '+sh+'">';
+      var svgStr='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">';
       if(m.type==='shape_line'){
         var lpad=m._bboxPad||6;
         var lsx1=(m.x1-m._bboxOx)*sc+lpad, lsy1=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad;
         var lsx2=(m.x2-m._bboxOx)*sc+lpad, lsy2=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad;
         svgStr+='<line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
       }else if(m.type==='shape_curve'){
-        var cpx=(m.cpx!=null?m.cpx:0.5)*sw;
-        var cpy=(m.cpy!=null?m.cpy:0)*sh;
-        svgStr+='<path d="M0,'+sh+' Q'+cpx+','+cpy+' '+sw+','+sh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round"/>';
+        var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
+        var cpy=(m.cpy!=null?m.cpy:0)*mh;
+        svgStr+='<path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round"/>';
       }else if(m.type==='shape_rect'){
-        svgStr+='<rect x="0.5" y="0.5" width="'+(sw-1)+'" height="'+(sh-1)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
+        svgStr+='<rect x="0.5" y="0.5" width="'+(mw-1)+'" height="'+(mh-1)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
       }else if(m.type==='shape_circle'){
-        svgStr+='<ellipse cx="'+(sw/2)+'" cy="'+(sh/2)+'" rx="'+(sw/2-0.5)+'" ry="'+(sh/2-0.5)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
+        svgStr+='<ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-0.5)+'" ry="'+(mh/2-0.5)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
       }
       svgStr+='</svg>';
       inner=svgStr;
