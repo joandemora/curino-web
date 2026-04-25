@@ -269,6 +269,7 @@ var _resizing=null;
 // Supabase
 var _supabase=null,_currentUser=null,_projectId=null;
 var _cajetinSelected=false;
+var _exportMode=false;
 
 var cvs=document.getElementById('cvs');
 var ctx=cvs.getContext('2d');
@@ -447,26 +448,32 @@ function draw(){
 
   // Paper frame (fixed visual size, acts as reference)
   var pr=paperRect();
-  // Shadow
-  ctx.fillStyle='rgba(0,0,0,0.06)';
-  ctx.fillRect(pr.x+4,pr.y+4,pr.w,pr.h);
+  if(!_exportMode){
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.06)';
+    ctx.fillRect(pr.x+4,pr.y+4,pr.w,pr.h);
+  }
   // Paper background
   ctx.fillStyle='#fff';
   ctx.fillRect(pr.x,pr.y,pr.w,pr.h);
-  // Paper border
-  ctx.strokeStyle='#ccc';ctx.lineWidth=1;
-  ctx.strokeRect(pr.x,pr.y,pr.w,pr.h);
+  if(!_exportMode){
+    // Paper border
+    ctx.strokeStyle='#ccc';ctx.lineWidth=1;
+    ctx.strokeRect(pr.x,pr.y,pr.w,pr.h);
+  }
 
   // Clip all scaled content to paper
   ctx.save();
   ctx.beginPath();ctx.rect(pr.x,pr.y,pr.w,pr.h);ctx.clip();
 
-  // Grid (clipped to paper, scales with content)
-  ctx.strokeStyle='#e8e8e8';ctx.lineWidth=0.5;
-  var gp=GRID*sc;
-  if(gp>3){
-    for(var x=o.x%gp;x<w;x+=gp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
-    for(var y=o.y%gp;y<h;y+=gp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  if(!_exportMode){
+    // Grid (clipped to paper, scales with content)
+    ctx.strokeStyle='#e8e8e8';ctx.lineWidth=0.5;
+    var gp=GRID*sc;
+    if(gp>3){
+      for(var x=o.x%gp;x<w;x+=gp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+      for(var y=o.y%gp;y<h;y+=gp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    }
   }
 
   // World coord helpers
@@ -475,11 +482,13 @@ function draw(){
   function wx(v){return o.x+v*sc;}
   function wy(v){return o.y-v*sc;}
 
-  // Margin lines in world coords (scale with zoom, move with pan)
-  var mL=wx(0),mR=wx(ds.w),mT=Math.min(wy(ds.h),wy(-cjMM)),mB=Math.max(wy(ds.h),wy(-cjMM));
-  ctx.strokeStyle='#ddd';ctx.lineWidth=0.5;ctx.setLineDash([4,3]);
-  ctx.strokeRect(mL,mT,mR-mL,mB-mT);
-  ctx.setLineDash([]);
+  if(!_exportMode){
+    // Margin lines in world coords (scale with zoom, move with pan)
+    var mL=wx(0),mR=wx(ds.w),mT=Math.min(wy(ds.h),wy(-cjMM)),mB=Math.max(wy(ds.h),wy(-cjMM));
+    ctx.strokeStyle='#ddd';ctx.lineWidth=0.5;ctx.setLineDash([4,3]);
+    ctx.strokeRect(mL,mT,mR-mL,mB-mT);
+    ctx.setLineDash([]);
+  }
 
   // Cajetin: sits below drawing area in world (Y < 0 in alzado)
   var cjTop=0, cjBot=-cjMM;
@@ -1404,14 +1413,16 @@ document.addEventListener('keydown',function(e){
 
 // Export
 function exportPNG(){
+  _exportMode=true;draw();
   var sc=s(),o=origin();
   _modules.forEach(function(m){
-    ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(o.x+m.x*sc,o.y+m.y*sc,m.w*sc,m.h*sc);
-    ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.strokeRect(o.x+m.x*sc,o.y+m.y*sc,m.w*sc,m.h*sc);
-    ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
-    ctx.fillText(m.w+'\u00D7'+m.h,o.x+m.x*sc+m.w*sc/2,o.y+m.y*sc+m.h*sc/2+4);
+    ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(o.x+m.x*sc,o.y-(m.y+m.h)*sc,m.w*sc,m.h*sc);
+    ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.strokeRect(o.x+m.x*sc,o.y-(m.y+m.h)*sc,m.w*sc,m.h*sc);
+    ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(m.w+'\u00D7'+m.h,o.x+m.x*sc+m.w*sc/2,o.y-(m.y+m.h)*sc+m.h*sc/2);
   });
-  var a=document.createElement('a');a.download='curino-2d.png';a.href=cvs.toDataURL('image/png');a.click();draw();
+  var a=document.createElement('a');a.download='curino-2d.png';a.href=cvs.toDataURL('image/png');a.click();
+  _exportMode=false;draw();
 }
 
 function toggleExportMenu(){document.getElementById('exportMenu').classList.toggle('open');}
@@ -1455,6 +1466,7 @@ async function exportPDF(){
     var mockWrap={clientWidth:offW,clientHeight:offH,getBoundingClientRect:function(){return{left:0,top:0}},style:{},appendChild:function(){},contains:function(){return false}};
     wrap=mockWrap;
     _userZoom=1;_panX=0;_panY=0;
+    _exportMode=true;
     applyPaperScale();
     draw();
     // Draw modules onto offscreen canvas
@@ -1472,6 +1484,7 @@ async function exportPDF(){
     pdf.addImage(imgData,'PNG',0,0,p.w,p.h);
   }
   // Restore original page
+  _exportMode=false;
   loadPage(origIdx);
   _userZoom=1;_panX=0;_panY=0;
   applyPaperScale();
