@@ -348,7 +348,8 @@ function clampToPaper(m){
   if(y+(m[hKey]||0)>b.top) m[yKey]=Math.round(b.top-(m[hKey]||0));
 }
 
-function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;draw();}
+function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;clampPan();applyPaperScale();}
+var _resizeTimer=null;
 function saveMeta(){savePages();}
 // Click on cajetin to edit fields
 cvs.addEventListener('dblclick',function(e){
@@ -376,7 +377,7 @@ cvs.addEventListener('dblclick',function(e){
   var val=prompt(label+':',_meta[field]||'');
   if(val!==null){_meta[field]=val;saveMeta();draw();}
 });
-window.addEventListener('resize',resizeCanvas);
+window.addEventListener('resize',function(){clearTimeout(_resizeTimer);_resizeTimer=setTimeout(resizeCanvas,80);});
 
 function resizeFurniture(){
   draw();renderModules();
