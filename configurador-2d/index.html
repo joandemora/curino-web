@@ -1207,14 +1207,14 @@ function groupResizeEnd(){
 }
 
 // Pan (middle mouse / space) + Marquee selection + Deselect
-var _panning=null,_marquee=null,_marqueeDiv=null;
+var _panning=null,_marquee=null,_marqueeDiv=null,_marqueeMode=false;
 wrap.style.cursor='grab';
 wrap.addEventListener('mousedown',function(e){
   if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
-  if(e.shiftKey){
-    // Shift + drag = marquee selection
+  if(e.shiftKey||_marqueeMode){
+    // Shift + drag or context-menu select mode = marquee selection
     _marquee={startX:e.clientX-rect.left,startY:e.clientY-rect.top,shift:true};
     _marqueeDiv=document.createElement('div');_marqueeDiv.className='c2d-marquee';
     wrap.appendChild(_marqueeDiv);
@@ -1273,6 +1273,7 @@ function marqueeEnd(e){
     renderModules();renderProps();
   }
   _marquee=null;
+  if(_marqueeMode){_marqueeMode=false;wrap.style.cursor='grab';}
   document.removeEventListener('mousemove',marqueeMove);
   document.removeEventListener('mouseup',marqueeEnd);
 }
@@ -1676,6 +1677,7 @@ function showCtx(x,y,onModule){
   }else{
     if(_clipboard&&_clipboard.length) items+='<div class="c2d-ctx-item" onclick="ctxAction(\'paste\')">Pegar<span>Ctrl+V</span></div>';
     else items+='<div class="c2d-ctx-item" style="color:var(--mid);cursor:default">Pegar</div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'select\')">Seleccionar</div>';
   }
   _ctxMenu.innerHTML=items;
   _ctxMenu.style.left=x+'px';_ctxMenu.style.top=y+'px';
@@ -1717,6 +1719,10 @@ function ctxAction(action){
     _modules.splice(newIdx,0,mod);
     _sel.clear();_sel.add(newIdx);
     draw();renderModules();renderProps();
+  }
+  if(action==='select'){
+    _marqueeMode=true;
+    wrap.style.cursor='crosshair';
   }
 }
 
