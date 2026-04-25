@@ -352,15 +352,19 @@ function clampToPaper(m){
 function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;clampPan();applyPaperScale();}
 var _resizeTimer=null;
 function saveMeta(){savePages();}
-// Click on cajetin to open editor panel
-cvs.addEventListener('click',function(e){
-  if(!_cajetinRect) return;
-  var rect=wrap.getBoundingClientRect();
-  var cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+// Hit-test: is point (px,py) inside cajetin rect?
+function hitCajetin(px,py){
+  if(!_cajetinRect) return false;
   var cj=_cajetinRect;
-  if(cx>=cj.x&&cx<=cj.x+cj.w&&cy>=cj.y&&cy<=cj.y+cj.h){
-    _sel.clear();_cajetinSelected=true;renderModules();renderCajetinProps();
-  }
+  return px>=cj.x&&px<=cj.x+cj.w&&py>=cj.y&&py<=cj.y+cj.h;
+}
+// Cursor change on cajetin hover
+wrap.addEventListener('mousemove',function(e){
+  if(_panning||_marquee||_dragMod||_resizing||_groupResize) return;
+  var rect=wrap.getBoundingClientRect();
+  var px=e.clientX-rect.left,py=e.clientY-rect.top;
+  if(hitCajetin(px,py)){wrap.style.cursor='pointer';}
+  else if(!_marqueeMode){wrap.style.cursor='grab';}
 });
 window.addEventListener('resize',function(){clearTimeout(_resizeTimer);_resizeTimer=setTimeout(resizeCanvas,80);});
 
@@ -1236,6 +1240,12 @@ wrap.addEventListener('mousedown',function(e){
   if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
+  // Cajetin click: open editor panel
+  var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  if(hitCajetin(mx,my)&&!e.shiftKey&&!_marqueeMode){
+    _sel.clear();_cajetinSelected=true;renderModules();renderCajetinProps();
+    return;
+  }
   if(e.shiftKey||_marqueeMode){
     // Shift + drag or context-menu select mode = marquee selection
     _marquee={startX:e.clientX-rect.left,startY:e.clientY-rect.top,shift:true};
