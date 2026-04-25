@@ -248,10 +248,11 @@ var _drawScale=parseInt(localStorage.getItem('c2d_scale'))||30;
 var PAPER_MARGIN=0.02; // 2% margin
 var CAJETIN_H_RATIO=0.12; // cajetin takes 12% of paper height
 // Multi-page model
-var _defaultMeta={proyecto:'P_PROYECTO',cliente:'',ubicacion:'',interiorismo:'',plano:'Alzado general',fecha:'',docObra:'v1',nota:'*Todas las imágenes son representativas del proyecto y pueden ser diferentes en la realidad.',showCajetin:true};
-var _pages=[]; // [{modules:[], meta:{}, history:[], historyIdx:-1}]
+var _defaultProjectMeta={proyecto:'P_PROYECTO',cliente:'',ubicacion:'',interiorismo:'',plano:'Alzado general',fecha:'',docObra:'v1',nota:'*Todas las imágenes son representativas del proyecto y pueden ser diferentes en la realidad.'};
+var _projectMeta=JSON.parse(JSON.stringify(_defaultProjectMeta)); // global cajetin fields
+var _pages=[]; // [{modules:[], showCajetin:true, history:[], historyIdx:-1}]
 var _activePageIdx=0;
-var _meta={}; // active page metadata (live reference)
+var _meta={}; // active page per-page state (showCajetin)
 var GRID=50; // snap grid in mm
 var SNAP_RADIUS=5; // magnetic snap radius in px
 var _dragData=null;
@@ -496,7 +497,7 @@ function draw(){
   ctx.fillStyle='#000';ctx.textBaseline='middle';
   ctx.font='bold '+titleFont+'px '+ff;
   ctx.textAlign='left';
-  ctx.fillText(_meta.proyecto.toUpperCase(),cjScrX+pad,cjScrY+rowH*0.45);
+  ctx.fillText(_projectMeta.proyecto.toUpperCase(),cjScrX+pad,cjScrY+rowH*0.45);
   ctx.font='bold '+logoFont+'px '+ff;
   ctx.textAlign='right';
   ctx.fillText('& Curino',cjScrX+cjScrW-pad,cjScrY+rowH*0.5);
@@ -509,9 +510,9 @@ function draw(){
   var r2y=cjScrY+rowH*2;
   ctx.font=dataFont+'px '+ff;ctx.fillStyle='#000';ctx.textAlign='left';
   var col3=cjScrW/3;
-  ctx.fillText('Cliente: '+(_meta.cliente||'\u2014'),cjScrX+pad,r1y+rowH*0.5);
-  ctx.fillText('Ubicaci\u00F3n: '+(_meta.ubicacion||'\u2014'),cjScrX+col3+pad,r1y+rowH*0.5);
-  ctx.fillText('Interiorismo: '+(_meta.interiorismo||'\u2014'),cjScrX+col3*2+pad,r1y+rowH*0.5);
+  ctx.fillText('Cliente: '+(_projectMeta.cliente||'\u2014'),cjScrX+pad,r1y+rowH*0.5);
+  ctx.fillText('Ubicaci\u00F3n: '+(_projectMeta.ubicacion||'\u2014'),cjScrX+col3+pad,r1y+rowH*0.5);
+  ctx.fillText('Interiorismo: '+(_projectMeta.interiorismo||'\u2014'),cjScrX+col3*2+pad,r1y+rowH*0.5);
 
   // Line 2
   ctx.beginPath();ctx.moveTo(cjScrX,r2y);ctx.lineTo(cjScrX+cjScrW,r2y);ctx.stroke();
@@ -519,20 +520,20 @@ function draw(){
   // Row 3: Plano | Escala | Fecha | Doc obra
   var r3y=cjScrY+rowH*3;
   var col4=cjScrW/4;
-  ctx.fillText('Plano: '+(_meta.plano||'\u2014'),cjScrX+pad,r2y+rowH*0.5);
+  ctx.fillText('Plano: '+(_projectMeta.plano||'\u2014'),cjScrX+pad,r2y+rowH*0.5);
   ctx.fillText('Escala: 1/'+_drawScale,cjScrX+col4+pad,r2y+rowH*0.5);
-  ctx.fillText('Fecha: '+(_meta.fecha||'\u2014'),cjScrX+col4*2+pad,r2y+rowH*0.5);
-  ctx.fillText('Doc obra v: '+(_meta.docObra||'\u2014'),cjScrX+col4*3+pad,r2y+rowH*0.5);
+  ctx.fillText('Fecha: '+(_projectMeta.fecha||'\u2014'),cjScrX+col4*2+pad,r2y+rowH*0.5);
+  ctx.fillText('Doc obra v: '+(_projectMeta.docObra||'\u2014'),cjScrX+col4*3+pad,r2y+rowH*0.5);
 
   // Line 3
   ctx.beginPath();ctx.moveTo(cjScrX,r3y);ctx.lineTo(cjScrX+cjScrW,r3y);ctx.stroke();
 
   // Row 4: Note (italic, smaller, word-wrapped)
-  if(_meta.nota){
+  if(_projectMeta.nota){
     ctx.font='italic '+noteFont+'px '+ff;
     ctx.fillStyle='#333';
     var maxW=cjScrW-pad*2;
-    var words=_meta.nota.split(' '),line='',ly=r3y+noteFont*1.4;
+    var words=_projectMeta.nota.split(' '),line='',ly=r3y+noteFont*1.4;
     for(var wi=0;wi<words.length;wi++){
       var test=line+(line?' ':'')+words[wi];
       if(ctx.measureText(test).width>maxW&&line){
@@ -754,23 +755,19 @@ function renderCajetinProps(){
     '<div class="c2d-prop"><label>Mostrar cajet\u00EDn en esta diapositiva</label>'+
     '<label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;margin-top:4px">'+
     '<input type="checkbox" '+(showCj?'checked':'')+' onchange="toggleCajetin(this.checked)"> '+(showCj?'Visible':'Oculto')+'</label></div>'+
-    '<div class="c2d-prop"><label>Nombre del proyecto</label><input type="text" value="'+(_meta.proyecto||'')+'" onchange="updateCajetin(\'proyecto\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Cliente</label><input type="text" value="'+(_meta.cliente||'')+'" onchange="updateCajetin(\'cliente\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Ubicaci\u00F3n</label><input type="text" value="'+(_meta.ubicacion||'')+'" onchange="updateCajetin(\'ubicacion\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Interiorismo</label><input type="text" value="'+(_meta.interiorismo||'')+'" onchange="updateCajetin(\'interiorismo\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Plano</label><input type="text" value="'+(_meta.plano||'')+'" onchange="updateCajetin(\'plano\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Nombre del proyecto</label><input type="text" value="'+(_projectMeta.proyecto||'')+'" onchange="updateCajetin(\'proyecto\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Cliente</label><input type="text" value="'+(_projectMeta.cliente||'')+'" onchange="updateCajetin(\'cliente\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Ubicaci\u00F3n</label><input type="text" value="'+(_projectMeta.ubicacion||'')+'" onchange="updateCajetin(\'ubicacion\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Interiorismo</label><input type="text" value="'+(_projectMeta.interiorismo||'')+'" onchange="updateCajetin(\'interiorismo\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Plano</label><input type="text" value="'+(_projectMeta.plano||'')+'" onchange="updateCajetin(\'plano\',this.value)"></div>'+
     '<div class="c2d-prop"><label>Escala</label><input type="text" value="1/'+_drawScale+'" disabled></div>'+
-    '<div class="c2d-prop"><label>Fecha</label><input type="text" value="'+(_meta.fecha||'')+'" placeholder="dd/mm/aa" onchange="updateCajetin(\'fecha\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Doc obra</label><input type="text" value="'+(_meta.docObra||'')+'" onchange="updateCajetin(\'docObra\',this.value)"></div>'+
-    '<div class="c2d-prop"><label>Nota legal</label><input type="text" value="'+(_meta.nota||'')+'" onchange="updateCajetin(\'nota\',this.value)"></div>';
+    '<div class="c2d-prop"><label>Fecha</label><input type="text" value="'+(_projectMeta.fecha||'')+'" placeholder="dd/mm/aa" onchange="updateCajetin(\'fecha\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Doc obra</label><input type="text" value="'+(_projectMeta.docObra||'')+'" onchange="updateCajetin(\'docObra\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Nota legal</label><input type="text" value="'+(_projectMeta.nota||'')+'" onchange="updateCajetin(\'nota\',this.value)"></div>';
 }
 function updateCajetin(key,val){
-  // Global: apply to all pages
-  _meta[key]=val;
-  stashPage();
-  _pages.forEach(function(p){p.meta[key]=val;});
-  saveMeta();draw();updateActiveThumb();
-  // Re-render panel to reflect changes
+  _projectMeta[key]=val;
+  savePages();draw();updateActiveThumb();
   _cajetinSelected=true;renderCajetinProps();
 }
 function toggleCajetin(on){
@@ -1413,19 +1410,19 @@ function exportPNG(){
 
 // ── MULTI-PAGE MANAGEMENT ──
 function newPageObj(){
-  return{modules:[],meta:JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};
+  return{modules:[],showCajetin:true,history:[],historyIdx:-1};
 }
 function stashPage(){
   if(!_pages[_activePageIdx]) return;
   _pages[_activePageIdx].modules=JSON.parse(JSON.stringify(_modules));
-  _pages[_activePageIdx].meta=JSON.parse(JSON.stringify(_meta));
+  _pages[_activePageIdx].showCajetin=_meta.showCajetin;
   _pages[_activePageIdx].history=_history;
   _pages[_activePageIdx].historyIdx=_historyIdx;
 }
 function loadPage(idx){
   var p=_pages[idx];
   _modules=JSON.parse(JSON.stringify(p.modules));
-  _meta=JSON.parse(JSON.stringify(p.meta));
+  _meta={showCajetin:p.showCajetin!==false};
   _history=p.history||[];
   _historyIdx=p.historyIdx!=null?p.historyIdx:-1;
   _activePageIdx=idx;
@@ -1444,7 +1441,6 @@ function switchPage(idx){
 function addPage(){
   stashPage();
   var p=newPageObj();
-  p.meta.plano='Alzado '+ (_pages.length+1);
   _pages.push(p);
   loadPage(_pages.length-1);
   saveHistory();
@@ -1471,10 +1467,11 @@ function deletePage(idx){
 }
 function savePages(){
   var data=_pages.map(function(p,i){
-    if(i===_activePageIdx) return{modules:JSON.parse(JSON.stringify(_modules)),meta:JSON.parse(JSON.stringify(_meta))};
-    return{modules:p.modules,meta:p.meta};
+    if(i===_activePageIdx) return{modules:JSON.parse(JSON.stringify(_modules)),showCajetin:_meta.showCajetin};
+    return{modules:p.modules,showCajetin:p.showCajetin};
   });
   localStorage.setItem('c2d_pages',JSON.stringify(data));
+  localStorage.setItem('c2d_projectMeta',JSON.stringify(_projectMeta));
   localStorage.setItem('c2d_activePageIdx',_activePageIdx);
 }
 
@@ -1607,7 +1604,8 @@ function generateThumbnail(){
 function getProjectData(){
   stashPage();
   return{
-    pages:_pages.map(function(p){return{modules:p.modules,meta:p.meta};}),
+    projectMeta:JSON.parse(JSON.stringify(_projectMeta)),
+    pages:_pages.map(function(p){return{modules:p.modules,showCajetin:p.showCajetin};}),
     paper:_paper,
     drawScale:_drawScale,
     activePageIdx:_activePageIdx
@@ -1617,8 +1615,10 @@ function getProjectData(){
 function loadProjectData(data){
   if(data.paper){_paper=data.paper;localStorage.setItem('c2d_paper',_paper);}
   if(data.drawScale){_drawScale=data.drawScale;localStorage.setItem('c2d_scale',_drawScale.toString());}
+  if(data.projectMeta) _projectMeta=data.projectMeta;
+  else if(data.pages&&data.pages[0]&&data.pages[0].meta) _projectMeta=data.pages[0].meta; // migrate old format
   if(data.pages&&data.pages.length>0){
-    _pages=data.pages.map(function(sp){return{modules:sp.modules||[],meta:sp.meta||JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};});
+    _pages=data.pages.map(function(sp){return{modules:sp.modules||[],showCajetin:sp.showCajetin!==false,history:[],historyIdx:-1};});
     _activePageIdx=data.activePageIdx||0;
     if(_activePageIdx>=_pages.length) _activePageIdx=0;
   }else{
@@ -1634,7 +1634,7 @@ async function saveProject(){
   try{
     var thumb=generateThumbnail();
     var projData=getProjectData();
-    var projName=_meta.proyecto||'Sin nombre';
+    var projName=_projectMeta.proyecto||'Sin nombre';
     if(_projectId){
       await _supabase.from('projects').update({name:projName,data:projData,thumbnail:thumb,updated_at:new Date().toISOString()}).eq('id',_projectId);
     }else{
@@ -1648,18 +1648,27 @@ async function saveProject(){
 
 // ── INIT ──
 function initLocal(){
+  // Load projectMeta from localStorage
+  var savedPM=null;
+  try{savedPM=JSON.parse(localStorage.getItem('c2d_projectMeta'));}catch(e){}
+  if(savedPM&&savedPM.proyecto) _projectMeta=savedPM;
   // Load pages from localStorage or create default
   var _savedPages=null;
   try{_savedPages=JSON.parse(localStorage.getItem('c2d_pages'));}catch(e){}
   if(_savedPages&&_savedPages.length>0){
-    _pages=_savedPages.map(function(sp){return{modules:sp.modules||[],meta:sp.meta||JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};});
+    _pages=_savedPages.map(function(sp){
+      // Migrate: old format had meta per page, new format has showCajetin
+      var sc=sp.showCajetin!=null?sp.showCajetin:(sp.meta?sp.meta.showCajetin:true);
+      // Migrate projectMeta from first page's old meta if not yet loaded
+      if(!savedPM&&sp.meta&&sp.meta.proyecto){savedPM=sp.meta;_projectMeta=sp.meta;}
+      return{modules:sp.modules||[],showCajetin:sc!==false,history:[],historyIdx:-1};
+    });
     _activePageIdx=parseInt(localStorage.getItem('c2d_activePageIdx'))||0;
     if(_activePageIdx>=_pages.length) _activePageIdx=0;
   }else{
     var oldMeta=null;try{oldMeta=JSON.parse(localStorage.getItem('c2d_meta'));}catch(e){}
-    var pg=newPageObj();
-    if(oldMeta&&oldMeta.proyecto) pg.meta=oldMeta;
-    _pages=[pg];_activePageIdx=0;
+    if(oldMeta&&oldMeta.proyecto) _projectMeta=oldMeta;
+    _pages=[newPageObj()];_activePageIdx=0;
   }
   loadPage(_activePageIdx);
   finishInit();
