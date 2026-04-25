@@ -1024,30 +1024,35 @@ function dragModuleMove(e){
   var dx=(e.clientX-_dragMod.startX)/sc;
   var dy=(e.clientY-_dragMod.startY)/sc;
   var ref=_dragMod.origins[0],m0=_modules[ref.idx];
+  // Compute reference position (handle lines with x1/y1/x2/y2)
+  var refX=ref.isLine?Math.min(ref.x1,ref.x2):ref.x;
+  var refY=ref.isLine?Math.min(ref.y1,ref.y2):ref.y;
+  var refW=ref.isLine?Math.abs(ref.x2-ref.x1):m0.w;
+  var refH=ref.isLine?Math.abs(ref.y2-ref.y1):m0.h;
   var xEdges=getSnapEdges('x',_sel);
   // Snap X using first module's left and right edges
-  var rawX=ref.x+dx;
+  var rawX=refX+dx;
   var snappedLeft=magSnap(rawX,xEdges,sc);
-  var snappedRight=magSnap(rawX+m0.w,xEdges,sc);
+  var snappedRight=magSnap(rawX+refW,xEdges,sc);
   var finalX;
-  if(Math.abs(snappedLeft-rawX)<Math.abs(snappedRight-(rawX+m0.w))){
+  if(Math.abs(snappedLeft-rawX)<Math.abs(snappedRight-(rawX+refW))){
     finalX=snappedLeft;if(snappedLeft!==snap(rawX)) showSnapLine(snappedLeft,'x');
   }else{
-    finalX=snappedRight-m0.w;if(snappedRight!==snap(rawX+m0.w)) showSnapLine(snappedRight,'x');
+    finalX=snappedRight-refW;if(snappedRight!==snap(rawX+refW)) showSnapLine(snappedRight,'x');
   }
-  var xOff=finalX-ref.x;
+  var xOff=finalX-refX;
   // Snap Y axis
   var yEdges=getSnapEdges('y',_sel);
-  var rawY=ref.y-dy;
+  var rawY=refY-dy;
   var snBot2=magSnap(rawY,yEdges,sc);
-  var snTop2=magSnap(rawY+m0.h,yEdges,sc);
+  var snTop2=magSnap(rawY+refH,yEdges,sc);
   var finalY;
-  if(Math.abs(snBot2-rawY)<Math.abs(snTop2-(rawY+m0.h))){
+  if(Math.abs(snBot2-rawY)<Math.abs(snTop2-(rawY+refH))){
     finalY=snBot2;if(snBot2!==snap(rawY)) showSnapLine(snBot2,'y');
   }else{
-    finalY=snTop2-m0.h;if(snTop2!==snap(rawY+m0.h)) showSnapLine(snTop2,'y');
+    finalY=snTop2-refH;if(snTop2!==snap(rawY+refH)) showSnapLine(snTop2,'y');
   }
-  var yOff=finalY-ref.y;
+  var yOff=finalY-refY;
   // Apply offsets to all selected + clamp to paper
   _dragMod.origins.forEach(function(o){
     var m=_modules[o.idx];
