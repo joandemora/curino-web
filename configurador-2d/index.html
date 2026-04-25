@@ -91,6 +91,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-snapline{position:absolute;background:#e53e3e;pointer-events:none;z-index:4}
 .c2d-snapline-h{height:1px;left:0;right:0}
 .c2d-snapline-v{width:1px;top:0;bottom:0}
+/* Shape control points */
+.c2d-cp{position:absolute;width:10px;height:10px;background:var(--coral);border:1px solid #fff;border-radius:50%;cursor:move;z-index:6;margin-left:-5px;margin-top:-5px}
 /* Context menu */
 .c2d-ctx{position:fixed;z-index:999;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);min-width:160px;padding:4px 0;display:none}
 .c2d-ctx.open{display:block}
@@ -225,6 +227,16 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
           <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="600" data-h="850"><div class="c2d-mod-icon">LV</div>Lavavajillas<span class="c2d-mod-size">600&times;850</span></div>
           <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="600" data-h="1800"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico<span class="c2d-mod-size">600&times;1800</span></div>
           <div class="c2d-mod" draggable="true" data-type="horno" data-w="600" data-h="600"><div class="c2d-mod-icon">HO</div>Horno<span class="c2d-mod-size">600&times;600</span></div>
+        </div>
+      </div>
+      <!-- DIBUJO -->
+      <div class="c2d-section">
+        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Dibujo</div>
+        <div class="c2d-section-body">
+          <div class="c2d-mod" draggable="true" data-type="shape_line" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">╱</div>Línea<span class="c2d-mod-size">500mm</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌒</div>Curva<span class="c2d-mod-size">500×300</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_rect" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">▭</div>Rectángulo<span class="c2d-mod-size">500×300</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_circle" data-w="300" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">○</div>Círculo<span class="c2d-mod-size">⌀300</span></div>
         </div>
       </div>
     </div>
@@ -672,19 +684,50 @@ function renderModules(){
         '<div style="position:absolute;bottom:0;left:'+cM+'px;right:'+cM+'px;border-bottom:1px solid #000"></div>'+
       '</div>';
     }
-    var dims=m.w+'&times;'+m.h;
+    // Shape types
+    var isShape=m.type.startsWith('shape_');
+    if(isShape){
+      div.classList.add('no-frame');
+      var sw=m.w*sc,sh=m.h*sc;
+      var st=m.stroke||'#000';var stw=m.strokeWidth||1;var fl=m.fill||'none';
+      var svgStr='<svg style="position:absolute;top:0;left:0;width:'+sw+'px;height:'+sh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+sw+' '+sh+'">';
+      if(m.type==='shape_line'){
+        svgStr+='<line x1="0" y1="'+sh+'" x2="'+sw+'" y2="0" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
+      }else if(m.type==='shape_curve'){
+        var cpx=(m.cpx!=null?m.cpx:0.5)*sw;
+        var cpy=(m.cpy!=null?m.cpy:0)*sh;
+        svgStr+='<path d="M0,'+sh+' Q'+cpx+','+cpy+' '+sw+','+sh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round"/>';
+      }else if(m.type==='shape_rect'){
+        svgStr+='<rect x="0.5" y="0.5" width="'+(sw-1)+'" height="'+(sh-1)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
+      }else if(m.type==='shape_circle'){
+        svgStr+='<ellipse cx="'+(sw/2)+'" cy="'+(sh/2)+'" rx="'+(sw/2-0.5)+'" ry="'+(sh/2-0.5)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
+      }
+      svgStr+='</svg>';
+      inner=svgStr;
+    }
+    var dims=isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.w+'&times;'+m.h;
     div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:['tl','t','tr','l','r','bl','b','br'];
+      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:(m.type==='shape_line')?['tl','br']:['tl','t','tr','l','r','bl','b','br'];
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
         h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
         div.appendChild(h);
       });
+      // Curve control point handle
+      if(m.type==='shape_curve'){
+        var cpxPx=(m.cpx!=null?m.cpx:0.5)*mw;
+        var cpyPx=(m.cpy!=null?m.cpy:0)*mh;
+        var cp=document.createElement('div');
+        cp.className='c2d-cp';
+        cp.style.left=cpxPx+'px';cp.style.top=cpyPx+'px';
+        cp.onmousedown=function(e){e.stopPropagation();e.preventDefault();startCurveDrag(e,i);};
+        div.appendChild(cp);
+      }
     }
     layer.appendChild(div);
   });
@@ -716,7 +759,7 @@ function renderModules(){
 }
 
 function typeLabel(t){
-  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno'};
+  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno',shape_line:'L\u00EDnea',shape_curve:'Curva',shape_rect:'Rect\u00E1ngulo',shape_circle:'C\u00EDrculo'};
   return labels[t]||t;
 }
 
@@ -741,6 +784,22 @@ function renderProps(){
   var idx=_sel.values().next().value;
   var m=_modules[idx];
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
+  // Shape properties
+  var isShape=m.type.startsWith('shape_');
+  if(isShape){
+    var shapeHTML=
+      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+typeLabel(m.type)+'</div></div>'+
+      '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="'+(m.type==='shape_line'?'1':'50')+'" onchange="updateProp(\'h\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>Grosor trazo (px)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateProp(\'strokeWidth\',parseFloat(this.value))"></div>'+
+      '<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
+    if(m.type==='shape_circle'){
+      shapeHTML=shapeHTML.replace('Alto (mm)','Di\u00E1metro Y (mm)').replace('Ancho (mm)','Di\u00E1metro X (mm)');
+    }
+    panel.innerHTML=shapeHTML+'<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    return;
+  }
   var types=['modulo','barra','estante','cajon','zapatero','divisor','puerta_batiente','tapeta','costado','zocalo','modulo_bajo','modulo_alto','modulo_columna','cajon_cocina','lavavajillas','frigorifico','horno'];
   var opts=types.map(function(t){return '<option value="'+t+'"'+(t===m.type?' selected':'')+'>'+typeLabel(t)+'</option>';}).join('');
   var hFixed=m.type==='barra'||m.type==='zapatero';
@@ -793,7 +852,7 @@ function toggleCajetin(on){
 function updateProp(key,val){
   if(_sel.size!==1) return;saveHistory();
   var idx=_sel.values().next().value;
-  var v=(key==='type'||key==='apertura')?val:(parseInt(val)||0);
+  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill')?val:(key==='strokeWidth'?parseFloat(val)||1:parseInt(val)||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
   if(key==='w'&&_modules[idx].type==='divisor') return;
@@ -826,9 +885,19 @@ wrap.addEventListener('drop',function(e){
   var screenY=(e.clientY-rect.top-o.y)/sc;
   var y=snap(-screenY-_dragData.h);
   var pz=0;
-  var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
-  var dd=_dFixed[_dragData.type]||600;
-  var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
+  var isShape=_dragData.type.startsWith('shape_');
+  var newMod;
+  if(isShape){
+    var sh=_dragData.h||1;
+    if(_dragData.type==='shape_line') sh=1;
+    newMod={type:_dragData.type,w:_dragData.w,h:sh,x:x,y:y,stroke:'#000000',strokeWidth:1,fill:'none'};
+    if(_dragData.type==='shape_curve'){newMod.cpx=0.5;newMod.cpy=0;newMod.h=_dragData.h;}
+    if(_dragData.type==='shape_circle'){newMod.h=_dragData.w;}
+  }else{
+    var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
+    var dd=_dFixed[_dragData.type]||600;
+    newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
+  }
   clampToPaper(newMod);
   _modules.push(newMod);
   saveHistory();
@@ -1254,6 +1323,31 @@ function groupResizeEnd(){
   _groupResize=null;
   document.removeEventListener('mousemove',groupResizeMove);
   document.removeEventListener('mouseup',groupResizeEnd);
+  draw();
+}
+
+// Curve control point drag
+var _curveDrag=null;
+function startCurveDrag(e,idx){
+  var m=_modules[idx];
+  _curveDrag={idx:idx,startX:e.clientX,startY:e.clientY,origCpx:m.cpx!=null?m.cpx:0.5,origCpy:m.cpy!=null?m.cpy:0};
+  saveHistory();
+  document.addEventListener('mousemove',curveDragMove);
+  document.addEventListener('mouseup',curveDragEnd);
+}
+function curveDragMove(e){
+  if(!_curveDrag) return;
+  var m=_modules[_curveDrag.idx],sc=s();
+  var dx=(e.clientX-_curveDrag.startX)/(m.w*sc);
+  var dy=-(e.clientY-_curveDrag.startY)/(m.h*sc);
+  m.cpx=Math.max(0,Math.min(1,_curveDrag.origCpx+dx));
+  m.cpy=Math.max(-1,Math.min(2,_curveDrag.origCpy+dy));
+  renderModules();
+}
+function curveDragEnd(){
+  _curveDrag=null;
+  document.removeEventListener('mousemove',curveDragMove);
+  document.removeEventListener('mouseup',curveDragEnd);
   draw();
 }
 
