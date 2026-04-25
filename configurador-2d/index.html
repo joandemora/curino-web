@@ -1349,6 +1349,8 @@ document.addEventListener('keydown',function(e){
   if(key==='z'&&!e.shiftKey){e.preventDefault();undo();return;}
   // Redo
   if(key==='y'||(key==='z'&&e.shiftKey)){e.preventDefault();redo();return;}
+  // Select all
+  if(key==='a'&&!inInput){e.preventDefault();selectAll();return;}
 });
 
 // Export
@@ -1678,6 +1680,7 @@ function showCtx(x,y,onModule){
     if(_clipboard&&_clipboard.length) items+='<div class="c2d-ctx-item" onclick="ctxAction(\'paste\')">Pegar<span>Ctrl+V</span></div>';
     else items+='<div class="c2d-ctx-item" style="color:var(--mid);cursor:default">Pegar</div>';
     items+='<div class="c2d-ctx-item" onclick="ctxAction(\'select\')">Seleccionar</div>';
+    items+='<div class="c2d-ctx-item" onclick="ctxAction(\'selectAll\')">Seleccionar todo<span>\u2318A</span></div>';
   }
   _ctxMenu.innerHTML=items;
   _ctxMenu.style.left=x+'px';_ctxMenu.style.top=y+'px';
@@ -1724,6 +1727,12 @@ function ctxAction(action){
     _marqueeMode=true;
     wrap.style.cursor='crosshair';
   }
+  if(action==='selectAll') selectAll();
+}
+function selectAll(){
+  _sel.clear();
+  _modules.forEach(function(_,i){_sel.add(i);});
+  renderModules();renderProps();
 }
 
 // Right-click on modules
