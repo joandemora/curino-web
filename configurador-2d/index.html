@@ -700,7 +700,7 @@ function renderModules(){
     if(isShape){
       div.classList.add('no-frame');
       var sw=m.w*sc,sh=m.h*sc;
-      var st=m.stroke||'#000';var stw=(m.strokeWidth||1)*sc;var fl=m.fill||'none';
+      var st=m.stroke||'#000000';var stw=Math.max(1,(m.strokeWidth||1)*sc);var fl=m.fill||'none';
       var svgStr='<svg style="position:absolute;top:0;left:0;width:'+sw+'px;height:'+sh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+sw+' '+sh+'">';
       if(m.type==='shape_line'){
         var lpad=m._bboxPad||6;
