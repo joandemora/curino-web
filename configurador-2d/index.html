@@ -162,7 +162,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <div class="c2d-export-wrap">
       <button onclick="toggleExportMenu()">Exportar</button>
       <div class="c2d-export-dd" id="exportMenu">
-        <div onclick="closeExportMenu();exportPNG()">Exportar como PNG</div>
         <div onclick="closeExportMenu();exportPDF()">Exportar como PDF</div>
       </div>
     </div>
@@ -1460,16 +1459,6 @@ function captureWrap(){
     if(bbox) bbox.style.display='';
     return resultCanvas;
   });
-}
-
-async function exportPNG(){
-  try{
-    var resultCanvas=await captureWrap();
-    var a=document.createElement('a');
-    a.download=(_projectMeta.proyecto||'curino-2d')+'.png';
-    a.href=resultCanvas.toDataURL('image/png');
-    a.click();
-  }catch(e){alert(e.message);}
 }
 
 async function exportPDF(){
