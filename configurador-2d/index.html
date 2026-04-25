@@ -248,7 +248,7 @@ var _drawScale=parseInt(localStorage.getItem('c2d_scale'))||30;
 var PAPER_MARGIN=0.02; // 2% margin
 var CAJETIN_H_RATIO=0.12; // cajetin takes 12% of paper height
 // Multi-page model
-var _defaultMeta={proyecto:'P_PROYECTO',cliente:'',ubicacion:'',interiorismo:'',plano:'Alzado general',fecha:'',docObra:'v1',nota:'*Todas las imágenes son representativas del proyecto y pueden ser diferentes en la realidad.'};
+var _defaultMeta={proyecto:'P_PROYECTO',cliente:'',ubicacion:'',interiorismo:'',plano:'Alzado general',fecha:'',docObra:'v1',nota:'*Todas las imágenes son representativas del proyecto y pueden ser diferentes en la realidad.',showCajetin:true};
 var _pages=[]; // [{modules:[], meta:{}, history:[], historyIdx:-1}]
 var _activePageIdx=0;
 var _meta={}; // active page metadata (live reference)
@@ -258,6 +258,7 @@ var _dragData=null;
 var _resizing=null;
 // Supabase
 var _supabase=null,_currentUser=null,_projectId=null;
+var _cajetinSelected=false;
 
 var cvs=document.getElementById('cvs');
 var ctx=cvs.getContext('2d');
@@ -351,31 +352,15 @@ function clampToPaper(m){
 function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;clampPan();applyPaperScale();}
 var _resizeTimer=null;
 function saveMeta(){savePages();}
-// Click on cajetin to edit fields
-cvs.addEventListener('dblclick',function(e){
+// Click on cajetin to open editor panel
+cvs.addEventListener('click',function(e){
   if(!_cajetinRect) return;
   var rect=wrap.getBoundingClientRect();
   var cx=e.clientX-rect.left, cy=e.clientY-rect.top;
   var cj=_cajetinRect;
-  if(cx<cj.x||cx>cj.x+cj.w||cy<cj.y||cy>cj.y+cj.h) return;
-  var row=Math.floor((cy-cj.y)/cj.rowH);
-  var field=null,label='';
-  if(row===0){field='proyecto';label='Nombre del proyecto';}
-  else if(row===1){
-    var c=(cx-cj.x)/cj.col3;
-    if(c<1){field='cliente';label='Cliente';}
-    else if(c<2){field='ubicacion';label='Ubicación';}
-    else{field='interiorismo';label='Interiorismo';}
-  }else if(row===2){
-    var c=(cx-cj.x)/cj.col4;
-    if(c<1){field='plano';label='Plano';}
-    else if(c<2) return; // escala is auto
-    else if(c<3){field='fecha';label='Fecha (dd/mm/aa)';}
-    else{field='docObra';label='Doc obra versión';}
-  }else{field='nota';label='Nota legal';}
-  if(!field) return;
-  var val=prompt(label+':',_meta[field]||'');
-  if(val!==null){_meta[field]=val;saveMeta();draw();}
+  if(cx>=cj.x&&cx<=cj.x+cj.w&&cy>=cj.y&&cy<=cj.y+cj.h){
+    _sel.clear();_cajetinSelected=true;renderModules();renderCajetinProps();
+  }
 });
 window.addEventListener('resize',function(){clearTimeout(_resizeTimer);_resizeTimer=setTimeout(resizeCanvas,80);});
 
@@ -487,6 +472,7 @@ function draw(){
   var cjScrX=wx(0), cjScrY=Math.min(wy(cjTop),wy(cjBot));
   var cjScrW=Math.abs(wx(ds.w)-wx(0)), cjScrH=Math.abs(wy(cjTop)-wy(cjBot));
 
+  if(_meta.showCajetin===false){_cajetinRect=null;ctx.restore();return;}
   ctx.fillStyle='#fafafa';ctx.fillRect(cjScrX,cjScrY,cjScrW,cjScrH);
   ctx.strokeStyle='#999';ctx.lineWidth=0.7;
   ctx.strokeRect(cjScrX,cjScrY,cjScrW,cjScrH);
@@ -707,12 +693,14 @@ function selectModule(i,shift){
   }
   renderModules();renderProps();
 }
-function clearSelection(){_sel.clear();renderModules();renderProps();}
+function clearSelection(){_sel.clear();_cajetinSelected=false;renderModules();renderProps();}
 
 function renderProps(){
   var panel=document.getElementById('propsPanel');
   var overlay=document.getElementById('propsOverlay');
-  if(_sel.size===0){overlay.classList.remove('visible');panel.innerHTML='';return;}
+  if(_sel.size===0&&!_cajetinSelected){overlay.classList.remove('visible');panel.innerHTML='';overlay.querySelector('h3').textContent='Propiedades';return;}
+  _cajetinSelected=false;
+  overlay.querySelector('h3').textContent='Propiedades';
   overlay.classList.add('visible');
   if(_sel.size>1){panel.innerHTML='<div class="c2d-empty"><strong>'+_sel.size+'</strong> m\u00F3dulos seleccionados</div><button class="c2d-btn-del" onclick="deleteSelected()">Eliminar selecci\u00F3n</button>';return;}
   var idx=_sel.values().next().value;
@@ -737,6 +725,41 @@ function renderProps(){
         '<option value="vertical"'+(m.apertura==='vertical'?' selected':'')+'>Apertura vertical</option>'+
       '</select></div>':'')+
     '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar m\u00F3dulo</button>';
+}
+
+function renderCajetinProps(){
+  var panel=document.getElementById('propsPanel');
+  var overlay=document.getElementById('propsOverlay');
+  overlay.querySelector('h3').textContent='Cajet\u00EDn';
+  overlay.classList.add('visible');
+  var showCj=_meta.showCajetin!==false;
+  panel.innerHTML=
+    '<div class="c2d-prop"><label>Mostrar cajet\u00EDn en esta diapositiva</label>'+
+    '<label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;margin-top:4px">'+
+    '<input type="checkbox" '+(showCj?'checked':'')+' onchange="toggleCajetin(this.checked)"> '+(showCj?'Visible':'Oculto')+'</label></div>'+
+    '<div class="c2d-prop"><label>Nombre del proyecto</label><input type="text" value="'+(_meta.proyecto||'')+'" onchange="updateCajetin(\'proyecto\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Cliente</label><input type="text" value="'+(_meta.cliente||'')+'" onchange="updateCajetin(\'cliente\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Ubicaci\u00F3n</label><input type="text" value="'+(_meta.ubicacion||'')+'" onchange="updateCajetin(\'ubicacion\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Interiorismo</label><input type="text" value="'+(_meta.interiorismo||'')+'" onchange="updateCajetin(\'interiorismo\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Plano</label><input type="text" value="'+(_meta.plano||'')+'" onchange="updateCajetin(\'plano\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Escala</label><input type="text" value="1/'+_drawScale+'" disabled></div>'+
+    '<div class="c2d-prop"><label>Fecha</label><input type="text" value="'+(_meta.fecha||'')+'" placeholder="dd/mm/aa" onchange="updateCajetin(\'fecha\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Doc obra</label><input type="text" value="'+(_meta.docObra||'')+'" onchange="updateCajetin(\'docObra\',this.value)"></div>'+
+    '<div class="c2d-prop"><label>Nota legal</label><input type="text" value="'+(_meta.nota||'')+'" onchange="updateCajetin(\'nota\',this.value)"></div>';
+}
+function updateCajetin(key,val){
+  // Global: apply to all pages
+  _meta[key]=val;
+  stashPage();
+  _pages.forEach(function(p){p.meta[key]=val;});
+  saveMeta();draw();updateActiveThumb();
+  // Re-render panel to reflect changes
+  _cajetinSelected=true;renderCajetinProps();
+}
+function toggleCajetin(on){
+  _meta.showCajetin=on;
+  saveMeta();draw();updateActiveThumb();
+  _cajetinSelected=true;renderCajetinProps();
 }
 
 function updateProp(key,val){
