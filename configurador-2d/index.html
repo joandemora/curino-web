@@ -22,7 +22,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
 /* Layout */
-.c2d-layout{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 48px)}
+.c2d-layout{display:grid;grid-template-columns:220px 160px 1fr 240px;height:calc(100vh - 48px)}
 
 /* Left panel */
 .c2d-left{border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:var(--white)}
@@ -93,10 +93,24 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-ctx-item span{color:var(--mid);font-size:10px}
 .c2d-ctx-sep{height:1px;background:var(--border);margin:4px 0}
 
+/* Slides panel */
+.c2d-slides{width:160px;border-right:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.c2d-slides-list{flex:1;overflow-y:auto;padding:8px}
+.c2d-slide{position:relative;margin-bottom:8px;cursor:pointer;border:2px solid transparent;border-radius:4px;transition:border-color .2s}
+.c2d-slide.active{border-color:var(--accent)}
+.c2d-slide:hover:not(.active){border-color:var(--mid)}
+.c2d-slide canvas{display:block;width:100%;border-radius:2px}
+.c2d-slide-num{position:absolute;bottom:4px;left:4px;font-size:9px;color:var(--mid);background:rgba(255,255,255,.8);padding:1px 4px;border-radius:2px}
+.c2d-slide-del{position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1}
+.c2d-slide:hover .c2d-slide-del{display:flex}
+.c2d-slide-add{width:100%;padding:8px;background:none;border:1px dashed var(--border);border-radius:6px;color:var(--mid);font-family:var(--font);font-size:12px;cursor:pointer;transition:all .2s;margin-top:4px}
+.c2d-slide-add:hover{border-color:var(--accent);color:var(--accent)}
+.c2d-slide.drag-over{border-color:var(--coral);border-style:dashed}
+
 /* Responsive */
 @media(max-width:900px){
   .c2d-layout{grid-template-columns:1fr}
-  .c2d-left,.c2d-right{display:none}
+  .c2d-left,.c2d-right,.c2d-slides{display:none}
 }
 </style>
 </head>
@@ -190,6 +204,11 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     </div>
   </div>
 
+  <!-- SLIDES -->
+  <div class="c2d-slides">
+    <div class="c2d-slides-list" id="slidesList"></div>
+  </div>
+
   <!-- CENTER: Canvas -->
   <div class="c2d-center">
     <div class="c2d-canvas-wrap" id="canvasWrap">
@@ -221,15 +240,17 @@ var _userZoom=1;  // manual zoom (1 = 100%)
 var _zoom=1;      // effective = _baseZoom * _userZoom
 var _furW=2000,_furH=2400,_furD=600;
 var SCALE=0.25; // px per mm at zoom=1
-// Paper & scale
+// Paper & scale (global for all pages)
 var PAPERS={A4:{w:297,h:210},A3:{w:420,h:297}}; // landscape orientation (w>h)
 var _paper=localStorage.getItem('c2d_paper')||'A4';
 var _drawScale=parseInt(localStorage.getItem('c2d_scale'))||30;
 var PAPER_MARGIN=0.02; // 2% margin
 var CAJETIN_H_RATIO=0.12; // cajetin takes 12% of paper height
-// Project metadata (persisted)
-var _meta=JSON.parse(localStorage.getItem('c2d_meta')||'{}');
-if(!_meta.proyecto) _meta={proyecto:'P_PROYECTO',cliente:'',ubicacion:'',interiorismo:'',plano:'Alzado general',fecha:'',docObra:'v1',nota:'*Todas las imágenes son representativas del proyecto y pueden ser diferentes en la realidad.'};
+// Multi-page model
+var _defaultMeta={proyecto:'P_PROYECTO',cliente:'',ubicacion:'',interiorismo:'',plano:'Alzado general',fecha:'',docObra:'v1',nota:'*Todas las imágenes son representativas del proyecto y pueden ser diferentes en la realidad.'};
+var _pages=[]; // [{modules:[], meta:{}, history:[], historyIdx:-1}]
+var _activePageIdx=0;
+var _meta={}; // active page metadata (live reference)
 var GRID=50; // snap grid in mm
 var SNAP_RADIUS=5; // magnetic snap radius in px
 var _dragData=null;
@@ -325,7 +346,7 @@ function clampToPaper(m){
 }
 
 function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;draw();}
-function saveMeta(){localStorage.setItem('c2d_meta',JSON.stringify(_meta));}
+function saveMeta(){savePages();}
 // Click on cajetin to edit fields
 cvs.addEventListener('dblclick',function(e){
   if(!_cajetinRect) return;
@@ -409,12 +430,12 @@ function changePaper(){
   _paper=document.getElementById('paperFormat').value;
   localStorage.setItem('c2d_paper',_paper);
   _panX=0;_panY=0;
-  applyPaperScale();
+  applyPaperScale();renderSlides();
 }
 function changeScale(){
   _drawScale=parseInt(document.getElementById('scaleSelect').value)||30;
   localStorage.setItem('c2d_scale',_drawScale.toString());
-  applyPaperScale();
+  applyPaperScale();renderSlides();
 }
 
 function draw(){
@@ -730,6 +751,7 @@ function deleteSelected(){
   var arr=Array.from(_sel).sort(function(a,b){return b-a;});
   arr.forEach(function(i){_modules.splice(i,1);});
   _sel.clear();draw();renderModules();renderProps();
+  savePages();updateActiveThumb();
 }
 
 // Drag from panel
@@ -747,12 +769,12 @@ wrap.addEventListener('drop',function(e){
   var screenY=(e.clientY-rect.top-o.y)/sc;
   var y=snap(-screenY-_dragData.h);
   var pz=0;
-  saveHistory();
   var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
   var dd=_dFixed[_dragData.type]||600;
   var newMod={type:_dragData.type,w:_dragData.w,h:_dragData.h,d:dd,x:x,y:y,pz:pz};
   clampToPaper(newMod);
   _modules.push(newMod);
+  saveHistory();
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
@@ -1295,9 +1317,10 @@ wrap.addEventListener('wheel',function(e){
 function saveHistory(){
   _history=_history.slice(0,_historyIdx+1);
   _history.push(JSON.stringify(_modules));_historyIdx=_history.length-1;
+  savePages();updateActiveThumb();
 }
-function undo(){if(_historyIdx>0){_historyIdx--;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();}}
-function redo(){if(_historyIdx<_history.length-1){_historyIdx++;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();}}
+function undo(){if(_historyIdx>0){_historyIdx--;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();savePages();updateActiveThumb();}}
+function redo(){if(_historyIdx<_history.length-1){_historyIdx++;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();savePages();updateActiveThumb();}}
 
 // Clipboard
 var _clipboard=null;
@@ -1333,12 +1356,191 @@ function exportPNG(){
   var a=document.createElement('a');a.download='curino-2d.png';a.href=cvs.toDataURL('image/png');a.click();draw();
 }
 
+// ── MULTI-PAGE MANAGEMENT ──
+function newPageObj(){
+  return{modules:[],meta:JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};
+}
+function stashPage(){
+  if(!_pages[_activePageIdx]) return;
+  _pages[_activePageIdx].modules=JSON.parse(JSON.stringify(_modules));
+  _pages[_activePageIdx].meta=JSON.parse(JSON.stringify(_meta));
+  _pages[_activePageIdx].history=_history;
+  _pages[_activePageIdx].historyIdx=_historyIdx;
+}
+function loadPage(idx){
+  var p=_pages[idx];
+  _modules=JSON.parse(JSON.stringify(p.modules));
+  _meta=JSON.parse(JSON.stringify(p.meta));
+  _history=p.history||[];
+  _historyIdx=p.historyIdx!=null?p.historyIdx:-1;
+  _activePageIdx=idx;
+  _sel.clear();
+  _userZoom=1;_panX=0;_panY=0;
+}
+function switchPage(idx){
+  if(idx===_activePageIdx) return;
+  stashPage();
+  loadPage(idx);
+  applyPaperScale();
+  updateZoomSelect();
+  renderSlides();
+  renderProps();
+}
+function addPage(){
+  stashPage();
+  var p=newPageObj();
+  p.meta.plano='Alzado '+ (_pages.length+1);
+  _pages.push(p);
+  loadPage(_pages.length-1);
+  saveHistory();
+  applyPaperScale();
+  updateZoomSelect();
+  renderSlides();
+  renderProps();
+  savePages();
+}
+function deletePage(idx){
+  if(_pages.length<=1) return;
+  var p=_pages[idx];
+  if(p.modules.length>0&&!confirm('¿Eliminar esta diapositiva? Tiene '+p.modules.length+' elemento(s).')) return;
+  _pages.splice(idx,1);
+  if(_activePageIdx>=_pages.length) _activePageIdx=_pages.length-1;
+  else if(idx<_activePageIdx) _activePageIdx--;
+  else if(idx===_activePageIdx) _activePageIdx=Math.min(idx,_pages.length-1);
+  loadPage(_activePageIdx);
+  applyPaperScale();
+  updateZoomSelect();
+  renderSlides();
+  renderProps();
+  savePages();
+}
+function savePages(){
+  var data=_pages.map(function(p,i){
+    if(i===_activePageIdx) return{modules:JSON.parse(JSON.stringify(_modules)),meta:JSON.parse(JSON.stringify(_meta))};
+    return{modules:p.modules,meta:p.meta};
+  });
+  localStorage.setItem('c2d_pages',JSON.stringify(data));
+  localStorage.setItem('c2d_activePageIdx',_activePageIdx);
+}
+
+// ── SLIDES PANEL ──
+function renderSlides(){
+  var list=document.getElementById('slidesList');
+  list.innerHTML='';
+  var p=PAPERS[_paper],aspect=p.w/p.h;
+  var thumbW=140,thumbH=Math.round(thumbW/aspect);
+  _pages.forEach(function(pg,i){
+    var div=document.createElement('div');
+    div.className='c2d-slide'+(i===_activePageIdx?' active':'');
+    div.draggable=true;
+    div.setAttribute('data-idx',i);
+    var tc=document.createElement('canvas');
+    tc.width=thumbW;tc.height=thumbH;
+    div.appendChild(tc);
+    var num=document.createElement('div');
+    num.className='c2d-slide-num';num.textContent=(i+1);
+    div.appendChild(num);
+    if(_pages.length>1){
+      var del=document.createElement('button');
+      del.className='c2d-slide-del';del.innerHTML='&times;';
+      del.onclick=function(e){e.stopPropagation();deletePage(i);};
+      div.appendChild(del);
+    }
+    div.onclick=function(){switchPage(i);};
+    // Drag reorder
+    div.addEventListener('dragstart',function(e){e.dataTransfer.setData('text/plain',i);e.dataTransfer.effectAllowed='move';});
+    div.addEventListener('dragover',function(e){e.preventDefault();e.dataTransfer.dropEffect='move';div.classList.add('drag-over');});
+    div.addEventListener('dragleave',function(){div.classList.remove('drag-over');});
+    div.addEventListener('drop',function(e){
+      e.preventDefault();div.classList.remove('drag-over');
+      var from=parseInt(e.dataTransfer.getData('text/plain'));
+      var to=i;if(from===to) return;
+      stashPage();
+      var moved=_pages.splice(from,1)[0];
+      _pages.splice(to,0,moved);
+      if(_activePageIdx===from) _activePageIdx=to;
+      else if(from<_activePageIdx&&to>=_activePageIdx) _activePageIdx--;
+      else if(from>_activePageIdx&&to<=_activePageIdx) _activePageIdx++;
+      renderSlides();savePages();
+    });
+    list.appendChild(div);
+    renderThumb(i,tc);
+  });
+  var addBtn=document.createElement('button');
+  addBtn.className='c2d-slide-add';addBtn.textContent='+ Añadir papel';
+  addBtn.onclick=addPage;
+  list.appendChild(addBtn);
+}
+function renderThumb(pageIdx,tc){
+  if(!tc){
+    var slides=document.querySelectorAll('.c2d-slide');
+    if(!slides[pageIdx]) return;
+    tc=slides[pageIdx].querySelector('canvas');
+  }
+  if(!tc) return;
+  var tctx=tc.getContext('2d');
+  var tw=tc.width,th=tc.height;
+  tctx.clearRect(0,0,tw,th);
+  // Paper background
+  tctx.fillStyle='#fff';tctx.fillRect(0,0,tw,th);
+  // Paper border
+  tctx.strokeStyle='#ccc';tctx.lineWidth=1;tctx.strokeRect(0,0,tw,th);
+  // Margin rect
+  var m=Math.min(tw,th)*PAPER_MARGIN;
+  tctx.strokeStyle='#ddd';tctx.lineWidth=0.5;tctx.setLineDash([2,2]);
+  tctx.strokeRect(m,m,tw-2*m,th-2*m);
+  tctx.setLineDash([]);
+  // Cajetin separator
+  var cjH=(th-2*m)*CAJETIN_H_RATIO;
+  tctx.strokeStyle='#ccc';tctx.lineWidth=0.5;
+  tctx.beginPath();tctx.moveTo(m,th-m-cjH);tctx.lineTo(tw-m,th-m-cjH);tctx.stroke();
+  // Modules
+  var mods=(pageIdx===_activePageIdx)?_modules:_pages[pageIdx].modules;
+  if(!mods||mods.length===0) return;
+  // Scale: map world coords to thumbnail margin area
+  var pp=PAPERS[_paper],mmm=Math.min(pp.w,pp.h)*PAPER_MARGIN;
+  var innerW=pp.w-2*mmm,innerH=pp.h-2*mmm;
+  var dsW=innerW*_drawScale;
+  var dsH=innerH*(1-CAJETIN_H_RATIO)*_drawScale;
+  var drawW=tw-2*m,drawH=th-2*m-cjH;
+  var tsc=Math.min(drawW/dsW,drawH/dsH);
+  var ox=m+(drawW-dsW*tsc)/2;
+  var oy=m+drawH; // y=0 in world = bottom of drawing area on screen
+  mods.forEach(function(mod){
+    var mx=ox+mod.x*tsc;
+    var my=oy-(mod.y+mod.h)*tsc;
+    var mw=mod.w*tsc;
+    var mh=mod.h*tsc;
+    tctx.fillStyle='rgba(180,180,180,.5)';tctx.fillRect(mx,my,mw,mh);
+    tctx.strokeStyle='#888';tctx.lineWidth=0.5;tctx.strokeRect(mx,my,mw,mh);
+  });
+}
+function updateActiveThumb(){renderThumb(_activePageIdx);}
+
+// ── INIT ──
+// Load pages from localStorage or create default
+var _savedPages=null;
+try{_savedPages=JSON.parse(localStorage.getItem('c2d_pages'));}catch(e){}
+if(_savedPages&&_savedPages.length>0){
+  _pages=_savedPages.map(function(sp){return{modules:sp.modules||[],meta:sp.meta||JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};});
+  _activePageIdx=parseInt(localStorage.getItem('c2d_activePageIdx'))||0;
+  if(_activePageIdx>=_pages.length) _activePageIdx=0;
+}else{
+  // Migrate from old single-page localStorage
+  var oldMeta=null;try{oldMeta=JSON.parse(localStorage.getItem('c2d_meta'));}catch(e){}
+  var pg=newPageObj();
+  if(oldMeta&&oldMeta.proyecto) pg.meta=oldMeta;
+  _pages=[pg];
+  _activePageIdx=0;
+}
+loadPage(_activePageIdx);
 saveHistory();resizeCanvas();
 // Restore paper & scale from localStorage
 document.getElementById('paperFormat').value=_paper;
 document.getElementById('scaleSelect').value=_drawScale;
 document.getElementById('zoomSelect').value=Math.round(_userZoom*100);
 applyPaperScale();
+renderSlides();
 
 // ── CONTEXT MENU ──
 var _ctxMenu=document.getElementById('ctxMenu');
