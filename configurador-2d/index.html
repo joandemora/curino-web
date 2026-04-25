@@ -1217,7 +1217,7 @@ wrap.addEventListener('mousedown',function(e){
     // Shift + drag = marquee selection
     _marquee={startX:e.clientX-rect.left,startY:e.clientY-rect.top,shift:true};
     _marqueeDiv=document.createElement('div');_marqueeDiv.className='c2d-marquee';
-    layer.appendChild(_marqueeDiv);
+    wrap.appendChild(_marqueeDiv);
     document.addEventListener('mousemove',marqueeMove);
     document.addEventListener('mouseup',marqueeEnd);
   }else{
