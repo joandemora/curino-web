@@ -131,40 +131,74 @@ nav{
   letter-spacing:.1em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:all .2s}
 .cart-checkout:hover{background:var(--coral)}
 
-/* ── MI CUENTA ── */
-.account{max-width:860px;margin:120px auto 4rem;padding:0 32px}
-.account-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;text-transform:none;text-align:left;margin-bottom:2.5rem;letter-spacing:-.02em}
-.account-section{margin-bottom:3rem}
-.account-section-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--border);color:var(--ink-soft)}
-.account-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;font-size:14px}
-.account-row-label{color:var(--mid);font-size:12px;letter-spacing:.05em;text-transform:uppercase;min-width:120px}
-.account-row-value{text-align:right}
+/* ── ACCOUNT GRID ── */
+.account{max-width:1200px;margin:100px auto 4rem;padding:0 32px}
+.account-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+.account-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;letter-spacing:-.02em;text-transform:none;text-align:left}
+.account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-height:320px}
+.card-header{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
+.card-header svg{width:20px;height:20px;stroke:var(--coral);stroke-width:1.8;fill:none;flex-shrink:0}
+.card-header h2{font-family:var(--serif);font-size:18px;font-weight:400;letter-spacing:-.01em;text-transform:none;text-align:left}
+.card-body{flex:1;overflow-y:auto}
+.card-footer{margin-top:auto;padding-top:1rem}
+.card-empty{color:var(--ink-mute);font-size:13px;padding:2rem 0;text-align:center}
 
-/* Orders table */
-.orders-table{width:100%;border-collapse:collapse;font-size:13px}
-.orders-table th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;text-align:left;padding:.75rem 0;border-bottom:2px solid var(--black)}
-.orders-table td{padding:.75rem 0;border-bottom:1px solid var(--border);vertical-align:top}
-.orders-table .order-config{font-size:12px;color:var(--mid);line-height:1.6}
-.order-status{display:inline-block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:.25rem .6rem;border-radius:6px}
-.order-status.pagado{background:#f0fdf4;color:#16a34a}
-.order-status.produccion{background:#fffbeb;color:#d97706}
-.order-status.enviado{background:#eff6ff;color:#2563eb}
-.orders-empty{color:var(--mid);font-size:13px;padding:2rem 0;text-align:center}
+/* CTA cards */
+.card-cta{text-decoration:none;color:var(--ink);position:relative;justify-content:center;align-items:center;text-align:center;transition:border-color .2s,box-shadow .2s;cursor:pointer}
+.card-cta:hover{border-color:var(--coral);box-shadow:0 4px 20px rgba(204,120,92,.1)}
+.card-cta-icon{width:48px;height:48px;background:var(--bg);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+.card-cta-icon svg{width:24px;height:24px;stroke:var(--coral);stroke-width:1.5;fill:none}
+.card-cta h2{font-family:var(--serif);font-size:18px;font-weight:400;margin-bottom:.5rem;text-transform:none}
+.card-cta p{font-size:13px;color:var(--ink-soft);line-height:1.5;max-width:24ch;margin:0 auto;text-align:center}
+.card-cta-arrow{position:absolute;bottom:20px;right:20px;font-size:20px;color:var(--coral);opacity:0;transition:opacity .2s}
+.card-cta:hover .card-cta-arrow{opacity:1}
 
-/* Addresses */
-.address-card{border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;position:relative}
+/* Plan card */
+.plan-badge{display:inline-block;padding:6px 16px;border-radius:999px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:1rem}
+.plan-badge.plan-go{background:var(--bg-deep);color:var(--ink)}
+.plan-badge.plan-pro{background:var(--coral);color:#fff}
+.plan-badge.plan-max{background:var(--ink);color:#fff}
+.plan-desc{font-size:13px;color:var(--ink-soft);line-height:1.5;margin-bottom:1rem;text-align:left}
+.plan-upgrade{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-top:1px solid var(--line)}
+.plan-upgrade-name{font-size:13px;font-weight:500}
+.plan-upgrade-price{font-size:12px;color:var(--ink-mute)}
+.plan-upgrade .btn{padding:6px 14px;font-size:11px}
+
+/* Profile card */
+.profile-section{display:grid;gap:.5rem;margin-bottom:1.5rem}
+.profile-section label{font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.05em;margin-top:.5rem}
+.profile-section input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--ink);outline:none;transition:border-color .2s;box-sizing:border-box}
+.profile-section input:focus{border-color:var(--ink)}
+.profile-section input:disabled{background:var(--bg);color:var(--ink-mute);cursor:not-allowed}
+.profile-addresses h3{font-family:var(--font);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:.75rem;margin-top:.5rem;text-align:left}
+
+/* Projects card */
+.project-item{display:flex;align-items:center;gap:12px;padding:.6rem 0;border-bottom:1px solid var(--line-soft)}
+.project-item:last-child{border-bottom:none}
+.project-thumb{width:48px;height:34px;background:var(--bg-deep);border-radius:4px;flex-shrink:0;overflow:hidden}
+.project-thumb img{width:100%;height:100%;object-fit:cover}
+.project-info{flex:1;min-width:0}
+.project-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.project-date{font-size:11px;color:var(--ink-mute)}
+.project-actions{display:flex;gap:.5rem}
+.project-actions a,.project-actions button{background:none;border:none;font-size:12px;color:var(--ink-mute);cursor:pointer;text-decoration:none;transition:color .2s;padding:0;font-family:var(--font)}
+.project-actions a:hover,.project-actions button:hover{color:var(--ink)}
+.project-actions .del:hover{color:#dc2626}
+
+/* Addresses inside profile card */
+.address-card{border:1px solid var(--line);border-radius:12px;padding:1.25rem;margin-bottom:1rem;position:relative}
 .address-card p{font-size:13px;line-height:1.6;text-align:left}
 .address-actions{display:flex;gap:1rem;margin-top:.75rem}
-.address-actions button{background:none;border:none;font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;transition:color .2s}
-.address-actions button:hover{color:var(--black)}
-.address-empty{color:var(--mid);font-size:13px}
+.address-actions button{background:none;border:none;font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--ink-mute);padding:0;transition:color .2s}
+.address-actions button:hover{color:var(--ink)}
 
 /* Address form */
 .address-form{display:none;margin-top:1rem}
 .address-form.open{display:block}
-.address-form input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:.75rem;transition:border-color .2s}
-.address-form input:focus{border-color:var(--black)}
-.address-form input::placeholder{color:var(--mid)}
+.address-form input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--line);outline:none;background:transparent;margin-bottom:.75rem;transition:border-color .2s;box-sizing:border-box}
+.address-form input:focus{border-color:var(--ink)}
+.address-form input::placeholder{color:var(--ink-mute)}
 .address-form-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.5rem}
 .field-wrap{position:relative;margin-bottom:.75rem}
 .field-wrap input{margin-bottom:0}
@@ -176,12 +210,11 @@ nav{
 .btn-add{margin-top:.5rem}
 
 /* ── GOOGLE PLACES AUTOCOMPLETE ── */
-/* ── PLACES AUTOCOMPLETE DROPDOWN ── */
 .places-wrap{position:relative;margin-bottom:.75rem}
-.places-wrap input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;transition:border-color .2s}
-.places-wrap input:focus{border-color:var(--black)}
-.places-wrap input::placeholder{color:var(--mid)}
-.places-dd{position:absolute;top:100%;left:0;right:0;background:var(--paper);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.places-wrap input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--line);outline:none;background:transparent;transition:border-color .2s}
+.places-wrap input:focus{border-color:var(--ink)}
+.places-wrap input::placeholder{color:var(--ink-mute)}
+.places-dd{position:absolute;top:100%;left:0;right:0;background:var(--paper);border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .places-dd.open{display:block}
 .places-dd-item{padding:.5rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
 .places-dd-item:hover,.places-dd-item.active{background:var(--bg)}
@@ -215,13 +248,6 @@ footer{
   .nav-right{display:none}
   .nav-mobile-right{display:flex;align-items:center;gap:1rem}
   .nav-mobile-right .nav-hamburger{display:flex}
-  .account{margin-top:80px;padding:0 16px}
-  .account-title{font-size:16px}
-  .account-row{flex-direction:column;align-items:flex-start;gap:.25rem}
-  .account-row-value{text-align:left}
-  .orders-table{font-size:12px}
-  .orders-table th,.orders-table td{padding:.5rem .5rem .5rem 0}
-  .address-form-row{grid-template-columns:1fr}
   footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
   footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
   footer img[alt="Curino"]{height:20px!important}
@@ -237,9 +263,14 @@ footer{
   .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
   .footer-legal{align-items:center;text-align:center}
 }
-@media(max-width:480px){
-  .orders-scroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
-  .orders-table{min-width:560px}
+@media(max-width:1024px){
+  .account-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:640px){
+  .account-grid{grid-template-columns:1fr}
+  .account-card{min-height:auto}
+  .account{padding:0 16px;margin-top:80px}
+  .address-form-row{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -333,78 +364,111 @@ footer{
 
 <!-- MI CUENTA -->
 <div class="account" id="accountPage" style="display:none">
-  <h1 class="account-title" id="accountGreeting">Mi cuenta</h1>
-
-  <!-- Datos del usuario -->
-  <div class="account-section">
-    <div class="account-section-title">Datos personales</div>
-    <div class="account-row">
-      <span class="account-row-label">Nombre</span>
-      <span class="account-row-value" id="userName">—</span>
-    </div>
-    <div class="account-row">
-      <span class="account-row-label">Email</span>
-      <span class="account-row-value" id="userEmail">—</span>
-    </div>
+  <div class="account-header">
+    <h1 class="account-title" id="accountGreeting">Mi cuenta</h1>
+    <button class="btn btn-danger btn-small" onclick="logoutUser()">Cerrar sesion</button>
   </div>
-
-  <!-- Historial de pedidos -->
-  <div class="account-section">
-    <div class="account-section-title">Historial de pedidos</div>
-    <div id="ordersContainer">
-      <div class="orders-empty" id="ordersEmpty">No tienes pedidos todavia.</div>
-      <div class="orders-scroll" id="ordersScroll" style="display:none">
-        <table class="orders-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Configuracion</th>
-              <th>Precio</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="ordersBody"></tbody>
-        </table>
+  <div class="account-grid">
+    <!-- Card 1: Mis Proyectos -->
+    <div class="account-card card-projects">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <h2>Mis proyectos</h2>
+      </div>
+      <div class="card-body" id="projectsList">
+        <div class="card-empty" id="projectsEmpty">No tienes proyectos aun</div>
+      </div>
+      <div class="card-footer">
+        <a href="/configurador-2d/" class="btn btn-primary btn-small">+ Nuevo proyecto</a>
       </div>
     </div>
-  </div>
 
-  <!-- Direcciones -->
-  <div class="account-section">
-    <div class="account-section-title">Direcciones de envio</div>
-    <div id="addressList"></div>
-    <div class="address-empty" id="addressEmpty">No tienes direcciones guardadas.</div>
-    <button class="btn btn-outline btn-small btn-add" id="btnAddAddress" onclick="showAddressForm()">+ Anadir direccion</button>
-
-    <div class="address-form" id="addressForm">
-      <div class="field-wrap" data-req="addrName"><input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
-      <div class="places-wrap field-wrap" data-req="addrLine">
-        <input type="text" id="addrLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
-        <div class="places-dd" id="addrDD"></div>
-        <div class="field-error">* Obligatorio</div>
+    <!-- Card 2: Mi Plan -->
+    <div class="account-card card-plan">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-5 4-5-6-5 6z"/><path d="M5 16v4h14v-4"/></svg>
+        <h2>Mi plan</h2>
       </div>
-      <input type="text" id="addrLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
-      <input type="text" id="addrCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
-      <div class="field-wrap" data-req="addrNif"><input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required><div class="field-error" id="addrNifError">* Obligatorio</div></div>
-      <div class="address-form-row">
-        <div class="field-wrap" data-req="addrCity"><input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
-        <div class="field-wrap" data-req="addrPostal"><input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
-      </div>
-      <div class="address-form-row">
-        <div class="field-wrap" data-req="addrProvince"><input type="text" id="addrProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
-        <input type="text" id="addrCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
-      </div>
-      <input type="tel" id="addrPhone" placeholder="Telefono" autocomplete="tel" required>
-      <div style="display:flex;gap:.75rem;margin-top:.5rem">
-        <button class="btn btn-primary btn-small" onclick="saveAddress()">Guardar</button>
-        <button class="btn btn-outline btn-small" onclick="cancelAddress()">Cancelar</button>
+      <div class="card-body" id="planContent">
+        <div class="plan-badge" id="planBadge">Go</div>
+        <p class="plan-desc" id="planDesc">Plan gratuito con funcionalidades basicas.</p>
+        <div id="planUpgrades"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Cerrar sesion -->
-  <div class="account-section" style="padding-top:1rem;border-top:1px solid var(--border)">
-    <button class="btn btn-danger" onclick="logoutUser()">Cerrar sesion</button>
+    <!-- Card 3: Configura tu armario -->
+    <a href="https://www.casacurino.com/configurador-armarios-vestidores/" class="account-card card-cta card-configurator">
+      <div class="card-cta-icon">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </div>
+      <h2>Configura tu armario</h2>
+      <p>Disena tu armario o vestidor a medida con nuestro configurador 3D interactivo.</p>
+      <span class="card-cta-arrow">&rarr;</span>
+    </a>
+
+    <!-- Card 4: Diseñamos para ti -->
+    <a href="https://www.casacurino.com/proyecto-a-medida" class="account-card card-cta card-design">
+      <div class="card-cta-icon">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4z"/></svg>
+      </div>
+      <h2>Disenamos para ti</h2>
+      <p>Cuentanos tu proyecto y nuestro equipo de diseno lo hara realidad.</p>
+      <span class="card-cta-arrow">&rarr;</span>
+    </a>
+
+    <!-- Card 5: Mis datos -->
+    <div class="account-card card-profile">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <h2>Mis datos</h2>
+      </div>
+      <div class="card-body" id="profileContent">
+        <!-- Profile form -->
+        <div class="profile-section">
+          <label>Nombre</label>
+          <input type="text" id="profFirstName" placeholder="Nombre">
+          <label>Apellidos</label>
+          <input type="text" id="profLastName" placeholder="Apellidos">
+          <label>Email</label>
+          <input type="email" id="profEmail" disabled>
+          <label>Telefono</label>
+          <input type="tel" id="profPhone" placeholder="Telefono">
+        </div>
+
+        <!-- Addresses subsection -->
+        <div class="profile-addresses">
+          <h3>Direcciones de envio</h3>
+          <div id="addressList"></div>
+          <button class="btn btn-outline btn-small" id="btnAddAddress" onclick="showAddressForm()">+ Anadir direccion</button>
+          <div class="address-form" id="addressForm">
+            <div class="field-wrap" data-req="addrName"><input type="text" id="addrName" placeholder="Nombre completo" autocomplete="name" required><div class="field-error">* Obligatorio</div></div>
+            <div class="places-wrap field-wrap" data-req="addrLine">
+              <input type="text" id="addrLine" placeholder="Direccion (calle, numero)" autocomplete="off" required>
+              <div class="places-dd" id="addrDD"></div>
+              <div class="field-error">* Obligatorio</div>
+            </div>
+            <input type="text" id="addrLine2" placeholder="Piso, puerta, escalera..." autocomplete="address-line2">
+            <input type="text" id="addrCompany" placeholder="Nombre de empresa (opcional)" autocomplete="organization">
+            <div class="field-wrap" data-req="addrNif"><input type="text" id="addrNif" placeholder="DNI / CIF / NIF" required><div class="field-error" id="addrNifError">* Obligatorio</div></div>
+            <div class="address-form-row">
+              <div class="field-wrap" data-req="addrCity"><input type="text" id="addrCity" placeholder="Ciudad" autocomplete="address-level2" required><div class="field-error">* Obligatorio</div></div>
+              <div class="field-wrap" data-req="addrPostal"><input type="text" id="addrPostal" placeholder="Codigo postal" autocomplete="postal-code" required><div class="field-error">* Obligatorio</div></div>
+            </div>
+            <div class="address-form-row">
+              <div class="field-wrap" data-req="addrProvince"><input type="text" id="addrProvince" placeholder="Provincia" autocomplete="address-level1" required><div class="field-error">* Obligatorio</div></div>
+              <input type="text" id="addrCountry" placeholder="Pais" value="Espana" autocomplete="country-name" required>
+            </div>
+            <input type="tel" id="addrPhone" placeholder="Telefono" autocomplete="tel" required>
+            <div style="display:flex;gap:.75rem;margin-top:.5rem">
+              <button class="btn btn-primary btn-small" onclick="saveAddress()">Guardar</button>
+              <button class="btn btn-outline btn-small" onclick="cancelAddress()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:1rem">Guardar cambios</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -568,85 +632,117 @@ var _supabase=null,_currentUser=null;
 })();
 
 function initAccount(){
-  var meta=_currentUser.user_metadata||{};
-  var name=meta.full_name||meta.name||'';
-  var email=_currentUser.email||'';
-
-  document.getElementById('userName').textContent=name||'—';
-  document.getElementById('userEmail').textContent=email;
-  if(name) document.getElementById('accountGreeting').textContent='Hola, '+name.split(' ')[0];
-
   document.getElementById('accountPage').style.display='block';
-
-  loadOrders();
+  loadProfile();
+  loadProjects();
   loadAddresses();
 }
 
-// ── ORDERS ──
-async function loadOrders(){
-  var result=await _supabase
-    .from('orders')
-    .select('*')
-    .eq('user_id',_currentUser.id)
-    .order('created_at',{ascending:false});
-
-  if(result.error||!result.data||result.data.length===0) return;
-
-  document.getElementById('ordersEmpty').style.display='none';
-  document.getElementById('ordersScroll').style.display='block';
-  var tbody=document.getElementById('ordersBody');
-  tbody.innerHTML='';
-
-  result.data.forEach(function(order){
-    var tr=document.createElement('tr');
-    var fecha=new Date(order.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
-    var config=order.configuracion||{};
-    var configStr='';
-    if(config.ancho) configStr+=config.ancho+'\u00D7'+config.alto+'\u00D7'+config.fondo+' cm<br>';
-    if(config.material) configStr+=config.material;
-    if(config.puertas) configStr+=' \u00B7 '+config.puertas;
-
-    var estadoClass='pagado';
-    var estadoLabel=order.estado||'pagado';
-    if(estadoLabel==='en_produccion'){estadoClass='produccion';estadoLabel='En producci\u00F3n';}
-    else if(estadoLabel==='enviado'){estadoClass='enviado';estadoLabel='Enviado';}
-    else{estadoLabel='Pagado';}
-
-    tr.innerHTML='<td>'+fecha+'</td>'+
-      '<td><div class="order-config">'+configStr+'</div></td>'+
-      '<td>\u20AC '+new Intl.NumberFormat('es-ES').format(order.precio)+'</td>'+
-      '<td><span class="order-status '+estadoClass+'">'+estadoLabel+'</span></td>';
-    tbody.appendChild(tr);
+// ── PROJECTS ──
+async function loadProjects(){
+  var result = await _supabase.from('projects').select('id,name,thumbnail,created_at,updated_at')
+    .eq('user_id', _currentUser.id).order('updated_at',{ascending:false});
+  var list = document.getElementById('projectsList');
+  var empty = document.getElementById('projectsEmpty');
+  if(result.error || !result.data || result.data.length===0){
+    empty.style.display='block'; list.querySelectorAll('.project-item').forEach(function(el){el.remove()}); return;
+  }
+  empty.style.display='none';
+  list.innerHTML='';
+  result.data.forEach(function(p){
+    var date = new Date(p.updated_at||p.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+    var div = document.createElement('div'); div.className='project-item';
+    div.innerHTML = '<div class="project-thumb">'+(p.thumbnail?'<img src="'+p.thumbnail+'" alt="">':'')+'</div>'+
+      '<div class="project-info"><div class="project-name">'+p.name+'</div><div class="project-date">'+date+'</div></div>'+
+      '<div class="project-actions"><a href="/configurador-2d/?project='+p.id+'">Abrir</a>'+
+      '<button class="del" onclick="deleteProject(\''+p.id+'\')">Eliminar</button></div>';
+    list.appendChild(div);
   });
 }
 
-// ── ADDRESSES (localStorage) ──
-var _addresses=JSON.parse(localStorage.getItem('curino_addresses')||'[]');
-var _editingIdx=-1;
+async function deleteProject(id){
+  if(!confirm('Eliminar este proyecto?')) return;
+  await _supabase.from('projects').delete().eq('id',id);
+  loadProjects();
+}
 
-function loadAddresses(){
-  var list=document.getElementById('addressList');
-  var empty=document.getElementById('addressEmpty');
+// ── PROFILE ──
+async function loadProfile(){
+  var result = await _supabase.from('user_profiles').select('*').eq('id',_currentUser.id).single();
+  if(result.error && result.error.code==='PGRST116'){
+    // Profile doesn't exist yet, create it
+    await _supabase.from('user_profiles').insert({
+      id:_currentUser.id,
+      first_name: (_currentUser.user_metadata||{}).first_name || (_currentUser.user_metadata||{}).full_name?.split(' ')[0] || '',
+      last_name: (_currentUser.user_metadata||{}).last_name || ''
+    });
+    result = await _supabase.from('user_profiles').select('*').eq('id',_currentUser.id).single();
+  }
+  if(!result.data) return;
+  var p = result.data;
+  document.getElementById('profFirstName').value = p.first_name||'';
+  document.getElementById('profLastName').value = p.last_name||'';
+  document.getElementById('profEmail').value = _currentUser.email||'';
+  document.getElementById('profPhone').value = p.phone||'';
+  // Plan
+  var plan = p.plan||'go';
+  var badge = document.getElementById('planBadge');
+  badge.textContent = plan==='go'?'Go':plan==='pro'?'Pro':'Max';
+  badge.className = 'plan-badge plan-'+plan;
+  var desc = document.getElementById('planDesc');
+  var upgrades = document.getElementById('planUpgrades');
+  if(plan==='go'){
+    desc.textContent='Plan gratuito con funcionalidades basicas.';
+    upgrades.innerHTML='<div class="plan-upgrade"><div><div class="plan-upgrade-name">Pro</div><div class="plan-upgrade-price">49 \u20AC/mes</div></div><a href="/pro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>'+
+      '<div class="plan-upgrade"><div><div class="plan-upgrade-name">Max</div><div class="plan-upgrade-price">149 \u20AC/mes</div></div><a href="/pro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>';
+  }else if(plan==='pro'){
+    desc.textContent='Plan profesional con todas las herramientas de diseno.';
+    upgrades.innerHTML='<div class="plan-upgrade"><div><div class="plan-upgrade-name">Max</div><div class="plan-upgrade-price">149 \u20AC/mes</div></div><a href="/pro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>';
+  }else{
+    desc.textContent='Plan maximo activo. Acceso completo a todas las funcionalidades.';
+    upgrades.innerHTML='';
+  }
+  // Greeting
+  var name = p.first_name||_currentUser.email;
+  document.getElementById('accountGreeting').textContent = 'Hola, '+name;
+}
+
+async function saveProfile(){
+  var data = {
+    first_name: document.getElementById('profFirstName').value.trim(),
+    last_name: document.getElementById('profLastName').value.trim(),
+    phone: document.getElementById('profPhone').value.trim(),
+    updated_at: new Date().toISOString()
+  };
+  var result = await _supabase.from('user_profiles').update(data).eq('id',_currentUser.id);
+  if(result.error) alert('Error al guardar: '+result.error.message);
+  else alert('Datos guardados correctamente');
+}
+
+// ── ADDRESSES (Supabase) ──
+var _editingAddrId = null;
+
+async function loadAddresses(){
+  var result = await _supabase.from('addresses').select('*').eq('user_id',_currentUser.id).order('created_at');
+  var list = document.getElementById('addressList');
   list.innerHTML='';
-  if(_addresses.length===0){empty.style.display='block';return;}
-  empty.style.display='none';
-  _addresses.forEach(function(addr,i){
+  if(result.error||!result.data||result.data.length===0) return;
+  result.data.forEach(function(addr){
     var card=document.createElement('div');card.className='address-card';
-    var lines=addr.line+(addr.line2?' '+addr.line2:'');
     card.innerHTML='<p><strong>'+addr.name+'</strong>'+
       (addr.company?' &middot; '+addr.company:'')+'<br>'+
-      lines+'<br>'+addr.postal+' '+addr.city+', '+addr.province+'<br>'+
+      addr.line+(addr.line2?' '+addr.line2:'')+'<br>'+
+      addr.postal+' '+addr.city+', '+addr.province+'<br>'+
       addr.country+(addr.nif?' &middot; '+addr.nif:'')+(addr.phone?'<br>'+addr.phone:'')+'</p>'+
       '<div class="address-actions">'+
-      '<button onclick="editAddress('+i+')">Editar</button>'+
-      '<button onclick="deleteAddress('+i+')">Eliminar</button>'+
-      '</div>';
+      '<button onclick="editAddress(\''+addr.id+'\')">Editar</button>'+
+      '<button onclick="deleteAddress(\''+addr.id+'\')">Eliminar</button></div>';
     list.appendChild(card);
   });
 }
 
 function showAddressForm(){
-  _editingIdx=-1;
+  _editingAddrId=null;
   clearAddressForm();
   document.getElementById('addressForm').classList.add('open');
   document.getElementById('btnAddAddress').style.display='none';
@@ -655,19 +751,21 @@ function showAddressForm(){
 function cancelAddress(){
   document.getElementById('addressForm').classList.remove('open');
   document.getElementById('btnAddAddress').style.display='';
-  _editingIdx=-1;
+  _editingAddrId=null;
 }
 
 function clearAddressForm(){
-  ['addrName','addrLine','addrLine2','addrCompany','addrNif','addrCity','addrPostal','addrProvince','addrCountry','addrPhone'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(id==='addrCountry') el.value='Espana';
-    else el.value='';
+  ['addrName','addrLine','addrLine2','addrCompany','addrNif','addrCity','addrPostal','addrProvince','addrPhone'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
   });
+  var c=document.getElementById('addrCountry'); if(c) c.value='Espana';
+  // Clear validation errors
+  document.querySelectorAll('#addressForm .field-wrap').forEach(function(w){w.classList.remove('has-error');});
 }
 
-function saveAddress(){
+async function saveAddress(){
   var addr={
+    user_id:_currentUser.id,
     name:document.getElementById('addrName').value.trim(),
     line:document.getElementById('addrLine').value.trim(),
     line2:document.getElementById('addrLine2').value.trim(),
@@ -676,7 +774,7 @@ function saveAddress(){
     city:document.getElementById('addrCity').value.trim(),
     postal:document.getElementById('addrPostal').value.trim(),
     province:document.getElementById('addrProvince').value.trim(),
-    country:document.getElementById('addrCountry').value.trim(),
+    country:document.getElementById('addrCountry').value.trim()||'Espana',
     phone:document.getElementById('addrPhone').value.trim()
   };
 
@@ -689,7 +787,6 @@ function saveAddress(){
     {id:'addrPostal',val:addr.postal},
     {id:'addrProvince',val:addr.province}
   ];
-  // Clear previous errors
   document.querySelectorAll('#addressForm .field-wrap').forEach(function(w){w.classList.remove('has-error');});
   var firstError=null;
   required.forEach(function(f){
@@ -707,34 +804,36 @@ function saveAddress(){
     return;
   }
 
-  if(_editingIdx>=0) _addresses[_editingIdx]=addr;
-  else _addresses.push(addr);
-
-  localStorage.setItem('curino_addresses',JSON.stringify(_addresses));
+  if(_editingAddrId){
+    await _supabase.from('addresses').update(addr).eq('id',_editingAddrId);
+  }else{
+    await _supabase.from('addresses').insert(addr);
+  }
   cancelAddress();
   loadAddresses();
 }
 
-function editAddress(i){
-  _editingIdx=i;
-  var addr=_addresses[i];
-  document.getElementById('addrName').value=addr.name;
-  document.getElementById('addrLine').value=addr.line;
-  document.getElementById('addrLine2').value=addr.line2||'';
-  document.getElementById('addrCompany').value=addr.company||'';
-  document.getElementById('addrNif').value=addr.nif||'';
-  document.getElementById('addrCity').value=addr.city;
-  document.getElementById('addrPostal').value=addr.postal;
-  document.getElementById('addrProvince').value=addr.province;
-  document.getElementById('addrCountry').value=addr.country;
-  document.getElementById('addrPhone').value=addr.phone||'';
+async function editAddress(id){
+  var result=await _supabase.from('addresses').select('*').eq('id',id).single();
+  if(!result.data) return;
+  var a=result.data;_editingAddrId=id;
+  document.getElementById('addrName').value=a.name||'';
+  document.getElementById('addrLine').value=a.line||'';
+  document.getElementById('addrLine2').value=a.line2||'';
+  document.getElementById('addrCompany').value=a.company||'';
+  document.getElementById('addrNif').value=a.nif||'';
+  document.getElementById('addrCity').value=a.city||'';
+  document.getElementById('addrPostal').value=a.postal||'';
+  document.getElementById('addrProvince').value=a.province||'';
+  document.getElementById('addrCountry').value=a.country||'Espana';
+  document.getElementById('addrPhone').value=a.phone||'';
   document.getElementById('addressForm').classList.add('open');
   document.getElementById('btnAddAddress').style.display='none';
 }
 
-function deleteAddress(i){
-  _addresses.splice(i,1);
-  localStorage.setItem('curino_addresses',JSON.stringify(_addresses));
+async function deleteAddress(id){
+  if(!confirm('Eliminar esta direccion?')) return;
+  await _supabase.from('addresses').delete().eq('id',id);
   loadAddresses();
 }
 
@@ -760,10 +859,10 @@ function validateNIF(raw){
       if(i%2===0){var x=d*2;sumB+=x>9?x-9:x;}
       else sumA+=d;
     }
-    var c=(10-(sumA+sumB)%10)%10;
+    var cc=(10-(sumA+sumB)%10)%10;
     var control=v[8];
-    if(/\d/.test(control)) return parseInt(control,10)===c;
-    return control===String.fromCharCode(65+c); // A=0, B=1...
+    if(/\d/.test(control)) return parseInt(control,10)===cc;
+    return control===String.fromCharCode(65+cc); // A=0, B=1...
   }
   return false;
 }
@@ -849,10 +948,8 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
   input.addEventListener('focus',function(){if(dd.children.length>0) dd.classList.add('open');});
 
   function extractExtra(typed,street,number){
-    // Find what the user typed after the street number (piso, puerta, etc.)
     var base=(street+' '+number).toLowerCase().replace(/[,.\s]+/g,' ').trim();
     var norm=typed.toLowerCase().replace(/[,.\s]+/g,' ').trim();
-    // Try to find the number in what the user typed
     if(number){
       var numIdx=norm.indexOf(number.toLowerCase());
       if(numIdx!==-1){
