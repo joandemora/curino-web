@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#1F1E1C;--mid:#8C8A82;--light:#c0c0c0;--border:#E8E6DE;--bg:#FAF9F5;--bg-deep:#F0EEE6;--white:#fff;--accent:#007354;--coral:#CC785C;--font:'Inter',-apple-system,sans-serif;--serif:'Fraunces',Georgia,serif;--line-soft:#F0EEE6}
@@ -18,6 +19,9 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar{display:flex;align-items:center;gap:.5rem}
 .c2d-toolbar button{background:none;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:11px;padding:4px 10px;cursor:pointer;transition:all .2s}
 .c2d-toolbar button:hover{border-color:var(--black);background:var(--bg)}
+.c2d-toolbar .btn-save{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.c2d-toolbar .btn-save:hover{background:#005f45;border-color:#005f45}
+.c2d-toolbar .btn-save.saving{opacity:.6;pointer-events:none}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
@@ -153,6 +157,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <button onclick="undo()">Deshacer</button>
     <button onclick="redo()">Rehacer</button>
     <button onclick="exportPNG()">PNG</button>
+    <button class="btn-save" id="btnSave" onclick="saveProject()">Guardar</button>
   </div>
 </div>
 
@@ -251,6 +256,8 @@ var GRID=50; // snap grid in mm
 var SNAP_RADIUS=5; // magnetic snap radius in px
 var _dragData=null;
 var _resizing=null;
+// Supabase
+var _supabase=null,_currentUser=null,_projectId=null;
 
 var cvs=document.getElementById('cvs');
 var ctx=cvs.getContext('2d');
@@ -1515,30 +1522,139 @@ function renderThumb(pageIdx,tc){
 }
 function updateActiveThumb(){renderThumb(_activePageIdx);}
 
-// ── INIT ──
-// Load pages from localStorage or create default
-var _savedPages=null;
-try{_savedPages=JSON.parse(localStorage.getItem('c2d_pages'));}catch(e){}
-if(_savedPages&&_savedPages.length>0){
-  _pages=_savedPages.map(function(sp){return{modules:sp.modules||[],meta:sp.meta||JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};});
-  _activePageIdx=parseInt(localStorage.getItem('c2d_activePageIdx'))||0;
-  if(_activePageIdx>=_pages.length) _activePageIdx=0;
-}else{
-  // Migrate from old single-page localStorage
-  var oldMeta=null;try{oldMeta=JSON.parse(localStorage.getItem('c2d_meta'));}catch(e){}
-  var pg=newPageObj();
-  if(oldMeta&&oldMeta.proyecto) pg.meta=oldMeta;
-  _pages=[pg];
-  _activePageIdx=0;
+// ── SUPABASE PROJECT SAVE/LOAD ──
+function generateThumbnail(){
+  // Render current state to a small canvas and return base64
+  var p=PAPERS[_paper],aspect=p.w/p.h;
+  var tw=280,th=Math.round(tw/aspect);
+  var tc=document.createElement('canvas');tc.width=tw;tc.height=th;
+  var tctx=tc.getContext('2d');
+  tctx.fillStyle='#fff';tctx.fillRect(0,0,tw,th);
+  tctx.strokeStyle='#ccc';tctx.lineWidth=1;tctx.strokeRect(0,0,tw,th);
+  var m=Math.min(tw,th)*PAPER_MARGIN;
+  tctx.strokeStyle='#ddd';tctx.lineWidth=0.5;tctx.setLineDash([2,2]);
+  tctx.strokeRect(m,m,tw-2*m,th-2*m);tctx.setLineDash([]);
+  var cjH=(th-2*m)*CAJETIN_H_RATIO;
+  tctx.strokeStyle='#ccc';tctx.lineWidth=0.5;
+  tctx.beginPath();tctx.moveTo(m,th-m-cjH);tctx.lineTo(tw-m,th-m-cjH);tctx.stroke();
+  // Draw all pages' modules (active page)
+  stashPage();
+  var pp=PAPERS[_paper],mmm=Math.min(pp.w,pp.h)*PAPER_MARGIN;
+  var innerW=pp.w-2*mmm,innerH=pp.h-2*mmm;
+  var dsW=innerW*_drawScale,dsH=innerH*(1-CAJETIN_H_RATIO)*_drawScale;
+  var drawW=tw-2*m,drawH=th-2*m-cjH;
+  var tsc=Math.min(drawW/dsW,drawH/dsH);
+  var ox=m+(drawW-dsW*tsc)/2,oy=m+drawH;
+  _modules.forEach(function(mod){
+    var mx=ox+mod.x*tsc,my=oy-(mod.y+mod.h)*tsc;
+    var mw=mod.w*tsc,mh=mod.h*tsc;
+    tctx.fillStyle='rgba(180,180,180,.5)';tctx.fillRect(mx,my,mw,mh);
+    tctx.strokeStyle='#888';tctx.lineWidth=0.5;tctx.strokeRect(mx,my,mw,mh);
+  });
+  return tc.toDataURL('image/png',0.7);
 }
-loadPage(_activePageIdx);
-saveHistory();resizeCanvas();
-// Restore paper & scale from localStorage
-document.getElementById('paperFormat').value=_paper;
-document.getElementById('scaleSelect').value=_drawScale;
-document.getElementById('zoomSelect').value=Math.round(_userZoom*100);
-applyPaperScale();
-renderSlides();
+
+function getProjectData(){
+  stashPage();
+  return{
+    pages:_pages.map(function(p){return{modules:p.modules,meta:p.meta};}),
+    paper:_paper,
+    drawScale:_drawScale,
+    activePageIdx:_activePageIdx
+  };
+}
+
+function loadProjectData(data){
+  if(data.paper){_paper=data.paper;localStorage.setItem('c2d_paper',_paper);}
+  if(data.drawScale){_drawScale=data.drawScale;localStorage.setItem('c2d_scale',_drawScale.toString());}
+  if(data.pages&&data.pages.length>0){
+    _pages=data.pages.map(function(sp){return{modules:sp.modules||[],meta:sp.meta||JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};});
+    _activePageIdx=data.activePageIdx||0;
+    if(_activePageIdx>=_pages.length) _activePageIdx=0;
+  }else{
+    _pages=[newPageObj()];_activePageIdx=0;
+  }
+  loadPage(_activePageIdx);
+}
+
+async function saveProject(){
+  if(!_supabase||!_currentUser){window.location.href='/login/?redirect='+encodeURIComponent(window.location.href);return;}
+  var btn=document.getElementById('btnSave');
+  btn.textContent='Guardando...';btn.classList.add('saving');
+  try{
+    var thumb=generateThumbnail();
+    var projData=getProjectData();
+    var projName=_meta.proyecto||'Sin nombre';
+    if(_projectId){
+      await _supabase.from('projects').update({name:projName,data:projData,thumbnail:thumb,updated_at:new Date().toISOString()}).eq('id',_projectId);
+    }else{
+      var result=await _supabase.from('projects').insert({user_id:_currentUser.id,name:projName,data:projData,thumbnail:thumb}).select('id').single();
+      if(result.data) {_projectId=result.data.id;history.replaceState(null,'','/configurador-2d/?project='+_projectId);}
+    }
+    btn.textContent='Guardado';setTimeout(function(){btn.textContent='Guardar';},1500);
+  }catch(e){btn.textContent='Error';setTimeout(function(){btn.textContent='Guardar';},2000);}
+  btn.classList.remove('saving');
+}
+
+// ── INIT ──
+function initLocal(){
+  // Load pages from localStorage or create default
+  var _savedPages=null;
+  try{_savedPages=JSON.parse(localStorage.getItem('c2d_pages'));}catch(e){}
+  if(_savedPages&&_savedPages.length>0){
+    _pages=_savedPages.map(function(sp){return{modules:sp.modules||[],meta:sp.meta||JSON.parse(JSON.stringify(_defaultMeta)),history:[],historyIdx:-1};});
+    _activePageIdx=parseInt(localStorage.getItem('c2d_activePageIdx'))||0;
+    if(_activePageIdx>=_pages.length) _activePageIdx=0;
+  }else{
+    var oldMeta=null;try{oldMeta=JSON.parse(localStorage.getItem('c2d_meta'));}catch(e){}
+    var pg=newPageObj();
+    if(oldMeta&&oldMeta.proyecto) pg.meta=oldMeta;
+    _pages=[pg];_activePageIdx=0;
+  }
+  loadPage(_activePageIdx);
+  finishInit();
+}
+
+function finishInit(){
+  saveHistory();resizeCanvas();
+  document.getElementById('paperFormat').value=_paper;
+  document.getElementById('scaleSelect').value=_drawScale;
+  document.getElementById('zoomSelect').value=Math.round(_userZoom*100);
+  applyPaperScale();
+  renderSlides();
+}
+
+// Try Supabase auth, fall back to local if unavailable
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
+      _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+      var s=await _supabase.auth.getSession();
+      if(s.data.session) _currentUser=s.data.session.user;
+    }
+  }catch(e){}
+
+  // Check URL for project ID
+  var params=new URLSearchParams(window.location.search);
+  var pid=params.get('project');
+
+  if(pid&&_supabase&&_currentUser){
+    // Load project from Supabase
+    var result=await _supabase.from('projects').select('*').eq('id',pid).single();
+    if(result.data&&result.data.data){
+      _projectId=pid;
+      loadProjectData(result.data.data);
+      finishInit();
+    }else{
+      // Project not found, start fresh
+      initLocal();
+    }
+  }else{
+    initLocal();
+  }
+})();
 
 // ── CONTEXT MENU ──
 var _ctxMenu=document.getElementById('ctxMenu');
