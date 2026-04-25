@@ -1431,7 +1431,11 @@ function loadH2C(){return loadLib('html2canvas','https://cdnjs.cloudflare.com/aj
 function loadJsPDF(){return loadLib('jsPDF','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',function(){return window.jspdf?window.jspdf.jsPDF:null;});}
 
 function captureWrap(){
-  // Capture the wrap element (canvas + HTML module divs) via html2canvas
+  var exportScale=3;
+  // Inflate canvas to high-res before capture
+  var origW=cvs.width,origH=cvs.height;
+  cvs.width=origW*exportScale;cvs.height=origH*exportScale;
+  ctx.scale(exportScale,exportScale);
   _exportMode=true;draw();renderModules();
   // Hide selection visuals for export
   var selected=wrap.querySelectorAll('.c2d-module.selected');
@@ -1441,13 +1445,14 @@ function captureWrap(){
   return loadH2C().then(function(html2canvas){
     return html2canvas(wrap,{
       x:pr.x,y:pr.y,width:pr.w,height:pr.h,
-      scale:3,
+      scale:exportScale,
       backgroundColor:'#ffffff',
       useCORS:true,
       logging:false
     });
   }).then(function(resultCanvas){
-    // Restore
+    // Restore canvas to screen resolution
+    cvs.width=origW;cvs.height=origH;
     _exportMode=false;draw();renderModules();
     if(bbox) bbox.style.display='';
     return resultCanvas;
