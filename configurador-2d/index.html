@@ -593,8 +593,19 @@ function renderModules(){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
-    mw=m.w*sc;mh=m.h*sc;
-    mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
+    // Lines use x1,y1,x2,y2 — compute bounding box
+    if(m.type==='shape_line'){
+      var lx1=Math.min(m.x1,m.x2),ly1=Math.min(m.y1,m.y2);
+      var lx2=Math.max(m.x1,m.x2),ly2=Math.max(m.y1,m.y2);
+      var pad=Math.max(m.strokeWidth||1,6);
+      mw=(lx2-lx1)*sc+pad*2;mh=(ly2-ly1)*sc+pad*2;
+      mx=o.x+lx1*sc-pad;my=o.y-ly2*sc-pad;
+      // Store bbox offset for SVG coords
+      m._bboxOx=lx1;m._bboxOy=ly1;m._bboxPad=pad;
+    }else{
+      mw=m.w*sc;mh=m.h*sc;
+      mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
+    }
     div.style.left=(mx-layerOffX)+'px';div.style.top=(my-layerOffY)+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
     var inner='';
@@ -692,7 +703,10 @@ function renderModules(){
       var st=m.stroke||'#000';var stw=m.strokeWidth||1;var fl=m.fill||'none';
       var svgStr='<svg style="position:absolute;top:0;left:0;width:'+sw+'px;height:'+sh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+sw+' '+sh+'">';
       if(m.type==='shape_line'){
-        svgStr+='<line x1="0" y1="'+sh+'" x2="'+sw+'" y2="0" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
+        var lpad=m._bboxPad||6;
+        var lsx1=(m.x1-m._bboxOx)*sc+lpad, lsy1=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad;
+        var lsx2=(m.x2-m._bboxOx)*sc+lpad, lsy2=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad;
+        svgStr+='<line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
       }else if(m.type==='shape_curve'){
         var cpx=(m.cpx!=null?m.cpx:0.5)*sw;
         var cpy=(m.cpy!=null?m.cpy:0)*sh;
@@ -705,19 +719,32 @@ function renderModules(){
       svgStr+='</svg>';
       inner=svgStr;
     }
-    var dims=isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.w+'&times;'+m.h;
+    var dims=m.type==='shape_line'?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.w+'&times;'+m.h;
     div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:(m.type==='shape_line')?['l','r']:['tl','t','tr','l','r','bl','b','br'];
+      if(m.type==='shape_line'){
+        // Free-draggable endpoint handles
+        var lpad2=m._bboxPad||6;
+        var ep1x=(m.x1-m._bboxOx)*sc+lpad2, ep1y=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad2;
+        var ep2x=(m.x2-m._bboxOx)*sc+lpad2, ep2y=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad2;
+        [{px:ep1x,py:ep1y,pt:1},{px:ep2x,py:ep2y,pt:2}].forEach(function(ep){
+          var h=document.createElement('div');
+          h.className='c2d-handle';h.style.cssText='left:'+(ep.px-4)+'px;top:'+(ep.py-4)+'px;cursor:move';
+          h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
+          div.appendChild(h);
+        });
+      }else{
+      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:['tl','t','tr','l','r','bl','b','br'];
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
         h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
         div.appendChild(h);
       });
+      }
       // Curve control point handle
       if(m.type==='shape_curve'){
         var cpxPx=(m.cpx!=null?m.cpx:0.5)*mw;
@@ -737,7 +764,8 @@ function renderModules(){
     var bx1=Infinity,by1=Infinity,bx2=-Infinity,by2=-Infinity;
     _sel.forEach(function(i){
       var m=_modules[i],mx,my,mw,mh;
-      mx=m.x;my=m.y;mw=m.w;mh=m.h;
+      if(m.type==='shape_line'){mx=Math.min(m.x1,m.x2);my=Math.min(m.y1,m.y2);mw=Math.abs(m.x2-m.x1);mh=Math.abs(m.y2-m.y1);}
+      else{mx=m.x;my=m.y;mw=m.w;mh=m.h;}
       bx1=Math.min(bx1,mx);by1=Math.min(by1,my);
       bx2=Math.max(bx2,mx+mw);by2=Math.max(by2,my+mh);
     });
@@ -787,15 +815,18 @@ function renderProps(){
   // Shape properties
   var isShape=m.type.startsWith('shape_');
   if(isShape){
-    var shapeHTML=
-      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+typeLabel(m.type)+'</div></div>'+
-      '<div class="c2d-prop"><label>'+(m.type==='shape_line'?'Largo':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
-      (m.type==='shape_line'?'':'<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>')+
-      '<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
-      '<div class="c2d-prop"><label>Grosor trazo (px)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>'+
-      '<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
-    if(m.type==='shape_circle'){
-      shapeHTML=shapeHTML.replace('Alto (mm)','Di\u00E1metro Y (mm)').replace('Ancho (mm)','Di\u00E1metro X (mm)');
+    var shapeHTML='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+typeLabel(m.type)+'</div></div>';
+    if(m.type==='shape_line'){
+      var lineLen=Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)));
+      shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label><div style="font-size:13px;padding:6px 0">'+lineLen+'</div></div>';
+    }else{
+      shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>';
+      shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro Y':'Alto')+' (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>';
+    }
+    shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>Grosor trazo (px)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
+    if(m.type!=='shape_line'){
+      shapeHTML+='<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
     }
     panel.innerHTML=shapeHTML+'<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
     return;
@@ -897,10 +928,13 @@ wrap.addEventListener('drop',function(e){
   var newMod;
   if(isShape){
     var sh=_dragData.h||1;
-    if(_dragData.type==='shape_line') sh=1;
-    newMod={type:_dragData.type,w:_dragData.w,h:sh,x:x,y:y,stroke:'#000000',strokeWidth:1,fill:'none'};
-    if(_dragData.type==='shape_curve'){newMod.cpx=0.5;newMod.cpy=0;newMod.h=_dragData.h;}
-    if(_dragData.type==='shape_circle'){newMod.h=_dragData.w;}
+    if(_dragData.type==='shape_line'){
+      newMod={type:'shape_line',x1:x,y1:y,x2:x+_dragData.w,y2:y,stroke:'#000000',strokeWidth:1};
+    }else{
+      newMod={type:_dragData.type,w:_dragData.w,h:sh,x:x,y:y,stroke:'#000000',strokeWidth:1,fill:'none'};
+      if(_dragData.type==='shape_curve'){newMod.cpx=0.5;newMod.cpy=0;newMod.h=_dragData.h;}
+      if(_dragData.type==='shape_circle'){newMod.h=_dragData.w;}
+    }
   }else{
     var _dFixed={'barra':40,'tapeta':19,'zocalo':19,'puerta_batiente':19};
     var dd=_dFixed[_dragData.type]||600;
@@ -921,7 +955,8 @@ function startDragModule(e,i){
   var origins=[];
   _sel.forEach(function(idx){
     var m=_modules[idx];
-    origins.push({idx:idx,x:m.x,y:m.y,pz:m.pz||0});
+    if(m.type==='shape_line') origins.push({idx:idx,x1:m.x1,y1:m.y1,x2:m.x2,y2:m.y2,isLine:true});
+    else origins.push({idx:idx,x:m.x,y:m.y,pz:m.pz||0});
   });
   _dragMod={startX:e.clientX,startY:e.clientY,origins:origins};
   document.addEventListener('mousemove',dragModuleMove);
@@ -1016,9 +1051,8 @@ function dragModuleMove(e){
   // Apply offsets to all selected + clamp to paper
   _dragMod.origins.forEach(function(o){
     var m=_modules[o.idx];
-    m.x=o.x+xOff;
-    m.y=o.y+yOff;
-    clampToPaper(m);
+    if(o.isLine){m.x1=o.x1+xOff;m.y1=o.y1+yOff;m.x2=o.x2+xOff;m.y2=o.y2+yOff;}
+    else{m.x=o.x+xOff;m.y=o.y+yOff;clampToPaper(m);}
   });
   renderModules();renderProps();
 }
@@ -1359,6 +1393,32 @@ function curveDragEnd(){
   draw();
 }
 
+// Line endpoint drag
+var _lineDrag=null;
+function startLineDrag(e,idx,pt){
+  saveHistory();
+  var m=_modules[idx];
+  _lineDrag={idx:idx,pt:pt,startX:e.clientX,startY:e.clientY,
+    origX1:m.x1,origY1:m.y1,origX2:m.x2,origY2:m.y2};
+  document.addEventListener('mousemove',lineDragMove);
+  document.addEventListener('mouseup',lineDragEnd);
+}
+function lineDragMove(e){
+  if(!_lineDrag) return;
+  var m=_modules[_lineDrag.idx],sc=s();
+  var dx=(e.clientX-_lineDrag.startX)/sc;
+  var dy=-(e.clientY-_lineDrag.startY)/sc;
+  if(_lineDrag.pt===1){m.x1=snap(_lineDrag.origX1+dx);m.y1=snap(_lineDrag.origY1+dy);}
+  else{m.x2=snap(_lineDrag.origX2+dx);m.y2=snap(_lineDrag.origY2+dy);}
+  renderModules();renderProps();
+}
+function lineDragEnd(){
+  _lineDrag=null;
+  document.removeEventListener('mousemove',lineDragMove);
+  document.removeEventListener('mouseup',lineDragEnd);
+  draw();
+}
+
 // Pan (middle mouse / space) + Marquee selection + Deselect
 var _panning=null,_marquee=null,_marqueeDiv=null,_marqueeMode=false;
 wrap.style.cursor='grab';
@@ -1426,7 +1486,8 @@ function marqueeEnd(e){
     if(!_marquee.shift) _sel.clear();
     _modules.forEach(function(m,i){
       var mleft,mtop,mw,mh;
-      mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;
+      if(m.type==='shape_line'){var lmx=Math.min(m.x1,m.x2),lmy=Math.max(m.y1,m.y2);mleft=o.x+lmx*sc;mtop=o.y-lmy*sc;mw=Math.abs(m.x2-m.x1)*sc;mh=Math.abs(m.y2-m.y1)*sc;}
+      else{mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;}
       if(mleft+mw>mx1&&mleft<mx2&&mtop+mh>my1&&mtop<my2) _sel.add(i);
     });
     renderModules();renderProps();
