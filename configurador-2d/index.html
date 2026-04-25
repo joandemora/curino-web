@@ -384,7 +384,7 @@ function resizeFurniture(){
 function paperRect(){
   // Paper rectangle: fixed size, centered in viewport. Does NOT scale with zoom.
   var p=PAPERS[_paper], aspect=p.w/p.h;
-  var maxW=wrap.clientWidth*0.85, maxH=wrap.clientHeight*0.85;
+  var maxW=wrap.clientWidth*0.90, maxH=wrap.clientHeight*0.90;
   var pw,ph;
   if(maxW/aspect<=maxH){pw=maxW;ph=maxW/aspect;}
   else{ph=maxH;pw=ph*aspect;}
