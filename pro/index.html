@@ -9,19 +9,9 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Bebas+Neue&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#FAF9F5;--bg-deep:#F0EEE6;--paper:#FFFFFF;
-  --ink:#1F1E1C;--ink-soft:#5C5B57;--ink-mute:#8C8A82;
-  --coral:#CC785C;--coral-deep:#B8604A;
-  --line:#E8E6DE;--line-soft:#F0EEE6;
-  --font:'Inter',-apple-system,sans-serif;
-  --serif:'Fraunces',Georgia,serif;
-}
-html{scroll-behavior:smooth;overflow-x:hidden}
-body{background:var(--bg);color:var(--ink);font-family:var(--font);font-weight:400;line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-size:16px;padding-top:76px}
+body{line-height:1.5;font-size:16px;padding-top:76px}
 
 /* ── NAV ── */
 nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:24px 0;background:transparent;border-bottom:1px solid transparent;transition:background .3s,box-shadow .3s,border-color .3s}
@@ -63,11 +53,9 @@ nav a:hover{color:var(--ink)}
 .section-title em{font-style:italic;color:var(--coral);font-weight:400}
 .section-lead{font-size:18px;color:var(--ink-soft);line-height:1.55;max-width:56ch}
 
-/* Buttons */
-.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:8px;font-family:var(--font);font-size:14.5px;font-weight:500;text-decoration:none;transition:all .2s ease;cursor:pointer;border:none}
-.btn-primary{background:var(--ink);color:var(--bg)}
-.btn-primary:hover{background:var(--coral);transform:translateY(-1px)}
-.btn-outline{background:transparent;color:var(--ink);border:1px solid #d1d5db}
+/* Buttons (override token size for pro) */
+.btn{font-size:14.5px}
+.btn-outline{border-color:#d1d5db}
 .btn-outline:hover{background:#f3f4f6;border-color:#d1d5db}
 
 /* Reveal */

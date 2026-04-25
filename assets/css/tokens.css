@@ -1,0 +1,32 @@
+/* Curino Design Tokens — shared across all pages */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#FAF9F5;
+  --bg-deep:#F0EEE6;
+  --paper:#FFFFFF;
+  --ink:#1F1E1C;
+  --ink-soft:#5C5B57;
+  --ink-mute:#8C8A82;
+  --coral:#CC785C;
+  --coral-deep:#B8604A;
+  --line:#E8E6DE;
+  --line-soft:#F0EEE6;
+  --font:'Inter',-apple-system,sans-serif;
+  --serif:'Fraunces',Georgia,serif;
+}
+
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+/* Shared button system */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:8px;font-family:var(--font);font-size:14px;font-weight:500;text-decoration:none;transition:all .2s ease;cursor:pointer;border:none}
+.btn-primary{background:var(--ink);color:var(--bg)}
+.btn-primary:hover{background:var(--coral);transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn-outline:hover{background:var(--line-soft);border-color:var(--ink)}
+.btn-danger{background:transparent;color:#dc2626;border:1px solid #fecaca;border-radius:8px}
+.btn-danger:hover{background:#fef2f2}
+.btn-small{padding:8px 16px;font-size:12px}

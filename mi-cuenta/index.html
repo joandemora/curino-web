@@ -6,23 +6,20 @@
 <title>Mi cuenta — Curino</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* Legacy variable aliases for existing selectors */
 :root{
-  --black:#0a0a0a;
-  --mid:#888;
+  --black:var(--ink);
+  --mid:var(--ink-mute);
   --light:#c0c0c0;
-  --border:#e5e5e5;
-  --bg:#f8f8f6;
-  --white:#ffffff;
-  --font:'Open Sans',system-ui,sans-serif;
+  --border:var(--line);
+  --white:var(--paper);
 }
-html{scroll-behavior:smooth;overflow-x:hidden}
-body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
-h1,h2,h3{font-size:22px;font-weight:400;letter-spacing:normal;text-align:center;text-transform:uppercase;line-height:1.4;margin:0}
-p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
+body{background:var(--paper)}
+h1,h2,h3{font-family:var(--serif);font-size:22px;font-weight:300;letter-spacing:-.02em;text-align:center;text-transform:uppercase;line-height:1.4;margin:0}
+p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:1.6}
 
 /* ── NAV ── */
 nav{
@@ -37,14 +34,14 @@ nav{
 .nav-links{display:flex;gap:1.8rem;align-items:center}
 .nav-links a{
   font-size:12px;letter-spacing:0.24px;text-transform:uppercase;
-  color:#000000;text-decoration:none;font-weight:400;transition:color .2s;position:relative;
+  color:var(--ink);text-decoration:none;font-weight:400;transition:color .2s;position:relative;
 }
-.nav-links a:hover{color:#999999}
+.nav-links a:hover{color:var(--ink-mute)}
 .nav-icons{display:flex;gap:1.2rem;align-items:center}
-.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000000;text-decoration:none;font-weight:400;transition:color .2s}
-.nav-icons a:hover{color:#999999}
-.nav-icons svg{width:16px;height:16px;stroke:#000000;stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
-.nav-icons svg:hover{stroke:#999999}
+.nav-icons a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:var(--ink);text-decoration:none;font-weight:400;transition:color .2s}
+.nav-icons a:hover{color:var(--ink-mute)}
+.nav-icons svg{width:16px;height:16px;stroke:var(--ink);stroke-width:1.5;fill:none;cursor:pointer;transition:stroke .2s}
+.nav-icons svg:hover{stroke:var(--ink-mute)}
 .nav-mobile-right{display:none}
 .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
 .nav-hamburger span{display:block;width:22px;height:1px;background:var(--black);transition:all .3s;transform-origin:center}
@@ -98,12 +95,12 @@ nav{
 
 /* ── USER ICON ── */
 .user-icon-link{display:flex;align-items:center}
-.user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+.user-icon-link svg{width:16px;height:16px;stroke:var(--ink);stroke-width:1.5;fill:none;cursor:pointer}
 
 /* ── CART ── */
 .cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
-.cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
-.cart-badge{position:absolute;top:-6px;right:-8px;background:#0a0a0a;color:#fff;
+.cart-icon svg{width:16px;height:16px;stroke:var(--ink);stroke-width:1.5;fill:none}
+.cart-badge{position:absolute;top:-6px;right:-8px;background:var(--ink);color:#fff;
   font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
 .cart-badge.visible{opacity:1}
@@ -129,16 +126,16 @@ nav{
 .cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem}
 .cart-subtotal-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
 .cart-subtotal-price{font-size:14px;font-weight:600}
-.cart-checkout{display:block;width:100%;padding:.85rem;background:var(--black);color:var(--white);
+.cart-checkout{display:block;width:100%;padding:.85rem;background:var(--ink);color:var(--paper);
   text-align:center;text-decoration:none;font-family:var(--font);font-size:12px;
-  letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s}
-.cart-checkout:hover{background:#333}
+  letter-spacing:.1em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:all .2s}
+.cart-checkout:hover{background:var(--coral)}
 
 /* ── MI CUENTA ── */
 .account{max-width:860px;margin:120px auto 4rem;padding:0 32px}
-.account-title{font-size:22px;font-weight:400;text-transform:uppercase;text-align:left;margin-bottom:2.5rem;letter-spacing:normal}
+.account-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;text-transform:none;text-align:left;margin-bottom:2.5rem;letter-spacing:-.02em}
 .account-section{margin-bottom:3rem}
-.account-section-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.account-section-title{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1px solid var(--border);color:var(--ink-soft)}
 .account-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;font-size:14px}
 .account-row-label{color:var(--mid);font-size:12px;letter-spacing:.05em;text-transform:uppercase;min-width:120px}
 .account-row-value{text-align:right}
@@ -148,14 +145,14 @@ nav{
 .orders-table th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;text-align:left;padding:.75rem 0;border-bottom:2px solid var(--black)}
 .orders-table td{padding:.75rem 0;border-bottom:1px solid var(--border);vertical-align:top}
 .orders-table .order-config{font-size:12px;color:var(--mid);line-height:1.6}
-.order-status{display:inline-block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:.25rem .6rem}
+.order-status{display:inline-block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:.25rem .6rem;border-radius:6px}
 .order-status.pagado{background:#f0fdf4;color:#16a34a}
 .order-status.produccion{background:#fffbeb;color:#d97706}
 .order-status.enviado{background:#eff6ff;color:#2563eb}
 .orders-empty{color:var(--mid);font-size:13px;padding:2rem 0;text-align:center}
 
 /* Addresses */
-.address-card{border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem;position:relative}
+.address-card{border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;position:relative}
 .address-card p{font-size:13px;line-height:1.6;text-align:left}
 .address-actions{display:flex;gap:1rem;margin-top:.75rem}
 .address-actions button{background:none;border:none;font-family:var(--font);font-size:12px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;transition:color .2s}
@@ -175,15 +172,7 @@ nav{
 .field-wrap.has-error input{border-bottom-color:#dc2626!important}
 .field-wrap.has-error .field-error{display:block}
 
-/* Buttons */
-.btn{padding:.75rem 1.5rem;font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s,color .2s;font-weight:400}
-.btn-primary{background:var(--black);color:var(--white)}
-.btn-primary:hover{background:#333}
-.btn-outline{background:transparent;color:var(--black);border:1px solid var(--border)}
-.btn-outline:hover{border-color:var(--black)}
-.btn-danger{background:transparent;color:#dc2626;border:1px solid #fecaca}
-.btn-danger:hover{background:#fef2f2}
-.btn-small{padding:.5rem 1rem;font-size:11px}
+/* Buttons (extend tokens.css) */
 .btn-add{margin-top:.5rem}
 
 /* ── GOOGLE PLACES AUTOCOMPLETE ── */
@@ -192,14 +181,14 @@ nav{
 .places-wrap input{width:100%;padding:.6rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;transition:border-color .2s}
 .places-wrap input:focus{border-color:var(--black)}
 .places-wrap input::placeholder{color:var(--mid)}
-.places-dd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-top:none;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.places-dd{position:absolute;top:100%;left:0;right:0;background:var(--paper);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;z-index:200;display:none;max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .places-dd.open{display:block}
 .places-dd-item{padding:.5rem .75rem;font-size:13px;cursor:pointer;transition:background .15s}
 .places-dd-item:hover,.places-dd-item.active{background:var(--bg)}
 
 /* ── FOOTER ── */
 footer{
-  background:var(--black);color:#ffffff;
+  background:var(--ink);color:#ffffff;
   padding:4rem 32px 3rem;
   display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem 2rem;
   grid-template-areas:
@@ -216,7 +205,7 @@ footer{
 .footer-newsletter button{background:transparent;border:none;color:#ffffff;font-family:var(--font);font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #ffffff;padding-bottom:3px;transition:color .2s,border-color .2s}
 .footer-newsletter button:hover{color:#999999;border-color:#999999}
 .footer-links{display:block}
-.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#ffffff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
+.footer-bottom{background:var(--ink);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#ffffff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
 .footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#ffffff;text-transform:none;letter-spacing:0.14px;font-weight:400}
 
 /* ── RESPONSIVE ── */
