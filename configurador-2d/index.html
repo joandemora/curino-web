@@ -698,7 +698,7 @@ function renderModules(){
     // Shape types
     var isShape=m.type.startsWith('shape_');
     if(isShape){
-      div.classList.add('no-frame');
+      div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
       var st=m.stroke||'#000000';var stw=Math.max(1,(m.strokeWidth||1)*sc);var fl=m.fill||'none';
       var svgStr='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">';
       if(m.type==='shape_line'){
