@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#1F1E1C;--mid:#8C8A82;--light:#c0c0c0;--border:#E8E6DE;--bg:#FAF9F5;--bg-deep:#F0EEE6;--white:#fff;--accent:#007354;--coral:#CC785C;--font:'Inter',-apple-system,sans-serif;--serif:'Fraunces',Georgia,serif;--line-soft:#F0EEE6}
@@ -98,6 +99,12 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-ctx-item:hover{background:var(--bg)}
 .c2d-ctx-item span{color:var(--mid);font-size:10px}
 .c2d-ctx-sep{height:1px;background:var(--border);margin:4px 0}
+/* Export dropdown */
+.c2d-export-wrap{position:relative;display:inline-flex}
+.c2d-export-dd{position:absolute;top:100%;right:0;margin-top:4px;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);min-width:150px;padding:4px 0;display:none;z-index:50}
+.c2d-export-dd.open{display:block}
+.c2d-export-dd div{padding:6px 14px;font-size:12px;cursor:pointer;transition:background .1s;white-space:nowrap}
+.c2d-export-dd div:hover{background:var(--bg)}
 
 /* Slides panel */
 .c2d-slides{width:160px;border-right:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
@@ -153,7 +160,13 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
   <div class="c2d-toolbar">
     <button onclick="undo()" title="Deshacer (Ctrl+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
     <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg></button>
-    <button onclick="exportPNG()">PNG</button>
+    <div class="c2d-export-wrap">
+      <button onclick="toggleExportMenu()">Exportar</button>
+      <div class="c2d-export-dd" id="exportMenu">
+        <div onclick="closeExportMenu();exportPNG()">Exportar como PNG</div>
+        <div onclick="closeExportMenu();exportPDF()">Exportar como PDF</div>
+      </div>
+    </div>
     <button class="btn-save" id="btnSave" onclick="saveProject()">Guardar</button>
   </div>
 </div>
@@ -1400,6 +1413,62 @@ function exportPNG(){
     ctx.fillText(m.w+'\u00D7'+m.h,o.x+m.x*sc+m.w*sc/2,o.y+m.y*sc+m.h*sc/2+4);
   });
   var a=document.createElement('a');a.download='curino-2d.png';a.href=cvs.toDataURL('image/png');a.click();draw();
+}
+
+function toggleExportMenu(){document.getElementById('exportMenu').classList.toggle('open');}
+function closeExportMenu(){document.getElementById('exportMenu').classList.remove('open');}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.c2d-export-wrap')) closeExportMenu();
+});
+
+function exportPDF(){
+  if(!window.jspdf){alert('jsPDF no cargado');return;}
+  var jsPDF=window.jspdf.jsPDF;
+  var p=PAPERS[_paper];
+  // PDF in landscape, dimensions in mm
+  var pdf=new jsPDF({orientation:'landscape',unit:'mm',format:[p.w,p.h]});
+  var origIdx=_activePageIdx;
+  stashPage();
+
+  for(var pi=0;pi<_pages.length;pi++){
+    if(pi>0) pdf.addPage([p.w,p.h],'landscape');
+    // Render this page to an offscreen canvas at high DPI
+    loadPage(pi);
+    var dpi=3; // 3x scale for print quality
+    var offCvs=document.createElement('canvas');
+    var offW=Math.round(p.w*dpi*96/25.4); // mm to px at dpi multiplier
+    var offH=Math.round(p.h*dpi*96/25.4);
+    offCvs.width=offW;offCvs.height=offH;
+    // Temporarily swap canvas and render
+    var origCvs=cvs,origCtx=ctx,origWrap=wrap;
+    cvs=offCvs;ctx=offCvs.getContext('2d');
+    // Mock wrap dimensions for paperRect
+    var mockWrap={clientWidth:offW,clientHeight:offH,getBoundingClientRect:function(){return{left:0,top:0}},style:{},appendChild:function(){},contains:function(){return false}};
+    wrap=mockWrap;
+    _userZoom=1;_panX=0;_panY=0;
+    applyPaperScale();
+    draw();
+    // Draw modules onto offscreen canvas
+    var sc2=s(),o2=origin();
+    _modules.forEach(function(m){
+      ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(o2.x+m.x*sc2,o2.y-(m.y+m.h)*sc2,m.w*sc2,m.h*sc2);
+      ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.strokeRect(o2.x+m.x*sc2,o2.y-(m.y+m.h)*sc2,m.w*sc2,m.h*sc2);
+      ctx.fillStyle='#888';ctx.font=Math.round(10*dpi)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(m.w+'\u00D7'+m.h,o2.x+m.x*sc2+m.w*sc2/2,o2.y-(m.y+m.h)*sc2+m.h*sc2/2);
+    });
+    // Restore
+    cvs=origCvs;ctx=origCtx;wrap=origWrap;
+    // Add image to PDF
+    var imgData=offCvs.toDataURL('image/png');
+    pdf.addImage(imgData,'PNG',0,0,p.w,p.h);
+  }
+  // Restore original page
+  loadPage(origIdx);
+  _userZoom=1;_panX=0;_panY=0;
+  applyPaperScale();
+  renderSlides();
+  var fileName=(_projectMeta.proyecto||'curino-2d')+'.pdf';
+  pdf.save(fileName);
 }
 
 // ── MULTI-PAGE MANAGEMENT ──
