@@ -711,7 +711,7 @@ function renderModules(){
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:(m.type==='shape_line')?['tl','br']:['tl','t','tr','l','r','bl','b','br'];
+      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:(m.type==='shape_line')?['l','r']:['tl','t','tr','l','r','bl','b','br'];
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
@@ -789,10 +789,10 @@ function renderProps(){
   if(isShape){
     var shapeHTML=
       '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+typeLabel(m.type)+'</div></div>'+
-      '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
-      '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="'+(m.type==='shape_line'?'1':'50')+'" onchange="updateProp(\'h\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>'+(m.type==='shape_line'?'Largo':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>'+
+      (m.type==='shape_line'?'':'<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>')+
       '<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
-      '<div class="c2d-prop"><label>Grosor trazo (px)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateProp(\'strokeWidth\',parseFloat(this.value))"></div>'+
+      '<div class="c2d-prop"><label>Grosor trazo (px)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>'+
       '<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
     if(m.type==='shape_circle'){
       shapeHTML=shapeHTML.replace('Alto (mm)','Di\u00E1metro Y (mm)').replace('Ancho (mm)','Di\u00E1metro X (mm)');
@@ -860,6 +860,14 @@ function updateProp(key,val){
   if(key==='d'&&(_modules[idx].type==='barra'||_modules[idx].type==='tapeta'||_modules[idx].type==='zocalo')) return;
   if(key==='d'&&_modules[idx].type==='puerta_batiente') v=Math.max(19,Math.min(30,v));
   _modules[idx][key]=v;
+  draw();renderModules();renderProps();
+}
+function updateShapeStroke(v){
+  if(_sel.size!==1) return;saveHistory();
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];
+  m.strokeWidth=v;
+  if(m.type==='shape_line') m.h=Math.max(1,Math.round(v));
   draw();renderModules();renderProps();
 }
 function deleteSelected(){
