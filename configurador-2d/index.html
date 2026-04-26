@@ -605,15 +605,11 @@ function renderModules(){
       if(m.type==='shape_arc'){
         var adx=m.x2-m.x1,ady=m.y2-m.y1;
         var chord=Math.sqrt(adx*adx+ady*ady)||1;
-        var aR=Math.abs(m.radius||100);
-        if(aR<chord/2) aR=chord/2;
-        var sagitta=aR-Math.sqrt(Math.max(0,aR*aR-(chord/2)*(chord/2)));
-        // Perpendicular direction from chord midpoint
+        var sagAbs=Math.abs(m.sagitta||100);
         var nx=-ady/chord,ny=adx/chord;
-        var sign=(m.radius||100)>0?1:-1;
-        // Arc apex point in world coords
-        var apexX=(m.x1+m.x2)/2+nx*sign*sagitta;
-        var apexY=(m.y1+m.y2)/2+ny*sign*sagitta;
+        var sign=(m.sagitta||100)>0?1:-1;
+        var apexX=(m.x1+m.x2)/2+nx*sign*sagAbs;
+        var apexY=(m.y1+m.y2)/2+ny*sign*sagAbs;
         lx1=Math.min(lx1,apexX);ly1=Math.min(ly1,apexY);
         lx2=Math.max(lx2,apexX);ly2=Math.max(ly2,apexY);
       }
@@ -765,10 +761,13 @@ function renderModules(){
         var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(bboxTop-m.y1)*sc+apad;
         var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(bboxTop-m.y2)*sc+apad;
         var arcDist=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2));
-        var arcR=Math.abs(m.radius||100);
-        if(arcR<arcDist/2) arcR=arcDist/2;
+        var sagVal=Math.abs(m.sagitta||100);
+        if(sagVal<1) sagVal=1;
+        var halfC=arcDist/2;
+        // Convert sagitta to math radius: R = (c²/8s) + (s/2)
+        var arcR=(halfC*halfC)/(2*sagVal)+sagVal/2;
         var arcRpx=arcR*sc;
-        var sweep=(m.radius||100)>0?1:0;
+        var sweep=(m.sagitta||100)>0?1:0;
         inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweep+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
       }else if(m.type==='shape_circle'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
@@ -802,12 +801,11 @@ function renderModules(){
         if(m.type==='shape_arc'){
           var adx2=m.x2-m.x1,ady2=m.y2-m.y1;
           var chord2=Math.sqrt(adx2*adx2+ady2*ady2)||1;
-          var aR2=Math.abs(m.radius||100);if(aR2<chord2/2) aR2=chord2/2;
-          var sag2=aR2-Math.sqrt(Math.max(0,aR2*aR2-(chord2/2)*(chord2/2)));
+          var sagAbs2=Math.abs(m.sagitta||100);
           var nx2=-ady2/chord2,ny2=adx2/chord2;
-          var sign2=(m.radius||100)>0?1:-1;
-          var apexWx=(m.x1+m.x2)/2+nx2*sign2*sag2;
-          var apexWy=(m.y1+m.y2)/2+ny2*sign2*sag2;
+          var sign2=(m.sagitta||100)>0?1:-1;
+          var apexWx=(m.x1+m.x2)/2+nx2*sign2*sagAbs2;
+          var apexWy=(m.y1+m.y2)/2+ny2*sign2*sagAbs2;
           var amid_x=(apexWx-bboxOx)*sc+lpad2;
           var amid_y=(bboxTopY-apexWy)*sc+lpad2;
           var rh=document.createElement('div');
@@ -904,7 +902,7 @@ function renderProps(){
       var lineLen=Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)));
       shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label>'+(m.type==='shape_line'?'<input type="number" value="'+lineLen+'" step="50" onchange="updateLineLength(parseInt(this.value))">':'<div style="font-size:13px;padding:6px 0">'+lineLen+'</div>')+'</div>';
       if(m.type==='shape_arc'){
-        shapeHTML+='<div class="c2d-prop"><label>Radio (mm)</label><input type="number" value="'+(m.radius||100)+'" step="10" onchange="updateProp(\'radius\',parseInt(this.value))"></div>';
+        shapeHTML+='<div class="c2d-prop"><label>Curvatura (mm)</label><input type="number" value="'+(m.sagitta||100)+'" step="10" onchange="updateProp(\'sagitta\',parseInt(this.value))"></div>';
       }
     }else{
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>';
@@ -1031,7 +1029,7 @@ wrap.addEventListener('drop',function(e){
     if(_dragData.type==='shape_line'){
       newMod={type:'shape_line',x1:x,y1:y,x2:x+_dragData.w,y2:y,stroke:'#000000',strokeWidth:1};
     }else if(_dragData.type==='shape_arc'){
-      newMod={type:'shape_arc',x1:x,y1:y,x2:x+_dragData.w,y2:y,radius:100,stroke:'#000000',strokeWidth:1};
+      newMod={type:'shape_arc',x1:x,y1:y,x2:x+_dragData.w,y2:y,sagitta:100,stroke:'#000000',strokeWidth:1};
     }else{
       newMod={type:_dragData.type,w:_dragData.w,h:sh,x:x,y:y,stroke:'#000000',strokeWidth:1,fill:'none'};
       if(_dragData.type==='shape_curve'){newMod.cpx=0.5;newMod.cpy=0;newMod.h=_dragData.h;}
@@ -1565,19 +1563,10 @@ function arcRadiusDragMove(e){
   // Chord vector and midpoint in world
   var cdx=d.cx2-d.cx1,cdy=d.cy2-d.cy1;
   var midWx=(d.cx1+d.cx2)/2,midWy=(d.cy1+d.cy2)/2;
-  // Vector from midpoint to mouse
+  // Sagitta = signed perpendicular distance from mouse to chord
   var pmx=mouseWx-midWx,pmy=mouseWy-midWy;
-  // Cross product (chord × point-mid) determines side
-  var cross=cdx*pmy-cdy*pmx;
-  var sign=cross>=0?1:-1;
-  // Sagitta = perpendicular distance from mouse to chord
-  var clen=d.chord;
-  var sagMM=Math.abs(cdx*pmy-cdy*pmx)/clen;
-  if(sagMM<1) sagMM=1;
-  var halfC=clen/2;
-  // Convert sagitta to radius: R = (c²/8s) + (s/2)
-  var newR=(halfC*halfC)/(2*sagMM)+sagMM/2;
-  m.radius=Math.round(sign*newR);
+  var sagMM=(cdx*pmy-cdy*pmx)/d.chord;
+  m.sagitta=Math.round(sagMM);
   renderModules();renderProps();
 }
 function arcRadiusDragEnd(){
