@@ -1548,36 +1548,35 @@ var _arcRadiusDrag=null;
 function startArcRadiusDrag(e,idx){
   saveHistory();
   var m=_modules[idx];
-  // Compute chord midpoint in viewport coords for sagitta projection
-  var sc2=s(),o2=origin(),pr2=paperRect();
-  var midWx=(m.x1+m.x2)/2, midWy=(m.y1+m.y2)/2;
-  var layerRect=layer.getBoundingClientRect();
-  var midVpX=o2.x+midWx*sc2-pr2.x+layerRect.left;
-  var midVpY=o2.y-midWy*sc2-pr2.y+layerRect.top;
-  // Chord perpendicular normal in viewport (screen Y flipped)
   var cdx=m.x2-m.x1,cdy=m.y2-m.y1;
   var clen=Math.sqrt(cdx*cdx+cdy*cdy)||1;
-  // In viewport: world Y up = screen Y down, so perpendicular is (cdy/clen, cdx/clen)
-  var vnx=cdy/clen, vny=cdx/clen;
-  _arcRadiusDrag={idx:idx,midVpX:midVpX,midVpY:midVpY,vnx:vnx,vny:vny,chord:clen,origSign:(m.radius||100)>0?1:-1};
+  _arcRadiusDrag={idx:idx,chord:clen,cx1:m.x1,cy1:m.y1,cx2:m.x2,cy2:m.y2};
   document.addEventListener('mousemove',arcRadiusDragMove);
   document.addEventListener('mouseup',arcRadiusDragEnd);
 }
 function arcRadiusDragMove(e){
   if(!_arcRadiusDrag) return;
   var d=_arcRadiusDrag, m=_modules[d.idx];
-  // Signed distance from mouse to chord line (via perpendicular projection)
-  var dmx=e.clientX-d.midVpX, dmy=e.clientY-d.midVpY;
-  var sagPx=dmx*d.vnx+dmy*d.vny; // positive = one side, negative = other
-  var sc2=s();
-  var sagMM=Math.abs(sagPx)/sc2;
-  var halfC=d.chord/2;
+  var sc2=s(),o2=origin();
+  var rect=wrap.getBoundingClientRect();
+  // Mouse position in world coords
+  var mouseWx=(e.clientX-rect.left-o2.x)/sc2;
+  var mouseWy=-(e.clientY-rect.top-o2.y)/sc2;
+  // Chord vector and midpoint in world
+  var cdx=d.cx2-d.cx1,cdy=d.cy2-d.cy1;
+  var midWx=(d.cx1+d.cx2)/2,midWy=(d.cy1+d.cy2)/2;
+  // Vector from midpoint to mouse
+  var pmx=mouseWx-midWx,pmy=mouseWy-midWy;
+  // Cross product (chord × point-mid) determines side
+  var cross=cdx*pmy-cdy*pmx;
+  var sign=cross>=0?1:-1;
+  // Sagitta = perpendicular distance from mouse to chord
+  var clen=d.chord;
+  var sagMM=Math.abs(cdx*pmy-cdy*pmx)/clen;
+  if(sagMM<1) sagMM=1;
+  var halfC=clen/2;
   // Convert sagitta to radius: R = (c²/8s) + (s/2)
-  var newR;
-  if(sagMM<1) sagMM=1; // minimum sagitta
-  newR=(halfC*halfC)/(2*sagMM) + sagMM/2;
-  // Sign: which side of the chord
-  var sign=sagPx>=0?d.origSign:-d.origSign;
+  var newR=(halfC*halfC)/(2*sagMM)+sagMM/2;
   m.radius=Math.round(sign*newR);
   renderModules();renderProps();
 }
