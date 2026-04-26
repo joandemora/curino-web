@@ -2686,8 +2686,49 @@ function eraserClick(e){
       _modules.splice(bestIdx,1);
       newLines.forEach(function(nl){_modules.push(nl);});
     }
+  }else if(m.type==='shape_rect'){
+    // Decompose rectangle into 4 lines, erase the clicked side
+    var rot=(m.rotation||0)*Math.PI/180;
+    var hasRot=m.rotation&&m.rotation%360!==0;
+    var cx=m.x+m.w/2, cy=m.y+m.h/2;
+    // 4 corners in world coords (bottom-left, bottom-right, top-right, top-left)
+    var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
+    if(hasRot){
+      corners=corners.map(function(c){return snapRotPt(c.x,c.y,cx,cy,rot);});
+    }
+    // 4 sides as line segments
+    var sides=[];
+    for(var si=0;si<4;si++){
+      var next=(si+1)%4;
+      sides.push({x1:Math.round(corners[si].x),y1:Math.round(corners[si].y),
+                   x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
+    }
+    // Find closest side to click
+    var closestSide=-1,closestDist=tolerance;
+    sides.forEach(function(seg,si){
+      var sdx=seg.x2-seg.x1,sdy=seg.y2-seg.y1;
+      var slen2=sdx*sdx+sdy*sdy;
+      if(slen2===0) return;
+      var t=Math.max(0,Math.min(1,((wx-seg.x1)*sdx+(wy-seg.y1)*sdy)/slen2));
+      var px=seg.x1+t*sdx,py=seg.y1+t*sdy;
+      var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
+      if(d<closestDist){closestDist=d;closestSide=si;}
+    });
+    if(closestSide===-1){
+      // Click on interior: delete entire rect
+      _modules.splice(bestIdx,1);
+    }else{
+      // Remove rect, add 3 remaining sides as lines (skip the clicked side)
+      var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
+      _modules.splice(bestIdx,1);
+      for(var si=0;si<4;si++){
+        if(si===closestSide) continue;
+        _modules.push({type:'shape_line',x1:sides[si].x1,y1:sides[si].y1,
+          x2:sides[si].x2,y2:sides[si].y2,stroke:stroke,strokeWidth:stw});
+      }
+    }
   }else{
-    // Non-line elements: delete entire element
+    // Other elements: delete entire element
     _modules.splice(bestIdx,1);
   }
 
