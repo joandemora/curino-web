@@ -1203,6 +1203,23 @@ function startResize(e,i,pos){
   document.addEventListener('mousemove',resizeMove);
   document.addEventListener('mouseup',resizeEnd);
 }
+// Helper: compute screen position of a corner of a rotated element
+// fx,fy = fraction (0=left/top, 1=right/bottom) of the div
+function rotatedCornerScreen(wx,wy,ww,wh,rot,sc,o){
+  var mx=o.x+wx*sc, my=o.y-(wy+wh)*sc; // div top-left in screen
+  var mw=ww*sc, mh=wh*sc;
+  return {mx:mx,my:my,mw:mw,mh:mh};
+}
+function anchorScreenPos(wx,wy,ww,wh,rot,sc,o,fx,fy){
+  var mx=o.x+wx*sc, my=o.y-(wy+wh)*sc;
+  var mw=ww*sc, mh=wh*sc;
+  var csx=mx+mw/2, csy=my+mh/2; // screen center
+  // Anchor offset from center in screen coords
+  var offx=(fx-0.5)*mw, offy=(fy-0.5)*mh;
+  // CSS rotate(rot): standard rotation matrix
+  var cos=Math.cos(rot),sin=Math.sin(rot);
+  return{x:csx+offx*cos-offy*sin, y:csy+offx*sin+offy*cos};
+}
 function resizeMove(e){
   if(!_resizing) return;
   clearSnapLines();
@@ -1214,19 +1231,13 @@ function resizeMove(e){
   var dy=-rawDx*Math.sin(rotAngle)+rawDy*Math.cos(rotAngle);
   var p=r.pos;
 
-  // Compute anchor handle screen position BEFORE resize (for rotation compensation)
-  var anchorScreenX,anchorScreenY;
-  if(hasRot){
-    // Anchor = opposite corner/edge in local coords (fraction of w,h from top-left of div)
-    var aFx=p.indexOf('r')>=0?0:p.indexOf('l')>=0?1:0.5;
-    var aFy=p.indexOf('b')>=0?0:p.indexOf('t')>=0?1:0.5;
-    // World coords of anchor (alzado: div top-left = (m.x, m.y+m.h))
-    var cos=Math.cos(rotAngle),sin=Math.sin(rotAngle);
-    var cx=r.origX+r.origW/2, cy=r.origY+r.origH/2; // world center
-    var alx=(aFx-0.5)*r.origW, aly=(0.5-aFy)*r.origH; // local from center in world
-    anchorScreenX=o2.x+(cx+alx*cos-aly*sin)*sc;
-    anchorScreenY=o2.y-(cy+alx*sin+aly*cos)*sc;
-  }
+  // Anchor = opposite corner/edge (fraction 0..1 of div)
+  var aFx=p.indexOf('r')>=0?0:p.indexOf('l')>=0?1:0.5;
+  var aFy=p.indexOf('b')>=0?0:p.indexOf('t')>=0?1:0.5;
+
+  // Compute anchor screen position BEFORE resize
+  var anchorBefore;
+  if(hasRot) anchorBefore=anchorScreenPos(r.origX,r.origY,r.origW,r.origH,rotAngle,sc,o2,aFx,aFy);
 
   var skip=new Set([r.idx]);
   var xEdges=hasRot?[]:getSnapEdges('x',skip);
@@ -1261,17 +1272,13 @@ function resizeMove(e){
     if(nh2>=hMin){m.y=topEdge-nh2;m.h=nh2;if(!hasRot&&snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
   }
 
-  // Compensate: keep anchor handle at its original screen position
+  // Compensate: keep anchor at its original screen position
   if(hasRot){
-    var aFx2=p.indexOf('r')>=0?0:p.indexOf('l')>=0?1:0.5;
-    var aFy2=p.indexOf('b')>=0?0:p.indexOf('t')>=0?1:0.5;
-    var cos2=Math.cos(rotAngle),sin2=Math.sin(rotAngle);
-    var ncx=m.x+m.w/2, ncy=m.y+m.h/2;
-    var nalx=(aFx2-0.5)*m.w, naly=(0.5-aFy2)*m.h;
-    var newAnchorSX=o2.x+(ncx+nalx*cos2-naly*sin2)*sc;
-    var newAnchorSY=o2.y-(ncy+nalx*sin2+naly*cos2)*sc;
-    var dsx=newAnchorSX-anchorScreenX;
-    var dsy=newAnchorSY-anchorScreenY;
+    var anchorAfter=anchorScreenPos(m.x,m.y,m.w,m.h,rotAngle,sc,o2,aFx,aFy);
+    var dsx=anchorAfter.x-anchorBefore.x; // screen pixel delta
+    var dsy=anchorAfter.y-anchorBefore.y;
+    // Convert screen delta back to world: screenX = o.x + worldX*sc → dWorldX = dScreenX/sc
+    // screenY = o.y - (worldY+h)*sc → dWorldY needs sign flip
     m.x-=dsx/sc;
     m.y+=dsy/sc;
   }
