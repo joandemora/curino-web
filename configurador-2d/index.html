@@ -1186,7 +1186,12 @@ function startGroupResize(e,pos,bx,by,bw,bh){
   var originals=[];
   _sel.forEach(function(i){
     var m=_modules[i];
-    originals.push({idx:i,x:m.x,y:m.y,w:m.w,h:m.h,d:m.d||600,pz:m.pz||0});
+    if(m.type==='shape_line'){
+      var lx=Math.min(m.x1,m.x2),ly=Math.min(m.y1,m.y2);
+      originals.push({idx:i,x:lx,y:ly,w:Math.abs(m.x2-m.x1),h:Math.abs(m.y2-m.y1),d:0,pz:0,isLine:true,x1:m.x1,y1:m.y1,x2:m.x2,y2:m.y2});
+    }else{
+      originals.push({idx:i,x:m.x,y:m.y,w:m.w,h:m.h,d:m.d||600,pz:m.pz||0});
+    }
   });
   // Detect coincidences between element edges and internal lines of other elements
   var coincidences=[];
@@ -1250,6 +1255,7 @@ function groupResizeMove(e){
   // Pass 1: compute sizes for all elements (proportional with clamps)
   var sized={};
   g.originals.forEach(function(o){
+    if(o.isLine){sized[o.idx]={w:0,h:0,d:0};return;} // lines handled separately in Pass 3a
     var t=_modules[o.idx].type;
     var nw=(t==='divisor')?o.w:Math.max(GRID,Math.round(o.w*sx));
     var nh,nd;
@@ -1311,6 +1317,14 @@ function groupResizeMove(e){
   // Pass 3a: proportional position for chain starters + unchained elements, apply sizes
   g.originals.forEach(function(o){
     var m=_modules[o.idx];
+    if(o.isLine){
+      // Lines: scale endpoints proportionally
+      m.x1=Math.round(ax+(o.x1-g.bx)*sx);
+      m.y1=Math.round(ay+(o.y1-g.by)*sy);
+      m.x2=Math.round(ax+(o.x2-g.bx)*sx);
+      m.y2=Math.round(ay+(o.y2-g.by)*sy);
+      return;
+    }
     m.w=sized[o.idx].w;
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
       m.x=Math.round(ax+(o.x-g.bx)*sx);
@@ -1413,7 +1427,7 @@ function groupResizeMove(e){
   }
 
   // Clamp all selected to paper bounds
-  g.originals.forEach(function(o){clampToPaper(_modules[o.idx]);});
+  g.originals.forEach(function(o){if(!o.isLine) clampToPaper(_modules[o.idx]);});
 
   renderModules();renderProps();
 }
