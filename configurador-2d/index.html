@@ -831,7 +831,7 @@ function renderModules(){
     }else{
       div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     }
-    div.onmousedown=function(e){if(_eraserMode){eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
+    div.onmousedown=function(e){console.log('[DBG] div.onmousedown i='+i+' type='+m.type+' eraserMode='+_eraserMode+' target='+e.target.className);if(_eraserMode){eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){if(_eraserMode) return;e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
@@ -1833,7 +1833,11 @@ function rotateEnd(){
 var _panning=null,_marquee=null,_marqueeDiv=null,_marqueeMode=false;
 wrap.style.cursor='grab';
 wrap.addEventListener('mousedown',function(e){
-  if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
+  console.log('[DBG] wrap.mousedown target='+e.target.className+' eraserMode='+_eraserMode);
+  if(e.target!==wrap&&e.target!==cvs&&e.target!==layer){
+    if(_eraserMode){eraserClick(e);return;}
+    return;
+  }
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
   // Eraser mode: handle click
@@ -2582,6 +2586,7 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
 
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
+  console.log('[DBG] eraserClick called, clientX='+e.clientX+' clientY='+e.clientY);
   var sc2=s(),o2=origin();
   var wx=(e.clientX-o2.x)/sc2;
   var wy=-(e.clientY-o2.y)/sc2;
