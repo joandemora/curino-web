@@ -810,13 +810,6 @@ function renderModules(){
           var apexWy=(m.y1+m.y2)/2+ny2*sign2*sag2;
           var amid_x=(apexWx-bboxOx)*sc+lpad2;
           var amid_y=(bboxTopY-apexWy)*sc+lpad2;
-          // Offset by radius perpendicular to chord
-          var adx=m.x2-m.x1,ady=m.y2-m.y1;
-          var alen=Math.sqrt(adx*adx+ady*ady)||1;
-          var anx=-ady/alen,any=adx/alen; // perpendicular normal
-          var rSign=(m.radius||100)>0?1:-1;
-          amid_x+=anx*rSign*Math.abs(m.radius||100)*sc*0.5;
-          amid_y-=any*rSign*Math.abs(m.radius||100)*sc*0.5;
           var rh=document.createElement('div');
           rh.className='c2d-cp';rh.style.left=amid_x+'px';rh.style.top=amid_y+'px';
           rh.onmousedown=function(e){e.stopPropagation();e.preventDefault();startArcRadiusDrag(e,i);};
@@ -1555,26 +1548,37 @@ var _arcRadiusDrag=null;
 function startArcRadiusDrag(e,idx){
   saveHistory();
   var m=_modules[idx];
-  _arcRadiusDrag={idx:idx,startX:e.clientX,startY:e.clientY,origRadius:m.radius||100};
+  // Compute chord midpoint in viewport coords for sagitta projection
+  var sc2=s(),o2=origin(),pr2=paperRect();
+  var midWx=(m.x1+m.x2)/2, midWy=(m.y1+m.y2)/2;
+  var layerRect=layer.getBoundingClientRect();
+  var midVpX=o2.x+midWx*sc2-pr2.x+layerRect.left;
+  var midVpY=o2.y-midWy*sc2-pr2.y+layerRect.top;
+  // Chord perpendicular normal in viewport (screen Y flipped)
+  var cdx=m.x2-m.x1,cdy=m.y2-m.y1;
+  var clen=Math.sqrt(cdx*cdx+cdy*cdy)||1;
+  // In viewport: world Y up = screen Y down, so perpendicular is (cdy/clen, cdx/clen)
+  var vnx=cdy/clen, vny=cdx/clen;
+  _arcRadiusDrag={idx:idx,midVpX:midVpX,midVpY:midVpY,vnx:vnx,vny:vny,chord:clen,origSign:(m.radius||100)>0?1:-1};
   document.addEventListener('mousemove',arcRadiusDragMove);
   document.addEventListener('mouseup',arcRadiusDragEnd);
 }
 function arcRadiusDragMove(e){
   if(!_arcRadiusDrag) return;
-  var m=_modules[_arcRadiusDrag.idx],sc2=s();
-  // Project mouse movement onto perpendicular of chord
-  var dx=m.x2-m.x1,dy=m.y2-m.y1;
-  var len=Math.sqrt(dx*dx+dy*dy)||1;
-  var nx=-dy/len,ny=dx/len; // perpendicular normal in world
-  // Mouse delta in world
-  var mdx=(e.clientX-_arcRadiusDrag.startX)/sc2;
-  var mdy=-(e.clientY-_arcRadiusDrag.startY)/sc2;
-  var proj=mdx*nx+mdy*ny; // projection onto normal
-  var newR=_arcRadiusDrag.origRadius+proj;
-  // Clamp: minimum radius = half chord length
-  var halfChord=len/2;
-  if(Math.abs(newR)<halfChord) newR=newR>=0?halfChord:-halfChord;
-  m.radius=Math.round(newR);
+  var d=_arcRadiusDrag, m=_modules[d.idx];
+  // Signed distance from mouse to chord line (via perpendicular projection)
+  var dmx=e.clientX-d.midVpX, dmy=e.clientY-d.midVpY;
+  var sagPx=dmx*d.vnx+dmy*d.vny; // positive = one side, negative = other
+  var sc2=s();
+  var sagMM=Math.abs(sagPx)/sc2;
+  var halfC=d.chord/2;
+  // Convert sagitta to radius: R = (c²/8s) + (s/2)
+  var newR;
+  if(sagMM<1) sagMM=1; // minimum sagitta
+  newR=(halfC*halfC)/(2*sagMM) + sagMM/2;
+  // Sign: which side of the chord
+  var sign=sagPx>=0?d.origSign:-d.origSign;
+  m.radius=Math.round(sign*newR);
   renderModules();renderProps();
 }
 function arcRadiusDragEnd(){
