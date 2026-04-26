@@ -2432,30 +2432,37 @@ function ungroupDibujo(){
   saveHistory();
   var gRot=(g.rotation||0)*Math.PI/180;
   var hasRot=g.rotation&&g.rotation%360!==0;
-  var gcx=g.w/2, gcy=g.h/2; // group center in relative coords
   var cos=Math.cos(gRot),sin=Math.sin(gRot);
-  function rotPt(px,py){
-    // Rotate point (relative to group) around group center
-    // Y flipped to match CSS screen-space rotation (Y down)
-    var dx=px-gcx, dy=gcy-py;
-    return{x:gcx+dx*cos-dy*sin, y:gcy-(dx*sin+dy*cos)};
+  // Transform a world-relative point through CSS rotation
+  // 1. Convert to screen-relative within div (Y flip)
+  // 2. Rotate around div center (CSS transform-origin: center)
+  // 3. Convert back to world-relative (Y flip back)
+  // 4. Result is still relative to group origin
+  function transformPt(wx,wy){
+    if(!hasRot) return{x:wx,y:wy};
+    // Screen-relative coords within div
+    var sx=wx, sy=g.h-wy; // Y flip: world up → screen down
+    // Div center in screen-relative
+    var csx=g.w/2, csy=g.h/2;
+    // Rotate around center (CSS rotation matrix)
+    var dx=sx-csx, dy=sy-csy;
+    var rsx=csx+dx*cos-dy*sin;
+    var rsy=csy+dx*sin+dy*cos;
+    // Convert back to world-relative
+    return{x:Math.round(rsx), y:Math.round(g.h-rsy)};
   }
   var newIndices=[];
   g.children.forEach(function(child){
     var m=JSON.parse(JSON.stringify(child));
     if(m.type==='shape_line'||m.type==='shape_arc'){
-      if(hasRot){
-        var p1=rotPt(m.x1,m.y1), p2=rotPt(m.x2,m.y2);
-        m.x1=Math.round(p1.x);m.y1=Math.round(p1.y);
-        m.x2=Math.round(p2.x);m.y2=Math.round(p2.y);
-      }
-      m.x1+=g.x;m.y1+=g.y;m.x2+=g.x;m.y2+=g.y;
+      var p1=transformPt(m.x1,m.y1), p2=transformPt(m.x2,m.y2);
+      m.x1=p1.x+g.x;m.y1=p1.y+g.y;
+      m.x2=p2.x+g.x;m.y2=p2.y+g.y;
     }else{
       if(hasRot){
-        // Rotate child center around group center
         var childCx=m.x+m.w/2, childCy=m.y+m.h/2;
-        var rc=rotPt(childCx,childCy);
-        m.x=Math.round(rc.x-m.w/2);m.y=Math.round(rc.y-m.h/2);
+        var rc=transformPt(childCx,childCy);
+        m.x=rc.x-m.w/2;m.y=rc.y-m.h/2;
         m.rotation=((m.rotation||0)+g.rotation)%360;
       }
       m.x+=g.x;m.y+=g.y;
