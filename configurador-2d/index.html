@@ -2436,8 +2436,9 @@ function ungroupDibujo(){
   var cos=Math.cos(gRot),sin=Math.sin(gRot);
   function rotPt(px,py){
     // Rotate point (relative to group) around group center
-    var dx=px-gcx, dy=py-gcy;
-    return{x:gcx+dx*cos-dy*sin, y:gcy+dx*sin+dy*cos};
+    // Y flipped to match CSS screen-space rotation (Y down)
+    var dx=px-gcx, dy=gcy-py;
+    return{x:gcx+dx*cos-dy*sin, y:gcy-(dx*sin+dy*cos)};
   }
   var newIndices=[];
   g.children.forEach(function(child){
