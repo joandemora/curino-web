@@ -22,6 +22,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar .btn-save{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
 .c2d-toolbar .btn-save:hover{background:#005f45;border-color:#005f45}
 .c2d-toolbar .btn-save.saving{opacity:.6;pointer-events:none}
+.c2d-toolbar .btn-eraser.active{background:var(--coral);color:#fff;border-color:var(--coral)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
@@ -165,6 +166,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
   <div class="c2d-toolbar">
     <button onclick="undo()" title="Deshacer (Ctrl+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
     <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg></button>
+    <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
       <button onclick="toggleExportMenu()">Exportar</button>
       <div class="c2d-export-dd" id="exportMenu">
@@ -1834,6 +1836,8 @@ wrap.addEventListener('mousedown',function(e){
   if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
+  // Eraser mode: handle click
+  if(_eraserMode){eraserClick(e);return;}
   // Cajetin click: open editor panel
   var mx=e.clientX-rect.left,my=e.clientY-rect.top;
   if(hitCajetin(mx,my)&&!e.shiftKey&&!_marqueeMode){
@@ -2540,8 +2544,160 @@ function selectAll(){
   renderModules();renderProps();
 }
 
+// ── ERASER TOOL ──
+var _eraserMode=false;
+function toggleEraser(){
+  _eraserMode=!_eraserMode;
+  var btn=document.getElementById('btnEraser');
+  if(_eraserMode){
+    btn.classList.add('active');
+    wrap.style.cursor='crosshair';
+    _sel.clear();renderModules();renderProps();
+  }else{
+    btn.classList.remove('active');
+    wrap.style.cursor='grab';
+  }
+}
+function exitEraser(){
+  if(!_eraserMode) return;
+  _eraserMode=false;
+  document.getElementById('btnEraser').classList.remove('active');
+  wrap.style.cursor='grab';
+}
+
+// Line segment intersection: returns {x,y,t} or null
+// t is parameter along first segment (0..1)
+function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
+  var dx1=ax2-ax1,dy1=ay2-ay1;
+  var dx2=bx2-bx1,dy2=by2-by1;
+  var denom=dx1*dy2-dy1*dx2;
+  if(Math.abs(denom)<0.001) return null; // parallel
+  var t=((bx1-ax1)*dy2-(by1-ay1)*dx2)/denom;
+  var u=((bx1-ax1)*dy1-(by1-ay1)*dx1)/denom;
+  if(t>0.001&&t<0.999&&u>0.001&&u<0.999){
+    return{x:ax1+t*dx1,y:ay1+t*dy1,t:t};
+  }
+  return null;
+}
+
+// Eraser click: find element under cursor and erase
+function eraserClick(e){
+  var rect=wrap.getBoundingClientRect();
+  var sc2=s(),o2=origin();
+  var wx=(e.clientX-rect.left-o2.x)/sc2;
+  var wy=-(e.clientY-rect.top-o2.y)/sc2;
+  var tolerance=10/sc2; // 10px tolerance in world mm
+
+  // Find closest element
+  var bestIdx=-1,bestDist=tolerance;
+
+  _modules.forEach(function(m,i){
+    if(m.type==='shape_line'||m.type==='shape_arc'){
+      // Distance from point to line segment
+      var dx=m.x2-m.x1,dy=m.y2-m.y1;
+      var len2=dx*dx+dy*dy;
+      if(len2===0){var d=Math.sqrt((wx-m.x1)*(wx-m.x1)+(wy-m.y1)*(wy-m.y1));if(d<bestDist){bestDist=d;bestIdx=i;}return;}
+      var t=Math.max(0,Math.min(1,((wx-m.x1)*dx+(wy-m.y1)*dy)/len2));
+      var px=m.x1+t*dx,py=m.y1+t*dy;
+      var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
+      if(d<bestDist){bestDist=d;bestIdx=i;}
+    }else if(m.w&&m.h){
+      // Check 4 edges of bounding box
+      var edges=[
+        [m.x,m.y,m.x+m.w,m.y],
+        [m.x+m.w,m.y,m.x+m.w,m.y+m.h],
+        [m.x+m.w,m.y+m.h,m.x,m.y+m.h],
+        [m.x,m.y+m.h,m.x,m.y]
+      ];
+      edges.forEach(function(seg){
+        var dx=seg[2]-seg[0],dy=seg[3]-seg[1];
+        var len2=dx*dx+dy*dy;
+        if(len2===0) return;
+        var t=Math.max(0,Math.min(1,((wx-seg[0])*dx+(wy-seg[1])*dy)/len2));
+        var px=seg[0]+t*dx,py=seg[1]+t*dy;
+        var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
+        if(d<bestDist){bestDist=d;bestIdx=i;}
+      });
+      // Also check if click is inside the element
+      if(wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
+        if(tolerance<bestDist||bestIdx===-1){bestDist=0;bestIdx=i;}
+      }
+    }
+  });
+
+  if(bestIdx===-1) return;
+
+  var m=_modules[bestIdx];
+  saveHistory();
+
+  // For lines: try to cut at intersections
+  if(m.type==='shape_line'){
+    // Find all intersections of this line with other lines
+    var intersections=[];
+    _modules.forEach(function(other,j){
+      if(j===bestIdx) return;
+      if(other.type==='shape_line'){
+        var inter=segIntersect(m.x1,m.y1,m.x2,m.y2,other.x1,other.y1,other.x2,other.y2);
+        if(inter) intersections.push(inter);
+      }
+      // Check edges of rectangular elements
+      if(other.w&&other.h&&other.type!=='group'){
+        var edges=[
+          [other.x,other.y,other.x+other.w,other.y],
+          [other.x+other.w,other.y,other.x+other.w,other.y+other.h],
+          [other.x+other.w,other.y+other.h,other.x,other.y+other.h],
+          [other.x,other.y+other.h,other.x,other.y]
+        ];
+        edges.forEach(function(seg){
+          var inter=segIntersect(m.x1,m.y1,m.x2,m.y2,seg[0],seg[1],seg[2],seg[3]);
+          if(inter) intersections.push(inter);
+        });
+      }
+    });
+
+    if(intersections.length===0){
+      // No intersections: delete entire line
+      _modules.splice(bestIdx,1);
+    }else{
+      // Sort intersections by t parameter
+      intersections.sort(function(a,b){return a.t-b.t;});
+      // Add endpoints
+      var pts=[{x:m.x1,y:m.y1,t:0}].concat(intersections).concat([{x:m.x2,y:m.y2,t:1}]);
+      // Find which segment the click falls in
+      var dx=m.x2-m.x1,dy=m.y2-m.y1;
+      var len=Math.sqrt(dx*dx+dy*dy)||1;
+      var clickT=((wx-m.x1)*dx+(wy-m.y1)*dy)/(dx*dx+dy*dy);
+      clickT=Math.max(0,Math.min(1,clickT));
+      var segIdx=0;
+      for(var si=0;si<pts.length-1;si++){
+        if(clickT>=pts[si].t&&clickT<=pts[si+1].t){segIdx=si;break;}
+      }
+      // Create new lines for remaining segments (skip the clicked one)
+      var newLines=[];
+      for(var si=0;si<pts.length-1;si++){
+        if(si===segIdx) continue;
+        newLines.push({
+          type:'shape_line',
+          x1:Math.round(pts[si].x),y1:Math.round(pts[si].y),
+          x2:Math.round(pts[si+1].x),y2:Math.round(pts[si+1].y),
+          stroke:m.stroke||'#000000',strokeWidth:m.strokeWidth||1
+        });
+      }
+      _modules.splice(bestIdx,1);
+      newLines.forEach(function(nl){_modules.push(nl);});
+    }
+  }else{
+    // Non-line elements: delete entire element
+    _modules.splice(bestIdx,1);
+  }
+
+  _sel.clear();
+  draw();renderModules();renderProps();
+  savePages();updateActiveThumb();
+}
+
 // Right-click on modules
-wrap.addEventListener('contextmenu',function(e){e.preventDefault();});
+wrap.addEventListener('contextmenu',function(e){e.preventDefault();exitEraser();});
 document.addEventListener('contextmenu',function(e){
   if(!wrap.contains(e.target)) return;
   e.preventDefault();
@@ -2558,7 +2714,7 @@ document.addEventListener('contextmenu',function(e){
   }
 });
 document.addEventListener('click',function(){hideCtx();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape') hideCtx();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();}});
 </script>
 
 </body>
