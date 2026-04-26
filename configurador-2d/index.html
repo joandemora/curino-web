@@ -442,18 +442,18 @@ function changeZoomSelect(){
   _panX=_panX*(_userZoom/oldUZ);
   _panY=_panY*(_userZoom/oldUZ);
   clampPan();
-  draw();renderModules();
+  draw();renderModules();document.activeElement.blur();
 }
 function changePaper(){
   _paper=document.getElementById('paperFormat').value;
   localStorage.setItem('c2d_paper',_paper);
   _panX=0;_panY=0;
-  applyPaperScale();renderSlides();
+  applyPaperScale();renderSlides();document.activeElement.blur();
 }
 function changeScale(){
   _drawScale=parseInt(document.getElementById('scaleSelect').value)||30;
   localStorage.setItem('c2d_scale',_drawScale.toString());
-  applyPaperScale();renderSlides();
+  applyPaperScale();renderSlides();document.activeElement.blur();
 }
 
 function draw(){
