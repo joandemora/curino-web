@@ -822,7 +822,12 @@ function renderModules(){
       });
     }
     var dims=(m.type==='shape_line'||m.type==='shape_arc')?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.type==='group'?(m.w+'&times;'+m.h):m.w+'&times;'+m.h;
-    div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
+    if(m.type==='group'){
+      // Group children already appended via appendChild — don't overwrite with innerHTML
+      if(_sel.has(i)){var lbl=document.createElement('div');lbl.className='c2d-module-label';lbl.innerHTML=dims+'<br>'+typeLabel(m.type);div.appendChild(lbl);}
+    }else{
+      div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
+    }
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
