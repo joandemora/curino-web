@@ -700,23 +700,41 @@ function renderModules(){
     if(isShape){
       div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
       var st=m.stroke||'#000000';var stw=Math.max(1,(m.strokeWidth||1)*sc);var fl=m.fill||'none';
-      var svgStr='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">';
       if(m.type==='shape_line'){
-        var lpad=m._bboxPad||6;
-        var lsx1=(m.x1-m._bboxOx)*sc+lpad, lsy1=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad;
-        var lsx2=(m.x2-m._bboxOx)*sc+lpad, lsy2=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad;
-        svgStr+='<line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
+        var isHoriz=(m.y1===m.y2),isVert=(m.x1===m.x2);
+        if(isHoriz||isVert){
+          // CSS border for axis-aligned lines (pixel-perfect, no anti-aliasing)
+          var lpad=m._bboxPad||6;
+          if(isHoriz){
+            div.style.borderTop=Math.round(stw)+'px solid '+st;
+            div.style.height='0px';
+            div.style.top=(parseFloat(div.style.top)+lpad)+'px';
+          }else{
+            div.style.borderLeft=Math.round(stw)+'px solid '+st;
+            div.style.width='0px';
+            div.style.left=(parseFloat(div.style.left)+lpad)+'px';
+          }
+        }else{
+          // SVG for diagonal lines (anti-aliasing needed)
+          var lpad=m._bboxPad||6;
+          var lsx1=(m.x1-m._bboxOx)*sc+lpad, lsy1=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad;
+          var lsx2=(m.x2-m._bboxOx)*sc+lpad, lsy2=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad;
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/></svg>';
+        }
+      }else if(m.type==='shape_rect'){
+        // CSS borders for rectangle (pixel-perfect)
+        div.style.border=Math.round(stw)+'px solid '+st;
+        div.style.background=(fl&&fl!=='none')?fl:'transparent';
+        div.style.boxSizing='border-box';
       }else if(m.type==='shape_curve'){
+        // SVG for curves (anti-aliasing needed)
         var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
         var cpy=(m.cpy!=null?m.cpy:0)*mh;
-        svgStr+='<path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round"/>';
-      }else if(m.type==='shape_rect'){
-        svgStr+='<rect x="0.5" y="0.5" width="'+(mw-1)+'" height="'+(mh-1)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
+        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
       }else if(m.type==='shape_circle'){
-        svgStr+='<ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-0.5)+'" ry="'+(mh/2-0.5)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'"/>';
+        // SVG for circles (anti-aliasing needed)
+        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
       }
-      svgStr+='</svg>';
-      inner=svgStr;
     }
     var dims=m.type==='shape_line'?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.w+'&times;'+m.h;
     div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
