@@ -2582,15 +2582,16 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
 
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
-  var rect=wrap.getBoundingClientRect();
   var sc2=s(),o2=origin();
-  var wx=(e.clientX-rect.left-o2.x)/sc2;
-  var wy=-(e.clientY-rect.top-o2.y)/sc2;
-  var tolerance=10/sc2; // 10px tolerance in world mm
+  // Use canvas getBoundingClientRect for correct viewport→world conversion
+  var cRect=cvs.getBoundingClientRect();
+  var px=e.clientX-cRect.left, py=e.clientY-cRect.top;
+  var wx=(px-o2.x)/sc2;
+  var wy=-(py-o2.y)/sc2;
+  var tolerance=10/sc2;
 
   // Find closest element
   var bestIdx=-1,bestDist=tolerance;
-  console.log('[ERASER] click world:',Math.round(wx),Math.round(wy),'tolerance:',Math.round(tolerance));
 
   _modules.forEach(function(m,i){
     if(m.type==='shape_line'||m.type==='shape_arc'){
@@ -2600,7 +2601,6 @@ function eraserClick(e){
       var t=Math.max(0,Math.min(1,((wx-m.x1)*dx+(wy-m.y1)*dy)/len2));
       var px=m.x1+t*dx,py=m.y1+t*dy;
       var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
-      console.log('[ERASER] i='+i+' line ('+m.x1+','+m.y1+')-('+m.x2+','+m.y2+') dist='+Math.round(d));
       if(d<bestDist){bestDist=d;bestIdx=i;}
     }else if(m.w&&m.h){
       var ecx=m.x+m.w/2, ecy=m.y+m.h/2;
@@ -2609,7 +2609,6 @@ function eraserClick(e){
         var erot=m.rotation*Math.PI/180;
         corners=corners.map(function(c){return snapRotPt(c.x,c.y,ecx,ecy,erot);});
       }
-      var sideNames=['bottom','right','top','left'];
       for(var ei=0;ei<4;ei++){
         var enx=(ei+1)%4;
         var edx=corners[enx].x-corners[ei].x,edy=corners[enx].y-corners[ei].y;
@@ -2618,7 +2617,6 @@ function eraserClick(e){
         var et=Math.max(0,Math.min(1,((wx-corners[ei].x)*edx+(wy-corners[ei].y)*edy)/elen2));
         var epx=corners[ei].x+et*edx,epy=corners[ei].y+et*edy;
         var ed=Math.sqrt((wx-epx)*(wx-epx)+(wy-epy)*(wy-epy));
-        console.log('[ERASER] i='+i+' rect '+m.type+' side='+sideNames[ei]+' ('+Math.round(corners[ei].x)+','+Math.round(corners[ei].y)+')-('+Math.round(corners[enx].x)+','+Math.round(corners[enx].y)+') t='+et.toFixed(3)+' dist='+Math.round(ed));
         if(ed<bestDist){bestDist=ed;bestIdx=i;}
       }
       if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
@@ -2626,8 +2624,6 @@ function eraserClick(e){
       }
     }
   });
-  console.log('[ERASER] winner: idx='+bestIdx+' dist='+Math.round(bestDist)+' type='+(bestIdx>=0?_modules[bestIdx].type:'none'));
-
   if(bestIdx===-1) return;
 
   var m=_modules[bestIdx];
