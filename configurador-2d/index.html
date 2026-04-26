@@ -901,7 +901,15 @@ function renderProps(){
       var lineLen=Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)));
       shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label><input type="number" value="'+lineLen+'" step="50" onchange="updateLineLength(parseInt(this.value))"></div>';
       if(m.type==='shape_arc'){
-        shapeHTML+='<div class="c2d-prop"><label>Curvatura (mm)</label><input type="number" value="'+(m.sagitta||100)+'" step="10" onchange="updateProp(\'sagitta\',parseInt(this.value))"></div>';
+        var arcSag=m.sagitta||0;
+        var arcAngle=0;
+        if(Math.abs(arcSag)>0&&lineLen>0){
+          var arcHalfC=lineLen/2;
+          var arcRR=(arcHalfC*arcHalfC)/(2*Math.abs(arcSag))+Math.abs(arcSag)/2;
+          arcAngle=Math.round(2*Math.asin(Math.min(1,arcHalfC/arcRR))*180/Math.PI);
+        }
+        shapeHTML+='<div class="c2d-prop"><label>Altura (mm)</label><input type="number" value="'+arcSag+'" step="10" onchange="updateProp(\'sagitta\',parseInt(this.value))"></div>';
+        shapeHTML+='<div class="c2d-prop"><label>\u00C1ngulo (\u00B0)</label><input type="number" value="'+arcAngle+'" min="0" max="180" step="1" onchange="updateArcAngle(parseInt(this.value))"></div>';
       }
     }else{
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>';
@@ -1000,6 +1008,22 @@ function updateLineLength(len){
   var ratio=len/curLen;
   m.x2=Math.round(m.x1+dx*ratio);
   m.y2=Math.round(m.y1+dy*ratio);
+  draw();renderModules();renderProps();
+}
+function updateArcAngle(deg){
+  if(_sel.size!==1) return;saveHistory();
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];
+  if(m.type!=='shape_arc') return;
+  deg=Math.max(0,Math.min(180,deg));
+  if(deg===0){m.sagitta=0;draw();renderModules();renderProps();return;}
+  var chord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
+  var halfC=chord/2;
+  var halfRad=deg*Math.PI/360;
+  var R=halfC/Math.sin(halfRad);
+  var sag=R*(1-Math.cos(halfRad));
+  var sign=(m.sagitta||1)>=0?1:-1;
+  m.sagitta=Math.round(sign*Math.min(sag,halfC));
   draw();renderModules();renderProps();
 }
 function deleteSelected(){
