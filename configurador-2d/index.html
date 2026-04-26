@@ -600,11 +600,18 @@ function renderModules(){
     if(m.type==='shape_line'){
       var lx1=Math.min(m.x1,m.x2),ly1=Math.min(m.y1,m.y2);
       var lx2=Math.max(m.x1,m.x2),ly2=Math.max(m.y1,m.y2);
-      var pad=Math.max((m.strokeWidth||1)*sc,6);
-      mw=(lx2-lx1)*sc+pad*2;mh=(ly2-ly1)*sc+pad*2;
-      mx=o.x+lx1*sc-pad;my=o.y-ly2*sc-pad;
-      // Store bbox offset for SVG coords
-      m._bboxOx=lx1;m._bboxOy=ly1;m._bboxPad=pad;
+      var isAxisAligned=(m.y1===m.y2||m.x1===m.x2);
+      if(isAxisAligned){
+        // No padding for CSS-rendered axis-aligned lines
+        mw=(lx2-lx1)*sc;mh=(ly2-ly1)*sc;
+        mx=o.x+lx1*sc;my=o.y-ly2*sc;
+        m._bboxOx=lx1;m._bboxOy=ly1;m._bboxPad=0;
+      }else{
+        var pad=Math.max((m.strokeWidth||1)*sc,6);
+        mw=(lx2-lx1)*sc+pad*2;mh=(ly2-ly1)*sc+pad*2;
+        mx=o.x+lx1*sc-pad;my=o.y-ly2*sc-pad;
+        m._bboxOx=lx1;m._bboxOy=ly1;m._bboxPad=pad;
+      }
     }else{
       mw=m.w*sc;mh=m.h*sc;
       mx=o.x+m.x*sc;my=o.y-(m.y+m.h)*sc;
@@ -709,14 +716,11 @@ function renderModules(){
         var isHoriz=(m.y1===m.y2),isVert=(m.x1===m.x2);
         if(isHoriz||isVert){
           useCSS=true;div.classList.add('css-shape');
-          var lpad=m._bboxPad||6;
           var bw=Math.round(stw)+'px solid '+st;
           if(isHoriz){
             div.style.cssText+='border:none!important;background:transparent!important;border-top:'+bw+'!important;height:0px!important;';
-            div.style.top=(parseFloat(div.style.top)+lpad)+'px';
           }else{
             div.style.cssText+='border:none!important;background:transparent!important;border-left:'+bw+'!important;width:0px!important;';
-            div.style.left=(parseFloat(div.style.left)+lpad)+'px';
           }
         }else{
           div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
