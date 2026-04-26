@@ -1166,51 +1166,61 @@ function magSnap(val,edges,sc){
   });
   return best!==null?best:snap(val);
 }
+// Rotate world point around element center (matching CSS screen rotation)
+function snapRotPt(px,py,cx,cy,rot){
+  var dx=px-cx, dy=cy-py;
+  var cos=Math.cos(rot),sin=Math.sin(rot);
+  return{x:cx+dx*cos-dy*sin, y:cy-(dx*sin+dy*cos)};
+}
 function getSnapEdges(axis,skipIndices){
   var edges=[];
   _modules.forEach(function(m,i){
     if(skipIndices.has(i)) return;
     if(m.type==='shape_line'||m.type==='shape_arc'){
-      // Line/arc endpoints
+      // Lines don't use rotation field — endpoints are already in correct position
       if(axis==='x'){edges.push(m.x1,m.x2);}
       else if(axis==='y'){edges.push(m.y1,m.y2);}
       return;
     }
-    if(m.type==='group'||!m.w) return; // skip groups and items without w/h
+    if(m.type==='group'||!m.w) return;
+    // Skip aligned edges for rotated elements — only snap by points
+    if(m.rotation&&m.rotation%360!==0) return;
     if(axis==='x'){
-      edges.push(m.x,m.x+m.w,m.x+m.w/2); // left, right, center
+      edges.push(m.x,m.x+m.w,m.x+m.w/2);
       if(m.type==='modulo'){edges.push(m.x+19,m.x+m.w-19);}
       if(m.type==='barra'){edges.push(m.x+20,m.x+m.w-20);}
     }else if(axis==='y'){
-      edges.push(m.y,m.y+m.h,m.y+m.h/2); // bottom, top, center
-      if(m.type==='modulo'){
-        edges.push(m.y+70,m.y+40,m.y+m.h-19);
-      }
-      if(m.type==='barra'){
-        var bMid=m.y+m.h/2;
-        edges.push(bMid-15,bMid+15);
-      }
+      edges.push(m.y,m.y+m.h,m.y+m.h/2);
+      if(m.type==='modulo'){edges.push(m.y+70,m.y+40,m.y+m.h-19);}
+      if(m.type==='barra'){var bMid=m.y+m.h/2;edges.push(bMid-15,bMid+15);}
     }else if(axis==='pz'){
       edges.push(m.pz||0,(m.pz||0)+(m.d||600));
     }
   });
-  // Paper bounds as snap edges
   var _pb=paperBounds();
   if(axis==='x'){edges.push(_pb.left,_pb.right);}
   else if(axis==='y'){edges.push(_pb.bottom,_pb.top);}
   else if(axis==='pz'){edges.push(0,_furD);}
   return edges;
 }
-// Get all snap points (x,y pairs) for endpoint snapping
+// Get all snap points (x,y pairs) — applies rotation to corners/center
 function getSnapPoints(skipIndices){
   var pts=[];
   _modules.forEach(function(m,i){
     if(skipIndices.has(i)) return;
     if(m.type==='shape_line'||m.type==='shape_arc'){
+      // Line endpoints are already in world position (no rotation field)
       pts.push({x:m.x1,y:m.y1},{x:m.x2,y:m.y2});
     }else if(m.w&&m.h&&m.type!=='group'){
-      // Corners
-      pts.push({x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x,y:m.y+m.h},{x:m.x+m.w,y:m.y+m.h});
+      var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x,y:m.y+m.h},{x:m.x+m.w,y:m.y+m.h}];
+      var center={x:m.x+m.w/2,y:m.y+m.h/2};
+      if(m.rotation&&m.rotation%360!==0){
+        var rot=m.rotation*Math.PI/180;
+        corners=corners.map(function(c){return snapRotPt(c.x,c.y,center.x,center.y,rot);});
+        // Center doesn't change with rotation
+      }
+      pts.push.apply(pts,corners);
+      pts.push(center);
     }
   });
   return pts;
