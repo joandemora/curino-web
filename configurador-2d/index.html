@@ -237,8 +237,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
         <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Dibujo</div>
         <div class="c2d-section-body">
           <div class="c2d-mod" draggable="true" data-type="shape_line" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">╱</div>Línea<span class="c2d-mod-size">500mm</span></div>
-          <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌒</div>Curva<span class="c2d-mod-size">500×300</span></div>
-          <div class="c2d-mod" draggable="true" data-type="shape_arc" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">⌓</div>Arco<span class="c2d-mod-size">500mm</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌒</div>B&eacute;zier<span class="c2d-mod-size">500×300</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_arc" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">⌓</div>Curva<span class="c2d-mod-size">500mm</span></div>
           <div class="c2d-mod" draggable="true" data-type="shape_rect" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">▭</div>Rectángulo<span class="c2d-mod-size">500×300</span></div>
           <div class="c2d-mod" draggable="true" data-type="shape_circle" data-w="300" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">○</div>Círculo<span class="c2d-mod-size">⌀300</span></div>
         </div>
@@ -868,7 +868,7 @@ function renderModules(){
 }
 
 function typeLabel(t){
-  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno',shape_line:'L\u00EDnea',shape_curve:'Curva',shape_rect:'Rect\u00E1ngulo',shape_circle:'C\u00EDrculo',shape_arc:'Arco'};
+  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno',shape_line:'L\u00EDnea',shape_curve:'B\u00E9zier',shape_rect:'Rect\u00E1ngulo',shape_circle:'C\u00EDrculo',shape_arc:'Curva'};
   return labels[t]||t;
 }
 
