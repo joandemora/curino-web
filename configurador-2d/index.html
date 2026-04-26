@@ -1265,7 +1265,8 @@ function dragModuleEnd(){
 // Resize handles
 function startResize(e,i,pos){
   var m=_modules[i];
-  _resizing={idx:i,pos:pos,startX:e.clientX,startY:e.clientY,origX:m.x,origY:m.y,origW:m.w,origH:m.h,origD:m.d||600,origPZ:m.pz||0};
+  _resizing={idx:i,pos:pos,startX:e.clientX,startY:e.clientY,origX:m.x,origY:m.y,origW:m.w,origH:m.h,origD:m.d||600,origPZ:m.pz||0,
+    origChildren:m.type==='group'?JSON.parse(JSON.stringify(m.children)):null};
   saveHistory();
   document.addEventListener('mousemove',resizeMove);
   document.addEventListener('mouseup',resizeEnd);
@@ -1349,6 +1350,23 @@ function resizeMove(e){
     m.x-=dsx/sc;
     m.y+=dsy/sc;
     m.x=Math.round(m.x);m.y=Math.round(m.y);m.w=Math.round(m.w);m.h=Math.round(m.h);
+  }
+
+  // Scale group children proportionally
+  if(m.type==='group'&&r.origChildren&&r.origW>0&&r.origH>0){
+    var sx=m.w/r.origW, sy=m.h/r.origH;
+    m.children=r.origChildren.map(function(oc){
+      var c=JSON.parse(JSON.stringify(oc));
+      if(c.type==='shape_line'||c.type==='shape_arc'){
+        c.x1=Math.round(c.x1*sx);c.y1=Math.round(c.y1*sy);
+        c.x2=Math.round(c.x2*sx);c.y2=Math.round(c.y2*sy);
+        if(c.sagitta) c.sagitta=Math.round(c.sagitta*(sx+sy)/2);
+      }else{
+        c.x=Math.round(c.x*sx);c.y=Math.round(c.y*sy);
+        c.w=Math.round(c.w*sx);c.h=Math.round(c.h*sy);
+      }
+      return c;
+    });
   }
 
   clampToPaper(m);
