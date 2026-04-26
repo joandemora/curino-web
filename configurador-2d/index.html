@@ -601,10 +601,21 @@ function renderModules(){
     if(m.type==='shape_line'||m.type==='shape_arc'){
       var lx1=Math.min(m.x1,m.x2),ly1=Math.min(m.y1,m.y2);
       var lx2=Math.max(m.x1,m.x2),ly2=Math.max(m.y1,m.y2);
-      // For arcs, expand bbox by radius bulge
+      // For arcs, expand bbox by sagitta (arc bulge)
       if(m.type==='shape_arc'){
-        var arcR=Math.abs(m.radius||100);
-        lx1-=arcR;ly1-=arcR;lx2+=arcR;ly2+=arcR;
+        var adx=m.x2-m.x1,ady=m.y2-m.y1;
+        var chord=Math.sqrt(adx*adx+ady*ady)||1;
+        var aR=Math.abs(m.radius||100);
+        if(aR<chord/2) aR=chord/2;
+        var sagitta=aR-Math.sqrt(Math.max(0,aR*aR-(chord/2)*(chord/2)));
+        // Perpendicular direction from chord midpoint
+        var nx=-ady/chord,ny=adx/chord;
+        var sign=(m.radius||100)>0?1:-1;
+        // Arc apex point in world coords
+        var apexX=(m.x1+m.x2)/2+nx*sign*sagitta;
+        var apexY=(m.y1+m.y2)/2+ny*sign*sagitta;
+        lx1=Math.min(lx1,apexX);ly1=Math.min(ly1,apexY);
+        lx2=Math.max(lx2,apexX);ly2=Math.max(ly2,apexY);
       }
       var isAxisAligned=(m.type==='shape_line'&&(m.y1===m.y2||m.x1===m.x2));
       if(isAxisAligned){
@@ -748,8 +759,11 @@ function renderModules(){
       }else if(m.type==='shape_arc'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         var apad=m._bboxPad||6;
-        var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(Math.max(m.y1,m.y2)+Math.abs(m.radius||100)-m.y1)*sc+apad;
-        var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(Math.max(m.y1,m.y2)+Math.abs(m.radius||100)-m.y2)*sc+apad;
+        // _bboxOx/_bboxOy is the min corner of the tight bbox in world coords
+        // Convert endpoints to SVG coords: world→screen relative to bbox
+        var bboxTop=m._bboxOy+(mh-apad*2)/sc; // max Y in world (top of bbox)
+        var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(bboxTop-m.y1)*sc+apad;
+        var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(bboxTop-m.y2)*sc+apad;
         var arcDist=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2));
         var arcR=Math.abs(m.radius||100);
         if(arcR<arcDist/2) arcR=arcDist/2;
@@ -770,24 +784,32 @@ function renderModules(){
       if(m.type==='shape_line'||m.type==='shape_arc'){
         // Free-draggable endpoint handles
         var lpad2=m._bboxPad||0;
-        var isAA=(m.y1===m.y2||m.x1===m.x2);
-        var ep1x=(m.x1-(m._bboxOx||Math.min(m.x1,m.x2)))*sc+lpad2;
-        var ep1y=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad2;
-        var ep2x=(m.x2-(m._bboxOx||Math.min(m.x1,m.x2)))*sc+lpad2;
-        var ep2y=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad2;
-        // For axis-aligned CSS lines, center handles on the stroke (border)
-        var hOffy=isAA&&m.y1===m.y2?-4:-4;
-        var hOffx=isAA&&m.x1===m.x2?-4:-4;
+        var isAA=(m.type==='shape_line'&&(m.y1===m.y2||m.x1===m.x2));
+        var bboxOx=m._bboxOx||Math.min(m.x1,m.x2);
+        // bbox top in world Y = bboxOy + bbox height in world
+        var bboxTopY=m._bboxOy+(mh-lpad2*2)/sc;
+        var ep1x=(m.x1-bboxOx)*sc+lpad2;
+        var ep1y=(bboxTopY-m.y1)*sc+lpad2;
+        var ep2x=(m.x2-bboxOx)*sc+lpad2;
+        var ep2y=(bboxTopY-m.y2)*sc+lpad2;
         [{px:ep1x,py:ep1y,pt:1},{px:ep2x,py:ep2y,pt:2}].forEach(function(ep){
           var h=document.createElement('div');
           h.className='c2d-handle';h.style.cssText='left:'+(ep.px-4)+'px;top:'+(ep.py-4)+'px;cursor:move;overflow:visible';
           h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
           div.appendChild(h);
         });
-        // Arc radius handle (midpoint of arc)
+        // Arc radius handle at apex of arc
         if(m.type==='shape_arc'){
-          var amid_x=((m.x1+m.x2)/2-m._bboxOx)*sc+lpad2;
-          var amid_y=(Math.max(m.y1,m.y2)+Math.abs(m.radius||100)-(m.y1+m.y2)/2)*sc+lpad2;
+          var adx2=m.x2-m.x1,ady2=m.y2-m.y1;
+          var chord2=Math.sqrt(adx2*adx2+ady2*ady2)||1;
+          var aR2=Math.abs(m.radius||100);if(aR2<chord2/2) aR2=chord2/2;
+          var sag2=aR2-Math.sqrt(Math.max(0,aR2*aR2-(chord2/2)*(chord2/2)));
+          var nx2=-ady2/chord2,ny2=adx2/chord2;
+          var sign2=(m.radius||100)>0?1:-1;
+          var apexWx=(m.x1+m.x2)/2+nx2*sign2*sag2;
+          var apexWy=(m.y1+m.y2)/2+ny2*sign2*sag2;
+          var amid_x=(apexWx-bboxOx)*sc+lpad2;
+          var amid_y=(bboxTopY-apexWy)*sc+lpad2;
           // Offset by radius perpendicular to chord
           var adx=m.x2-m.x1,ady=m.y2-m.y1;
           var alen=Math.sqrt(adx*adx+ady*ady)||1;
