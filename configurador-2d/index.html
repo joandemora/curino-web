@@ -1207,46 +1207,71 @@ function resizeMove(e){
   if(!_resizing) return;
   clearSnapLines();
   var r=_resizing,m=_modules[r.idx],sc=s();
+  var rot=(m.rotation||0)*Math.PI/180;
+  var hasRot=m.rotation&&m.rotation%360!==0;
+  // Transform mouse delta to element's local frame
   var rawDx=(e.clientX-r.startX)/sc,rawDy=(e.clientY-r.startY)/sc;
-  var rotAngle=((_modules[r.idx].rotation||0))*Math.PI/180;
-  var dx=rawDx*Math.cos(rotAngle)+rawDy*Math.sin(rotAngle);
-  var dy=-rawDx*Math.sin(rotAngle)+rawDy*Math.cos(rotAngle);
+  var dx=rawDx*Math.cos(rot)+rawDy*Math.sin(rot);
+  var dy=-rawDx*Math.sin(rot)+rawDy*Math.cos(rot);
   var p=r.pos;
+  // Save old center for rotation compensation
+  var oldCx=m.x+m.w/2, oldCy=m.y+m.h/2;
   var skip=new Set([r.idx]);
   var xEdges=getSnapEdges('x',skip);
-  // Right handle: snap right edge
+  // Right handle
   if(p==='r'||p==='tr'||p==='br'){
     var rawRight=r.origX+r.origW+dx;
-    var snR=magSnap(rawRight,xEdges,sc);
-    m.w=Math.max(GRID,snR-m.x);
-    if(snR!==snap(rawRight)) showSnapLine(snR,'x');
+    var snR=hasRot?rawRight:magSnap(rawRight,xEdges,sc);
+    m.w=Math.max(GRID,snR-r.origX);
+    m.x=r.origX;
+    if(!hasRot&&snR!==snap(rawRight)) showSnapLine(snR,'x');
   }
-  // Left handle: snap left edge
+  // Left handle
   if(p==='l'||p==='tl'||p==='bl'){
     var rawLeft=r.origX+dx;
-    var snL=magSnap(rawLeft,xEdges,sc);
+    var snL=hasRot?rawLeft:magSnap(rawLeft,xEdges,sc);
     var nw=r.origX+r.origW-snL;
-    if(nw>=GRID){m.x=snL;m.w=nw;if(snL!==snap(rawLeft)) showSnapLine(snL,'x');}
+    if(nw>=GRID){m.x=snL;m.w=nw;if(!hasRot&&snL!==snap(rawLeft)) showSnapLine(snL,'x');}
   }
   // Y axis
-  {
-    var yEdges=getSnapEdges('y',skip);
-    var hMin=m.type==='estante'?19:GRID,hMax=m.type==='estante'?40:Infinity;
-    // Top handle (screen up): top edge = m.y + m.h
-    if(p==='t'||p==='tl'||p==='tr'){
-      var rawTop2=r.origY+r.origH-dy;
-      var snT2=magSnap(rawTop2,yEdges,sc);
-      var nh=Math.min(hMax,Math.max(hMin,snT2-m.y));
-      if(nh>=hMin){m.h=nh;if(snT2!==snap(rawTop2)) showSnapLine(snT2,'y');}
-    }
-    // Bottom handle (screen down): bottom edge = m.y, screen down = world Y decreases
-    if(p==='b'||p==='bl'||p==='br'){
-      var rawBot2=r.origY-dy;
-      var snB2=magSnap(rawBot2,yEdges,sc);
-      var topEdge=r.origY+r.origH;
-      var nh2=Math.min(hMax,Math.max(hMin,topEdge-snB2));
-      if(nh2>=hMin){m.y=topEdge-nh2;m.h=nh2;if(snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
-    }
+  var yEdges=getSnapEdges('y',skip);
+  var hMin=m.type==='estante'?19:GRID,hMax=m.type==='estante'?40:Infinity;
+  if(p==='t'||p==='tl'||p==='tr'){
+    var rawTop2=r.origY+r.origH-dy;
+    var snT2=hasRot?rawTop2:magSnap(rawTop2,yEdges,sc);
+    var nh=Math.min(hMax,Math.max(hMin,snT2-r.origY));
+    if(nh>=hMin){m.h=nh;m.y=r.origY;if(!hasRot&&snT2!==snap(rawTop2)) showSnapLine(snT2,'y');}
+  }
+  if(p==='b'||p==='bl'||p==='br'){
+    var rawBot2=r.origY-dy;
+    var snB2=hasRot?rawBot2:magSnap(rawBot2,yEdges,sc);
+    var topEdge=r.origY+r.origH;
+    var nh2=Math.min(hMax,Math.max(hMin,topEdge-snB2));
+    if(nh2>=hMin){m.y=topEdge-nh2;m.h=nh2;if(!hasRot&&snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
+  }
+  // Compensate center shift for rotated elements
+  if(hasRot){
+    var newCx=m.x+m.w/2, newCy=m.y+m.h/2;
+    var dCx=newCx-oldCx, dCy=newCy-oldCy;
+    // The anchor corner (opposite to handle) must stay fixed visually.
+    // Rotated center shift causes visual displacement. Compute the world-space
+    // displacement of the anchor point and compensate.
+    var cos=Math.cos(rot),sin=Math.sin(rot);
+    // Anchor in old local frame relative to old center
+    var aLx=(p.indexOf('r')>=0?-1:p.indexOf('l')>=0?1:0)*r.origW/2;
+    var aLy=(p.indexOf('t')>=0?-1:p.indexOf('b')>=0?1:0)*r.origH/2;
+    // Anchor world pos with old center
+    var aOldWx=oldCx+aLx*cos-aLy*sin;
+    var aOldWy=oldCy+aLx*sin+aLy*cos;
+    // Anchor in new local frame relative to new center
+    var aNLx=(p.indexOf('r')>=0?-1:p.indexOf('l')>=0?1:0)*m.w/2;
+    var aNLy=(p.indexOf('t')>=0?-1:p.indexOf('b')>=0?1:0)*m.h/2;
+    // Anchor world pos with new center (before compensation)
+    var aNewWx=newCx+aNLx*cos-aNLy*sin;
+    var aNewWy=newCy+aNLx*sin+aNLy*cos;
+    // Shift to keep anchor fixed
+    m.x-=(aNewWx-aOldWx);
+    m.y-=(aNewWy-aOldWy);
   }
   clampToPaper(m);
   renderModules();renderProps();
@@ -1646,7 +1671,7 @@ function rotateEnd(){
   if(_rotLabel){_rotLabel.remove();_rotLabel=null;}
   document.removeEventListener('mousemove',rotateMove);
   document.removeEventListener('mouseup',rotateEnd);
-  draw();
+  draw();renderModules();renderProps();
 }
 
 // Pan (middle mouse / space) + Marquee selection + Deselect
