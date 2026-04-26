@@ -1281,6 +1281,7 @@ function resizeMove(e){
     // screenY = o.y - (worldY+h)*sc → dWorldY needs sign flip
     m.x-=dsx/sc;
     m.y+=dsy/sc;
+    m.x=Math.round(m.x);m.y=Math.round(m.y);m.w=Math.round(m.w);m.h=Math.round(m.h);
   }
 
   clampToPaper(m);
