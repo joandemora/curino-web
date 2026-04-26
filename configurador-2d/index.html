@@ -2430,12 +2430,33 @@ function ungroupDibujo(){
   var g=_modules[idx];
   if(g.type!=='group') return;
   saveHistory();
+  var gRot=(g.rotation||0)*Math.PI/180;
+  var hasRot=g.rotation&&g.rotation%360!==0;
+  var gcx=g.w/2, gcy=g.h/2; // group center in relative coords
+  var cos=Math.cos(gRot),sin=Math.sin(gRot);
+  function rotPt(px,py){
+    // Rotate point (relative to group) around group center
+    var dx=px-gcx, dy=py-gcy;
+    return{x:gcx+dx*cos-dy*sin, y:gcy+dx*sin+dy*cos};
+  }
   var newIndices=[];
   g.children.forEach(function(child){
     var m=JSON.parse(JSON.stringify(child));
     if(m.type==='shape_line'||m.type==='shape_arc'){
+      if(hasRot){
+        var p1=rotPt(m.x1,m.y1), p2=rotPt(m.x2,m.y2);
+        m.x1=Math.round(p1.x);m.y1=Math.round(p1.y);
+        m.x2=Math.round(p2.x);m.y2=Math.round(p2.y);
+      }
       m.x1+=g.x;m.y1+=g.y;m.x2+=g.x;m.y2+=g.y;
     }else{
+      if(hasRot){
+        // Rotate child center around group center
+        var childCx=m.x+m.w/2, childCy=m.y+m.h/2;
+        var rc=rotPt(childCx,childCy);
+        m.x=Math.round(rc.x-m.w/2);m.y=Math.round(rc.y-m.h/2);
+        m.rotation=((m.rotation||0)+g.rotation)%360;
+      }
       m.x+=g.x;m.y+=g.y;
     }
     _modules.push(m);
