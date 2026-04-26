@@ -91,7 +91,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-bbox{position:absolute;border:1px dashed var(--accent);pointer-events:none;z-index:3}
 .c2d-bbox .c2d-handle{pointer-events:auto}
 .c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(0,115,84,.06);pointer-events:none;z-index:5}
-.c2d-snapline{position:absolute;background:#e53e3e;pointer-events:none;z-index:4}
+.c2d-snapline{position:absolute;background:#FF00C8;pointer-events:none;z-index:4}
+.c2d-snapdot{position:absolute;width:6px;height:6px;background:#FF00C8;border-radius:50%;pointer-events:none;z-index:4;margin-left:-3px;margin-top:-3px}
 .c2d-snapline-h{height:1px;left:0;right:0}
 .c2d-snapline-v{width:1px;top:0;bottom:0}
 /* Shape control points */
@@ -278,7 +279,7 @@ var _pages=[]; // [{modules:[], showCajetin:true, history:[], historyIdx:-1}]
 var _activePageIdx=0;
 var _meta={}; // active page per-page state (showCajetin)
 var GRID=50; // snap grid in mm
-var SNAP_RADIUS=5; // magnetic snap radius in px
+var SNAP_RADIUS=25; // magnetic snap radius in mm (GRID/2)
 var _dragData=null;
 var _resizing=null;
 // Supabase
@@ -1157,8 +1158,8 @@ function startDragModule(e,i){
   document.addEventListener('mouseup',dragModuleEnd);
 }
 function magSnap(val,edges,sc){
-  // Find closest edge within SNAP_RADIUS pixels
-  var best=null,bestDist=SNAP_RADIUS/sc;
+  // Find closest edge within SNAP_RADIUS mm
+  var best=null,bestDist=SNAP_RADIUS;
   edges.forEach(function(edge){
     var d=Math.abs(val-edge);
     if(d<bestDist){bestDist=d;best=edge;}
@@ -1169,22 +1170,25 @@ function getSnapEdges(axis,skipIndices){
   var edges=[];
   _modules.forEach(function(m,i){
     if(skipIndices.has(i)) return;
+    if(m.type==='shape_line'||m.type==='shape_arc'){
+      // Line/arc endpoints
+      if(axis==='x'){edges.push(m.x1,m.x2);}
+      else if(axis==='y'){edges.push(m.y1,m.y2);}
+      return;
+    }
+    if(m.type==='group'||!m.w) return; // skip groups and items without w/h
     if(axis==='x'){
-      edges.push(m.x,m.x+m.w);
-      // Interior lines
+      edges.push(m.x,m.x+m.w,m.x+m.w/2); // left, right, center
       if(m.type==='modulo'){edges.push(m.x+19,m.x+m.w-19);}
       if(m.type==='barra'){edges.push(m.x+20,m.x+m.w-20);}
     }else if(axis==='y'){
-      edges.push(m.y,m.y+m.h);
+      edges.push(m.y,m.y+m.h,m.y+m.h/2); // bottom, top, center
       if(m.type==='modulo'){
-        edges.push(m.y+70,m.y+40,m.y+m.h-19); // tarima top, base board, top panel inner
-      }
-      if(m.type==='estante'){
-        edges.push(m.y,m.y+m.h); // already covered by outer edges
+        edges.push(m.y+70,m.y+40,m.y+m.h-19);
       }
       if(m.type==='barra'){
         var bMid=m.y+m.h/2;
-        edges.push(bMid-15,bMid+15); // barra lines (30mm gap centered)
+        edges.push(bMid-15,bMid+15);
       }
     }else if(axis==='pz'){
       edges.push(m.pz||0,(m.pz||0)+(m.d||600));
@@ -1196,6 +1200,28 @@ function getSnapEdges(axis,skipIndices){
   else if(axis==='y'){edges.push(_pb.bottom,_pb.top);}
   else if(axis==='pz'){edges.push(0,_furD);}
   return edges;
+}
+// Get all snap points (x,y pairs) for endpoint snapping
+function getSnapPoints(skipIndices){
+  var pts=[];
+  _modules.forEach(function(m,i){
+    if(skipIndices.has(i)) return;
+    if(m.type==='shape_line'||m.type==='shape_arc'){
+      pts.push({x:m.x1,y:m.y1},{x:m.x2,y:m.y2});
+    }else if(m.w&&m.h&&m.type!=='group'){
+      // Corners
+      pts.push({x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x,y:m.y+m.h},{x:m.x+m.w,y:m.y+m.h});
+    }
+  });
+  return pts;
+}
+function showSnapDot(wx,wy){
+  var sc2=s(),o2=origin(),pr2=paperRect();
+  var el=document.createElement('div');
+  el.className='c2d-snapdot';
+  el.style.left=(o2.x+wx*sc2-pr2.x)+'px';
+  el.style.top=(o2.y-wy*sc2-pr2.y)+'px';
+  layer.appendChild(el);_snapLines.push(el);
 }
 var _snapLines=[];
 function clearSnapLines(){_snapLines.forEach(function(el){el.remove();});_snapLines=[];}
@@ -1675,11 +1701,32 @@ function startLineDrag(e,idx,pt){
 }
 function lineDragMove(e){
   if(!_lineDrag) return;
+  clearSnapLines();
   var m=_modules[_lineDrag.idx],sc=s();
   var dx=(e.clientX-_lineDrag.startX)/sc;
   var dy=-(e.clientY-_lineDrag.startY)/sc;
-  if(_lineDrag.pt===1){m.x1=snap(_lineDrag.origX1+dx);m.y1=snap(_lineDrag.origY1+dy);}
-  else{m.x2=snap(_lineDrag.origX2+dx);m.y2=snap(_lineDrag.origY2+dy);}
+  var skip=new Set([_lineDrag.idx]);
+  var rawX=(_lineDrag.pt===1?_lineDrag.origX1:_lineDrag.origX2)+dx;
+  var rawY=(_lineDrag.pt===1?_lineDrag.origY1:_lineDrag.origY2)+dy;
+  // Snap to other element edges/endpoints
+  var xEdges=getSnapEdges('x',skip);
+  var yEdges=getSnapEdges('y',skip);
+  var snX=magSnap(rawX,xEdges,sc);
+  var snY=magSnap(rawY,yEdges,sc);
+  // Check endpoint-to-endpoint snap (2D proximity)
+  var pts=getSnapPoints(skip);
+  var bestPt=null,bestDist=SNAP_RADIUS;
+  pts.forEach(function(p){
+    var d=Math.sqrt(Math.pow(rawX-p.x,2)+Math.pow(rawY-p.y,2));
+    if(d<bestDist){bestDist=d;bestPt=p;}
+  });
+  if(bestPt){snX=bestPt.x;snY=bestPt.y;showSnapDot(bestPt.x,bestPt.y);}
+  else{
+    if(snX!==snap(rawX)) showSnapLine(snX,'x');
+    if(snY!==snap(rawY)) showSnapLine(snY,'y');
+  }
+  if(_lineDrag.pt===1){m.x1=snX;m.y1=snY;}
+  else{m.x2=snX;m.y2=snY;}
   renderModules();renderProps();
 }
 function lineDragEnd(){
