@@ -768,7 +768,8 @@ function renderModules(){
         var arcR=(halfC*halfC)/(2*sagVal)+sagVal/2;
         var arcRpx=arcR*sc;
         var sweep=(m.sagitta||100)>0?1:0;
-        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweep+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
+        var largeArc=sagVal>arcDist/2?1:0;
+        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 '+largeArc+' '+sweep+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
       }else if(m.type==='shape_circle'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
