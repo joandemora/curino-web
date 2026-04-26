@@ -2583,11 +2583,8 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
   var sc2=s(),o2=origin();
-  // Use canvas getBoundingClientRect for correct viewport→world conversion
-  var cRect=cvs.getBoundingClientRect();
-  var px=e.clientX-cRect.left, py=e.clientY-cRect.top;
-  var wx=(px-o2.x)/sc2;
-  var wy=-(py-o2.y)/sc2;
+  var wx=(e.clientX-o2.x)/sc2;
+  var wy=-(e.clientY-o2.y)/sc2;
   var tolerance=10/sc2;
 
   // Find closest element
