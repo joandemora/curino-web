@@ -718,9 +718,9 @@ function renderModules(){
           useCSS=true;div.classList.add('css-shape');
           var bw=Math.round(stw)+'px solid '+st;
           if(isHoriz){
-            div.style.cssText+='border:none!important;background:transparent!important;border-top:'+bw+'!important;height:0px!important;';
+            div.style.cssText+='border:none!important;background:transparent!important;border-top:'+bw+'!important;height:0px!important;overflow:visible!important;';
           }else{
-            div.style.cssText+='border:none!important;background:transparent!important;border-left:'+bw+'!important;width:0px!important;';
+            div.style.cssText+='border:none!important;background:transparent!important;border-left:'+bw+'!important;width:0px!important;overflow:visible!important;';
           }
         }else{
           div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
@@ -751,12 +751,18 @@ function renderModules(){
     if(_sel.size===1&&_sel.has(i)){
       if(m.type==='shape_line'){
         // Free-draggable endpoint handles
-        var lpad2=m._bboxPad||6;
-        var ep1x=(m.x1-m._bboxOx)*sc+lpad2, ep1y=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad2;
-        var ep2x=(m.x2-m._bboxOx)*sc+lpad2, ep2y=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad2;
+        var lpad2=m._bboxPad||0;
+        var isAA=(m.y1===m.y2||m.x1===m.x2);
+        var ep1x=(m.x1-(m._bboxOx||Math.min(m.x1,m.x2)))*sc+lpad2;
+        var ep1y=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad2;
+        var ep2x=(m.x2-(m._bboxOx||Math.min(m.x1,m.x2)))*sc+lpad2;
+        var ep2y=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad2;
+        // For axis-aligned CSS lines, center handles on the stroke (border)
+        var hOffy=isAA&&m.y1===m.y2?-4:-4;
+        var hOffx=isAA&&m.x1===m.x2?-4:-4;
         [{px:ep1x,py:ep1y,pt:1},{px:ep2x,py:ep2y,pt:2}].forEach(function(ep){
           var h=document.createElement('div');
-          h.className='c2d-handle';h.style.cssText='left:'+(ep.px-4)+'px;top:'+(ep.py-4)+'px;cursor:move';
+          h.className='c2d-handle';h.style.cssText='left:'+(ep.px-4)+'px;top:'+(ep.py-4)+'px;cursor:move;overflow:visible';
           h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
           div.appendChild(h);
         });
