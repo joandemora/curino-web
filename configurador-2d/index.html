@@ -74,6 +74,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-module.no-frame{border:none!important;background:transparent!important}
 .c2d-module.no-frame:hover{box-shadow:0 0 0 2px var(--accent)}
 .c2d-module.no-frame.selected{box-shadow:0 0 0 2px var(--accent);border:none!important}
+.c2d-module.css-shape.selected{box-shadow:0 0 0 2px var(--accent)}
 .c2d-module-label{text-align:center;line-height:1.3;pointer-events:none}
 /* Resize handles */
 .c2d-handle{position:absolute;width:8px;height:8px;background:var(--accent);border:1px solid var(--white);z-index:2}
@@ -698,41 +699,39 @@ function renderModules(){
     // Shape types
     var isShape=m.type.startsWith('shape_');
     if(isShape){
-      div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
       var st=m.stroke||'#000000';var stw=Math.max(1,(m.strokeWidth||1)*sc);var fl=m.fill||'none';
+      var useCSS=false;
       if(m.type==='shape_line'){
         var isHoriz=(m.y1===m.y2),isVert=(m.x1===m.x2);
         if(isHoriz||isVert){
-          // CSS border for axis-aligned lines (pixel-perfect, no anti-aliasing)
+          useCSS=true;div.classList.add('css-shape');
           var lpad=m._bboxPad||6;
+          var bw=Math.round(stw)+'px solid '+st;
           if(isHoriz){
-            div.style.borderTop=Math.round(stw)+'px solid '+st;
-            div.style.height='0px';
+            div.style.cssText+='border:none!important;background:transparent!important;border-top:'+bw+'!important;height:0px!important;';
             div.style.top=(parseFloat(div.style.top)+lpad)+'px';
           }else{
-            div.style.borderLeft=Math.round(stw)+'px solid '+st;
-            div.style.width='0px';
+            div.style.cssText+='border:none!important;background:transparent!important;border-left:'+bw+'!important;width:0px!important;';
             div.style.left=(parseFloat(div.style.left)+lpad)+'px';
           }
         }else{
-          // SVG for diagonal lines (anti-aliasing needed)
+          div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
           var lpad=m._bboxPad||6;
           var lsx1=(m.x1-m._bboxOx)*sc+lpad, lsy1=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad;
           var lsx2=(m.x2-m._bboxOx)*sc+lpad, lsy2=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad;
           inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/></svg>';
         }
       }else if(m.type==='shape_rect'){
-        // CSS borders for rectangle (pixel-perfect)
-        div.style.border=Math.round(stw)+'px solid '+st;
-        div.style.background=(fl&&fl!=='none')?fl:'transparent';
-        div.style.boxSizing='border-box';
+        useCSS=true;div.classList.add('css-shape');
+        var bg=(fl&&fl!=='none')?fl:'transparent';
+        div.style.cssText+='border:'+Math.round(stw)+'px solid '+st+'!important;background:'+bg+'!important;box-sizing:border-box;';
       }else if(m.type==='shape_curve'){
-        // SVG for curves (anti-aliasing needed)
+        div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
         var cpy=(m.cpy!=null?m.cpy:0)*mh;
         inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
       }else if(m.type==='shape_circle'){
-        // SVG for circles (anti-aliasing needed)
+        div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
       }
     }
