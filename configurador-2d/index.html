@@ -633,7 +633,7 @@ function renderModules(){
     }
     div.style.left=(mx-layerOffX)+'px';div.style.top=(my-layerOffY)+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
-    if(m.rotation&&m.type!=='shape_line') div.style.transform='rotate('+m.rotation+'deg)';
+    if(m.rotation&&m.type!=='shape_line'&&m.type!=='shape_arc') div.style.transform='rotate('+m.rotation+'deg)';
     div.style.transformOrigin='center center';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
@@ -886,7 +886,7 @@ function renderModules(){
         div.appendChild(cp);
       }
       // Rotation handle (not for lines — they rotate via endpoints)
-      if(m.type!=='shape_line'){
+      if(m.type!=='shape_line'&&m.type!=='shape_arc'){
         var rotH=document.createElement('div');
         rotH.className='c2d-handle c2d-handle-rot';
         rotH.onmousedown=function(e){e.stopPropagation();e.preventDefault();startRotate(e,i);};
@@ -983,7 +983,7 @@ function renderProps(){
     }
     shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
       '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
-    if(m.type!=='shape_line'){
+    if(m.type!=='shape_line'&&m.type!=='shape_arc'){
       shapeHTML+='<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>';
     }
     if(m.type!=='shape_line'&&m.type!=='shape_arc'){
