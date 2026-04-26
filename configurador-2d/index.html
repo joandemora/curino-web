@@ -86,6 +86,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-handle-b{bottom:-4px;left:50%;margin-left:-4px;cursor:ns-resize}
 .c2d-handle-l{top:50%;margin-top:-4px;left:-4px;cursor:ew-resize}
 .c2d-handle-r{top:50%;margin-top:-4px;right:-4px;cursor:ew-resize}
+.c2d-handle-rot{position:absolute;width:10px;height:10px;background:var(--coral);border:1px solid var(--white);border-radius:50%;z-index:2;cursor:grab;left:50%;margin-left:-5px;top:-20px}
+.c2d-rot-label{position:fixed;background:var(--black);color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;pointer-events:none;z-index:999}
 .c2d-bbox{position:absolute;border:1px dashed var(--accent);pointer-events:none;z-index:3}
 .c2d-bbox .c2d-handle{pointer-events:auto}
 .c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(0,115,84,.06);pointer-events:none;z-index:5}
@@ -609,6 +611,8 @@ function renderModules(){
     }
     div.style.left=(mx-layerOffX)+'px';div.style.top=(my-layerOffY)+'px';
     div.style.width=mw+'px';div.style.height=mh+'px';
+    if(m.rotation) div.style.transform='rotate('+m.rotation+'deg)';
+    div.style.transformOrigin='center center';
     var inner='';
     if(m.type==='divisor') div.classList.add('no-frame');
     if(m.type==='puerta_batiente'){
@@ -771,6 +775,11 @@ function renderModules(){
         cp.onmousedown=function(e){e.stopPropagation();e.preventDefault();startCurveDrag(e,i);};
         div.appendChild(cp);
       }
+      // Rotation handle (for all elements)
+      var rotH=document.createElement('div');
+      rotH.className='c2d-handle c2d-handle-rot';
+      rotH.onmousedown=function(e){e.stopPropagation();e.preventDefault();startRotate(e,i);};
+      div.appendChild(rotH);
     }
     layer.appendChild(div);
   });
@@ -841,6 +850,7 @@ function renderProps(){
     }
     shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
       '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
+    shapeHTML+='<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>';
     if(m.type!=='shape_line'){
       shapeHTML+='<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
     }
@@ -862,6 +872,7 @@ function renderProps(){
         '<option value="izquierda"'+(m.apertura==='izquierda'?' selected':'')+'>Apertura izquierda</option>'+
         '<option value="vertical"'+(m.apertura==='vertical'?' selected':'')+'>Apertura vertical</option>'+
       '</select></div>':'')+
+    '<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>'+
     '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar m\u00F3dulo</button>';
 }
 
@@ -1107,7 +1118,10 @@ function resizeMove(e){
   if(!_resizing) return;
   clearSnapLines();
   var r=_resizing,m=_modules[r.idx],sc=s();
-  var dx=(e.clientX-r.startX)/sc,dy=(e.clientY-r.startY)/sc;
+  var rawDx=(e.clientX-r.startX)/sc,rawDy=(e.clientY-r.startY)/sc;
+  var rotAngle=((_modules[r.idx].rotation||0))*Math.PI/180;
+  var dx=rawDx*Math.cos(rotAngle)+rawDy*Math.sin(rotAngle);
+  var dy=-rawDx*Math.sin(rotAngle)+rawDy*Math.cos(rotAngle);
   var p=r.pos;
   var skip=new Set([r.idx]);
   var xEdges=getSnapEdges('x',skip);
@@ -1448,6 +1462,51 @@ function lineDragEnd(){
   _lineDrag=null;
   document.removeEventListener('mousemove',lineDragMove);
   document.removeEventListener('mouseup',lineDragEnd);
+  draw();
+}
+
+// Rotation drag
+var _rotateDrag=null;
+var _rotLabel=null;
+function startRotate(e,idx){
+  saveHistory();
+  var m=_modules[idx];
+  // Compute element center in viewport coords
+  var sc2=s(),o2=origin(),pr2=paperRect();
+  var cx,cy;
+  if(m.type==='shape_line'){
+    cx=o2.x+((m.x1+m.x2)/2)*sc2-pr2.x;
+    cy=o2.y-((m.y1+m.y2)/2)*sc2-pr2.y;
+  }else{
+    cx=o2.x+(m.x+m.w/2)*sc2-pr2.x;
+    cy=o2.y-(m.y+m.h/2)*sc2-pr2.y;
+  }
+  var layerRect=layer.getBoundingClientRect();
+  var centerX=layerRect.left+cx;
+  var centerY=layerRect.top+cy;
+  _rotateDrag={idx:idx,centerX:centerX,centerY:centerY,origRotation:m.rotation||0,
+    startAngle:Math.atan2(e.clientY-centerY,e.clientX-centerX)*180/Math.PI};
+  _rotLabel=document.createElement('div');_rotLabel.className='c2d-rot-label';
+  document.body.appendChild(_rotLabel);
+  document.addEventListener('mousemove',rotateMove);
+  document.addEventListener('mouseup',rotateEnd);
+}
+function rotateMove(e){
+  if(!_rotateDrag) return;
+  var angle=Math.atan2(e.clientY-_rotateDrag.centerY,e.clientX-_rotateDrag.centerX)*180/Math.PI;
+  var delta=angle-_rotateDrag.startAngle;
+  var newRot=Math.round((_rotateDrag.origRotation+delta)%360);
+  if(newRot<0) newRot+=360;
+  _modules[_rotateDrag.idx].rotation=newRot;
+  _rotLabel.textContent=newRot+'\u00B0';
+  _rotLabel.style.left=(e.clientX+15)+'px';_rotLabel.style.top=(e.clientY-15)+'px';
+  renderModules();renderProps();
+}
+function rotateEnd(){
+  _rotateDrag=null;
+  if(_rotLabel){_rotLabel.remove();_rotLabel=null;}
+  document.removeEventListener('mousemove',rotateMove);
+  document.removeEventListener('mouseup',rotateEnd);
   draw();
 }
 
