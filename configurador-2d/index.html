@@ -2602,24 +2602,25 @@ function eraserClick(e){
       var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
       if(d<bestDist){bestDist=d;bestIdx=i;}
     }else if(m.w&&m.h){
-      // Check 4 edges of bounding box
-      var edges=[
-        [m.x,m.y,m.x+m.w,m.y],
-        [m.x+m.w,m.y,m.x+m.w,m.y+m.h],
-        [m.x+m.w,m.y+m.h,m.x,m.y+m.h],
-        [m.x,m.y+m.h,m.x,m.y]
-      ];
-      edges.forEach(function(seg){
-        var dx=seg[2]-seg[0],dy=seg[3]-seg[1];
-        var len2=dx*dx+dy*dy;
-        if(len2===0) return;
-        var t=Math.max(0,Math.min(1,((wx-seg[0])*dx+(wy-seg[1])*dy)/len2));
-        var px=seg[0]+t*dx,py=seg[1]+t*dy;
-        var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
-        if(d<bestDist){bestDist=d;bestIdx=i;}
-      });
-      // Also check if click is inside the element
-      if(wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
+      // Check 4 edges of bounding box (with rotation if applicable)
+      var ecx=m.x+m.w/2, ecy=m.y+m.h/2;
+      var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
+      if(m.rotation&&m.rotation%360!==0){
+        var erot=m.rotation*Math.PI/180;
+        corners=corners.map(function(c){return snapRotPt(c.x,c.y,ecx,ecy,erot);});
+      }
+      for(var ei=0;ei<4;ei++){
+        var enx=(ei+1)%4;
+        var edx=corners[enx].x-corners[ei].x,edy=corners[enx].y-corners[ei].y;
+        var elen2=edx*edx+edy*edy;
+        if(elen2===0) continue;
+        var et=Math.max(0,Math.min(1,((wx-corners[ei].x)*edx+(wy-corners[ei].y)*edy)/elen2));
+        var epx=corners[ei].x+et*edx,epy=corners[ei].y+et*edy;
+        var ed=Math.sqrt((wx-epx)*(wx-epx)+(wy-epy)*(wy-epy));
+        if(ed<bestDist){bestDist=ed;bestIdx=i;}
+      }
+      // Also check if click is inside the element (unrotated approximation)
+      if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
         if(tolerance<bestDist||bestIdx===-1){bestDist=0;bestIdx=i;}
       }
     }
@@ -2718,13 +2719,49 @@ function eraserClick(e){
       // Click on interior: delete entire rect
       _modules.splice(bestIdx,1);
     }else{
-      // Remove rect, add 3 remaining sides as lines (skip the clicked side)
+      // Remove rect, add 4 sides as lines, then cut the clicked side at intersections
       var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
       _modules.splice(bestIdx,1);
+      // Add 3 untouched sides
       for(var si=0;si<4;si++){
         if(si===closestSide) continue;
         _modules.push({type:'shape_line',x1:sides[si].x1,y1:sides[si].y1,
           x2:sides[si].x2,y2:sides[si].y2,stroke:stroke,strokeWidth:stw});
+      }
+      // Cut the clicked side at intersections (same logic as line erasing)
+      var cSide=sides[closestSide];
+      var sideIntersections=[];
+      _modules.forEach(function(other,j){
+        if(other.type==='shape_line'){
+          var inter=segIntersect(cSide.x1,cSide.y1,cSide.x2,cSide.y2,other.x1,other.y1,other.x2,other.y2);
+          if(inter) sideIntersections.push(inter);
+        }
+        if(other.w&&other.h&&other.type!=='group'){
+          var oEdges=[[other.x,other.y,other.x+other.w,other.y],[other.x+other.w,other.y,other.x+other.w,other.y+other.h],
+            [other.x+other.w,other.y+other.h,other.x,other.y+other.h],[other.x,other.y+other.h,other.x,other.y]];
+          oEdges.forEach(function(seg){
+            var inter=segIntersect(cSide.x1,cSide.y1,cSide.x2,cSide.y2,seg[0],seg[1],seg[2],seg[3]);
+            if(inter) sideIntersections.push(inter);
+          });
+        }
+      });
+      if(sideIntersections.length===0){
+        // No intersections: side is fully erased (don't add it back)
+      }else{
+        sideIntersections.sort(function(a,b){return a.t-b.t;});
+        var sPts=[{x:cSide.x1,y:cSide.y1,t:0}].concat(sideIntersections).concat([{x:cSide.x2,y:cSide.y2,t:1}]);
+        var sDx=cSide.x2-cSide.x1,sDy=cSide.y2-cSide.y1;
+        var sClickT=((wx-cSide.x1)*sDx+(wy-cSide.y1)*sDy)/(sDx*sDx+sDy*sDy);
+        sClickT=Math.max(0,Math.min(1,sClickT));
+        var sSegIdx=0;
+        for(var ssi=0;ssi<sPts.length-1;ssi++){
+          if(sClickT>=sPts[ssi].t&&sClickT<=sPts[ssi+1].t){sSegIdx=ssi;break;}
+        }
+        for(var ssi=0;ssi<sPts.length-1;ssi++){
+          if(ssi===sSegIdx) continue;
+          _modules.push({type:'shape_line',x1:Math.round(sPts[ssi].x),y1:Math.round(sPts[ssi].y),
+            x2:Math.round(sPts[ssi+1].x),y2:Math.round(sPts[ssi+1].y),stroke:stroke,strokeWidth:stw});
+        }
       }
     }
   }else{
