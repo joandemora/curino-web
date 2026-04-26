@@ -238,6 +238,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
         <div class="c2d-section-body">
           <div class="c2d-mod" draggable="true" data-type="shape_line" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">╱</div>Línea<span class="c2d-mod-size">500mm</span></div>
           <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌒</div>Curva<span class="c2d-mod-size">500×300</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_arc" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">⌓</div>Arco<span class="c2d-mod-size">500mm</span></div>
           <div class="c2d-mod" draggable="true" data-type="shape_rect" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">▭</div>Rectángulo<span class="c2d-mod-size">500×300</span></div>
           <div class="c2d-mod" draggable="true" data-type="shape_circle" data-w="300" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">○</div>Círculo<span class="c2d-mod-size">⌀300</span></div>
         </div>
@@ -596,16 +597,22 @@ function renderModules(){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
-    // Lines use x1,y1,x2,y2 — compute bounding box
-    if(m.type==='shape_line'){
+    // Lines and arcs use x1,y1,x2,y2 — compute bounding box
+    if(m.type==='shape_line'||m.type==='shape_arc'){
       var lx1=Math.min(m.x1,m.x2),ly1=Math.min(m.y1,m.y2);
       var lx2=Math.max(m.x1,m.x2),ly2=Math.max(m.y1,m.y2);
-      var isAxisAligned=(m.y1===m.y2||m.x1===m.x2);
+      // For arcs, expand bbox by radius bulge
+      if(m.type==='shape_arc'){
+        var arcR=Math.abs(m.radius||100);
+        lx1-=arcR;ly1-=arcR;lx2+=arcR;ly2+=arcR;
+      }
+      var isAxisAligned=(m.type==='shape_line'&&(m.y1===m.y2||m.x1===m.x2));
       if(isAxisAligned){
-        // No padding for CSS-rendered axis-aligned lines
-        mw=(lx2-lx1)*sc;mh=(ly2-ly1)*sc;
-        mx=o.x+lx1*sc;my=o.y-ly2*sc;
-        m._bboxOx=lx1;m._bboxOy=ly1;m._bboxPad=0;
+        var alx1=Math.min(m.x1,m.x2),aly1=Math.min(m.y1,m.y2);
+        var alx2=Math.max(m.x1,m.x2),aly2=Math.max(m.y1,m.y2);
+        mw=(alx2-alx1)*sc;mh=(aly2-aly1)*sc;
+        mx=o.x+alx1*sc;my=o.y-aly2*sc;
+        m._bboxOx=alx1;m._bboxOy=aly1;m._bboxPad=0;
       }else{
         var pad=Math.max((m.strokeWidth||1)*sc,6);
         mw=(lx2-lx1)*sc+pad*2;mh=(ly2-ly1)*sc+pad*2;
@@ -738,18 +745,29 @@ function renderModules(){
         var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
         var cpy=(m.cpy!=null?m.cpy:0)*mh;
         inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
+      }else if(m.type==='shape_arc'){
+        div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
+        var apad=m._bboxPad||6;
+        var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(Math.max(m.y1,m.y2)+Math.abs(m.radius||100)-m.y1)*sc+apad;
+        var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(Math.max(m.y1,m.y2)+Math.abs(m.radius||100)-m.y2)*sc+apad;
+        var arcDist=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2));
+        var arcR=Math.abs(m.radius||100);
+        if(arcR<arcDist/2) arcR=arcDist/2;
+        var arcRpx=arcR*sc;
+        var sweep=(m.radius||100)>0?1:0;
+        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweep+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
       }else if(m.type==='shape_circle'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
       }
     }
-    var dims=m.type==='shape_line'?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.w+'&times;'+m.h;
+    var dims=(m.type==='shape_line'||m.type==='shape_arc')?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.w+'&times;'+m.h;
     div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     div.onmousedown=function(e){if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
-      if(m.type==='shape_line'){
+      if(m.type==='shape_line'||m.type==='shape_arc'){
         // Free-draggable endpoint handles
         var lpad2=m._bboxPad||0;
         var isAA=(m.y1===m.y2||m.x1===m.x2);
@@ -766,6 +784,22 @@ function renderModules(){
           h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
           div.appendChild(h);
         });
+        // Arc radius handle (midpoint of arc)
+        if(m.type==='shape_arc'){
+          var amid_x=((m.x1+m.x2)/2-m._bboxOx)*sc+lpad2;
+          var amid_y=(Math.max(m.y1,m.y2)+Math.abs(m.radius||100)-(m.y1+m.y2)/2)*sc+lpad2;
+          // Offset by radius perpendicular to chord
+          var adx=m.x2-m.x1,ady=m.y2-m.y1;
+          var alen=Math.sqrt(adx*adx+ady*ady)||1;
+          var anx=-ady/alen,any=adx/alen; // perpendicular normal
+          var rSign=(m.radius||100)>0?1:-1;
+          amid_x+=anx*rSign*Math.abs(m.radius||100)*sc*0.5;
+          amid_y-=any*rSign*Math.abs(m.radius||100)*sc*0.5;
+          var rh=document.createElement('div');
+          rh.className='c2d-cp';rh.style.left=amid_x+'px';rh.style.top=amid_y+'px';
+          rh.onmousedown=function(e){e.stopPropagation();e.preventDefault();startArcRadiusDrag(e,i);};
+          div.appendChild(rh);
+        }
       }else{
       var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:['tl','t','tr','l','r','bl','b','br'];
       handles.forEach(function(pos){
@@ -799,7 +833,7 @@ function renderModules(){
     var bx1=Infinity,by1=Infinity,bx2=-Infinity,by2=-Infinity;
     _sel.forEach(function(i){
       var m=_modules[i],mx,my,mw,mh;
-      if(m.type==='shape_line'){mx=Math.min(m.x1,m.x2);my=Math.min(m.y1,m.y2);mw=Math.abs(m.x2-m.x1);mh=Math.abs(m.y2-m.y1);}
+      if(m.type==='shape_line'||m.type==='shape_arc'){mx=Math.min(m.x1,m.x2);my=Math.min(m.y1,m.y2);mw=Math.abs(m.x2-m.x1);mh=Math.abs(m.y2-m.y1);}
       else{mx=m.x;my=m.y;mw=m.w;mh=m.h;}
       bx1=Math.min(bx1,mx);by1=Math.min(by1,my);
       bx2=Math.max(bx2,mx+mw);by2=Math.max(by2,my+mh);
@@ -822,7 +856,7 @@ function renderModules(){
 }
 
 function typeLabel(t){
-  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno',shape_line:'L\u00EDnea',shape_curve:'Curva',shape_rect:'Rect\u00E1ngulo',shape_circle:'C\u00EDrculo'};
+  var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno',shape_line:'L\u00EDnea',shape_curve:'Curva',shape_rect:'Rect\u00E1ngulo',shape_circle:'C\u00EDrculo',shape_arc:'Arco'};
   return labels[t]||t;
 }
 
@@ -851,9 +885,12 @@ function renderProps(){
   var isShape=m.type.startsWith('shape_');
   if(isShape){
     var shapeHTML='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+typeLabel(m.type)+'</div></div>';
-    if(m.type==='shape_line'){
+    if(m.type==='shape_line'||m.type==='shape_arc'){
       var lineLen=Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)));
-      shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label><input type="number" value="'+lineLen+'" step="50" onchange="updateLineLength(parseInt(this.value))"></div>';
+      shapeHTML+='<div class="c2d-prop"><label>Largo (mm)</label>'+(m.type==='shape_line'?'<input type="number" value="'+lineLen+'" step="50" onchange="updateLineLength(parseInt(this.value))">':'<div style="font-size:13px;padding:6px 0">'+lineLen+'</div>')+'</div>';
+      if(m.type==='shape_arc'){
+        shapeHTML+='<div class="c2d-prop"><label>Radio (mm)</label><input type="number" value="'+(m.radius||100)+'" step="10" onchange="updateProp(\'radius\',parseInt(this.value))"></div>';
+      }
     }else{
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)"></div>';
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro Y':'Alto')+' (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>';
@@ -861,7 +898,7 @@ function renderProps(){
     shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
       '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
     shapeHTML+='<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>';
-    if(m.type!=='shape_line'){
+    if(m.type!=='shape_line'&&m.type!=='shape_arc'){
       shapeHTML+='<div class="c2d-prop"><label>Relleno</label><div style="display:flex;gap:8px;align-items:center"><input type="color" value="'+(m.fill&&m.fill!=='none'?m.fill:'#ffffff')+'" onchange="updateProp(\'fill\',this.value)"><label style="margin:0;text-transform:none"><input type="checkbox" '+(m.fill==='none'||!m.fill?'checked':'')+' onchange="updateProp(\'fill\',this.checked?\'none\':document.querySelector(\'#propsPanel input[type=color]:nth-of-type(2)\').value)"> Sin relleno</label></div></div>';
     }
     panel.innerHTML=shapeHTML+'<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
@@ -978,6 +1015,8 @@ wrap.addEventListener('drop',function(e){
     var sh=_dragData.h||1;
     if(_dragData.type==='shape_line'){
       newMod={type:'shape_line',x1:x,y1:y,x2:x+_dragData.w,y2:y,stroke:'#000000',strokeWidth:1};
+    }else if(_dragData.type==='shape_arc'){
+      newMod={type:'shape_arc',x1:x,y1:y,x2:x+_dragData.w,y2:y,radius:100,stroke:'#000000',strokeWidth:1};
     }else{
       newMod={type:_dragData.type,w:_dragData.w,h:sh,x:x,y:y,stroke:'#000000',strokeWidth:1,fill:'none'};
       if(_dragData.type==='shape_curve'){newMod.cpx=0.5;newMod.cpy=0;newMod.h=_dragData.h;}
@@ -1003,7 +1042,7 @@ function startDragModule(e,i){
   var origins=[];
   _sel.forEach(function(idx){
     var m=_modules[idx];
-    if(m.type==='shape_line') origins.push({idx:idx,x1:m.x1,y1:m.y1,x2:m.x2,y2:m.y2,isLine:true});
+    if(m.type==='shape_line'||m.type==='shape_arc') origins.push({idx:idx,x1:m.x1,y1:m.y1,x2:m.x2,y2:m.y2,isLine:true});
     else origins.push({idx:idx,x:m.x,y:m.y,pz:m.pz||0});
   });
   _dragMod={startX:e.clientX,startY:e.clientY,origins:origins};
@@ -1104,7 +1143,7 @@ function dragModuleMove(e){
   // Apply offsets to all selected + clamp to paper
   _dragMod.origins.forEach(function(o){
     var m=_modules[o.idx];
-    if(o.isLine){m.x1=o.x1+xOff;m.y1=o.y1+yOff;m.x2=o.x2+xOff;m.y2=o.y2+yOff;}
+    if(o.isLine){m.x1=o.x1+xOff;m.y1=o.y1+yOff;m.x2=o.x2+xOff;m.y2=o.y2+yOff;return;}
     else{m.x=o.x+xOff;m.y=o.y+yOff;clampToPaper(m);}
   });
   renderModules();renderProps();
@@ -1186,7 +1225,7 @@ function startGroupResize(e,pos,bx,by,bw,bh){
   var originals=[];
   _sel.forEach(function(i){
     var m=_modules[i];
-    if(m.type==='shape_line'){
+    if(m.type==='shape_line'||m.type==='shape_arc'){
       var lx=Math.min(m.x1,m.x2),ly=Math.min(m.y1,m.y2);
       originals.push({idx:i,x:lx,y:ly,w:Math.abs(m.x2-m.x1),h:Math.abs(m.y2-m.y1),d:0,pz:0,isLine:true,x1:m.x1,y1:m.y1,x2:m.x2,y2:m.y2});
     }else{
@@ -1489,6 +1528,40 @@ function lineDragEnd(){
   draw();
 }
 
+// Arc radius drag
+var _arcRadiusDrag=null;
+function startArcRadiusDrag(e,idx){
+  saveHistory();
+  var m=_modules[idx];
+  _arcRadiusDrag={idx:idx,startX:e.clientX,startY:e.clientY,origRadius:m.radius||100};
+  document.addEventListener('mousemove',arcRadiusDragMove);
+  document.addEventListener('mouseup',arcRadiusDragEnd);
+}
+function arcRadiusDragMove(e){
+  if(!_arcRadiusDrag) return;
+  var m=_modules[_arcRadiusDrag.idx],sc2=s();
+  // Project mouse movement onto perpendicular of chord
+  var dx=m.x2-m.x1,dy=m.y2-m.y1;
+  var len=Math.sqrt(dx*dx+dy*dy)||1;
+  var nx=-dy/len,ny=dx/len; // perpendicular normal in world
+  // Mouse delta in world
+  var mdx=(e.clientX-_arcRadiusDrag.startX)/sc2;
+  var mdy=-(e.clientY-_arcRadiusDrag.startY)/sc2;
+  var proj=mdx*nx+mdy*ny; // projection onto normal
+  var newR=_arcRadiusDrag.origRadius+proj;
+  // Clamp: minimum radius = half chord length
+  var halfChord=len/2;
+  if(Math.abs(newR)<halfChord) newR=newR>=0?halfChord:-halfChord;
+  m.radius=Math.round(newR);
+  renderModules();renderProps();
+}
+function arcRadiusDragEnd(){
+  _arcRadiusDrag=null;
+  document.removeEventListener('mousemove',arcRadiusDragMove);
+  document.removeEventListener('mouseup',arcRadiusDragEnd);
+  draw();
+}
+
 // Rotation drag
 var _rotateDrag=null;
 var _rotLabel=null;
@@ -1498,7 +1571,7 @@ function startRotate(e,idx){
   // Compute element center in viewport coords
   var sc2=s(),o2=origin(),pr2=paperRect();
   var cx,cy;
-  if(m.type==='shape_line'){
+  if(m.type==='shape_line'||m.type==='shape_arc'){
     cx=o2.x+((m.x1+m.x2)/2)*sc2-pr2.x;
     cy=o2.y-((m.y1+m.y2)/2)*sc2-pr2.y;
   }else{
@@ -1601,7 +1674,7 @@ function marqueeEnd(e){
     if(!_marquee.shift) _sel.clear();
     _modules.forEach(function(m,i){
       var mleft,mtop,mw,mh;
-      if(m.type==='shape_line'){var lmx=Math.min(m.x1,m.x2),lmy=Math.max(m.y1,m.y2);mleft=o.x+lmx*sc;mtop=o.y-lmy*sc;mw=Math.abs(m.x2-m.x1)*sc;mh=Math.abs(m.y2-m.y1)*sc;}
+      if(m.type==='shape_line'||m.type==='shape_arc'){var lmx=Math.min(m.x1,m.x2),lmy=Math.max(m.y1,m.y2);mleft=o.x+lmx*sc;mtop=o.y-lmy*sc;mw=Math.abs(m.x2-m.x1)*sc;mh=Math.abs(m.y2-m.y1)*sc;}
       else{mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;}
       if(mleft+mw>mx1&&mleft<mx2&&mtop+mh>my1&&mtop<my2) _sel.add(i);
     });
