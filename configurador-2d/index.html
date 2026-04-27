@@ -2775,52 +2775,24 @@ function eraserClick(e){
   var m=_modules[bestIdx];
   saveHistory();
 
-  // For lines: try to cut at intersections
+  // For lines: use findEraseSeg (same logic as hover preview, includes endpoints as cut points)
   if(m.type==='shape_line'){
-    var seg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
-    // Find all intersections to determine if we need to split
-    var intersections=[];
-    _modules.forEach(function(other,j){
-      if(j===bestIdx) return;
-      if(other.type==='shape_line'){
-        var inter=segIntersect(m.x1,m.y1,m.x2,m.y2,other.x1,other.y1,other.x2,other.y2);
-        if(inter) intersections.push(inter);
-      }
-      if(other.w&&other.h&&other.type!=='group'){
-        var edges=[
-          [other.x,other.y,other.x+other.w,other.y],
-          [other.x+other.w,other.y,other.x+other.w,other.y+other.h],
-          [other.x+other.w,other.y+other.h,other.x,other.y+other.h],
-          [other.x,other.y+other.h,other.x,other.y]
-        ];
-        edges.forEach(function(seg){
-          var inter=segIntersect(m.x1,m.y1,m.x2,m.y2,seg[0],seg[1],seg[2],seg[3]);
-          if(inter) intersections.push(inter);
-        });
-      }
-    });
-
-    if(intersections.length===0){
+    var eraseSeg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
+    // Check if the erase segment is the entire line (no cut points found)
+    var isFullLine=Math.abs(eraseSeg.p1.x-m.x1)<1&&Math.abs(eraseSeg.p1.y-m.y1)<1&&Math.abs(eraseSeg.p2.x-m.x2)<1&&Math.abs(eraseSeg.p2.y-m.y2)<1;
+    if(isFullLine){
       _modules.splice(bestIdx,1);
     }else{
-      intersections.sort(function(a,b){return a.t-b.t;});
-      var pts=[{x:m.x1,y:m.y1,t:0}].concat(intersections).concat([{x:m.x2,y:m.y2,t:1}]);
-      var dx=m.x2-m.x1,dy=m.y2-m.y1;
-      var clickT=((wx-m.x1)*dx+(wy-m.y1)*dy)/(dx*dx+dy*dy);
-      clickT=Math.max(0,Math.min(1,clickT));
-      var segIdx=0;
-      for(var si=0;si<pts.length-1;si++){
-        if(clickT>=pts[si].t&&clickT<=pts[si+1].t){segIdx=si;break;}
-      }
+      // Build remaining segments: original line minus the erased sub-segment
+      var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
       var newLines=[];
-      for(var si=0;si<pts.length-1;si++){
-        if(si===segIdx) continue;
-        newLines.push({
-          type:'shape_line',
-          x1:Math.round(pts[si].x),y1:Math.round(pts[si].y),
-          x2:Math.round(pts[si+1].x),y2:Math.round(pts[si+1].y),
-          stroke:m.stroke||'#000000',strokeWidth:m.strokeWidth||1
-        });
+      // Segment from line start to erase start (if not at start)
+      if(Math.abs(eraseSeg.p1.x-m.x1)>1||Math.abs(eraseSeg.p1.y-m.y1)>1){
+        newLines.push({type:'shape_line',x1:Math.round(m.x1),y1:Math.round(m.y1),x2:Math.round(eraseSeg.p1.x),y2:Math.round(eraseSeg.p1.y),stroke:stroke,strokeWidth:stw});
+      }
+      // Segment from erase end to line end (if not at end)
+      if(Math.abs(eraseSeg.p2.x-m.x2)>1||Math.abs(eraseSeg.p2.y-m.y2)>1){
+        newLines.push({type:'shape_line',x1:Math.round(eraseSeg.p2.x),y1:Math.round(eraseSeg.p2.y),x2:Math.round(m.x2),y2:Math.round(m.y2),stroke:stroke,strokeWidth:stw});
       }
       _modules.splice(bestIdx,1);
       newLines.forEach(function(nl){_modules.push(nl);});
