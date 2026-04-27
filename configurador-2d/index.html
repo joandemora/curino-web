@@ -2729,7 +2729,12 @@ function circleIntersections(cx,cy,rx,ry,skipIdx,targetRotation){
       segs.push([lp1.x,lp1.y,lp2.x,lp2.y]);
     }
     if(m.w&&m.h&&m.type!=='group'&&m.type!=='shape_circle'&&m.type!=='shape_arc'&&m.type!=='shape_curve'){
-      var c0=toLocal(m.x,m.y),c1=toLocal(m.x+m.w,m.y),c2=toLocal(m.x+m.w,m.y+m.h),c3=toLocal(m.x,m.y+m.h);
+      var rCorners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
+      if(m.rotation&&m.rotation%360!==0){
+        var rcx=m.x+m.w/2,rcy=m.y+m.h/2;
+        rCorners=rCorners.map(function(c){return snapRotPt(c.x,c.y,rcx,rcy,m.rotation*Math.PI/180);});
+      }
+      var c0=toLocal(rCorners[0].x,rCorners[0].y),c1=toLocal(rCorners[1].x,rCorners[1].y),c2=toLocal(rCorners[2].x,rCorners[2].y),c3=toLocal(rCorners[3].x,rCorners[3].y);
       segs.push([c0.x,c0.y,c1.x,c1.y]);
       segs.push([c1.x,c1.y,c2.x,c2.y]);
       segs.push([c2.x,c2.y,c3.x,c3.y]);
@@ -2999,8 +3004,13 @@ function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
       tryAddPoint(other.x1,other.y1);
       tryAddPoint(other.x2,other.y2);
     }
-    if(other.w&&other.h&&other.type!=='group'){
+    if(other.w&&other.h&&other.type!=='group'&&other.type!=='shape_circle'&&other.type!=='shape_arc'&&other.type!=='shape_curve'){
       var corners=[{x:other.x,y:other.y},{x:other.x+other.w,y:other.y},{x:other.x+other.w,y:other.y+other.h},{x:other.x,y:other.y+other.h}];
+      if(other.rotation&&other.rotation%360!==0){
+        var ocx=other.x+other.w/2,ocy=other.y+other.h/2;
+        var orot=other.rotation*Math.PI/180;
+        corners=corners.map(function(c){return snapRotPt(c.x,c.y,ocx,ocy,orot);});
+      }
       // Edge intersections
       for(var ci=0;ci<4;ci++){
         var cn=(ci+1)%4;
