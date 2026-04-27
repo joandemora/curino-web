@@ -2895,16 +2895,23 @@ function updateEraserPreview(e){
       _eraserPreview.style.width=w+'px';_eraserPreview.style.height=h+'px';
       _eraserPreview.innerHTML='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible"><line x1="'+(sx1-minX)+'" y1="'+(sy1-minY)+'" x2="'+(sx2-minX)+'" y2="'+(sy2-minY)+'" stroke="#CC785C" stroke-width="4" stroke-linecap="round" opacity="0.7"/></svg>';
     }
-  }else{
-    var mx,my,mw,mh;
-    if(m.type==='shape_line'||m.type==='shape_arc'){
-      var lx=Math.min(m.x1,m.x2),ly=Math.min(m.y1,m.y2);
-      mw=Math.abs(m.x2-m.x1)*sc2;mh=Math.abs(m.y2-m.y1)*sc2;
-      mx=o2.x+lx*sc2-pr.x;my=o2.y-Math.max(m.y1,m.y2)*sc2-pr.y;
-    }else if(m.w&&m.h){
-      mw=m.w*sc2;mh=m.h*sc2;
-      mx=o2.x+m.x*sc2-pr.x;my=o2.y-(m.y+m.h)*sc2-pr.y;
-    }else return;
+  }else if(m.type==='shape_arc'||m.type==='shape_circle'||m.type==='shape_curve'){
+    // Preview curve as polyline
+    var pts=curvePoints(m,40);
+    if(pts.length<2) return;
+    // Convert to screen coords relative to layer
+    var screenPts=pts.map(function(p){return{x:o2.x+p.x*sc2-pr.x,y:o2.y-p.y*sc2-pr.y};});
+    var minPX=Infinity,minPY=Infinity,maxPX=-Infinity,maxPY=-Infinity;
+    screenPts.forEach(function(p){minPX=Math.min(minPX,p.x);minPY=Math.min(minPY,p.y);maxPX=Math.max(maxPX,p.x);maxPY=Math.max(maxPY,p.y);});
+    var pad=8;
+    _eraserPreview.style.left=(minPX-pad)+'px';_eraserPreview.style.top=(minPY-pad)+'px';
+    _eraserPreview.style.width=(maxPX-minPX+pad*2)+'px';_eraserPreview.style.height=(maxPY-minPY+pad*2)+'px';
+    var polyStr=screenPts.map(function(p){return(p.x-minPX+pad)+','+(p.y-minPY+pad);}).join(' ');
+    _eraserPreview.innerHTML='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible"><polyline points="'+polyStr+'" stroke="#CC785C" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/></svg>';
+  }else if(m.w&&m.h){
+    // Fallback: highlight bbox for modules/other types
+    var mw=m.w*sc2,mh=m.h*sc2;
+    var mx=o2.x+m.x*sc2-pr.x,my=o2.y-(m.y+m.h)*sc2-pr.y;
     _eraserPreview.style.left=(mx-3)+'px';_eraserPreview.style.top=(my-3)+'px';
     _eraserPreview.style.width=(mw+6)+'px';_eraserPreview.style.height=(mh+6)+'px';
     _eraserPreview.style.border='3px solid #CC785C';_eraserPreview.style.borderRadius='2px';
