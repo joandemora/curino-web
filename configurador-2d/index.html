@@ -2590,17 +2590,18 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
 // Hit-test for eraser: returns {idx, dist, side} or null
 function eraserHitTest(wx,wy){
   var tolerance=10/s();
-  var bestIdx=-1,bestDist=tolerance,bestSide=null;
+  // Two-tier priority: edge/line hits (tier 1) beat interior hits (tier 2)
+  var bestIdx=-1,bestDist=tolerance,bestSide=null,bestIsEdge=false;
 
   _modules.forEach(function(m,i){
     if(m.type==='shape_line'||m.type==='shape_arc'){
       var dx=m.x2-m.x1,dy=m.y2-m.y1;
       var len2=dx*dx+dy*dy;
-      if(len2===0){var d=Math.sqrt((wx-m.x1)*(wx-m.x1)+(wy-m.y1)*(wy-m.y1));if(d<=bestDist){bestDist=d;bestIdx=i;bestSide=null;}return;}
+      if(len2===0){var d=Math.sqrt((wx-m.x1)*(wx-m.x1)+(wy-m.y1)*(wy-m.y1));if(d<=bestDist||!bestIsEdge){bestDist=d;bestIdx=i;bestSide=null;bestIsEdge=true;}return;}
       var t=Math.max(0,Math.min(1,((wx-m.x1)*dx+(wy-m.y1)*dy)/len2));
       var px=m.x1+t*dx,py=m.y1+t*dy;
       var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
-      if(d<=bestDist){bestDist=d;bestIdx=i;bestSide=null;}
+      if(d<=tolerance&&(d<=bestDist||!bestIsEdge)){bestDist=d;bestIdx=i;bestSide=null;bestIsEdge=true;}
     }else if(m.w&&m.h){
       var ecx=m.x+m.w/2, ecy=m.y+m.h/2;
       var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
@@ -2616,10 +2617,11 @@ function eraserHitTest(wx,wy){
         var et=Math.max(0,Math.min(1,((wx-corners[ei].x)*edx+(wy-corners[ei].y)*edy)/elen2));
         var epx=corners[ei].x+et*edx,epy=corners[ei].y+et*edy;
         var ed=Math.sqrt((wx-epx)*(wx-epx)+(wy-epy)*(wy-epy));
-        if(ed<=bestDist){bestDist=ed;bestIdx=i;bestSide=ei;}
+        if(ed<=tolerance&&(ed<=bestDist||!bestIsEdge)){bestDist=ed;bestIdx=i;bestSide=ei;bestIsEdge=true;}
       }
+      // Interior hit: only wins if no edge hit exists
       if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
-        if(tolerance<bestDist||bestIdx===-1){bestDist=0;bestIdx=i;bestSide=null;}
+        if(!bestIsEdge&&(bestIdx===-1||tolerance<bestDist)){bestDist=0;bestIdx=i;bestSide=null;}
       }
     }
   });
