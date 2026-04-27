@@ -2631,29 +2631,50 @@ function eraserHitTest(wx,wy){
 // skipIdx: module index to skip when collecting intersections
 function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
   var intersections=[];
+  var sdx=lx2-lx1,sdy=ly2-ly1;
+  var slen2=sdx*sdx+sdy*sdy;
+  var ENDPT_TOL=1; // 1mm tolerance for endpoint-on-segment
+  // Helper: check if point (px,py) lies on our segment within tolerance
+  function tryAddPoint(px,py){
+    if(slen2===0) return;
+    var t=((px-lx1)*sdx+(py-ly1)*sdy)/slen2;
+    if(t<0.001||t>0.999) return; // skip if at/beyond endpoints
+    var projX=lx1+t*sdx,projY=ly1+t*sdy;
+    var dist=Math.sqrt((px-projX)*(px-projX)+(py-projY)*(py-projY));
+    if(dist<=ENDPT_TOL) intersections.push({x:projX,y:projY,t:t});
+  }
   _modules.forEach(function(other,j){
     if(j===skipIdx) return;
-    if(other.type==='shape_line'){
+    if(other.type==='shape_line'||other.type==='shape_arc'){
+      // Intersection
       var inter=segIntersect(lx1,ly1,lx2,ly2,other.x1,other.y1,other.x2,other.y2);
       if(inter) intersections.push(inter);
+      // Endpoints on our segment
+      tryAddPoint(other.x1,other.y1);
+      tryAddPoint(other.x2,other.y2);
     }
     if(other.w&&other.h&&other.type!=='group'){
-      var edges=[
-        [other.x,other.y,other.x+other.w,other.y],
-        [other.x+other.w,other.y,other.x+other.w,other.y+other.h],
-        [other.x+other.w,other.y+other.h,other.x,other.y+other.h],
-        [other.x,other.y+other.h,other.x,other.y]
-      ];
-      edges.forEach(function(seg){
-        var inter=segIntersect(lx1,ly1,lx2,ly2,seg[0],seg[1],seg[2],seg[3]);
+      var corners=[{x:other.x,y:other.y},{x:other.x+other.w,y:other.y},{x:other.x+other.w,y:other.y+other.h},{x:other.x,y:other.y+other.h}];
+      // Edge intersections
+      for(var ci=0;ci<4;ci++){
+        var cn=(ci+1)%4;
+        var inter=segIntersect(lx1,ly1,lx2,ly2,corners[ci].x,corners[ci].y,corners[cn].x,corners[cn].y);
         if(inter) intersections.push(inter);
-      });
+      }
+      // Corners on our segment
+      corners.forEach(function(c){tryAddPoint(c.x,c.y);});
     }
   });
+  // Deduplicate by t (merge points within 0.001 t)
+  intersections.sort(function(a,b){return a.t-b.t;});
+  var deduped=[];
+  intersections.forEach(function(p){
+    if(deduped.length===0||Math.abs(p.t-deduped[deduped.length-1].t)>0.001) deduped.push(p);
+  });
+  intersections=deduped;
   if(intersections.length===0){
     return{p1:{x:lx1,y:ly1},p2:{x:lx2,y:ly2}};
   }
-  intersections.sort(function(a,b){return a.t-b.t;});
   var pts=[{x:lx1,y:ly1,t:0}].concat(intersections).concat([{x:lx2,y:ly2,t:1}]);
   var dx=lx2-lx1,dy=ly2-ly1;
   var len2=dx*dx+dy*dy;
