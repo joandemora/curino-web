@@ -2896,10 +2896,50 @@ function updateEraserPreview(e){
       _eraserPreview.innerHTML='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible"><line x1="'+(sx1-minX)+'" y1="'+(sy1-minY)+'" x2="'+(sx2-minX)+'" y2="'+(sy2-minY)+'" stroke="#CC785C" stroke-width="4" stroke-linecap="round" opacity="0.7"/></svg>';
     }
   }else if(m.type==='shape_arc'||m.type==='shape_circle'||m.type==='shape_curve'){
-    // Preview curve as polyline
-    var pts=curvePoints(m,40);
+    // For circles/arcs: find sub-arc under cursor (matching eraserClick logic)
+    var subArcPts=null;
+    if(m.type==='shape_circle'){
+      var ccx=m.x+m.w/2,ccy=m.y+m.h/2,cr=m.w/2;
+      var ipts=circleIntersections(ccx,ccy,cr,cr,hit.idx);
+      if(ipts.length>=2){
+        ipts.sort(function(a,b){return a.angle-b.angle;});
+        var clickA=Math.atan2(wy-ccy,wx-ccx);
+        var ai2=ipts.length-1;
+        for(var ai=0;ai<ipts.length-1;ai++){if(clickA>=ipts[ai].angle&&clickA<=ipts[ai+1].angle){ai2=ai;break;}}
+        var a1=ipts[ai2].angle,a2=ipts[(ai2+1)%ipts.length].angle;
+        if(a2<=a1) a2+=2*Math.PI;
+        subArcPts=[];
+        for(var ti=0;ti<=30;ti++){var aa=a1+(a2-a1)*ti/30;subArcPts.push({x:ccx+cr*Math.cos(aa),y:ccy+cr*Math.sin(aa)});}
+      }
+    }else if(m.type==='shape_arc'){
+      var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
+      var asagVal=Math.min(Math.abs(m.sagitta||0),achord/2);
+      if(asagVal>=1){
+        var aR2=(achord/2*achord/2)/(2*asagVal)+asagVal/2;
+        var amx2=(m.x1+m.x2)/2,amy2=(m.y1+m.y2)/2;
+        var anx2=-(m.y2-m.y1)/achord,any2=(m.x2-m.x1)/achord;
+        var asign2=(m.sagitta||1)>0?1:-1;
+        var adist2=aR2-asagVal;
+        var acx2=amx2-anx2*asign2*adist2,acy2=amy2-any2*asign2*adist2;
+        var ipts=circleIntersections(acx2,acy2,aR2,aR2,hit.idx);
+        ipts.push({x:m.x1,y:m.y1,angle:Math.atan2(m.y1-acy2,m.x1-acx2)});
+        ipts.push({x:m.x2,y:m.y2,angle:Math.atan2(m.y2-acy2,m.x2-acx2)});
+        ipts.sort(function(a,b){return a.angle-b.angle;});
+        var ded=[];ipts.forEach(function(p){if(ded.length===0||Math.abs(p.angle-ded[ded.length-1].angle)>0.01)ded.push(p);});
+        ipts=ded;
+        if(ipts.length>=3){
+          var clickA=Math.atan2(wy-acy2,wx-acx2);
+          var ai2=ipts.length-2;
+          for(var ai=0;ai<ipts.length-1;ai++){if(clickA>=ipts[ai].angle&&clickA<=ipts[ai+1].angle){ai2=ai;break;}}
+          var a1=ipts[ai2].angle,a2=ipts[ai2+1].angle;
+          subArcPts=[];
+          for(var ti=0;ti<=30;ti++){var aa=a1+(a2-a1)*ti/30;subArcPts.push({x:acx2+aR2*Math.cos(aa),y:acy2+aR2*Math.sin(aa)});}
+        }
+      }
+    }
+    // Use sub-arc points if available, otherwise full curve
+    var pts=subArcPts||curvePoints(m,40);
     if(pts.length<2) return;
-    // Convert to screen coords relative to layer
     var screenPts=pts.map(function(p){return{x:o2.x+p.x*sc2-pr.x,y:o2.y-p.y*sc2-pr.y};});
     var minPX=Infinity,minPY=Infinity,maxPX=-Infinity,maxPY=-Infinity;
     screenPts.forEach(function(p){minPX=Math.min(minPX,p.x);minPY=Math.min(minPY,p.y);maxPX=Math.max(maxPX,p.x);maxPY=Math.max(maxPY,p.y);});
