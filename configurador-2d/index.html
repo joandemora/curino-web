@@ -94,6 +94,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-marquee{position:absolute;border:1px dashed var(--accent);background:rgba(0,115,84,.06);pointer-events:none;z-index:5}
 .c2d-snapline{position:absolute;background:#FF00C8;pointer-events:none;z-index:4}
 .c2d-snapdot{position:absolute;width:6px;height:6px;background:#FF00C8;border-radius:50%;pointer-events:none;z-index:4;margin-left:-3px;margin-top:-3px}
+.c2d-eraser-preview{position:absolute;pointer-events:none;z-index:6}
 .c2d-snapline-h{height:1px;left:0;right:0}
 .c2d-snapline-v{width:1px;top:0;bottom:0}
 /* Shape control points */
@@ -2556,6 +2557,7 @@ function toggleEraser(){
   }else{
     btn.classList.remove('active');
     wrap.style.cursor='grab';
+    clearEraserPreview();
   }
 }
 function exitEraser(){
@@ -2563,7 +2565,12 @@ function exitEraser(){
   _eraserMode=false;
   document.getElementById('btnEraser').classList.remove('active');
   wrap.style.cursor='grab';
+  clearEraserPreview();
 }
+
+wrap.addEventListener('mousemove',function(e){
+  if(_eraserMode) updateEraserPreview(e);
+});
 
 // Line segment intersection: returns {x,y,t} or null
 // t is parameter along first segment (0..1)
@@ -2580,27 +2587,20 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
   return null;
 }
 
-// Eraser click: find element under cursor and erase
-function eraserClick(e){
-  var sc2=s(),o2=origin();
-  var wrapRect=wrap.getBoundingClientRect();
-  var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
-  var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
-  var tolerance=10/sc2;
-  console.log('[ERASER] clientX='+e.clientX+' clientY='+e.clientY+' wrapLeft='+Math.round(wrapRect.left)+' wrapTop='+Math.round(wrapRect.top)+' o2.x='+Math.round(o2.x)+' o2.y='+Math.round(o2.y)+' sc='+sc2.toFixed(4)+' → world=('+Math.round(wx)+','+Math.round(wy)+') tolerance='+Math.round(tolerance));
-
-  // Find closest element
-  var bestIdx=-1,bestDist=tolerance;
+// Hit-test for eraser: returns {idx, dist, side} or null
+function eraserHitTest(wx,wy){
+  var tolerance=10/s();
+  var bestIdx=-1,bestDist=tolerance,bestSide=null;
 
   _modules.forEach(function(m,i){
     if(m.type==='shape_line'||m.type==='shape_arc'){
       var dx=m.x2-m.x1,dy=m.y2-m.y1;
       var len2=dx*dx+dy*dy;
-      if(len2===0){var d=Math.sqrt((wx-m.x1)*(wx-m.x1)+(wy-m.y1)*(wy-m.y1));if(d<bestDist){bestDist=d;bestIdx=i;}return;}
+      if(len2===0){var d=Math.sqrt((wx-m.x1)*(wx-m.x1)+(wy-m.y1)*(wy-m.y1));if(d<bestDist){bestDist=d;bestIdx=i;bestSide=null;}return;}
       var t=Math.max(0,Math.min(1,((wx-m.x1)*dx+(wy-m.y1)*dy)/len2));
       var px=m.x1+t*dx,py=m.y1+t*dy;
       var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
-      if(d<bestDist){bestDist=d;bestIdx=i;}
+      if(d<bestDist){bestDist=d;bestIdx=i;bestSide=null;}
     }else if(m.w&&m.h){
       var ecx=m.x+m.w/2, ecy=m.y+m.h/2;
       var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
@@ -2608,7 +2608,6 @@ function eraserClick(e){
         var erot=m.rotation*Math.PI/180;
         corners=corners.map(function(c){return snapRotPt(c.x,c.y,ecx,ecy,erot);});
       }
-      var sNames=['bot','right','top','left'];
       for(var ei=0;ei<4;ei++){
         var enx=(ei+1)%4;
         var edx=corners[enx].x-corners[ei].x,edy=corners[enx].y-corners[ei].y;
@@ -2617,23 +2616,146 @@ function eraserClick(e){
         var et=Math.max(0,Math.min(1,((wx-corners[ei].x)*edx+(wy-corners[ei].y)*edy)/elen2));
         var epx=corners[ei].x+et*edx,epy=corners[ei].y+et*edy;
         var ed=Math.sqrt((wx-epx)*(wx-epx)+(wy-epy)*(wy-epy));
-        console.log('[ERASER] i='+i+' '+m.type+' side='+sNames[ei]+' ('+Math.round(corners[ei].x)+','+Math.round(corners[ei].y)+')→('+Math.round(corners[enx].x)+','+Math.round(corners[enx].y)+') t='+et.toFixed(3)+' closest=('+Math.round(epx)+','+Math.round(epy)+') dist='+Math.round(ed)+' bestDist='+Math.round(bestDist));
-        if(ed<bestDist){bestDist=ed;bestIdx=i;}
+        if(ed<bestDist){bestDist=ed;bestIdx=i;bestSide=ei;}
       }
       if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
-        if(tolerance<bestDist||bestIdx===-1){bestDist=0;bestIdx=i;}
+        if(tolerance<bestDist||bestIdx===-1){bestDist=0;bestIdx=i;bestSide=null;}
       }
     }
   });
-  console.log('[ERASER] WINNER: bestIdx='+bestIdx+' bestDist='+Math.round(bestDist)+' type='+(bestIdx>=0?_modules[bestIdx].type:'none'));
-  if(bestIdx===-1) return;
+  if(bestIdx===-1) return null;
+  return{idx:bestIdx,dist:bestDist,side:bestSide};
+}
+
+// Find the sub-segment of line (lx1,ly1)→(lx2,ly2) that contains point (wx,wy)
+// skipIdx: module index to skip when collecting intersections
+function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
+  var intersections=[];
+  _modules.forEach(function(other,j){
+    if(j===skipIdx) return;
+    if(other.type==='shape_line'){
+      var inter=segIntersect(lx1,ly1,lx2,ly2,other.x1,other.y1,other.x2,other.y2);
+      if(inter) intersections.push(inter);
+    }
+    if(other.w&&other.h&&other.type!=='group'){
+      var edges=[
+        [other.x,other.y,other.x+other.w,other.y],
+        [other.x+other.w,other.y,other.x+other.w,other.y+other.h],
+        [other.x+other.w,other.y+other.h,other.x,other.y+other.h],
+        [other.x,other.y+other.h,other.x,other.y]
+      ];
+      edges.forEach(function(seg){
+        var inter=segIntersect(lx1,ly1,lx2,ly2,seg[0],seg[1],seg[2],seg[3]);
+        if(inter) intersections.push(inter);
+      });
+    }
+  });
+  if(intersections.length===0){
+    return{p1:{x:lx1,y:ly1},p2:{x:lx2,y:ly2}};
+  }
+  intersections.sort(function(a,b){return a.t-b.t;});
+  var pts=[{x:lx1,y:ly1,t:0}].concat(intersections).concat([{x:lx2,y:ly2,t:1}]);
+  var dx=lx2-lx1,dy=ly2-ly1;
+  var len2=dx*dx+dy*dy;
+  if(len2===0) return{p1:{x:lx1,y:ly1},p2:{x:lx2,y:ly2}};
+  var clickT=((wx-lx1)*dx+(wy-ly1)*dy)/len2;
+  clickT=Math.max(0,Math.min(1,clickT));
+  var segIdx=0;
+  for(var si=0;si<pts.length-1;si++){
+    if(clickT>=pts[si].t&&clickT<=pts[si+1].t){segIdx=si;break;}
+  }
+  return{p1:{x:pts[segIdx].x,y:pts[segIdx].y},p2:{x:pts[segIdx+1].x,y:pts[segIdx+1].y}};
+}
+
+// Eraser hover preview
+var _eraserPreview=null;
+function clearEraserPreview(){if(_eraserPreview){_eraserPreview.remove();_eraserPreview=null;}}
+
+function updateEraserPreview(e){
+  if(!_eraserMode) return;
+  clearEraserPreview();
+  var sc2=s(),o2=origin();
+  var wrapRect=wrap.getBoundingClientRect();
+  var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
+  var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
+  var hit=eraserHitTest(wx,wy);
+  if(!hit) return;
+
+  var m=_modules[hit.idx];
+  var pr=paperRect();
+
+  _eraserPreview=document.createElement('div');
+  _eraserPreview.className='c2d-eraser-preview';
+
+  if(m.type==='shape_line'){
+    var seg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,hit.idx);
+    if(seg){
+      var sx1=o2.x+seg.p1.x*sc2-pr.x,sy1=o2.y-seg.p1.y*sc2-pr.y;
+      var sx2=o2.x+seg.p2.x*sc2-pr.x,sy2=o2.y-seg.p2.y*sc2-pr.y;
+      var minX=Math.min(sx1,sx2)-5,minY=Math.min(sy1,sy2)-5;
+      var w=Math.abs(sx2-sx1)+10,h=Math.abs(sy2-sy1)+10;
+      _eraserPreview.style.left=minX+'px';_eraserPreview.style.top=minY+'px';
+      _eraserPreview.style.width=w+'px';_eraserPreview.style.height=h+'px';
+      _eraserPreview.innerHTML='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible"><line x1="'+(sx1-minX)+'" y1="'+(sy1-minY)+'" x2="'+(sx2-minX)+'" y2="'+(sy2-minY)+'" stroke="#CC785C" stroke-width="4" stroke-linecap="round" opacity="0.7"/></svg>';
+    }
+  }else if(m.type==='shape_rect'&&hit.side!=null){
+    var ecx=m.x+m.w/2,ecy=m.y+m.h/2;
+    var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
+    if(m.rotation&&m.rotation%360!==0){
+      var erot=m.rotation*Math.PI/180;
+      corners=corners.map(function(c){return snapRotPt(c.x,c.y,ecx,ecy,erot);});
+    }
+    var si=hit.side,sn=(si+1)%4;
+    var cSide={x1:corners[si].x,y1:corners[si].y,x2:corners[sn].x,y2:corners[sn].y};
+    var seg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,hit.idx);
+    if(seg){
+      var sx1=o2.x+seg.p1.x*sc2-pr.x,sy1=o2.y-seg.p1.y*sc2-pr.y;
+      var sx2=o2.x+seg.p2.x*sc2-pr.x,sy2=o2.y-seg.p2.y*sc2-pr.y;
+      var minX=Math.min(sx1,sx2)-5,minY=Math.min(sy1,sy2)-5;
+      var w=Math.abs(sx2-sx1)+10,h=Math.abs(sy2-sy1)+10;
+      _eraserPreview.style.left=minX+'px';_eraserPreview.style.top=minY+'px';
+      _eraserPreview.style.width=w+'px';_eraserPreview.style.height=h+'px';
+      _eraserPreview.innerHTML='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible"><line x1="'+(sx1-minX)+'" y1="'+(sy1-minY)+'" x2="'+(sx2-minX)+'" y2="'+(sy2-minY)+'" stroke="#CC785C" stroke-width="4" stroke-linecap="round" opacity="0.7"/></svg>';
+    }
+  }else{
+    var mx,my,mw,mh;
+    if(m.type==='shape_line'||m.type==='shape_arc'){
+      var lx=Math.min(m.x1,m.x2),ly=Math.min(m.y1,m.y2);
+      mw=Math.abs(m.x2-m.x1)*sc2;mh=Math.abs(m.y2-m.y1)*sc2;
+      mx=o2.x+lx*sc2-pr.x;my=o2.y-Math.max(m.y1,m.y2)*sc2-pr.y;
+    }else if(m.w&&m.h){
+      mw=m.w*sc2;mh=m.h*sc2;
+      mx=o2.x+m.x*sc2-pr.x;my=o2.y-(m.y+m.h)*sc2-pr.y;
+    }else return;
+    _eraserPreview.style.left=(mx-3)+'px';_eraserPreview.style.top=(my-3)+'px';
+    _eraserPreview.style.width=(mw+6)+'px';_eraserPreview.style.height=(mh+6)+'px';
+    _eraserPreview.style.border='3px solid #CC785C';_eraserPreview.style.borderRadius='2px';
+    _eraserPreview.style.opacity='0.7';
+  }
+
+  layer.appendChild(_eraserPreview);
+}
+
+// Eraser click: find element under cursor and erase
+function eraserClick(e){
+  clearEraserPreview();
+  var sc2=s(),o2=origin();
+  var wrapRect=wrap.getBoundingClientRect();
+  var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
+  var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
+  var tolerance=10/sc2;
+
+  var hit=eraserHitTest(wx,wy);
+  if(!hit) return;
+  var bestIdx=hit.idx;
 
   var m=_modules[bestIdx];
   saveHistory();
 
   // For lines: try to cut at intersections
   if(m.type==='shape_line'){
-    // Find all intersections of this line with other lines
+    var seg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
+    // Find all intersections to determine if we need to split
     var intersections=[];
     _modules.forEach(function(other,j){
       if(j===bestIdx) return;
@@ -2641,7 +2763,6 @@ function eraserClick(e){
         var inter=segIntersect(m.x1,m.y1,m.x2,m.y2,other.x1,other.y1,other.x2,other.y2);
         if(inter) intersections.push(inter);
       }
-      // Check edges of rectangular elements
       if(other.w&&other.h&&other.type!=='group'){
         var edges=[
           [other.x,other.y,other.x+other.w,other.y],
@@ -2657,23 +2778,17 @@ function eraserClick(e){
     });
 
     if(intersections.length===0){
-      // No intersections: delete entire line
       _modules.splice(bestIdx,1);
     }else{
-      // Sort intersections by t parameter
       intersections.sort(function(a,b){return a.t-b.t;});
-      // Add endpoints
       var pts=[{x:m.x1,y:m.y1,t:0}].concat(intersections).concat([{x:m.x2,y:m.y2,t:1}]);
-      // Find which segment the click falls in
       var dx=m.x2-m.x1,dy=m.y2-m.y1;
-      var len=Math.sqrt(dx*dx+dy*dy)||1;
       var clickT=((wx-m.x1)*dx+(wy-m.y1)*dy)/(dx*dx+dy*dy);
       clickT=Math.max(0,Math.min(1,clickT));
       var segIdx=0;
       for(var si=0;si<pts.length-1;si++){
         if(clickT>=pts[si].t&&clickT<=pts[si+1].t){segIdx=si;break;}
       }
-      // Create new lines for remaining segments (skip the clicked one)
       var newLines=[];
       for(var si=0;si<pts.length-1;si++){
         if(si===segIdx) continue;
@@ -2688,23 +2803,19 @@ function eraserClick(e){
       newLines.forEach(function(nl){_modules.push(nl);});
     }
   }else if(m.type==='shape_rect'){
-    // Decompose rectangle into 4 lines, erase the clicked side
     var rot=(m.rotation||0)*Math.PI/180;
     var hasRot=m.rotation&&m.rotation%360!==0;
     var cx=m.x+m.w/2, cy=m.y+m.h/2;
-    // 4 corners in world coords (bottom-left, bottom-right, top-right, top-left)
     var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
     if(hasRot){
       corners=corners.map(function(c){return snapRotPt(c.x,c.y,cx,cy,rot);});
     }
-    // 4 sides as line segments
     var sides=[];
     for(var si=0;si<4;si++){
       var next=(si+1)%4;
       sides.push({x1:Math.round(corners[si].x),y1:Math.round(corners[si].y),
                    x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
     }
-    // Find closest side to click
     var closestSide=-1,closestDist=tolerance;
     sides.forEach(function(seg,si){
       var sdx=seg.x2-seg.x1,sdy=seg.y2-seg.y1;
@@ -2716,19 +2827,15 @@ function eraserClick(e){
       if(d<closestDist){closestDist=d;closestSide=si;}
     });
     if(closestSide===-1){
-      // Click on interior: delete entire rect
       _modules.splice(bestIdx,1);
     }else{
-      // Remove rect, add 4 sides as lines, then cut the clicked side at intersections
       var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
       _modules.splice(bestIdx,1);
-      // Add 3 untouched sides
       for(var si=0;si<4;si++){
         if(si===closestSide) continue;
         _modules.push({type:'shape_line',x1:sides[si].x1,y1:sides[si].y1,
           x2:sides[si].x2,y2:sides[si].y2,stroke:stroke,strokeWidth:stw});
       }
-      // Cut the clicked side at intersections (same logic as line erasing)
       var cSide=sides[closestSide];
       var sideIntersections=[];
       _modules.forEach(function(other,j){
@@ -2765,7 +2872,6 @@ function eraserClick(e){
       }
     }
   }else{
-    // Other elements: delete entire element
     _modules.splice(bestIdx,1);
   }
 
