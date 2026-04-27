@@ -2847,7 +2847,11 @@ function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
 
 // Eraser hover preview
 var _eraserPreview=null;
-function clearEraserPreview(){if(_eraserPreview){_eraserPreview.remove();_eraserPreview=null;}}
+function clearEraserPreview(){
+  if(_eraserPreview){_eraserPreview.remove();_eraserPreview=null;}
+  // Also remove any orphaned previews in the DOM
+  document.querySelectorAll('.c2d-eraser-preview').forEach(function(el){el.remove();});
+}
 
 function updateEraserPreview(e){
   if(!_eraserMode) return;
@@ -3137,6 +3141,7 @@ function eraserClick(e){
   }
 
   _sel.clear();
+  _eraserPreview=null; // renderModules clears layer, invalidating any preview ref
   draw();renderModules();renderProps();
   savePages();updateActiveThumb();
 }
