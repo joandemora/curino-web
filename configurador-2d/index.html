@@ -2839,16 +2839,8 @@ function eraserClick(e){
       sides.push({x1:Math.round(corners[si].x),y1:Math.round(corners[si].y),
                    x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
     }
-    var closestSide=-1,closestDist=tolerance;
-    sides.forEach(function(seg,si){
-      var sdx=seg.x2-seg.x1,sdy=seg.y2-seg.y1;
-      var slen2=sdx*sdx+sdy*sdy;
-      if(slen2===0) return;
-      var t=Math.max(0,Math.min(1,((wx-seg.x1)*sdx+(wy-seg.y1)*sdy)/slen2));
-      var px=seg.x1+t*sdx,py=seg.y1+t*sdy;
-      var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
-      if(d<closestDist){closestDist=d;closestSide=si;}
-    });
+    // Use side from eraserHitTest (has correct edge>interior priority)
+    var closestSide=hit.side!=null?hit.side:-1;
     if(closestSide===-1){
       _modules.splice(bestIdx,1);
     }else{
