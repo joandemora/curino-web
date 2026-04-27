@@ -2587,6 +2587,77 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
   return null;
 }
 
+// Generate polyline points for a curve (arc, circle, bezier)
+function curvePoints(m,n){
+  n=n||30;
+  var pts=[];
+  if(m.type==='shape_arc'){
+    var chord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
+    var halfC=chord/2;
+    var sagVal=Math.min(Math.abs(m.sagitta||0),halfC);
+    if(sagVal<1) return[{x:m.x1,y:m.y1},{x:m.x2,y:m.y2}]; // straight
+    var R=(halfC*halfC)/(2*sagVal)+sagVal/2;
+    // Arc center
+    var mx=(m.x1+m.x2)/2,my=(m.y1+m.y2)/2;
+    var dx=m.x2-m.x1,dy=m.y2-m.y1;
+    var nx=-dy/chord,ny=dx/chord;
+    var sign=(m.sagitta||1)>0?1:-1;
+    var h=Math.sqrt(Math.max(0,R*R-halfC*halfC));
+    var cx2=mx+nx*sign*(R-sagVal<0?-h:h), cy2=my+ny*sign*(R-sagVal<0?-h:h);
+    // Actually simpler: center is at distance R from both endpoints, on the correct side
+    // Use perpendicular from midpoint
+    var dist=R-sagVal; // distance from midpoint to center (along perpendicular)
+    cx2=mx-nx*sign*dist; cy2=my-ny*sign*dist;
+    var startAngle=Math.atan2(m.y1-cy2,m.x1-cx2);
+    var endAngle=Math.atan2(m.y2-cy2,m.x2-cx2);
+    // Determine sweep direction
+    var sweep=sign>0?-1:1;
+    var da=endAngle-startAngle;
+    if(sweep>0&&da<0) da+=2*Math.PI;
+    if(sweep<0&&da>0) da-=2*Math.PI;
+    for(var i=0;i<=n;i++){
+      var a=startAngle+da*i/n;
+      pts.push({x:cx2+R*Math.cos(a),y:cy2+R*Math.sin(a)});
+    }
+  }else if(m.type==='shape_circle'){
+    var cx3=m.x+m.w/2,cy3=m.y+m.h/2;
+    var rx=m.w/2,ry=m.h/2;
+    for(var i=0;i<=n;i++){
+      var a=2*Math.PI*i/n;
+      pts.push({x:cx3+rx*Math.cos(a),y:cy3+ry*Math.sin(a)});
+    }
+  }else if(m.type==='shape_curve'){
+    // Quadratic bezier: start=(m.x, m.y+m.h), control=((m.cpx||0.5)*m.w+m.x, (m.cpy||0)*m.h+m.y), end=(m.x+m.w, m.y+m.h)
+    // Actually the bezier in render uses viewbox coords — use world coords
+    var bx0=m.x,by0=m.y;
+    var bx2=m.x+m.w,by2=m.y;
+    var bcx=m.x+(m.cpx!=null?m.cpx:0.5)*m.w;
+    var bcy=m.y+(1-(m.cpy!=null?m.cpy:0))*m.h;
+    for(var i=0;i<=n;i++){
+      var t=i/n;
+      var u=1-t;
+      pts.push({x:u*u*bx0+2*u*t*bcx+t*t*bx2, y:u*u*by0+2*u*t*bcy+t*t*by2});
+    }
+  }
+  return pts;
+}
+// Distance from point to a polyline curve
+function distToCurve(m,wx,wy){
+  var pts=curvePoints(m);
+  if(pts.length<2) return Infinity;
+  var best=Infinity;
+  for(var i=0;i<pts.length-1;i++){
+    var dx=pts[i+1].x-pts[i].x,dy=pts[i+1].y-pts[i].y;
+    var len2=dx*dx+dy*dy;
+    if(len2===0) continue;
+    var t=Math.max(0,Math.min(1,((wx-pts[i].x)*dx+(wy-pts[i].y)*dy)/len2));
+    var px=pts[i].x+t*dx,py=pts[i].y+t*dy;
+    var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
+    if(d<best) best=d;
+  }
+  return best;
+}
+
 // Hit-test for eraser: returns {idx, dist, side} or null
 function eraserHitTest(wx,wy){
   var tolerance=10/s();
@@ -2594,7 +2665,7 @@ function eraserHitTest(wx,wy){
   var bestIdx=-1,bestDist=tolerance,bestSide=null,bestIsEdge=false;
 
   _modules.forEach(function(m,i){
-    if(m.type==='shape_line'||m.type==='shape_arc'){
+    if(m.type==='shape_line'){
       var dx=m.x2-m.x1,dy=m.y2-m.y1;
       var len2=dx*dx+dy*dy;
       if(len2===0){var d=Math.sqrt((wx-m.x1)*(wx-m.x1)+(wy-m.y1)*(wy-m.y1));if(d<=bestDist||!bestIsEdge){bestDist=d;bestIdx=i;bestSide=null;bestIsEdge=true;}return;}
@@ -2602,6 +2673,9 @@ function eraserHitTest(wx,wy){
       var px=m.x1+t*dx,py=m.y1+t*dy;
       var d=Math.sqrt((wx-px)*(wx-px)+(wy-py)*(wy-py));
       if(d<=tolerance&&(d<=bestDist||!bestIsEdge)){bestDist=d;bestIdx=i;bestSide=null;bestIsEdge=true;}
+    }else if(m.type==='shape_arc'||m.type==='shape_curve'||m.type==='shape_circle'){
+      var cd=distToCurve(m,wx,wy);
+      if(cd<=tolerance&&(cd<=bestDist||!bestIsEdge)){bestDist=cd;bestIdx=i;bestSide=null;bestIsEdge=true;}
     }else if(m.w&&m.h){
       var ecx=m.x+m.w/2, ecy=m.y+m.h/2;
       var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x+m.w,y:m.y+m.h},{x:m.x,y:m.y+m.h}];
