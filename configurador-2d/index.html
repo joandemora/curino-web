@@ -3046,9 +3046,8 @@ function updateEraserPreview(e){
   if(!_eraserMode) return;
   clearEraserPreview();
   var sc2=s(),o2=origin();
-  var wrapRect=wrap.getBoundingClientRect();
-  var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
-  var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
+  var wx=(e.clientX-o2.x)/sc2;
+  var wy=-(e.clientY-o2.y)/sc2;
   var hit=eraserHitTest(wx,wy);
   if(!hit) return;
   var m=_modules[hit.idx];
@@ -3158,25 +3157,16 @@ function updateEraserPreview(e){
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
   clearEraserPreview();
-  console.log('[EC-START] clientX='+e.clientX+' clientY='+e.clientY);
   var sc2=s(),o2=origin();
-  var wrapRect=wrap.getBoundingClientRect();
-  console.log('[EC-REFS] wrap.id='+wrap.id+' wrapRect.left='+Math.round(wrapRect.left)+' wrapRect.top='+Math.round(wrapRect.top)+' o2.x='+Math.round(o2.x)+' o2.y='+Math.round(o2.y)+' sc='+sc2.toFixed(4));
-  var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
-  var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
-  console.log('[EC-WORLD] world=('+Math.round(wx)+','+Math.round(wy)+')');
+  var wx=(e.clientX-o2.x)/sc2;
+  var wy=-(e.clientY-o2.y)/sc2;
   var tolerance=10/sc2;
   var hit=eraserHitTest(wx,wy);
-  console.log('[EC-HIT] hit='+JSON.stringify(hit));
-  if(!hit){console.log('[EC-EARLY-RETURN] no hit');return;}
+  if(!hit) return;
   var bestIdx=hit.idx;
 
   var m=_modules[bestIdx];
-  console.log('[EC-PROCESS] idx='+bestIdx+' type='+m.type+' rotation='+(m.rotation||0));
-
-  // For lines: use findEraseSeg (same logic as hover preview, includes endpoints as cut points)
   if(m.type==='shape_line'){
-    console.log('[EC-BRANCH] shape_line');
     var eraseSeg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
     var isFullLine=Math.abs(eraseSeg.p1.x-m.x1)<1&&Math.abs(eraseSeg.p1.y-m.y1)<1&&Math.abs(eraseSeg.p2.x-m.x2)<1&&Math.abs(eraseSeg.p2.y-m.y2)<1;
     saveHistory();
@@ -3198,7 +3188,6 @@ function eraserClick(e){
       newLines.forEach(function(nl){_modules.push(nl);});
     }
   }else if(m.type==='shape_rect'){
-    console.log('[EC-BRANCH] shape_rect');
     var rot=(m.rotation||0)*Math.PI/180;
     var hasRot=m.rotation&&m.rotation%360!==0;
     var cx=m.x+m.w/2, cy=m.y+m.h/2;
@@ -3240,11 +3229,8 @@ function eraserClick(e){
     }
   }else if(m.type==='shape_circle'){
     var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
-    console.log('[EC-C] circle idx='+bestIdx+' center=('+ccx+','+ccy+') rx='+crx+' ry='+cry+' rot='+(m.rotation||0));
     var ipts=circleIntersections(ccx,ccy,crx,cry,bestIdx,m.rotation);
-    console.log('[EC-C] intersections count='+ipts.length+' angles='+JSON.stringify(ipts.map(function(p){return Math.round(p.angle*180/Math.PI)+'°';})));
     if(ipts.length<2){
-      console.log('[EC-C] <2 intersections → delete entire');
       saveHistory();
       _modules.splice(bestIdx,1);
     }else{
@@ -3257,8 +3243,6 @@ function eraserClick(e){
         clx=ccx+cdx*cCos-cdy*cSin;cly=ccy-(cdx*cSin+cdy*cCos);
       }
       var clickAngle=Math.atan2((cly-ccy)/cry,(clx-ccx)/crx);
-      console.log('[EC-C] world click=('+Math.round(wx)+','+Math.round(wy)+') local=('+Math.round(clx)+','+Math.round(cly)+') clickAngle='+Math.round(clickAngle*180/Math.PI)+'°');
-      console.log('[EC-C] sorted ipt angles='+JSON.stringify(ipts.map(function(p){return Math.round(p.angle*180/Math.PI)+'°';})));
       var arcIdx=ipts.length-1;
       for(var ai=0;ai<ipts.length-1;ai++){
         if(clickAngle>=ipts[ai].angle&&clickAngle<=ipts[ai+1].angle){arcIdx=ai;break;}
@@ -3271,11 +3255,9 @@ function eraserClick(e){
         gapStart=ipts[arcIdx].angle;
         gapEnd=ipts[arcIdx+1].angle;
       }
-      console.log('[EC-C] arcIdx='+arcIdx+' gap=['+Math.round(gapStart*180/Math.PI)+'°,'+Math.round(gapEnd*180/Math.PI)+'°]');
       saveHistory();
       if(!m.gaps) m.gaps=[];
       m.gaps.push([gapStart,gapEnd]);
-      console.log('[EC-C] gaps after push='+JSON.stringify(m.gaps.map(function(g){return'['+Math.round(g[0]*180/Math.PI)+'°,'+Math.round(g[1]*180/Math.PI)+'°]';})));
       m.gaps.sort(function(a,b){return a[0]-b[0];});
       var merged=[];
       m.gaps.forEach(function(g){
@@ -3288,7 +3270,6 @@ function eraserClick(e){
       if(totalGap>=2*Math.PI-0.1) _modules.splice(bestIdx,1);
     }
   }else if(m.type==='shape_arc'){
-    console.log('[EC-BRANCH] shape_arc');
     var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
     var ahalfC=achord/2;
     var asagVal=Math.min(Math.abs(m.sagitta||0),ahalfC);
@@ -3365,7 +3346,6 @@ function eraserClick(e){
       }
     }
   }else{
-    console.log('[EC-BRANCH] else (delete entire), type='+m.type);
     saveHistory();
     _modules.splice(bestIdx,1);
   }
