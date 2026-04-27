@@ -2708,39 +2708,53 @@ function segCircleIntersect(x1,y1,x2,y2,cx,cy,rx,ry){
 }
 
 // Collect intersection angles on a circle/ellipse with all other segments
-function circleIntersections(cx,cy,rx,ry,skipIdx){
+function circleIntersections(cx,cy,rx,ry,skipIdx,targetRotation){
   if(!ry) ry=rx;
   var pts=[];
+  // If the target ellipse is rotated, we transform all world points into local frame
+  var hasTargetRot=targetRotation&&targetRotation%360!==0;
+  var tRot=hasTargetRot?(targetRotation*Math.PI/180):0;
+  var tCos=Math.cos(-tRot),tSin=Math.sin(-tRot); // inverse rotation
+  // Transform a world point to target's local frame (Y-flip aware)
+  function toLocal(px,py){
+    if(!hasTargetRot) return{x:px,y:py};
+    var dx=px-cx,dy=cy-py; // Y-flip
+    return{x:cx+dx*tCos-dy*tSin, y:cy-(dx*tSin+dy*tCos)};
+  }
   _modules.forEach(function(m,i){
     if(i===skipIdx) return;
     var segs=[];
     if(m.type==='shape_line'){
-      segs.push([m.x1,m.y1,m.x2,m.y2]);
+      var lp1=toLocal(m.x1,m.y1),lp2=toLocal(m.x2,m.y2);
+      segs.push([lp1.x,lp1.y,lp2.x,lp2.y]);
     }
     if(m.w&&m.h&&m.type!=='group'&&m.type!=='shape_circle'&&m.type!=='shape_arc'&&m.type!=='shape_curve'){
-      segs.push([m.x,m.y,m.x+m.w,m.y]);
-      segs.push([m.x+m.w,m.y,m.x+m.w,m.y+m.h]);
-      segs.push([m.x+m.w,m.y+m.h,m.x,m.y+m.h]);
-      segs.push([m.x,m.y+m.h,m.x,m.y]);
+      var c0=toLocal(m.x,m.y),c1=toLocal(m.x+m.w,m.y),c2=toLocal(m.x+m.w,m.y+m.h),c3=toLocal(m.x,m.y+m.h);
+      segs.push([c0.x,c0.y,c1.x,c1.y]);
+      segs.push([c1.x,c1.y,c2.x,c2.y]);
+      segs.push([c2.x,c2.y,c3.x,c3.y]);
+      segs.push([c3.x,c3.y,c0.x,c0.y]);
     }
     segs.forEach(function(seg){
       var hits=segCircleIntersect(seg[0],seg[1],seg[2],seg[3],cx,cy,rx,ry);
       hits.forEach(function(h){pts.push(h);});
     });
-    // Check endpoints of lines/arcs that fall on the ellipse
+    // Check endpoints of lines/arcs that fall on the ellipse (in local frame)
     if(m.type==='shape_line'||m.type==='shape_arc'){
       [{x:m.x1,y:m.y1},{x:m.x2,y:m.y2}].forEach(function(ep){
-        var nd=Math.sqrt(Math.pow((ep.x-cx)/rx,2)+Math.pow((ep.y-cy)/ry,2));
+        var lep=toLocal(ep.x,ep.y);
+        var nd=Math.sqrt(Math.pow((lep.x-cx)/rx,2)+Math.pow((lep.y-cy)/ry,2));
         if(Math.abs(nd-1)<0.01){
-          pts.push({x:ep.x,y:ep.y,angle:Math.atan2((ep.y-cy)/ry,(ep.x-cx)/rx)});
+          pts.push({x:lep.x,y:lep.y,angle:Math.atan2((lep.y-cy)/ry,(lep.x-cx)/rx)});
         }
       });
     }
-    // Intersections with other curves (circles, arcs, beziers) via polyline approximation
+    // Intersections with other curves via polyline (curvePoints returns world coords)
     if(m.type==='shape_circle'||m.type==='shape_arc'||m.type==='shape_curve'){
       var cpts=curvePoints(m,80);
       for(var ci=0;ci<cpts.length-1;ci++){
-        var hits=segCircleIntersect(cpts[ci].x,cpts[ci].y,cpts[ci+1].x,cpts[ci+1].y,cx,cy,rx,ry);
+        var lp1=toLocal(cpts[ci].x,cpts[ci].y),lp2=toLocal(cpts[ci+1].x,cpts[ci+1].y);
+        var hits=segCircleIntersect(lp1.x,lp1.y,lp2.x,lp2.y,cx,cy,rx,ry);
         hits.forEach(function(h){pts.push(h);});
       }
     }
@@ -2880,6 +2894,21 @@ function curvePoints(m,n){
       var u=1-t;
       pts.push({x:u*u*bx0+2*u*t*bcx+t*t*bx2, y:u*u*by0+2*u*t*bcy+t*t*by2});
     }
+  }
+  // Apply shape rotation to all points (local → world)
+  if(m.rotation&&m.rotation%360!==0&&pts.length>0){
+    var rot=m.rotation*Math.PI/180;
+    var cos=Math.cos(rot),sin=Math.sin(rot);
+    // Center of rotation depends on shape type
+    var rcx,rcy;
+    if(m.type==='shape_circle'){rcx=m.x+m.w/2;rcy=m.y+m.h/2;}
+    else if(m.type==='shape_arc'){rcx=(m.x1+m.x2)/2;rcy=(m.y1+m.y2)/2;}
+    else if(m.type==='shape_curve'){rcx=m.x+m.w/2;rcy=m.y+m.h/2;}
+    else{rcx=m.x+m.w/2;rcy=m.y+m.h/2;}
+    pts=pts.map(function(p){
+      var dx=p.x-rcx,dy=rcy-p.y; // Y-flip for CSS rotation
+      return{x:rcx+dx*cos-dy*sin, y:rcy-(dx*sin+dy*cos)};
+    });
   }
   return pts;
 }
@@ -3063,10 +3092,12 @@ function updateEraserPreview(e){
     var subArcPts=null;
     if(m.type==='shape_circle'){
       var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
-      var ipts=circleIntersections(ccx,ccy,crx,cry,hit.idx);
+      var ipts=circleIntersections(ccx,ccy,crx,cry,hit.idx,m.rotation);
       if(ipts.length>=2){
         ipts.sort(function(a,b){return a.angle-b.angle;});
-        var clickA=Math.atan2((wy-ccy)/cry,(wx-ccx)/crx);
+        var clxP=wx,clyP=wy;
+        if(m.rotation&&m.rotation%360!==0){var pRot=-m.rotation*Math.PI/180;var pCos=Math.cos(pRot),pSin=Math.sin(pRot);var pdx=wx-ccx,pdy=ccy-wy;clxP=ccx+pdx*pCos-pdy*pSin;clyP=ccy-(pdx*pSin+pdy*pCos);}
+        var clickA=Math.atan2((clyP-ccy)/cry,(clxP-ccx)/crx);
         var ai2=ipts.length-1;
         for(var ai=0;ai<ipts.length-1;ai++){if(clickA>=ipts[ai].angle&&clickA<=ipts[ai+1].angle){ai2=ai;break;}}
         var a1=ipts[ai2].angle,a2=ipts[(ai2+1)%ipts.length].angle;
@@ -3202,13 +3233,20 @@ function eraserClick(e){
     }
   }else if(m.type==='shape_circle'){
     var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
-    var ipts=circleIntersections(ccx,ccy,crx,cry,bestIdx);
+    var ipts=circleIntersections(ccx,ccy,crx,cry,bestIdx,m.rotation);
     if(ipts.length<2){
       saveHistory();
       _modules.splice(bestIdx,1);
     }else{
       ipts.sort(function(a,b){return a.angle-b.angle;});
-      var clickAngle=Math.atan2((wy-ccy)/cry,(wx-ccx)/crx);
+      // Transform click point to local frame if rotated
+      var clx=wx,cly=wy;
+      if(m.rotation&&m.rotation%360!==0){
+        var cRot=-m.rotation*Math.PI/180;var cCos=Math.cos(cRot),cSin=Math.sin(cRot);
+        var cdx=wx-ccx,cdy=ccy-wy;
+        clx=ccx+cdx*cCos-cdy*cSin;cly=ccy-(cdx*cSin+cdy*cCos);
+      }
+      var clickAngle=Math.atan2((cly-ccy)/cry,(clx-ccx)/crx);
       var arcIdx=ipts.length-1;
       for(var ai=0;ai<ipts.length-1;ai++){
         if(clickAngle>=ipts[ai].angle&&clickAngle<=ipts[ai+1].angle){arcIdx=ai;break;}
