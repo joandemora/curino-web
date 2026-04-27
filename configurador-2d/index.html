@@ -3046,8 +3046,9 @@ function updateEraserPreview(e){
   if(!_eraserMode) return;
   clearEraserPreview();
   var sc2=s(),o2=origin();
-  var wx=(e.clientX-o2.x)/sc2;
-  var wy=-(e.clientY-o2.y)/sc2;
+  var _prRect=wrap.getBoundingClientRect();
+  var wx=(e.clientX-_prRect.left-o2.x)/sc2;
+  var wy=-(e.clientY-_prRect.top-o2.y)/sc2;
   var hit=eraserHitTest(wx,wy);
   if(!hit) return;
   var m=_modules[hit.idx];
@@ -3158,8 +3159,9 @@ function updateEraserPreview(e){
 function eraserClick(e){
   clearEraserPreview();
   var sc2=s(),o2=origin();
-  var wx=(e.clientX-o2.x)/sc2;
-  var wy=-(e.clientY-o2.y)/sc2;
+  var _erRect=wrap.getBoundingClientRect();
+  var wx=(e.clientX-_erRect.left-o2.x)/sc2;
+  var wy=-(e.clientY-_erRect.top-o2.y)/sc2;
   var tolerance=10/sc2;
   var hit=eraserHitTest(wx,wy);
   if(!hit) return;
