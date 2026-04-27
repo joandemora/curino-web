@@ -2568,8 +2568,9 @@ function exitEraser(){
   clearEraserPreview();
 }
 
+var _lastEraserEvent=null;
 wrap.addEventListener('mousemove',function(e){
-  if(_eraserMode) updateEraserPreview(e);
+  if(_eraserMode){_lastEraserEvent=e;updateEraserPreview(e);}
 });
 
 // Line segment intersection: returns {x,y,t} or null
@@ -2854,7 +2855,6 @@ function clearEraserPreview(){
 }
 
 function updateEraserPreview(e){
-  console.log('[PRV] updateEraserPreview called, modules count='+_modules.length);
   if(!_eraserMode) return;
   clearEraserPreview();
   var sc2=s(),o2=origin();
@@ -2863,8 +2863,6 @@ function updateEraserPreview(e){
   var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
   var hit=eraserHitTest(wx,wy);
   if(!hit) return;
-  console.log('[PRV] hit idx='+hit.idx+' type='+_modules[hit.idx].type+' side='+hit.side);
-
   var m=_modules[hit.idx];
   var pr=paperRect();
 
@@ -2969,7 +2967,6 @@ function updateEraserPreview(e){
 
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
-  console.log('[PRV-CLICK] before, modules='+_modules.length+' types='+_modules.map(function(m){return m.type;}).join(','));
   clearEraserPreview();
   var sc2=s(),o2=origin();
   var wrapRect=wrap.getBoundingClientRect();
@@ -3144,11 +3141,12 @@ function eraserClick(e){
   }
 
   _sel.clear();
-  console.log('[PRV-CLICK] after, modules='+_modules.length+' types='+_modules.map(function(m){return m.type;}).join(','));
   _eraserPreview=null;
   draw();renderModules();renderProps();
-  clearEraserPreview(); // extra cleanup after re-render
+  clearEraserPreview();
   savePages();updateActiveThumb();
+  // Refresh preview with last cursor position so it matches new model immediately
+  if(_lastEraserEvent) updateEraserPreview(_lastEraserEvent);
 }
 
 // Right-click on modules
