@@ -2895,7 +2895,7 @@ function distToCurve(m,wx,wy){
 // Hit-test for eraser: returns {idx, dist, side} or null
 function eraserHitTest(wx,wy){
   var tolerance=10/s();
-  // Two-tier priority: edge/line hits (tier 1) beat interior hits (tier 2)
+  console.log('[ERA] hitTest world=',Math.round(wx),Math.round(wy),'tolerance=',Math.round(tolerance));
   var bestIdx=-1,bestDist=tolerance,bestSide=null,bestIsEdge=false;
 
   _modules.forEach(function(m,i){
@@ -2909,6 +2909,7 @@ function eraserHitTest(wx,wy){
       if(d<=tolerance&&(d<=bestDist||!bestIsEdge)){bestDist=d;bestIdx=i;bestSide=null;bestIsEdge=true;}
     }else if(m.type==='shape_arc'||m.type==='shape_curve'||m.type==='shape_circle'){
       var cd=distToCurve(m,wx,wy);
+      console.log('[ERA] testing',m.type,'idx='+i,'dist='+Math.round(cd),'tol='+Math.round(tolerance));
       if(cd<=tolerance&&(cd<=bestDist||!bestIsEdge)){bestDist=cd;bestIdx=i;bestSide=null;bestIsEdge=true;}
     }else if(m.w&&m.h){
       var ecx=m.x+m.w/2, ecy=m.y+m.h/2;
@@ -3121,6 +3122,10 @@ function updateEraserPreview(e){
 function eraserClick(e){
   clearEraserPreview();
   var sc2=s(),o2=origin();
+  var _eWrapRect=wrap.getBoundingClientRect();
+  var _eWx=(e.clientX-_eWrapRect.left-o2.x)/sc2;
+  var _eWy=-(e.clientY-_eWrapRect.top-o2.y)/sc2;
+  console.log('[ERA] click world=',Math.round(_eWx),Math.round(_eWy),'modules=',_modules.length);
   var wrapRect=wrap.getBoundingClientRect();
   var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
   var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
@@ -3309,6 +3314,7 @@ function eraserClick(e){
     _modules.splice(bestIdx,1);
   }
 
+  console.log('[ERA] result modules=',_modules.length,'circle gaps=',JSON.stringify((_modules.find(function(mm){return mm.type==='shape_circle';})||{}).gaps));
   _sel.clear();
   _eraserPreview=null;
   draw();renderModules();renderProps();
