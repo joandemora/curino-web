@@ -759,22 +759,106 @@ function renderModules(){
       }else if(m.type==='shape_arc'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         var apad=m._bboxPad||6;
-        // _bboxOx/_bboxOy is the min corner of the tight bbox in world coords
-        // Convert endpoints to SVG coords: world→screen relative to bbox
-        var bboxTop=m._bboxOy+(mh-apad*2)/sc; // max Y in world (top of bbox)
-        var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(bboxTop-m.y1)*sc+apad;
-        var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(bboxTop-m.y2)*sc+apad;
+        var bboxTop=m._bboxOy+(mh-apad*2)/sc;
         var arcDist=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2));
         var halfC=arcDist/2;
         var sagVal=Math.min(Math.abs(m.sagitta||100),halfC);
         if(sagVal<1) sagVal=1;
         var arcR=(halfC*halfC)/(2*sagVal)+sagVal/2;
         var arcRpx=arcR*sc;
-        var sweep=(m.sagitta||100)>0?1:0;
-        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweep+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
+        var sweepFlag=(m.sagitta||100)>0?1:0;
+        if(m.gaps&&m.gaps.length>0){
+          // Compute arc center and angular range
+          var achord2=arcDist||1;
+          var asagVal2=Math.min(Math.abs(m.sagitta||0),achord2/2);
+          var aR2=(achord2/2*achord2/2)/(2*asagVal2)+asagVal2/2;
+          var amx2=(m.x1+m.x2)/2,amy2=(m.y1+m.y2)/2;
+          var anx2=-(m.y2-m.y1)/achord2,any2=(m.x2-m.x1)/achord2;
+          var asign2=(m.sagitta||1)>0?1:-1;
+          var adist2=aR2-asagVal2;
+          var acx2=amx2-anx2*asign2*adist2,acy2=amy2-any2*asign2*adist2;
+          var arcStartA=Math.atan2(m.y1-acy2,m.x1-acx2);
+          var arcEndA=Math.atan2(m.y2-acy2,m.x2-acx2);
+          var arcSweepA=arcEndA-arcStartA;
+          if(asign2>0&&arcSweepA>0) arcSweepA-=2*Math.PI;
+          if(asign2<0&&arcSweepA<0) arcSweepA+=2*Math.PI;
+          // Build visible ranges by subtracting gaps from [arcStartA, arcEndA]
+          var visRanges=[];
+          // Normalize angle relative to arcStartA
+          function arcNormA(a){var d=a-arcStartA;if(arcSweepA>0){while(d<0)d+=2*Math.PI;while(d>arcSweepA+0.001)d-=2*Math.PI;}else{while(d>0)d-=2*Math.PI;while(d<arcSweepA-0.001)d+=2*Math.PI;}return d;}
+          // Convert gaps to normalized offsets from arcStartA
+          var normGaps=[];
+          m.gaps.forEach(function(g){
+            var n1=arcNormA(g[0]),n2=arcNormA(g[1]);
+            if(arcSweepA>0){if(n1>n2){var tmp=n1;n1=n2;n2=tmp;}normGaps.push([n1,n2]);}
+            else{if(n1<n2){var tmp=n1;n1=n2;n2=tmp;}normGaps.push([n1,n2]);}
+          });
+          if(arcSweepA>0){
+            normGaps.sort(function(a,b){return a[0]-b[0];});
+            var cursor=0;
+            normGaps.forEach(function(g){if(g[0]>cursor+0.001)visRanges.push([arcStartA+cursor,arcStartA+g[0]]);cursor=Math.max(cursor,g[1]);});
+            if(cursor<arcSweepA-0.001) visRanges.push([arcStartA+cursor,arcStartA+arcSweepA]);
+          }else{
+            normGaps.sort(function(a,b){return b[0]-a[0];});
+            var cursor=0;
+            normGaps.forEach(function(g){if(g[0]<cursor-0.001)visRanges.push([arcStartA+cursor,arcStartA+g[0]]);cursor=Math.min(cursor,g[1]);});
+            if(cursor>arcSweepA+0.001) visRanges.push([arcStartA+cursor,arcStartA+arcSweepA]);
+          }
+          var svgPaths='';
+          visRanges.forEach(function(vr){
+            var va1=vr[0],va2=vr[1];
+            var vx1=acx2+aR2*Math.cos(va1),vy1=acy2+aR2*Math.sin(va1);
+            var vx2=acx2+aR2*Math.cos(va2),vy2=acy2+aR2*Math.sin(va2);
+            var vsx1=(vx1-m._bboxOx)*sc+apad,vsy1=(bboxTop-vy1)*sc+apad;
+            var vsx2=(vx2-m._bboxOx)*sc+apad,vsy2=(bboxTop-vy2)*sc+apad;
+            var span=Math.abs(va2-va1);
+            var largeArc=span>Math.PI?1:0;
+            svgPaths+='<path d="M'+vsx1+','+vsy1+' A'+arcRpx+','+arcRpx+' 0 '+largeArc+' '+sweepFlag+' '+vsx2+','+vsy2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/>';
+          });
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">'+svgPaths+'</svg>';
+        }else{
+          var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(bboxTop-m.y1)*sc+apad;
+          var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(bboxTop-m.y2)*sc+apad;
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweepFlag+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
+        }
       }else if(m.type==='shape_circle'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
-        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
+        if(m.gaps&&m.gaps.length>0){
+          // Render visible arc segments (full circle minus gaps)
+          var cRx=mw/2-stw/2,cRy=mh/2-stw/2;
+          var cCx=mw/2,cCy=mh/2;
+          // World-space radii for angle computation
+          var wRx=m.w/2,wRy=m.h/2;
+          // Build visible ranges from [−π, π] full circle
+          var allGaps=m.gaps.slice().sort(function(a,b){return a[0]-b[0];});
+          var visSegs=[];
+          var cursor=-Math.PI;
+          allGaps.forEach(function(g){
+            var gs=g[0],ge=g[1];
+            // Normalize gap to [-π, 3π] range
+            while(gs>Math.PI) gs-=2*Math.PI;
+            while(gs<-Math.PI) gs+=2*Math.PI;
+            while(ge<gs) ge+=2*Math.PI;
+            if(gs>cursor+0.001) visSegs.push([cursor,gs]);
+            cursor=Math.max(cursor,ge);
+          });
+          // Handle wrap-around: also subtract gaps that wrap past π
+          if(cursor<Math.PI-0.001) visSegs.push([cursor,Math.PI]);
+          var svgCircPaths='';
+          visSegs.forEach(function(vs){
+            var a1=vs[0],a2=vs[1];
+            var span=a2-a1;
+            if(span<0.001) return;
+            // SVG coords: x goes right, y goes down; world y is flipped
+            var sx1=cCx+cRx*Math.cos(a1),sy1=cCy-cRy*Math.sin(a1);
+            var sx2=cCx+cRx*Math.cos(a2),sy2=cCy-cRy*Math.sin(a2);
+            var largeArc=span>Math.PI?1:0;
+            svgCircPaths+='<path d="M'+sx1+','+sy1+' A'+cRx+','+cRy+' 0 '+largeArc+' 0 '+sx2+','+sy2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" shape-rendering="auto"/>';
+          });
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">'+svgCircPaths+'</svg>';
+        }else{
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
+        }
       }
     }
     if(m.type==='group'){
@@ -2689,34 +2773,85 @@ function curvePoints(m,n){
     var sagVal=Math.min(Math.abs(m.sagitta||0),halfC);
     if(sagVal<1) return[{x:m.x1,y:m.y1},{x:m.x2,y:m.y2}]; // straight
     var R=(halfC*halfC)/(2*sagVal)+sagVal/2;
-    // Arc center
     var mx=(m.x1+m.x2)/2,my=(m.y1+m.y2)/2;
     var dx=m.x2-m.x1,dy=m.y2-m.y1;
     var nx=-dy/chord,ny=dx/chord;
     var sign=(m.sagitta||1)>0?1:-1;
     var h=Math.sqrt(Math.max(0,R*R-halfC*halfC));
     var cx2=mx+nx*sign*(R-sagVal<0?-h:h), cy2=my+ny*sign*(R-sagVal<0?-h:h);
-    // Actually simpler: center is at distance R from both endpoints, on the correct side
-    // Use perpendicular from midpoint
-    var dist=R-sagVal; // distance from midpoint to center (along perpendicular)
+    var dist=R-sagVal;
     cx2=mx-nx*sign*dist; cy2=my-ny*sign*dist;
     var startAngle=Math.atan2(m.y1-cy2,m.x1-cx2);
     var endAngle=Math.atan2(m.y2-cy2,m.x2-cx2);
-    // Determine sweep direction
     var sweep=sign>0?-1:1;
     var da=endAngle-startAngle;
     if(sweep>0&&da<0) da+=2*Math.PI;
     if(sweep<0&&da>0) da-=2*Math.PI;
-    for(var i=0;i<=n;i++){
-      var a=startAngle+da*i/n;
-      pts.push({x:cx2+R*Math.cos(a),y:cy2+R*Math.sin(a)});
+    if(m.gaps&&m.gaps.length>0){
+      // Generate points only for visible segments (skip gaps)
+      function arcPtNormA(a){var d=a-startAngle;if(da>0){while(d<0)d+=2*Math.PI;while(d>da+0.001)d-=2*Math.PI;}else{while(d>0)d-=2*Math.PI;while(d<da-0.001)d+=2*Math.PI;}return d;}
+      var normGaps=[];
+      m.gaps.forEach(function(g){
+        var n1=arcPtNormA(g[0]),n2=arcPtNormA(g[1]);
+        if(da>0){if(n1>n2){var tmp=n1;n1=n2;n2=tmp;}normGaps.push([n1,n2]);}
+        else{if(n1<n2){var tmp=n1;n1=n2;n2=tmp;}normGaps.push([n1,n2]);}
+      });
+      var visRanges=[];
+      if(da>0){
+        normGaps.sort(function(a,b){return a[0]-b[0];});
+        var cursor=0;
+        normGaps.forEach(function(g){if(g[0]>cursor+0.001)visRanges.push([cursor,g[0]]);cursor=Math.max(cursor,g[1]);});
+        if(cursor<da-0.001) visRanges.push([cursor,da]);
+      }else{
+        normGaps.sort(function(a,b){return b[0]-a[0];});
+        var cursor=0;
+        normGaps.forEach(function(g){if(g[0]<cursor-0.001)visRanges.push([cursor,g[0]]);cursor=Math.min(cursor,g[1]);});
+        if(cursor>da+0.001) visRanges.push([cursor,da]);
+      }
+      visRanges.forEach(function(vr){
+        var span=Math.abs(vr[1]-vr[0]);
+        var steps=Math.max(2,Math.round(n*span/Math.abs(da)));
+        for(var i=0;i<=steps;i++){
+          var a=startAngle+vr[0]+(vr[1]-vr[0])*i/steps;
+          pts.push({x:cx2+R*Math.cos(a),y:cy2+R*Math.sin(a)});
+        }
+      });
+    }else{
+      for(var i=0;i<=n;i++){
+        var a=startAngle+da*i/n;
+        pts.push({x:cx2+R*Math.cos(a),y:cy2+R*Math.sin(a)});
+      }
     }
   }else if(m.type==='shape_circle'){
     var cx3=m.x+m.w/2,cy3=m.y+m.h/2;
     var rx=m.w/2,ry=m.h/2;
-    for(var i=0;i<=n;i++){
-      var a=2*Math.PI*i/n;
-      pts.push({x:cx3+rx*Math.cos(a),y:cy3+ry*Math.sin(a)});
+    if(m.gaps&&m.gaps.length>0){
+      // Generate points only for visible segments
+      var allGaps=m.gaps.slice().sort(function(a,b){return a[0]-b[0];});
+      var visSegs=[];
+      var cursor=-Math.PI;
+      allGaps.forEach(function(g){
+        var gs=g[0],ge=g[1];
+        while(gs>Math.PI) gs-=2*Math.PI;
+        while(gs<-Math.PI) gs+=2*Math.PI;
+        while(ge<gs) ge+=2*Math.PI;
+        if(gs>cursor+0.001) visSegs.push([cursor,gs]);
+        cursor=Math.max(cursor,ge);
+      });
+      if(cursor<Math.PI-0.001) visSegs.push([cursor,Math.PI]);
+      visSegs.forEach(function(vs){
+        var span=vs[1]-vs[0];
+        var steps=Math.max(2,Math.round(n*span/(2*Math.PI)));
+        for(var i=0;i<=steps;i++){
+          var a=vs[0]+span*i/steps;
+          pts.push({x:cx3+rx*Math.cos(a),y:cy3+ry*Math.sin(a)});
+        }
+      });
+    }else{
+      for(var i=0;i<=n;i++){
+        var a=2*Math.PI*i/n;
+        pts.push({x:cx3+rx*Math.cos(a),y:cy3+ry*Math.sin(a)});
+      }
     }
   }else if(m.type==='shape_curve'){
     // Quadratic bezier: start=(m.x, m.y+m.h), control=((m.cpx||0.5)*m.w+m.x, (m.cpy||0)*m.h+m.y), end=(m.x+m.w, m.y+m.h)
@@ -3052,40 +3187,46 @@ function eraserClick(e){
       }
     }
   }else if(m.type==='shape_circle'){
-    // Partial cut for circles
     var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
     var ipts=circleIntersections(ccx,ccy,crx,cry,bestIdx);
-    saveHistory();
     if(ipts.length<2){
+      saveHistory();
       _modules.splice(bestIdx,1);
     }else{
-      // Sort angles, find clicked sub-arc
       ipts.sort(function(a,b){return a.angle-b.angle;});
       var clickAngle=Math.atan2((wy-ccy)/cry,(wx-ccx)/crx);
-      // Find which arc segment contains the click
-      var arcIdx=ipts.length-1; // default: last→first (wrap-around)
+      var arcIdx=ipts.length-1;
       for(var ai=0;ai<ipts.length-1;ai++){
         if(clickAngle>=ipts[ai].angle&&clickAngle<=ipts[ai+1].angle){arcIdx=ai;break;}
       }
-      // Create arcs for all sub-arcs except the clicked one
-      var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
-      _modules.splice(bestIdx,1);
-      for(var ai=0;ai<ipts.length;ai++){
-        if(ai===arcIdx) continue;
-        var nextAi=(ai+1)%ipts.length;
-        var a1=ipts[ai].angle, a2=ipts[nextAi].angle;
-        if(a2<=a1) a2+=2*Math.PI;
-        var newArc=arcFromCircle(ccx,ccy,crx,cry,a1,a2,stroke,stw);
-        if(newArc) _modules.push(newArc);
+      var gapStart,gapEnd;
+      if(arcIdx===ipts.length-1){
+        gapStart=ipts[ipts.length-1].angle;
+        gapEnd=ipts[0].angle+2*Math.PI;
+      }else{
+        gapStart=ipts[arcIdx].angle;
+        gapEnd=ipts[arcIdx+1].angle;
       }
+      saveHistory();
+      if(!m.gaps) m.gaps=[];
+      m.gaps.push([gapStart,gapEnd]);
+      m.gaps.sort(function(a,b){return a[0]-b[0];});
+      var merged=[];
+      m.gaps.forEach(function(g){
+        if(merged.length>0&&g[0]<=merged[merged.length-1][1]){
+          merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],g[1]);
+        }else{merged.push(g.slice());}
+      });
+      m.gaps=merged;
+      var totalGap=0;m.gaps.forEach(function(g){totalGap+=g[1]-g[0];});
+      if(totalGap>=2*Math.PI-0.1) _modules.splice(bestIdx,1);
     }
   }else if(m.type==='shape_arc'){
-    // Partial cut for arcs
     var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
     var ahalfC=achord/2;
     var asagVal=Math.min(Math.abs(m.sagitta||0),ahalfC);
-    saveHistory();
     if(asagVal<1){
+      saveHistory();
       _modules.splice(bestIdx,1);
     }else{
       var aR=(ahalfC*ahalfC)/(2*asagVal)+asagVal/2;
@@ -3098,51 +3239,62 @@ function eraserClick(e){
       var allIpts=circleIntersections(acx,acy,aR,aR,bestIdx);
       var startA=Math.atan2(m.y1-acy,m.x1-acx);
       var endA=Math.atan2(m.y2-acy,m.x2-acx);
-      // Determine arc sweep direction from sagitta sign
       var arcSweep=endA-startA;
       if(asign>0&&arcSweep>0) arcSweep-=2*Math.PI;
       if(asign<0&&arcSweep<0) arcSweep+=2*Math.PI;
-      // Filter: only keep intersections within the arc's angular range
       function angleOnArc(a){
         var da=a-startA;
         if(arcSweep>0){if(da<0) da+=2*Math.PI;return da<=arcSweep+0.01;}
         else{if(da>0) da-=2*Math.PI;return da>=arcSweep-0.01;}
       }
       var ipts=allIpts.filter(function(p){return angleOnArc(p.angle);});
-      if(ipts.length<1){
+      // Add arc endpoints as intersection boundaries
+      ipts.push({x:m.x1,y:m.y1,angle:startA});
+      ipts.push({x:m.x2,y:m.y2,angle:endA});
+      function normA(a){var d=a-startA;if(arcSweep>0){if(d<0)d+=2*Math.PI;}else{if(d>0)d-=2*Math.PI;}return d;}
+      ipts.forEach(function(p){p.norm=normA(p.angle);});
+      if(arcSweep>0) ipts.sort(function(a,b){return a.norm-b.norm;});
+      else ipts.sort(function(a,b){return b.norm-a.norm;});
+      // Deduplicate
+      var ded2=[];ipts.forEach(function(p){if(ded2.length===0||Math.abs(p.norm-ded2[ded2.length-1].norm)>0.01)ded2.push(p);});
+      ipts=ded2;
+      if(ipts.length<3){
+        saveHistory();
         _modules.splice(bestIdx,1);
       }else{
-        // Build sorted list: startA + filtered intersections + endA
-        // Normalize all angles relative to startA for sorting
-        function normA(a){var d=a-startA;if(arcSweep>0){if(d<0)d+=2*Math.PI;}else{if(d>0)d-=2*Math.PI;}return d;}
-        var pts2=[{angle:startA,norm:0,x:m.x1,y:m.y1}];
-        ipts.forEach(function(p){pts2.push({angle:p.angle,norm:normA(p.angle),x:p.x,y:p.y});});
-        pts2.push({angle:endA,norm:normA(endA),x:m.x2,y:m.y2});
-        if(arcSweep>0) pts2.sort(function(a,b){return a.norm-b.norm;});
-        else pts2.sort(function(a,b){return b.norm-a.norm;});
-        // Deduplicate
-        var ded2=[];pts2.forEach(function(p){if(ded2.length===0||Math.abs(p.norm-ded2[ded2.length-1].norm)>0.01)ded2.push(p);});
-        pts2=ded2;
-        if(pts2.length<3){
-          _modules.splice(bestIdx,1);
-        }else{
-          // Find clicked sub-arc
-          var clickA=Math.atan2(wy-acy,wx-acx);
-          var clickNorm=normA(clickA);
-          var arcIdx=pts2.length-2;
-          for(var ai=0;ai<pts2.length-1;ai++){
-            var n1=pts2[ai].norm,n2=pts2[ai+1].norm;
-            if(arcSweep>0&&clickNorm>=n1&&clickNorm<=n2){arcIdx=ai;break;}
-            if(arcSweep<0&&clickNorm<=n1&&clickNorm>=n2){arcIdx=ai;break;}
-          }
-          var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
-          _modules.splice(bestIdx,1);
-          for(var ai=0;ai<pts2.length-1;ai++){
-            if(ai===arcIdx) continue;
-            var newArc=arcFromCircle(acx,acy,aR,aR,pts2[ai].angle,pts2[ai+1].angle,stroke,stw);
-            if(newArc) _modules.push(newArc);
-          }
+        var clickA=Math.atan2(wy-acy,wx-acx);
+        var clickNorm=normA(clickA);
+        var arcIdx=ipts.length-2;
+        for(var ai=0;ai<ipts.length-1;ai++){
+          var n1=ipts[ai].norm,n2=ipts[ai+1].norm;
+          if(arcSweep>0&&clickNorm>=n1&&clickNorm<=n2){arcIdx=ai;break;}
+          if(arcSweep<0&&clickNorm<=n1&&clickNorm>=n2){arcIdx=ai;break;}
         }
+        var gapStart=ipts[arcIdx].angle;
+        var gapEnd=ipts[arcIdx+1].angle;
+        saveHistory();
+        if(!m.gaps) m.gaps=[];
+        m.gaps.push([gapStart,gapEnd]);
+        // Merge overlapping gaps (normalized to arc direction)
+        m.gaps.forEach(function(g){g._norm0=normA(g[0]);g._norm1=normA(g[1]);});
+        if(arcSweep>0) m.gaps.sort(function(a,b){return a._norm0-b._norm0;});
+        else m.gaps.sort(function(a,b){return b._norm0-a._norm0;});
+        var merged=[];
+        m.gaps.forEach(function(g){
+          if(arcSweep>0){
+            if(merged.length>0&&g._norm0<=merged[merged.length-1]._norm1){
+              if(g._norm1>merged[merged.length-1]._norm1){merged[merged.length-1][1]=g[1];merged[merged.length-1]._norm1=g._norm1;}
+            }else{merged.push(g.slice());merged[merged.length-1]._norm0=g._norm0;merged[merged.length-1]._norm1=g._norm1;}
+          }else{
+            if(merged.length>0&&g._norm0>=merged[merged.length-1]._norm1){
+              if(g._norm1<merged[merged.length-1]._norm1){merged[merged.length-1][1]=g[1];merged[merged.length-1]._norm1=g._norm1;}
+            }else{merged.push(g.slice());merged[merged.length-1]._norm0=g._norm0;merged[merged.length-1]._norm1=g._norm1;}
+          }
+        });
+        m.gaps=merged.map(function(g){return[g[0],g[1]];});
+        // Check if gaps cover entire arc range
+        var totalGapNorm=0;m.gaps.forEach(function(g){totalGapNorm+=Math.abs(normA(g[1])-normA(g[0]));});
+        if(totalGapNorm>=Math.abs(arcSweep)-0.1) _modules.splice(bestIdx,1);
       }
     }
   }else{
