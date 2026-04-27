@@ -3103,7 +3103,19 @@ function updateEraserPreview(e){
         var a1=ipts[ai2].angle,a2=ipts[(ai2+1)%ipts.length].angle;
         if(a2<=a1) a2+=2*Math.PI;
         subArcPts=[];
-        for(var ti=0;ti<=30;ti++){var aa=a1+(a2-a1)*ti/30;subArcPts.push({x:ccx+crx*Math.cos(aa),y:ccy+cry*Math.sin(aa)});}
+        var hasCircRot=m.rotation&&m.rotation%360!==0;
+        var circRotRad=hasCircRot?(m.rotation*Math.PI/180):0;
+        var circCos=Math.cos(circRotRad),circSin=Math.sin(circRotRad);
+        for(var ti=0;ti<=30;ti++){
+          var aa=a1+(a2-a1)*ti/30;
+          var lpx=ccx+crx*Math.cos(aa),lpy=ccy+cry*Math.sin(aa);
+          if(hasCircRot){
+            var rdx=lpx-ccx,rdy=ccy-lpy;
+            lpx=ccx+rdx*circCos-rdy*circSin;
+            lpy=ccy-(rdx*circSin+rdy*circCos);
+          }
+          subArcPts.push({x:lpx,y:lpy});
+        }
       }
     }else if(m.type==='shape_arc'){
       var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
@@ -3127,7 +3139,20 @@ function updateEraserPreview(e){
           for(var ai=0;ai<ipts.length-1;ai++){if(clickA>=ipts[ai].angle&&clickA<=ipts[ai+1].angle){ai2=ai;break;}}
           var a1=ipts[ai2].angle,a2=ipts[ai2+1].angle;
           subArcPts=[];
-          for(var ti=0;ti<=30;ti++){var aa=a1+(a2-a1)*ti/30;subArcPts.push({x:acx2+aR2*Math.cos(aa),y:acy2+aR2*Math.sin(aa)});}
+          var hasArcRot2=m.rotation&&m.rotation%360!==0;
+          var arcRotRad2=hasArcRot2?(m.rotation*Math.PI/180):0;
+          var arcCos2=Math.cos(arcRotRad2),arcSin2=Math.sin(arcRotRad2);
+          var arcRcx=(m.x1+m.x2)/2,arcRcy=(m.y1+m.y2)/2;
+          for(var ti=0;ti<=30;ti++){
+            var aa=a1+(a2-a1)*ti/30;
+            var alpx=acx2+aR2*Math.cos(aa),alpy=acy2+aR2*Math.sin(aa);
+            if(hasArcRot2){
+              var ardx=alpx-arcRcx,ardy=arcRcy-alpy;
+              alpx=arcRcx+ardx*arcCos2-ardy*arcSin2;
+              alpy=arcRcy-(ardx*arcSin2+ardy*arcCos2);
+            }
+            subArcPts.push({x:alpx,y:alpy});
+          }
         }
       }
     }
