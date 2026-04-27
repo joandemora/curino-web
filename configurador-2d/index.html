@@ -3158,19 +3158,24 @@ function updateEraserPreview(e){
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
   clearEraserPreview();
+  console.log('[EC-START] clientX='+e.clientX+' clientY='+e.clientY);
   var sc2=s(),o2=origin();
   var wrapRect=wrap.getBoundingClientRect();
   var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
   var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
+  console.log('[EC-WORLD] world=('+Math.round(wx)+','+Math.round(wy)+') sc='+sc2.toFixed(4));
   var tolerance=10/sc2;
   var hit=eraserHitTest(wx,wy);
-  if(!hit) return;
+  console.log('[EC-HIT] hit='+JSON.stringify(hit));
+  if(!hit){console.log('[EC-EARLY-RETURN] no hit');return;}
   var bestIdx=hit.idx;
 
   var m=_modules[bestIdx];
+  console.log('[EC-PROCESS] idx='+bestIdx+' type='+m.type+' rotation='+(m.rotation||0));
 
   // For lines: use findEraseSeg (same logic as hover preview, includes endpoints as cut points)
   if(m.type==='shape_line'){
+    console.log('[EC-BRANCH] shape_line');
     var eraseSeg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
     var isFullLine=Math.abs(eraseSeg.p1.x-m.x1)<1&&Math.abs(eraseSeg.p1.y-m.y1)<1&&Math.abs(eraseSeg.p2.x-m.x2)<1&&Math.abs(eraseSeg.p2.y-m.y2)<1;
     saveHistory();
@@ -3192,6 +3197,7 @@ function eraserClick(e){
       newLines.forEach(function(nl){_modules.push(nl);});
     }
   }else if(m.type==='shape_rect'){
+    console.log('[EC-BRANCH] shape_rect');
     var rot=(m.rotation||0)*Math.PI/180;
     var hasRot=m.rotation&&m.rotation%360!==0;
     var cx=m.x+m.w/2, cy=m.y+m.h/2;
@@ -3281,6 +3287,7 @@ function eraserClick(e){
       if(totalGap>=2*Math.PI-0.1) _modules.splice(bestIdx,1);
     }
   }else if(m.type==='shape_arc'){
+    console.log('[EC-BRANCH] shape_arc');
     var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
     var ahalfC=achord/2;
     var asagVal=Math.min(Math.abs(m.sagitta||0),ahalfC);
@@ -3357,6 +3364,7 @@ function eraserClick(e){
       }
     }
   }else{
+    console.log('[EC-BRANCH] else (delete entire), type='+m.type);
     saveHistory();
     _modules.splice(bestIdx,1);
   }
