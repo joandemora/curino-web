@@ -3421,7 +3421,9 @@ function eraserClick(e){
     }
   }else if(m.type==='shape_curve'){
     // Bezier: use t-based gaps (t ∈ [0,1])
-    var bCpts=curvePoints(m,100);
+    // Generate FULL curve (ignoring gaps) for intersection computation with absolute t values
+    var mNoGaps=JSON.parse(JSON.stringify(m));delete mNoGaps.gaps;
+    var bCpts=curvePoints(mNoGaps,100);
     // Find intersections: each other module's segments vs bezier polyline
     var bIpts=[];
     _modules.forEach(function(other,j){
@@ -3469,16 +3471,12 @@ function eraserClick(e){
           var bd=Math.sqrt((wx-bpx)*(wx-bpx)+(wy-bpy)*(wy-bpy));
           if(bd<cbDist){cbDist=bd;clickBt=(bi+bt2)/(bCpts.length-1);}
         }
-        console.log('[BZ] clickBt='+clickBt.toFixed(4));
-        console.log('[BZ] bIpts t values='+JSON.stringify(bIpts.map(function(b){return b.t.toFixed(4);})));
         // Find which segment the click falls in
         var bSegIdx=bIpts.length-2;
         for(var bi=0;bi<bIpts.length-1;bi++){
-          console.log('[BZ] checking ['+bIpts[bi].t.toFixed(4)+', '+bIpts[bi+1].t.toFixed(4)+'] vs clickBt='+clickBt.toFixed(4));
-          if(clickBt>=bIpts[bi].t-0.001&&clickBt<=bIpts[bi+1].t+0.001){console.log('[BZ] MATCH idx='+bi);bSegIdx=bi;break;}
+          if(clickBt>=bIpts[bi].t-0.001&&clickBt<=bIpts[bi+1].t+0.001){bSegIdx=bi;break;}
         }
         var gapT0=bIpts[bSegIdx].t,gapT1=bIpts[bSegIdx+1].t;
-        console.log('[BZ] gap=['+gapT0.toFixed(4)+', '+gapT1.toFixed(4)+']');
         saveHistory();
         if(!m.gaps) m.gaps=[];
         m.gaps.push([gapT0,gapT1]);
