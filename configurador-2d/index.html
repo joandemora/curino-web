@@ -827,29 +827,36 @@ function renderModules(){
           // Render visible arc segments (full circle minus gaps)
           var cRx=mw/2-stw/2,cRy=mh/2-stw/2;
           var cCx=mw/2,cCy=mh/2;
-          // World-space radii for angle computation
-          var wRx=m.w/2,wRy=m.h/2;
-          // Build visible ranges from [−π, π] full circle
-          var allGaps=m.gaps.slice().sort(function(a,b){return a[0]-b[0];});
-          var visSegs=[];
-          var cursor=-Math.PI;
-          allGaps.forEach(function(g){
+          // Normalize gaps to [0, 2π] and split wrap-arounds
+          var normGaps=[];
+          m.gaps.forEach(function(g){
             var gs=g[0],ge=g[1];
-            // Normalize gap to [-π, 3π] range
-            while(gs>Math.PI) gs-=2*Math.PI;
-            while(gs<-Math.PI) gs+=2*Math.PI;
-            while(ge<gs) ge+=2*Math.PI;
-            if(gs>cursor+0.001) visSegs.push([cursor,gs]);
-            cursor=Math.max(cursor,ge);
+            // Normalize start to [0, 2π)
+            while(gs<0) gs+=2*Math.PI;while(gs>=2*Math.PI) gs-=2*Math.PI;
+            while(ge<0) ge+=2*Math.PI;while(ge>=2*Math.PI) ge-=2*Math.PI;
+            if(gs<ge){normGaps.push([gs,ge]);}
+            else{normGaps.push([gs,2*Math.PI]);normGaps.push([0,ge]);} // wrap-around
           });
-          // Handle wrap-around: also subtract gaps that wrap past π
-          if(cursor<Math.PI-0.001) visSegs.push([cursor,Math.PI]);
+          normGaps.sort(function(a,b){return a[0]-b[0];});
+          // Merge overlapping
+          var mg=[];
+          normGaps.forEach(function(g){
+            if(mg.length>0&&g[0]<=mg[mg.length-1][1]+0.001){mg[mg.length-1][1]=Math.max(mg[mg.length-1][1],g[1]);}
+            else{mg.push(g.slice());}
+          });
+          // Build visible segments from [0, 2π] minus merged gaps
+          var visSegs=[],cursor=0;
+          mg.forEach(function(g){
+            if(g[0]>cursor+0.001) visSegs.push([cursor,g[0]]);
+            cursor=Math.max(cursor,g[1]);
+          });
+          if(cursor<2*Math.PI-0.001) visSegs.push([cursor,2*Math.PI]);
           var svgCircPaths='';
           visSegs.forEach(function(vs){
             var a1=vs[0],a2=vs[1];
             var span=a2-a1;
-            if(span<0.001) return;
-            // SVG coords: x goes right, y goes down; world y is flipped
+            if(span<0.01) return;
+            // SVG coords: x right, y down (world y flipped → negative sin)
             var sx1=cCx+cRx*Math.cos(a1),sy1=cCy-cRy*Math.sin(a1);
             var sx2=cCx+cRx*Math.cos(a2),sy2=cCy-cRy*Math.sin(a2);
             var largeArc=span>Math.PI?1:0;
@@ -3209,9 +3216,7 @@ function eraserClick(e){
       }
       saveHistory();
       if(!m.gaps) m.gaps=[];
-      console.log('[GAPS] before push:', JSON.stringify(m.gaps), 'adding:', [gapStart,gapEnd]);
       m.gaps.push([gapStart,gapEnd]);
-      console.log('[GAPS] after push:', JSON.stringify(m.gaps));
       m.gaps.sort(function(a,b){return a[0]-b[0];});
       var merged=[];
       m.gaps.forEach(function(g){
@@ -3220,7 +3225,6 @@ function eraserClick(e){
         }else{merged.push(g.slice());}
       });
       m.gaps=merged;
-      console.log('[GAPS] after merge:', JSON.stringify(m.gaps));
       var totalGap=0;m.gaps.forEach(function(g){totalGap+=g[1]-g[0];});
       if(totalGap>=2*Math.PI-0.1) _modules.splice(bestIdx,1);
     }
