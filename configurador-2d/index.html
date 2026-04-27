@@ -753,9 +753,25 @@ function renderModules(){
         div.style.cssText+='border:'+Math.round(stw)+'px solid '+st+'!important;background:'+bg+'!important;box-sizing:border-box;';
       }else if(m.type==='shape_curve'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
-        var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
-        var cpy=(m.cpy!=null?m.cpy:0)*mh;
-        inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
+        if(m.gaps&&m.gaps.length>0){
+          // Draw visible sub-segments as polyline
+          var bpts=curvePoints(m,60);
+          // curvePoints already skips gaps, so just draw the polyline
+          var svgBez='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">';
+          // Convert world points to div-local coords
+          var bOx=m.x,bOy=m.y+m.h; // div top-left in world = (m.x, m.y+m.h) because Y-flip
+          // Group consecutive points into polylines (gaps create breaks)
+          if(bpts.length>1){
+            var polyPts=bpts.map(function(p){return((p.x-bOx)*sc/mw*mw)+','+((bOy-p.y)*sc/mh*mh);}).join(' ');
+            svgBez+='<polyline points="'+polyPts+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/>';
+          }
+          svgBez+='</svg>';
+          inner=svgBez;
+        }else{
+          var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
+          var cpy=(m.cpy!=null?m.cpy:0)*mh;
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
+        }
       }else if(m.type==='shape_arc'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         var apad=m._bboxPad||6;
@@ -2888,16 +2904,29 @@ function curvePoints(m,n){
       }
     }
   }else if(m.type==='shape_curve'){
-    // Quadratic bezier: start=(m.x, m.y+m.h), control=((m.cpx||0.5)*m.w+m.x, (m.cpy||0)*m.h+m.y), end=(m.x+m.w, m.y+m.h)
-    // Actually the bezier in render uses viewbox coords — use world coords
     var bx0=m.x,by0=m.y;
     var bx2=m.x+m.w,by2=m.y;
     var bcx=m.x+(m.cpx!=null?m.cpx:0.5)*m.w;
     var bcy=m.y+(1-(m.cpy!=null?m.cpy:0))*m.h;
-    for(var i=0;i<=n;i++){
-      var t=i/n;
-      var u=1-t;
-      pts.push({x:u*u*bx0+2*u*t*bcx+t*t*bx2, y:u*u*by0+2*u*t*bcy+t*t*by2});
+    if(m.gaps&&m.gaps.length>0){
+      // Gaps are t-ranges [0..1]. Build visible ranges.
+      var bgaps=m.gaps.slice().sort(function(a,b){return a[0]-b[0];});
+      var visR=[],bc=0;
+      bgaps.forEach(function(g){if(g[0]>bc+0.001) visR.push([bc,g[0]]);bc=Math.max(bc,g[1]);});
+      if(bc<1-0.001) visR.push([bc,1]);
+      visR.forEach(function(vr){
+        var steps=Math.max(2,Math.round(n*(vr[1]-vr[0])));
+        for(var i=0;i<=steps;i++){
+          var t=vr[0]+(vr[1]-vr[0])*i/steps;
+          var u=1-t;
+          pts.push({x:u*u*bx0+2*u*t*bcx+t*t*bx2, y:u*u*by0+2*u*t*bcy+t*t*by2});
+        }
+      });
+    }else{
+      for(var i=0;i<=n;i++){
+        var t=i/n;var u=1-t;
+        pts.push({x:u*u*bx0+2*u*t*bcx+t*t*bx2, y:u*u*by0+2*u*t*bcy+t*t*by2});
+      }
     }
   }
   // Apply shape rotation to all points (local → world)
@@ -3388,6 +3417,74 @@ function eraserClick(e){
         // Check if gaps cover entire arc range
         var totalGapNorm=0;m.gaps.forEach(function(g){totalGapNorm+=Math.abs(normA(g[1])-normA(g[0]));});
         if(totalGapNorm>=Math.abs(arcSweep)-0.1) _modules.splice(bestIdx,1);
+      }
+    }
+  }else if(m.type==='shape_curve'){
+    // Bezier: use t-based gaps (t ∈ [0,1])
+    var bCpts=curvePoints(m,100);
+    // Find intersections: each other module's segments vs bezier polyline
+    var bIpts=[];
+    _modules.forEach(function(other,j){
+      if(j===bestIdx) return;
+      var osegs=[];
+      if(other.type==='shape_line') osegs.push([other.x1,other.y1,other.x2,other.y2]);
+      if(other.w&&other.h&&other.type!=='group'&&other.type!=='shape_circle'&&other.type!=='shape_arc'&&other.type!=='shape_curve'){
+        var oc=[{x:other.x,y:other.y},{x:other.x+other.w,y:other.y},{x:other.x+other.w,y:other.y+other.h},{x:other.x,y:other.y+other.h}];
+        if(other.rotation&&other.rotation%360!==0){var orcx=other.x+other.w/2,orcy=other.y+other.h/2;oc=oc.map(function(c){return snapRotPt(c.x,c.y,orcx,orcy,other.rotation*Math.PI/180);});}
+        for(var ci=0;ci<4;ci++){var cn=(ci+1)%4;osegs.push([oc[ci].x,oc[ci].y,oc[cn].x,oc[cn].y]);}
+      }
+      if(other.type==='shape_circle'||other.type==='shape_arc'||other.type==='shape_curve'){
+        var ocp=curvePoints(other,80);
+        for(var ci=0;ci<ocp.length-1;ci++) osegs.push([ocp[ci].x,ocp[ci].y,ocp[ci+1].x,ocp[ci+1].y]);
+      }
+      osegs.forEach(function(seg){
+        for(var bi=0;bi<bCpts.length-1;bi++){
+          var inter=segIntersect(bCpts[bi].x,bCpts[bi].y,bCpts[bi+1].x,bCpts[bi+1].y,seg[0],seg[1],seg[2],seg[3]);
+          if(inter){
+            var bt=(bi+inter.t)/(bCpts.length-1); // approximate t on bezier
+            bIpts.push({t:bt,x:inter.x,y:inter.y});
+          }
+        }
+      });
+    });
+    if(bIpts.length<2){
+      saveHistory();_modules.splice(bestIdx,1);
+    }else{
+      bIpts.sort(function(a,b){return a.t-b.t;});
+      // Deduplicate
+      var bDed=[];bIpts.forEach(function(p){if(bDed.length===0||Math.abs(p.t-bDed[bDed.length-1].t)>0.005)bDed.push(p);});
+      bIpts=bDed;
+      if(bIpts.length<2){saveHistory();_modules.splice(bestIdx,1);}
+      else{
+        // Find click t (closest point on polyline)
+        var clickBt=0,cbDist=Infinity;
+        for(var bi=0;bi<bCpts.length-1;bi++){
+          var bdx=bCpts[bi+1].x-bCpts[bi].x,bdy=bCpts[bi+1].y-bCpts[bi].y;
+          var bl2=bdx*bdx+bdy*bdy;if(bl2===0) continue;
+          var bt2=Math.max(0,Math.min(1,((wx-bCpts[bi].x)*bdx+(wy-bCpts[bi].y)*bdy)/bl2));
+          var bpx=bCpts[bi].x+bt2*bdx,bpy=bCpts[bi].y+bt2*bdy;
+          var bd=Math.sqrt((wx-bpx)*(wx-bpx)+(wy-bpy)*(wy-bpy));
+          if(bd<cbDist){cbDist=bd;clickBt=(bi+bt2)/(bCpts.length-1);}
+        }
+        // Find which segment the click falls in
+        var bSegIdx=bIpts.length-1;
+        for(var bi=0;bi<bIpts.length-1;bi++){
+          if(clickBt>=bIpts[bi].t&&clickBt<=bIpts[bi+1].t){bSegIdx=bi;break;}
+        }
+        var gapT0=bIpts[bSegIdx].t,gapT1=bSegIdx<bIpts.length-1?bIpts[bSegIdx+1].t:1;
+        if(bSegIdx===bIpts.length-1){gapT0=bIpts[bIpts.length-1].t;gapT1=1;}
+        saveHistory();
+        if(!m.gaps) m.gaps=[];
+        m.gaps.push([gapT0,gapT1]);
+        m.gaps.sort(function(a,b){return a[0]-b[0];});
+        var bMerged=[];
+        m.gaps.forEach(function(g){
+          if(bMerged.length>0&&g[0]<=bMerged[bMerged.length-1][1]+0.005){bMerged[bMerged.length-1][1]=Math.max(bMerged[bMerged.length-1][1],g[1]);}
+          else{bMerged.push(g.slice());}
+        });
+        m.gaps=bMerged;
+        var bTotalGap=0;m.gaps.forEach(function(g){bTotalGap+=g[1]-g[0];});
+        if(bTotalGap>=0.99) _modules.splice(bestIdx,1);
       }
     }
   }else{
