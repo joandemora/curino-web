@@ -2767,20 +2767,25 @@ function eraserClick(e){
   var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
   var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
   var tolerance=10/sc2;
+  console.log('[EC] clientX='+e.clientX+' clientY='+e.clientY+' wrapL='+Math.round(wrapRect.left)+' wrapT='+Math.round(wrapRect.top)+' o='+Math.round(o2.x)+','+Math.round(o2.y)+' sc='+sc2.toFixed(4)+' → world='+Math.round(wx)+','+Math.round(wy));
 
   var hit=eraserHitTest(wx,wy);
-  if(!hit) return;
+  console.log('[EC] hit=',hit);
+  if(!hit){console.log('[EC] no hit, return');return;}
   var bestIdx=hit.idx;
 
   var m=_modules[bestIdx];
+  console.log('[EC] winner: idx='+bestIdx+' type='+m.type+' side='+hit.side);
   saveHistory();
 
   // For lines: use findEraseSeg (same logic as hover preview, includes endpoints as cut points)
   if(m.type==='shape_line'){
     var eraseSeg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
-    // Check if the erase segment is the entire line (no cut points found)
+    console.log('[EC] LINE eraseSeg=',JSON.stringify(eraseSeg),'line='+m.x1+','+m.y1+'→'+m.x2+','+m.y2);
     var isFullLine=Math.abs(eraseSeg.p1.x-m.x1)<1&&Math.abs(eraseSeg.p1.y-m.y1)<1&&Math.abs(eraseSeg.p2.x-m.x2)<1&&Math.abs(eraseSeg.p2.y-m.y2)<1;
+    console.log('[EC] isFullLine='+isFullLine);
     if(isFullLine){
+      console.log('[EC] BRANCH: delete entire line');
       _modules.splice(bestIdx,1);
     }else{
       // Build remaining segments: original line minus the erased sub-segment
@@ -2811,9 +2816,10 @@ function eraserClick(e){
       sides.push({x1:Math.round(corners[si].x),y1:Math.round(corners[si].y),
                    x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
     }
-    // Use side from eraserHitTest (has correct edge>interior priority)
     var closestSide=hit.side!=null?hit.side:-1;
+    console.log('[EC] RECT closestSide='+closestSide);
     if(closestSide===-1){
+      console.log('[EC] BRANCH: delete entire rect');
       _modules.splice(bestIdx,1);
     }else{
       var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
@@ -2859,9 +2865,11 @@ function eraserClick(e){
       }
     }
   }else{
+    console.log('[EC] BRANCH: delete entire element (type='+m.type+')');
     _modules.splice(bestIdx,1);
   }
 
+  console.log('[EC] DONE modules.length='+_modules.length);
   _sel.clear();
   draw();renderModules();renderProps();
   savePages();updateActiveThumb();
