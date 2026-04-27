@@ -3081,36 +3081,51 @@ function eraserClick(e){
       var asign=(m.sagitta||1)>0?1:-1;
       var adist=aR-asagVal;
       var acx=amx-anx*asign*adist,acy=amy-any*asign*adist;
-      var ipts=circleIntersections(acx,acy,aR,aR,bestIdx);
-      // Filter: only keep intersections that fall on the arc
+      var allIpts=circleIntersections(acx,acy,aR,aR,bestIdx);
       var startA=Math.atan2(m.y1-acy,m.x1-acx);
       var endA=Math.atan2(m.y2-acy,m.x2-acx);
+      // Determine arc sweep direction from sagitta sign
+      var arcSweep=endA-startA;
+      if(asign>0&&arcSweep>0) arcSweep-=2*Math.PI;
+      if(asign<0&&arcSweep<0) arcSweep+=2*Math.PI;
+      // Filter: only keep intersections within the arc's angular range
+      function angleOnArc(a){
+        var da=a-startA;
+        if(arcSweep>0){if(da<0) da+=2*Math.PI;return da<=arcSweep+0.01;}
+        else{if(da>0) da-=2*Math.PI;return da>=arcSweep-0.01;}
+      }
+      var ipts=allIpts.filter(function(p){return angleOnArc(p.angle);});
       if(ipts.length<1){
         _modules.splice(bestIdx,1);
       }else{
-        // Add arc endpoints as boundary angles
-        ipts.push({x:m.x1,y:m.y1,angle:startA});
-        ipts.push({x:m.x2,y:m.y2,angle:endA});
-        ipts.sort(function(a,b){return a.angle-b.angle;});
+        // Build sorted list: startA + filtered intersections + endA
+        // Normalize all angles relative to startA for sorting
+        function normA(a){var d=a-startA;if(arcSweep>0){if(d<0)d+=2*Math.PI;}else{if(d>0)d-=2*Math.PI;}return d;}
+        var pts2=[{angle:startA,norm:0,x:m.x1,y:m.y1}];
+        ipts.forEach(function(p){pts2.push({angle:p.angle,norm:normA(p.angle),x:p.x,y:p.y});});
+        pts2.push({angle:endA,norm:normA(endA),x:m.x2,y:m.y2});
+        if(arcSweep>0) pts2.sort(function(a,b){return a.norm-b.norm;});
+        else pts2.sort(function(a,b){return b.norm-a.norm;});
         // Deduplicate
-        var deduped=[];
-        ipts.forEach(function(p){if(deduped.length===0||Math.abs(p.angle-deduped[deduped.length-1].angle)>0.01) deduped.push(p);});
-        ipts=deduped;
-        if(ipts.length<3){
+        var ded2=[];pts2.forEach(function(p){if(ded2.length===0||Math.abs(p.norm-ded2[ded2.length-1].norm)>0.01)ded2.push(p);});
+        pts2=ded2;
+        if(pts2.length<3){
           _modules.splice(bestIdx,1);
         }else{
-          var clickAngle=Math.atan2(wy-acy,wx-acx);
-          var arcIdx=ipts.length-1;
-          for(var ai=0;ai<ipts.length-1;ai++){
-            if(clickAngle>=ipts[ai].angle&&clickAngle<=ipts[ai+1].angle){arcIdx=ai;break;}
+          // Find clicked sub-arc
+          var clickA=Math.atan2(wy-acy,wx-acx);
+          var clickNorm=normA(clickA);
+          var arcIdx=pts2.length-2;
+          for(var ai=0;ai<pts2.length-1;ai++){
+            var n1=pts2[ai].norm,n2=pts2[ai+1].norm;
+            if(arcSweep>0&&clickNorm>=n1&&clickNorm<=n2){arcIdx=ai;break;}
+            if(arcSweep<0&&clickNorm<=n1&&clickNorm>=n2){arcIdx=ai;break;}
           }
           var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
           _modules.splice(bestIdx,1);
-          for(var ai=0;ai<ipts.length-1;ai++){
+          for(var ai=0;ai<pts2.length-1;ai++){
             if(ai===arcIdx) continue;
-            var a1=ipts[ai].angle,a2=ipts[ai+1].angle;
-            if(a2<=a1) a2+=2*Math.PI;
-            var newArc=arcFromCircle(acx,acy,aR,a1,a2,stroke,stw);
+            var newArc=arcFromCircle(acx,acy,aR,pts2[ai].angle,pts2[ai+1].angle,stroke,stw);
             _modules.push(newArc);
           }
         }
