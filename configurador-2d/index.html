@@ -2590,12 +2590,15 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
 
 // Line segment vs circle intersection. Returns array of {x,y,angle} (0-2 results)
 // Circle: center (cx,cy), radius r. Segment: (x1,y1)→(x2,y2)
-function segCircleIntersect(x1,y1,x2,y2,cx,cy,r){
-  var dx=x2-x1,dy=y2-y1;
-  var fx=x1-cx,fy=y1-cy;
+function segCircleIntersect(x1,y1,x2,y2,cx,cy,rx,ry){
+  // Transform to unit circle space: divide by (rx, ry) relative to center
+  if(!ry) ry=rx;
+  var sx1=(x1-cx)/rx, sy1=(y1-cy)/ry;
+  var sx2=(x2-cx)/rx, sy2=(y2-cy)/ry;
+  var dx=sx2-sx1,dy=sy2-sy1;
   var a=dx*dx+dy*dy;
-  var b=2*(fx*dx+fy*dy);
-  var c=fx*fx+fy*fy-r*r;
+  var b=2*(sx1*dx+sy1*dy);
+  var c=sx1*sx1+sy1*sy1-1;
   var disc=b*b-4*a*c;
   if(disc<0||a===0) return [];
   var results=[];
@@ -2603,20 +2606,20 @@ function segCircleIntersect(x1,y1,x2,y2,cx,cy,r){
   var t1=(-b-sqrtDisc)/(2*a);
   var t2=(-b+sqrtDisc)/(2*a);
   if(t1>=0.001&&t1<=0.999){
-    var px=x1+t1*dx,py=y1+t1*dy;
-    results.push({x:px,y:py,angle:Math.atan2(py-cy,px-cx)});
+    var px=x1+t1*(x2-x1),py=y1+t1*(y2-y1);
+    results.push({x:px,y:py,angle:Math.atan2((py-cy)/ry,(px-cx)/rx)});
   }
   if(t2>=0.001&&t2<=0.999&&Math.abs(t2-t1)>0.001){
-    var px=x1+t2*dx,py=y1+t2*dy;
-    results.push({x:px,y:py,angle:Math.atan2(py-cy,px-cx)});
+    var px=x1+t2*(x2-x1),py=y1+t2*(y2-y1);
+    results.push({x:px,y:py,angle:Math.atan2((py-cy)/ry,(px-cx)/rx)});
   }
   return results;
 }
 
 // Collect intersection angles on a circle/ellipse with all other segments
 function circleIntersections(cx,cy,rx,ry,skipIdx){
+  if(!ry) ry=rx;
   var pts=[];
-  var r=rx;
   _modules.forEach(function(m,i){
     if(i===skipIdx) return;
     var segs=[];
@@ -2630,15 +2633,15 @@ function circleIntersections(cx,cy,rx,ry,skipIdx){
       segs.push([m.x,m.y+m.h,m.x,m.y]);
     }
     segs.forEach(function(seg){
-      var hits=segCircleIntersect(seg[0],seg[1],seg[2],seg[3],cx,cy,r);
+      var hits=segCircleIntersect(seg[0],seg[1],seg[2],seg[3],cx,cy,rx,ry);
       hits.forEach(function(h){pts.push(h);});
     });
-    // Check endpoints of lines/arcs that fall on the circle
+    // Check endpoints of lines/arcs that fall on the ellipse
     if(m.type==='shape_line'||m.type==='shape_arc'){
       [{x:m.x1,y:m.y1},{x:m.x2,y:m.y2}].forEach(function(ep){
-        var dist=Math.sqrt((ep.x-cx)*(ep.x-cx)+(ep.y-cy)*(ep.y-cy));
-        if(Math.abs(dist-r)<1){
-          pts.push({x:ep.x,y:ep.y,angle:Math.atan2(ep.y-cy,ep.x-cx)});
+        var nd=Math.sqrt(Math.pow((ep.x-cx)/rx,2)+Math.pow((ep.y-cy)/ry,2));
+        if(Math.abs(nd-1)<0.01){
+          pts.push({x:ep.x,y:ep.y,angle:Math.atan2((ep.y-cy)/ry,(ep.x-cx)/rx)});
         }
       });
     }
@@ -2647,21 +2650,20 @@ function circleIntersections(cx,cy,rx,ry,skipIdx){
 }
 
 // Create a shape_arc from a circular arc defined by center, radius, startAngle, endAngle
-function arcFromCircle(cx,cy,r,a1,a2,stroke,strokeWidth){
-  var x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
-  var x2=cx+r*Math.cos(a2), y2=cy+r*Math.sin(a2);
+function arcFromCircle(cx,cy,rx,ry,a1,a2,stroke,strokeWidth){
+  if(!ry) ry=rx;
+  var x1=cx+rx*Math.cos(a1), y1=cy+ry*Math.sin(a1);
+  var x2=cx+rx*Math.cos(a2), y2=cy+ry*Math.sin(a2);
   var da=a2-a1;
   if(da<0) da+=2*Math.PI;
   var midAngle=a1+da/2;
-  var arcMidX=cx+r*Math.cos(midAngle), arcMidY=cy+r*Math.sin(midAngle);
+  var arcMidX=cx+rx*Math.cos(midAngle), arcMidY=cy+ry*Math.sin(midAngle);
   var chordMidX=(x1+x2)/2, chordMidY=(y1+y2)/2;
   var sagitta=Math.sqrt((arcMidX-chordMidX)*(arcMidX-chordMidX)+(arcMidY-chordMidY)*(arcMidY-chordMidY));
-  // Determine sign: cross product of chord direction and (chordMid→arcMid)
   var cdx=x2-x1,cdy=y2-y1;
   var pmx=arcMidX-chordMidX,pmy=arcMidY-chordMidY;
   var cross=cdx*pmy-cdy*pmx;
   if(cross<0) sagitta=-sagitta;
-  // Clamp sagitta
   var chord=Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
   if(chord>0&&Math.abs(sagitta)>chord/2) sagitta=sagitta>0?chord/2:-chord/2;
   return{type:'shape_arc',x1:Math.round(x1),y1:Math.round(y1),
@@ -2903,17 +2905,17 @@ function updateEraserPreview(e){
     // For circles/arcs: find sub-arc under cursor (matching eraserClick logic)
     var subArcPts=null;
     if(m.type==='shape_circle'){
-      var ccx=m.x+m.w/2,ccy=m.y+m.h/2,cr=m.w/2;
-      var ipts=circleIntersections(ccx,ccy,cr,cr,hit.idx);
+      var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
+      var ipts=circleIntersections(ccx,ccy,crx,cry,hit.idx);
       if(ipts.length>=2){
         ipts.sort(function(a,b){return a.angle-b.angle;});
-        var clickA=Math.atan2(wy-ccy,wx-ccx);
+        var clickA=Math.atan2((wy-ccy)/cry,(wx-ccx)/crx);
         var ai2=ipts.length-1;
         for(var ai=0;ai<ipts.length-1;ai++){if(clickA>=ipts[ai].angle&&clickA<=ipts[ai+1].angle){ai2=ai;break;}}
         var a1=ipts[ai2].angle,a2=ipts[(ai2+1)%ipts.length].angle;
         if(a2<=a1) a2+=2*Math.PI;
         subArcPts=[];
-        for(var ti=0;ti<=30;ti++){var aa=a1+(a2-a1)*ti/30;subArcPts.push({x:ccx+cr*Math.cos(aa),y:ccy+cr*Math.sin(aa)});}
+        for(var ti=0;ti<=30;ti++){var aa=a1+(a2-a1)*ti/30;subArcPts.push({x:ccx+crx*Math.cos(aa),y:ccy+cry*Math.sin(aa)});}
       }
     }else if(m.type==='shape_arc'){
       var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
@@ -3043,15 +3045,15 @@ function eraserClick(e){
     }
   }else if(m.type==='shape_circle'){
     // Partial cut for circles
-    var ccx=m.x+m.w/2,ccy=m.y+m.h/2,cr=m.w/2;
-    var ipts=circleIntersections(ccx,ccy,cr,cr,bestIdx);
+    var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
+    var ipts=circleIntersections(ccx,ccy,crx,cry,bestIdx);
     saveHistory();
     if(ipts.length<2){
       _modules.splice(bestIdx,1);
     }else{
       // Sort angles, find clicked sub-arc
       ipts.sort(function(a,b){return a.angle-b.angle;});
-      var clickAngle=Math.atan2(wy-ccy,wx-ccx);
+      var clickAngle=Math.atan2((wy-ccy)/cry,(wx-ccx)/crx);
       // Find which arc segment contains the click
       var arcIdx=ipts.length-1; // default: last→first (wrap-around)
       for(var ai=0;ai<ipts.length-1;ai++){
@@ -3065,7 +3067,7 @@ function eraserClick(e){
         var nextAi=(ai+1)%ipts.length;
         var a1=ipts[ai].angle, a2=ipts[nextAi].angle;
         if(a2<=a1) a2+=2*Math.PI;
-        var newArc=arcFromCircle(ccx,ccy,cr,a1,a2,stroke,stw);
+        var newArc=arcFromCircle(ccx,ccy,crx,cry,a1,a2,stroke,stw);
         _modules.push(newArc);
       }
     }
@@ -3129,7 +3131,7 @@ function eraserClick(e){
           _modules.splice(bestIdx,1);
           for(var ai=0;ai<pts2.length-1;ai++){
             if(ai===arcIdx) continue;
-            var newArc=arcFromCircle(acx,acy,aR,pts2[ai].angle,pts2[ai+1].angle,stroke,stw);
+            var newArc=arcFromCircle(acx,acy,aR,aR,pts2[ai].angle,pts2[ai+1].angle,stroke,stw);
             _modules.push(newArc);
           }
         }
