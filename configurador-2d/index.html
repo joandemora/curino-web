@@ -3161,9 +3161,10 @@ function eraserClick(e){
   console.log('[EC-START] clientX='+e.clientX+' clientY='+e.clientY);
   var sc2=s(),o2=origin();
   var wrapRect=wrap.getBoundingClientRect();
+  console.log('[EC-REFS] wrap.id='+wrap.id+' wrapRect.left='+Math.round(wrapRect.left)+' wrapRect.top='+Math.round(wrapRect.top)+' o2.x='+Math.round(o2.x)+' o2.y='+Math.round(o2.y)+' sc='+sc2.toFixed(4));
   var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
   var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
-  console.log('[EC-WORLD] world=('+Math.round(wx)+','+Math.round(wy)+') sc='+sc2.toFixed(4));
+  console.log('[EC-WORLD] world=('+Math.round(wx)+','+Math.round(wy)+')');
   var tolerance=10/sc2;
   var hit=eraserHitTest(wx,wy);
   console.log('[EC-HIT] hit='+JSON.stringify(hit));
