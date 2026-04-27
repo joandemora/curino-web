@@ -754,17 +754,27 @@ function renderModules(){
       }else if(m.type==='shape_curve'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         if(m.gaps&&m.gaps.length>0){
-          // Draw visible sub-segments as polyline
-          var bpts=curvePoints(m,60);
-          // curvePoints already skips gaps, so just draw the polyline
+          // Draw each visible range as a separate polyline
+          var bgaps=m.gaps.slice().sort(function(a,b){return a[0]-b[0];});
+          var visR=[],bc=0;
+          bgaps.forEach(function(g){if(g[0]>bc+0.001) visR.push([bc,g[0]]);bc=Math.max(bc,g[1]);});
+          if(bc<1-0.001) visR.push([bc,1]);
+          var bOx=m.x,bOy=m.y+m.h;
+          var bx0=m.x,by0=m.y,bx2=m.x+m.w,by2=m.y;
+          var bcxR=m.x+(m.cpx!=null?m.cpx:0.5)*m.w;
+          var bcyR=m.y+(1-(m.cpy!=null?m.cpy:0))*m.h;
           var svgBez='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">';
-          // Convert world points to div-local coords
-          var bOx=m.x,bOy=m.y+m.h; // div top-left in world = (m.x, m.y+m.h) because Y-flip
-          // Group consecutive points into polylines (gaps create breaks)
-          if(bpts.length>1){
-            var polyPts=bpts.map(function(p){return((p.x-bOx)*sc/mw*mw)+','+((bOy-p.y)*sc/mh*mh);}).join(' ');
-            svgBez+='<polyline points="'+polyPts+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/>';
-          }
+          visR.forEach(function(vr){
+            var steps=Math.max(2,Math.round(60*(vr[1]-vr[0])));
+            var pts2=[];
+            for(var i=0;i<=steps;i++){
+              var t=vr[0]+(vr[1]-vr[0])*i/steps,u=1-t;
+              var px=u*u*bx0+2*u*t*bcxR+t*t*bx2;
+              var py=u*u*by0+2*u*t*bcyR+t*t*by2;
+              pts2.push(((px-bOx)*sc/mw*mw)+','+((bOy-py)*sc/mh*mh));
+            }
+            if(pts2.length>1) svgBez+='<polyline points="'+pts2.join(' ')+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/>';
+          });
           svgBez+='</svg>';
           inner=svgBez;
         }else{
