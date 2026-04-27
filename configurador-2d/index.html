@@ -2583,9 +2583,11 @@ function segIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
 // Eraser click: find element under cursor and erase
 function eraserClick(e){
   var sc2=s(),o2=origin();
-  var wx=(e.clientX-o2.x)/sc2;
-  var wy=-(e.clientY-o2.y)/sc2;
+  var wrapRect=wrap.getBoundingClientRect();
+  var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
+  var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
   var tolerance=10/sc2;
+  console.log('[ERASER] clientX='+e.clientX+' clientY='+e.clientY+' wrapLeft='+Math.round(wrapRect.left)+' wrapTop='+Math.round(wrapRect.top)+' o2.x='+Math.round(o2.x)+' o2.y='+Math.round(o2.y)+' sc='+sc2.toFixed(4)+' → world=('+Math.round(wx)+','+Math.round(wy)+') tolerance='+Math.round(tolerance));
 
   // Find closest element
   var bestIdx=-1,bestDist=tolerance;
@@ -2606,6 +2608,7 @@ function eraserClick(e){
         var erot=m.rotation*Math.PI/180;
         corners=corners.map(function(c){return snapRotPt(c.x,c.y,ecx,ecy,erot);});
       }
+      var sNames=['bot','right','top','left'];
       for(var ei=0;ei<4;ei++){
         var enx=(ei+1)%4;
         var edx=corners[enx].x-corners[ei].x,edy=corners[enx].y-corners[ei].y;
@@ -2614,6 +2617,7 @@ function eraserClick(e){
         var et=Math.max(0,Math.min(1,((wx-corners[ei].x)*edx+(wy-corners[ei].y)*edy)/elen2));
         var epx=corners[ei].x+et*edx,epy=corners[ei].y+et*edy;
         var ed=Math.sqrt((wx-epx)*(wx-epx)+(wy-epy)*(wy-epy));
+        console.log('[ERASER] i='+i+' '+m.type+' side='+sNames[ei]+' ('+Math.round(corners[ei].x)+','+Math.round(corners[ei].y)+')→('+Math.round(corners[enx].x)+','+Math.round(corners[enx].y)+') t='+et.toFixed(3)+' closest=('+Math.round(epx)+','+Math.round(epy)+') dist='+Math.round(ed)+' bestDist='+Math.round(bestDist));
         if(ed<bestDist){bestDist=ed;bestIdx=i;}
       }
       if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
@@ -2621,6 +2625,7 @@ function eraserClick(e){
       }
     }
   });
+  console.log('[ERASER] WINNER: bestIdx='+bestIdx+' bestDist='+Math.round(bestDist)+' type='+(bestIdx>=0?_modules[bestIdx].type:'none'));
   if(bestIdx===-1) return;
 
   var m=_modules[bestIdx];
