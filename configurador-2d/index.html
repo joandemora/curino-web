@@ -2663,18 +2663,17 @@ function arcFromCircle(cx,cy,rx,ry,a1,a2,stroke,strokeWidth){
   var arcMidX=cx+rx*Math.cos(midAngle), arcMidY=cy+ry*Math.sin(midAngle);
   // Midpoint of the chord
   var chordMidX=(x1+x2)/2, chordMidY=(y1+y2)/2;
-  // Sagitta = distance from chord midpoint to arc midpoint
-  var sagDx=arcMidX-chordMidX, sagDy=arcMidY-chordMidY;
-  var sagitta=Math.sqrt(sagDx*sagDx+sagDy*sagDy);
-  // Sign: cross product determines which side of the chord the arc bulges to
+  // Chord vector and perpendicular
   var cdx=x2-x1,cdy=y2-y1;
-  var cross=cdx*sagDy-cdy*sagDx;
-  if(cross<0) sagitta=-sagitta;
-  // Clamp: sagitta can't exceed half the chord (max 180° shape_arc)
   var chord=Math.sqrt(cdx*cdx+cdy*cdy);
-  if(chord>0&&Math.abs(sagitta)>chord/2) sagitta=sagitta>0?chord/2:-chord/2;
-  // Skip degenerate arcs (zero-length chord)
   if(chord<1) return null;
+  // Perpendicular unit vector to chord (pointing "left" of chord direction)
+  var perpX=-cdy/chord, perpY=cdx/chord;
+  // Sagitta = projection of (arcMid - chordMid) onto perpendicular
+  var sagDx=arcMidX-chordMidX, sagDy=arcMidY-chordMidY;
+  var sagitta=sagDx*perpX+sagDy*perpY;
+  // Clamp: sagitta can't exceed half the chord (max 180° shape_arc)
+  if(Math.abs(sagitta)>chord/2) sagitta=sagitta>0?chord/2:-chord/2;
   return{type:'shape_arc',x1:Math.round(x1),y1:Math.round(y1),
     x2:Math.round(x2),y2:Math.round(y2),sagitta:Math.round(sagitta),
     stroke:stroke||'#000000',strokeWidth:strokeWidth||1};
