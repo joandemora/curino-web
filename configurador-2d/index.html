@@ -2717,7 +2717,7 @@ function circleIntersections(cx,cy,rx,ry,skipIdx){
     if(m.type==='shape_line'){
       segs.push([m.x1,m.y1,m.x2,m.y2]);
     }
-    if(m.w&&m.h&&m.type!=='group'){
+    if(m.w&&m.h&&m.type!=='group'&&m.type!=='shape_circle'&&m.type!=='shape_arc'&&m.type!=='shape_curve'){
       segs.push([m.x,m.y,m.x+m.w,m.y]);
       segs.push([m.x+m.w,m.y,m.x+m.w,m.y+m.h]);
       segs.push([m.x+m.w,m.y+m.h,m.x,m.y+m.h]);
