@@ -3209,7 +3209,9 @@ function eraserClick(e){
       }
       saveHistory();
       if(!m.gaps) m.gaps=[];
+      console.log('[GAPS] before push:', JSON.stringify(m.gaps), 'adding:', [gapStart,gapEnd]);
       m.gaps.push([gapStart,gapEnd]);
+      console.log('[GAPS] after push:', JSON.stringify(m.gaps));
       m.gaps.sort(function(a,b){return a[0]-b[0];});
       var merged=[];
       m.gaps.forEach(function(g){
@@ -3218,6 +3220,7 @@ function eraserClick(e){
         }else{merged.push(g.slice());}
       });
       m.gaps=merged;
+      console.log('[GAPS] after merge:', JSON.stringify(m.gaps));
       var totalGap=0;m.gaps.forEach(function(g){totalGap+=g[1]-g[0];});
       if(totalGap>=2*Math.PI-0.1) _modules.splice(bestIdx,1);
     }
