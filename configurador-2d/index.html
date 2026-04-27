@@ -3233,8 +3233,11 @@ function eraserClick(e){
     }
   }else if(m.type==='shape_circle'){
     var ccx=m.x+m.w/2,ccy=m.y+m.h/2,crx=m.w/2,cry=m.h/2;
+    console.log('[EC-C] circle idx='+bestIdx+' center=('+ccx+','+ccy+') rx='+crx+' ry='+cry+' rot='+(m.rotation||0));
     var ipts=circleIntersections(ccx,ccy,crx,cry,bestIdx,m.rotation);
+    console.log('[EC-C] intersections count='+ipts.length+' angles='+JSON.stringify(ipts.map(function(p){return Math.round(p.angle*180/Math.PI)+'°';})));
     if(ipts.length<2){
+      console.log('[EC-C] <2 intersections → delete entire');
       saveHistory();
       _modules.splice(bestIdx,1);
     }else{
@@ -3247,6 +3250,8 @@ function eraserClick(e){
         clx=ccx+cdx*cCos-cdy*cSin;cly=ccy-(cdx*cSin+cdy*cCos);
       }
       var clickAngle=Math.atan2((cly-ccy)/cry,(clx-ccx)/crx);
+      console.log('[EC-C] world click=('+Math.round(wx)+','+Math.round(wy)+') local=('+Math.round(clx)+','+Math.round(cly)+') clickAngle='+Math.round(clickAngle*180/Math.PI)+'°');
+      console.log('[EC-C] sorted ipt angles='+JSON.stringify(ipts.map(function(p){return Math.round(p.angle*180/Math.PI)+'°';})));
       var arcIdx=ipts.length-1;
       for(var ai=0;ai<ipts.length-1;ai++){
         if(clickAngle>=ipts[ai].angle&&clickAngle<=ipts[ai+1].angle){arcIdx=ai;break;}
@@ -3259,9 +3264,11 @@ function eraserClick(e){
         gapStart=ipts[arcIdx].angle;
         gapEnd=ipts[arcIdx+1].angle;
       }
+      console.log('[EC-C] arcIdx='+arcIdx+' gap=['+Math.round(gapStart*180/Math.PI)+'°,'+Math.round(gapEnd*180/Math.PI)+'°]');
       saveHistory();
       if(!m.gaps) m.gaps=[];
       m.gaps.push([gapStart,gapEnd]);
+      console.log('[EC-C] gaps after push='+JSON.stringify(m.gaps.map(function(g){return'['+Math.round(g[0]*180/Math.PI)+'°,'+Math.round(g[1]*180/Math.PI)+'°]';})));
       m.gaps.sort(function(a,b){return a[0]-b[0];});
       var merged=[];
       m.gaps.forEach(function(g){
