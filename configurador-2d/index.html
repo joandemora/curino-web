@@ -3020,6 +3020,14 @@ function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
       // Corners on our segment
       corners.forEach(function(c){tryAddPoint(c.x,c.y);});
     }
+    // Intersections with curves (circles, arcs, beziers) via polyline
+    if(other.type==='shape_circle'||other.type==='shape_arc'||other.type==='shape_curve'){
+      var cpts=curvePoints(other,80);
+      for(var ci2=0;ci2<cpts.length-1;ci2++){
+        var cinter=segIntersect(lx1,ly1,lx2,ly2,cpts[ci2].x,cpts[ci2].y,cpts[ci2+1].x,cpts[ci2+1].y);
+        if(cinter) intersections.push(cinter);
+      }
+    }
   });
   // Deduplicate by t (merge points within 0.001 t)
   intersections.sort(function(a,b){return a.t-b.t;});
