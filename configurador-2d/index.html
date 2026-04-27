@@ -2767,25 +2767,18 @@ function eraserClick(e){
   var wx=(e.clientX-wrapRect.left-o2.x)/sc2;
   var wy=-(e.clientY-wrapRect.top-o2.y)/sc2;
   var tolerance=10/sc2;
-  console.log('[EC] clientX='+e.clientX+' clientY='+e.clientY+' wrapL='+Math.round(wrapRect.left)+' wrapT='+Math.round(wrapRect.top)+' o='+Math.round(o2.x)+','+Math.round(o2.y)+' sc='+sc2.toFixed(4)+' → world='+Math.round(wx)+','+Math.round(wy));
-
   var hit=eraserHitTest(wx,wy);
-  console.log('[EC] hit=',hit);
-  if(!hit){console.log('[EC] no hit, return');return;}
+  if(!hit) return;
   var bestIdx=hit.idx;
 
   var m=_modules[bestIdx];
-  console.log('[EC] winner: idx='+bestIdx+' type='+m.type+' side='+hit.side);
   saveHistory();
 
   // For lines: use findEraseSeg (same logic as hover preview, includes endpoints as cut points)
   if(m.type==='shape_line'){
     var eraseSeg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
-    console.log('[EC] LINE eraseSeg=',JSON.stringify(eraseSeg),'line='+m.x1+','+m.y1+'→'+m.x2+','+m.y2);
     var isFullLine=Math.abs(eraseSeg.p1.x-m.x1)<1&&Math.abs(eraseSeg.p1.y-m.y1)<1&&Math.abs(eraseSeg.p2.x-m.x2)<1&&Math.abs(eraseSeg.p2.y-m.y2)<1;
-    console.log('[EC] isFullLine='+isFullLine);
     if(isFullLine){
-      console.log('[EC] BRANCH: delete entire line');
       _modules.splice(bestIdx,1);
     }else{
       // Build remaining segments: original line minus the erased sub-segment
@@ -2817,9 +2810,7 @@ function eraserClick(e){
                    x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
     }
     var closestSide=hit.side!=null?hit.side:-1;
-    console.log('[EC] RECT closestSide='+closestSide);
     if(closestSide===-1){
-      console.log('[EC] BRANCH: delete entire rect');
       _modules.splice(bestIdx,1);
     }else{
       var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
@@ -2829,47 +2820,24 @@ function eraserClick(e){
         _modules.push({type:'shape_line',x1:sides[si].x1,y1:sides[si].y1,
           x2:sides[si].x2,y2:sides[si].y2,stroke:stroke,strokeWidth:stw});
       }
+      // Use findEraseSeg to cut the clicked side (includes endpoints as cut points)
       var cSide=sides[closestSide];
-      var sideIntersections=[];
-      _modules.forEach(function(other,j){
-        if(other.type==='shape_line'){
-          var inter=segIntersect(cSide.x1,cSide.y1,cSide.x2,cSide.y2,other.x1,other.y1,other.x2,other.y2);
-          if(inter) sideIntersections.push(inter);
+      var eraseSeg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,-1);
+      var isFull=Math.abs(eraseSeg.p1.x-cSide.x1)<1&&Math.abs(eraseSeg.p1.y-cSide.y1)<1&&Math.abs(eraseSeg.p2.x-cSide.x2)<1&&Math.abs(eraseSeg.p2.y-cSide.y2)<1;
+      if(!isFull){
+        // Add remaining sub-segments of the clicked side
+        if(Math.abs(eraseSeg.p1.x-cSide.x1)>1||Math.abs(eraseSeg.p1.y-cSide.y1)>1){
+          _modules.push({type:'shape_line',x1:cSide.x1,y1:cSide.y1,x2:Math.round(eraseSeg.p1.x),y2:Math.round(eraseSeg.p1.y),stroke:stroke,strokeWidth:stw});
         }
-        if(other.w&&other.h&&other.type!=='group'){
-          var oEdges=[[other.x,other.y,other.x+other.w,other.y],[other.x+other.w,other.y,other.x+other.w,other.y+other.h],
-            [other.x+other.w,other.y+other.h,other.x,other.y+other.h],[other.x,other.y+other.h,other.x,other.y]];
-          oEdges.forEach(function(seg){
-            var inter=segIntersect(cSide.x1,cSide.y1,cSide.x2,cSide.y2,seg[0],seg[1],seg[2],seg[3]);
-            if(inter) sideIntersections.push(inter);
-          });
-        }
-      });
-      if(sideIntersections.length===0){
-        // No intersections: side is fully erased (don't add it back)
-      }else{
-        sideIntersections.sort(function(a,b){return a.t-b.t;});
-        var sPts=[{x:cSide.x1,y:cSide.y1,t:0}].concat(sideIntersections).concat([{x:cSide.x2,y:cSide.y2,t:1}]);
-        var sDx=cSide.x2-cSide.x1,sDy=cSide.y2-cSide.y1;
-        var sClickT=((wx-cSide.x1)*sDx+(wy-cSide.y1)*sDy)/(sDx*sDx+sDy*sDy);
-        sClickT=Math.max(0,Math.min(1,sClickT));
-        var sSegIdx=0;
-        for(var ssi=0;ssi<sPts.length-1;ssi++){
-          if(sClickT>=sPts[ssi].t&&sClickT<=sPts[ssi+1].t){sSegIdx=ssi;break;}
-        }
-        for(var ssi=0;ssi<sPts.length-1;ssi++){
-          if(ssi===sSegIdx) continue;
-          _modules.push({type:'shape_line',x1:Math.round(sPts[ssi].x),y1:Math.round(sPts[ssi].y),
-            x2:Math.round(sPts[ssi+1].x),y2:Math.round(sPts[ssi+1].y),stroke:stroke,strokeWidth:stw});
+        if(Math.abs(eraseSeg.p2.x-cSide.x2)>1||Math.abs(eraseSeg.p2.y-cSide.y2)>1){
+          _modules.push({type:'shape_line',x1:Math.round(eraseSeg.p2.x),y1:Math.round(eraseSeg.p2.y),x2:cSide.x2,y2:cSide.y2,stroke:stroke,strokeWidth:stw});
         }
       }
     }
   }else{
-    console.log('[EC] BRANCH: delete entire element (type='+m.type+')');
     _modules.splice(bestIdx,1);
   }
 
-  console.log('[EC] DONE modules.length='+_modules.length);
   _sel.clear();
   draw();renderModules();renderProps();
   savePages();updateActiveThumb();
