@@ -3450,11 +3450,14 @@ function eraserClick(e){
     if(bIpts.length<2){
       saveHistory();_modules.splice(bestIdx,1);
     }else{
+      // Add bezier endpoints as boundaries
+      bIpts.push({t:0,x:0,y:0});
+      bIpts.push({t:1,x:0,y:0});
       bIpts.sort(function(a,b){return a.t-b.t;});
       // Deduplicate
       var bDed=[];bIpts.forEach(function(p){if(bDed.length===0||Math.abs(p.t-bDed[bDed.length-1].t)>0.005)bDed.push(p);});
       bIpts=bDed;
-      if(bIpts.length<2){saveHistory();_modules.splice(bestIdx,1);}
+      if(bIpts.length<3){saveHistory();_modules.splice(bestIdx,1);}
       else{
         // Find click t (closest point on polyline)
         var clickBt=0,cbDist=Infinity;
@@ -3471,8 +3474,7 @@ function eraserClick(e){
         for(var bi=0;bi<bIpts.length-1;bi++){
           if(clickBt>=bIpts[bi].t&&clickBt<=bIpts[bi+1].t){bSegIdx=bi;break;}
         }
-        var gapT0=bIpts[bSegIdx].t,gapT1=bSegIdx<bIpts.length-1?bIpts[bSegIdx+1].t:1;
-        if(bSegIdx===bIpts.length-1){gapT0=bIpts[bIpts.length-1].t;gapT1=1;}
+        var gapT0=bIpts[bSegIdx].t,gapT1=bIpts[bSegIdx+1].t;
         saveHistory();
         if(!m.gaps) m.gaps=[];
         m.gaps.push([gapT0,gapT1]);
