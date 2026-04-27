@@ -2974,12 +2974,12 @@ function eraserClick(e){
   var bestIdx=hit.idx;
 
   var m=_modules[bestIdx];
-  saveHistory();
 
   // For lines: use findEraseSeg (same logic as hover preview, includes endpoints as cut points)
   if(m.type==='shape_line'){
     var eraseSeg=findEraseSeg(m.x1,m.y1,m.x2,m.y2,wx,wy,bestIdx);
     var isFullLine=Math.abs(eraseSeg.p1.x-m.x1)<1&&Math.abs(eraseSeg.p1.y-m.y1)<1&&Math.abs(eraseSeg.p2.x-m.x2)<1&&Math.abs(eraseSeg.p2.y-m.y2)<1;
+    saveHistory();
     if(isFullLine){
       _modules.splice(bestIdx,1);
     }else{
@@ -3012,6 +3012,7 @@ function eraserClick(e){
                    x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
     }
     var closestSide=hit.side!=null?hit.side:-1;
+    saveHistory();
     if(closestSide===-1){
       _modules.splice(bestIdx,1);
     }else{
@@ -3040,6 +3041,7 @@ function eraserClick(e){
     // Partial cut for circles
     var ccx=m.x+m.w/2,ccy=m.y+m.h/2,cr=m.w/2;
     var ipts=circleIntersections(ccx,ccy,cr,cr,bestIdx);
+    saveHistory();
     if(ipts.length<2){
       _modules.splice(bestIdx,1);
     }else{
@@ -3068,6 +3070,7 @@ function eraserClick(e){
     var achord=Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2))||1;
     var ahalfC=achord/2;
     var asagVal=Math.min(Math.abs(m.sagitta||0),ahalfC);
+    saveHistory();
     if(asagVal<1){
       _modules.splice(bestIdx,1);
     }else{
@@ -3114,6 +3117,7 @@ function eraserClick(e){
       }
     }
   }else{
+    saveHistory();
     _modules.splice(bestIdx,1);
   }
 
