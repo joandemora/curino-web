@@ -748,9 +748,40 @@ function renderModules(){
           inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/></svg>';
         }
       }else if(m.type==='shape_rect'){
-        useCSS=true;div.classList.add('css-shape');
-        var bg=(fl&&fl!=='none')?fl:'transparent';
-        div.style.cssText+='border:'+Math.round(stw)+'px solid '+st+'!important;background:'+bg+'!important;box-sizing:border-box;';
+        var hasGaps=m.gaps&&(
+          (m.gaps.bottom&&m.gaps.bottom.length)||(m.gaps.right&&m.gaps.right.length)||
+          (m.gaps.top&&m.gaps.top.length)||(m.gaps.left&&m.gaps.left.length));
+        if(hasGaps){
+          div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
+          var bg=(fl&&fl!=='none')?fl:'transparent';
+          // Side definitions in div-local coords: bottom=(0,mh)→(mw,mh), right=(mw,mh)→(mw,0), top=(mw,0)→(0,0), left=(0,0)→(0,mh)
+          var rectSides=[
+            {name:'bottom',x1:0,y1:mh,x2:mw,y2:mh},
+            {name:'right',x1:mw,y1:mh,x2:mw,y2:0},
+            {name:'top',x1:mw,y1:0,x2:0,y2:0},
+            {name:'left',x1:0,y1:0,x2:0,y2:mh}
+          ];
+          var svgRect='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">';
+          if(bg!=='transparent') svgRect+='<rect x="0" y="0" width="'+mw+'" height="'+mh+'" fill="'+bg+'" stroke="none"/>';
+          rectSides.forEach(function(rs){
+            var sideGaps=(m.gaps[rs.name]||[]).slice().sort(function(a,b){return a[0]-b[0];});
+            // Compute visible sub-ranges by subtracting gaps from [0,1]
+            var visR=[],cursor=0;
+            sideGaps.forEach(function(g){if(g[0]>cursor+0.001) visR.push([cursor,g[0]]);cursor=Math.max(cursor,g[1]);});
+            if(cursor<1-0.001) visR.push([cursor,1]);
+            visR.forEach(function(vr){
+              var lx1=rs.x1+(rs.x2-rs.x1)*vr[0], ly1=rs.y1+(rs.y2-rs.y1)*vr[0];
+              var lx2=rs.x1+(rs.x2-rs.x1)*vr[1], ly2=rs.y1+(rs.y2-rs.y1)*vr[1];
+              svgRect+='<line x1="'+lx1+'" y1="'+ly1+'" x2="'+lx2+'" y2="'+ly2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
+            });
+          });
+          svgRect+='</svg>';
+          inner=svgRect;
+        }else{
+          useCSS=true;div.classList.add('css-shape');
+          var bg=(fl&&fl!=='none')?fl:'transparent';
+          div.style.cssText+='border:'+Math.round(stw)+'px solid '+st+'!important;background:'+bg+'!important;box-sizing:border-box;';
+        }
       }else if(m.type==='shape_curve'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
         if(m.gaps&&m.gaps.length>0){
@@ -3340,36 +3371,62 @@ function eraserClick(e){
     if(hasRot){
       corners=corners.map(function(c){return snapRotPt(c.x,c.y,cx,cy,rot);});
     }
-    var sides=[];
-    for(var si=0;si<4;si++){
-      var next=(si+1)%4;
-      sides.push({x1:Math.round(corners[si].x),y1:Math.round(corners[si].y),
-                   x2:Math.round(corners[next].x),y2:Math.round(corners[next].y)});
-    }
+    var sideNames=['bottom','right','top','left'];
+    var sideLengths=[m.w,m.h,m.w,m.h]; // unrotated side lengths
     var closestSide=hit.side!=null?hit.side:-1;
-    saveHistory();
     if(closestSide===-1){
+      saveHistory();
       _modules.splice(bestIdx,1);
     }else{
-      var stroke=m.stroke||'#000000',stw=m.strokeWidth||1;
-      _modules.splice(bestIdx,1);
-      for(var si=0;si<4;si++){
-        if(si===closestSide) continue;
-        _modules.push({type:'shape_line',x1:sides[si].x1,y1:sides[si].y1,
-          x2:sides[si].x2,y2:sides[si].y2,stroke:stroke,strokeWidth:stw});
-      }
-      // Use findEraseSeg to cut the clicked side (includes endpoints as cut points)
-      var cSide=sides[closestSide];
-      var eraseSeg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,-1);
-      var isFull=Math.abs(eraseSeg.p1.x-cSide.x1)<1&&Math.abs(eraseSeg.p1.y-cSide.y1)<1&&Math.abs(eraseSeg.p2.x-cSide.x2)<1&&Math.abs(eraseSeg.p2.y-cSide.y2)<1;
-      if(!isFull){
-        // Add remaining sub-segments of the clicked side
-        if(Math.abs(eraseSeg.p1.x-cSide.x1)>1||Math.abs(eraseSeg.p1.y-cSide.y1)>1){
-          _modules.push({type:'shape_line',x1:cSide.x1,y1:cSide.y1,x2:Math.round(eraseSeg.p1.x),y2:Math.round(eraseSeg.p1.y),stroke:stroke,strokeWidth:stw});
-        }
-        if(Math.abs(eraseSeg.p2.x-cSide.x2)>1||Math.abs(eraseSeg.p2.y-cSide.y2)>1){
-          _modules.push({type:'shape_line',x1:Math.round(eraseSeg.p2.x),y1:Math.round(eraseSeg.p2.y),x2:cSide.x2,y2:cSide.y2,stroke:stroke,strokeWidth:stw});
-        }
+      // Compute rotated side endpoints
+      var si=closestSide, sn=(si+1)%4;
+      var cSide={x1:corners[si].x,y1:corners[si].y,x2:corners[sn].x,y2:corners[sn].y};
+      var eraseSeg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,bestIdx);
+      // Convert erase segment endpoints to t parameters along the side
+      var sideLen=sideLengths[closestSide];
+      if(sideLen<0.001){saveHistory();_modules.splice(bestIdx,1);}
+      else{
+        var sdx=cSide.x2-cSide.x1, sdy=cSide.y2-cSide.y1;
+        var slen=Math.sqrt(sdx*sdx+sdy*sdy);
+        // t for erase start
+        var edx1=eraseSeg.p1.x-cSide.x1, edy1=eraseSeg.p1.y-cSide.y1;
+        var t1=(slen>0)?Math.sqrt(edx1*edx1+edy1*edy1)/slen:0;
+        // t for erase end
+        var edx2=eraseSeg.p2.x-cSide.x1, edy2=eraseSeg.p2.y-cSide.y1;
+        var t2=(slen>0)?Math.sqrt(edx2*edx2+edy2*edy2)/slen:1;
+        if(t1>t2){var tmp=t1;t1=t2;t2=tmp;}
+        t1=Math.max(0,Math.min(1,t1));
+        t2=Math.max(0,Math.min(1,t2));
+        // Check if the clicked point falls within an existing gap (do nothing if so)
+        var sideName=sideNames[closestSide];
+        if(!m.gaps) m.gaps={};
+        if(!m.gaps[sideName]) m.gaps[sideName]=[];
+        var clickDx=wx-cSide.x1, clickDy=wy-cSide.y1;
+        var clickT=(slen>0)?Math.sqrt(clickDx*clickDx+clickDy*clickDy)/slen:0;
+        clickT=Math.max(0,Math.min(1,clickT));
+        var inGap=false;
+        m.gaps[sideName].forEach(function(g){if(clickT>=g[0]-0.001&&clickT<=g[1]+0.001) inGap=true;});
+        if(inGap) return;
+        saveHistory();
+        // Add the gap
+        m.gaps[sideName].push([t1,t2]);
+        // Merge overlapping gaps for this side
+        m.gaps[sideName].sort(function(a,b){return a[0]-b[0];});
+        var merged=[];
+        m.gaps[sideName].forEach(function(g){
+          if(merged.length>0&&g[0]<=merged[merged.length-1][1]+0.001){
+            merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],g[1]);
+          }else{merged.push(g.slice());}
+        });
+        m.gaps[sideName]=merged;
+        // Check if all 4 sides are fully gapped → delete the element
+        var allGapped=true;
+        sideNames.forEach(function(sn2){
+          var sg=m.gaps[sn2]||[];
+          var covered=0;sg.forEach(function(g){covered+=g[1]-g[0];});
+          if(covered<0.99) allGapped=false;
+        });
+        if(allGapped) _modules.splice(bestIdx,1);
       }
     }
   }else if(m.type==='shape_circle'){
