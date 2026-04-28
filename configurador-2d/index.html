@@ -2107,8 +2107,18 @@ function saveHistory(){
   _history.push(JSON.stringify(_modules));_historyIdx=_history.length-1;
   savePages();updateActiveThumb();
 }
-function undo(){if(_historyIdx>0){_historyIdx--;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();savePages();updateActiveThumb();}}
-function redo(){if(_historyIdx<_history.length-1){_historyIdx++;_modules=JSON.parse(_history[_historyIdx]);_sel.clear();draw();renderModules();renderProps();savePages();updateActiveThumb();}}
+function undo(){
+  if(_historyIdx<0) return;
+  _modules=JSON.parse(_history[_historyIdx]);
+  _historyIdx--;
+  _sel.clear();draw();renderModules();renderProps();savePages();updateActiveThumb();
+}
+function redo(){
+  if(_historyIdx>=_history.length-1) return;
+  _historyIdx++;
+  _modules=JSON.parse(_history[_historyIdx]);
+  _sel.clear();draw();renderModules();renderProps();savePages();updateActiveThumb();
+}
 
 // Clipboard
 var _clipboard=null;
