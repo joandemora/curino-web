@@ -3262,6 +3262,16 @@ function updateEraserPreview(e){
           var t=t0+(t1-t0)*ti/30,u=1-t;
           subArcPts.push({x:u*u*bx0+2*u*t*bcxP+t*t*bx2, y:u*u*by0+2*u*t*bcyP+t*t*by2});
         }
+        // Apply rotation to sub-arc points (same as curvePoints)
+        if(m.rotation&&m.rotation%360!==0){
+          var bRot=m.rotation*Math.PI/180;
+          var bCosR=Math.cos(bRot),bSinR=Math.sin(bRot);
+          var bRcx=m.x+m.w/2,bRcy=m.y+m.h/2;
+          subArcPts=subArcPts.map(function(p){
+            var rdx=p.x-bRcx,rdy=bRcy-p.y;
+            return{x:bRcx+rdx*bCosR-rdy*bSinR, y:bRcy-(rdx*bSinR+rdy*bCosR)};
+          });
+        }
       }
     }
     // Use sub-arc points if available, otherwise full curve
