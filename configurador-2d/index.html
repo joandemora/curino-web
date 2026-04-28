@@ -3722,7 +3722,7 @@ document.addEventListener('contextmenu',function(e){
   }
 });
 document.addEventListener('click',function(){hideCtx();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();if(_sel.size>0||_cajetinSelected) clearSelection();}});
 </script>
 
 </body>
