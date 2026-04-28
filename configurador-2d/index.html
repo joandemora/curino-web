@@ -3305,6 +3305,8 @@ function updateEraserPreview(e){
         });
       });
       bIp.push({t:0});bIp.push({t:1});
+      // Add existing gap boundaries as cut points
+      if(m.gaps){m.gaps.forEach(function(g){bIp.push({t:g[0]});bIp.push({t:g[1]});});}
       bIp.sort(function(a,b){return a.t-b.t;});
       var bDd=[];bIp.forEach(function(p){if(bDd.length===0||Math.abs(p.t-bDd[bDd.length-1].t)>0.005)bDd.push(p);});
       bIp=bDd;
@@ -3418,35 +3420,40 @@ function eraserClick(e){
       // Compute rotated side endpoints
       var si=closestSide, sn=(si+1)%4;
       var cSide={x1:corners[si].x,y1:corners[si].y,x2:corners[sn].x,y2:corners[sn].y};
-      var eraseSeg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,bestIdx);
-      // Convert erase segment endpoints to t parameters along the side
-      var sideLen=sideLengths[closestSide];
-      if(sideLen<0.001){saveHistory();_modules.splice(bestIdx,1);}
+      var sdx=cSide.x2-cSide.x1, sdy=cSide.y2-cSide.y1;
+      var slen=Math.sqrt(sdx*sdx+sdy*sdy);
+      if(slen<0.001){saveHistory();_modules.splice(bestIdx,1);}
       else{
-        var sdx=cSide.x2-cSide.x1, sdy=cSide.y2-cSide.y1;
-        var slen=Math.sqrt(sdx*sdx+sdy*sdy);
-        // t for erase start
-        var edx1=eraseSeg.p1.x-cSide.x1, edy1=eraseSeg.p1.y-cSide.y1;
-        var t1=(slen>0)?Math.sqrt(edx1*edx1+edy1*edy1)/slen:0;
-        // t for erase end
-        var edx2=eraseSeg.p2.x-cSide.x1, edy2=eraseSeg.p2.y-cSide.y1;
-        var t2=(slen>0)?Math.sqrt(edx2*edx2+edy2*edy2)/slen:1;
-        if(t1>t2){var tmp=t1;t1=t2;t2=tmp;}
-        t1=Math.max(0,Math.min(1,t1));
-        t2=Math.max(0,Math.min(1,t2));
-        // Check if the clicked point falls within an existing gap (do nothing if so)
         var sideName=sideNames[closestSide];
         if(!m.gaps) m.gaps={};
         if(!m.gaps[sideName]) m.gaps[sideName]=[];
-        var clickDx=wx-cSide.x1, clickDy=wy-cSide.y1;
-        var clickT=(slen>0)?Math.sqrt(clickDx*clickDx+clickDy*clickDy)/slen:0;
-        clickT=Math.max(0,Math.min(1,clickT));
+        // Compute click t along side
+        var clickProj=((wx-cSide.x1)*sdx+(wy-cSide.y1)*sdy)/(slen*slen);
+        var clickT=Math.max(0,Math.min(1,clickProj));
+        // Check if already in gap
         var inGap=false;
         m.gaps[sideName].forEach(function(g){if(clickT>=g[0]-0.001&&clickT<=g[1]+0.001) inGap=true;});
         if(inGap) return;
+        // Get cut points from other modules via findEraseSeg
+        var eraseSeg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,bestIdx);
+        // Convert erase seg endpoints to t
+        var t1=Math.max(0,Math.min(1,((eraseSeg.p1.x-cSide.x1)*sdx+(eraseSeg.p1.y-cSide.y1)*sdy)/(slen*slen)));
+        var t2=Math.max(0,Math.min(1,((eraseSeg.p2.x-cSide.x1)*sdx+(eraseSeg.p2.y-cSide.y1)*sdy)/(slen*slen)));
+        if(t1>t2){var tmp=t1;t1=t2;t2=tmp;}
+        // Constrain by existing gap boundaries: add gap endpoints as cut points
+        var cutTs=[t1,t2];
+        m.gaps[sideName].forEach(function(g){
+          if(g[0]>t1+0.001&&g[0]<t2-0.001) cutTs.push(g[0]);
+          if(g[1]>t1+0.001&&g[1]<t2-0.001) cutTs.push(g[1]);
+        });
+        cutTs.sort(function(a,b){return a-b;});
+        // Find which sub-range contains the click
+        var subT1=cutTs[0],subT2=cutTs[cutTs.length-1];
+        for(var sti=0;sti<cutTs.length-1;sti++){
+          if(clickT>=cutTs[sti]-0.001&&clickT<=cutTs[sti+1]+0.001){subT1=cutTs[sti];subT2=cutTs[sti+1];break;}
+        }
         saveHistory();
-        // Add the gap
-        m.gaps[sideName].push([t1,t2]);
+        m.gaps[sideName].push([subT1,subT2]);
         // Merge overlapping gaps for this side
         m.gaps[sideName].sort(function(a,b){return a[0]-b[0];});
         var merged=[];
@@ -3473,7 +3480,17 @@ function eraserClick(e){
       saveHistory();
       _modules.splice(bestIdx,1);
     }else{
+      // Add existing gap boundaries as intersection angles
+      if(m.gaps){
+        m.gaps.forEach(function(g){
+          ipts.push({angle:g[0],x:0,y:0});
+          ipts.push({angle:g[1],x:0,y:0});
+        });
+      }
       ipts.sort(function(a,b){return a.angle-b.angle;});
+      // Deduplicate
+      var ipDed=[];ipts.forEach(function(p){if(ipDed.length===0||Math.abs(p.angle-ipDed[ipDed.length-1].angle)>0.01)ipDed.push(p);});
+      ipts=ipDed;
       // Transform click point to local frame if rotated
       var clx=wx,cly=wy;
       if(m.rotation&&m.rotation%360!==0){
@@ -3538,6 +3555,8 @@ function eraserClick(e){
       // Add arc endpoints as intersection boundaries
       ipts.push({x:m.x1,y:m.y1,angle:startA});
       ipts.push({x:m.x2,y:m.y2,angle:endA});
+      // Add existing gap boundaries
+      if(m.gaps){m.gaps.forEach(function(g){ipts.push({angle:g[0],x:0,y:0});ipts.push({angle:g[1],x:0,y:0});});}
       function normA(a){var d=a-startA;if(arcSweep>0){if(d<0)d+=2*Math.PI;}else{if(d>0)d-=2*Math.PI;}return d;}
       ipts.forEach(function(p){p.norm=normA(p.angle);});
       if(arcSweep>0) ipts.sort(function(a,b){return a.norm-b.norm;});
