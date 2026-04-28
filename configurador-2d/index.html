@@ -1739,27 +1739,37 @@ function groupResizeMove(e){
     var finalW=m.lockW?o.w:sized[o.idx].w;
     var finalH=m.lockH?o.h:sized[o.idx].h;
     m.w=finalW;m.h=finalH;
-    // Position: scale the near-anchor edge proportionally, then derive x from edge + size
+    // Position: locked elements translate proportionally (center-based), unlocked scale edge-based
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
-      var ancIsLeft=(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
-      if(ancIsLeft){
-        // Anchor is left: left edge of shape scales from anchor
-        m.x=Math.round(ax+(o.x-g.bx)*sx);
+      if(m.lockW){
+        var origCx=o.x+o.w/2;
+        var newCx=ax+(origCx-g.bx)*sx;
+        m.x=Math.round(newCx-o.w/2);
       }else{
-        // Anchor is right: right edge of shape scales from anchor
-        var origRight=o.x+o.w;
-        var newRight=Math.round(ax+aw+(origRight-(g.bx+g.bw))*sx);
-        m.x=newRight-finalW;
+        var ancIsLeft=(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
+        if(ancIsLeft){
+          m.x=Math.round(ax+(o.x-g.bx)*sx);
+        }else{
+          var origRight=o.x+o.w;
+          var newRight=Math.round(ax+aw+(origRight-(g.bx+g.bw))*sx);
+          m.x=newRight-finalW;
+        }
       }
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
-      var ancIsBottom=(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
-      if(ancIsBottom){
-        m.y=Math.round(ay+(o.y-g.by)*sy);
+      if(m.lockH){
+        var origCy=o.y+o.h/2;
+        var newCy=ay+(origCy-g.by)*sy;
+        m.y=Math.round(newCy-o.h/2);
       }else{
-        var origTop=o.y+o.h;
-        var newTop=Math.round(ay+ah+(origTop-(g.by+g.bh))*sy);
-        m.y=newTop-finalH;
+        var ancIsBottom=(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
+        if(ancIsBottom){
+          m.y=Math.round(ay+(o.y-g.by)*sy);
+        }else{
+          var origTop=o.y+o.h;
+          var newTop=Math.round(ay+ah+(origTop-(g.by+g.bh))*sy);
+          m.y=newTop-finalH;
+        }
       }
     }
   });
@@ -1805,30 +1815,23 @@ function groupResizeMove(e){
   });
 
   // Pass 3c: accumulate chain followers from (now-snapped) starters
+  // Locked elements keep their Pass 3a position (proportional center), skip them
   yChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
       var cur=_modules[chain[k].idx];
-      if(cur.lockH){
-        cur.y=chain[k].y;
-        cur.h=chain[k].h;
-      }else{
-        var prev=_modules[chain[k-1].idx];
-        cur.y=prev.y+prev.h;
-        cur.h=sized[chain[k].idx].h;
-      }
+      if(cur.lockH) continue;
+      var prev=_modules[chain[k-1].idx];
+      cur.y=prev.y+prev.h;
+      cur.h=sized[chain[k].idx].h;
     }
   });
   xChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
       var cur=_modules[chain[k].idx];
-      if(cur.lockW){
-        cur.x=chain[k].x;
-        cur.w=chain[k].w;
-      }else{
-        var prev=_modules[chain[k-1].idx];
-        cur.x=prev.x+prev.w;
-        cur.w=sized[chain[k].idx].w;
-      }
+      if(cur.lockW) continue;
+      var prev=_modules[chain[k-1].idx];
+      cur.x=prev.x+prev.w;
+      cur.w=sized[chain[k].idx].w;
     }
   });
 
