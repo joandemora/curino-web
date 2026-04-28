@@ -1731,14 +1731,19 @@ function groupResizeMove(e){
       m.y2=Math.round(ay+(o.y2-g.by)*sy);
       return;
     }
-    var newW=sized[o.idx].w;
-    var newH=sized[o.idx].h;
-    var newX=(!inChainX[o.idx]||xChainStarters[o.idx])?Math.round(ax+(o.x-g.bx)*sx):m.x;
-    var newY=(!inChainY[o.idx]||yChainStarters[o.idx])?Math.round(ay+(o.y-g.by)*sy):m.y;
-    // Respect lockW/lockH: keep size, adjust position so center follows group
-    if(m.lockW){var cxShift=(newW-o.w)/2;newX+=cxShift;newW=o.w;}
-    if(m.lockH){var cyShift=(newH-o.h)/2;newY+=cyShift;newH=o.h;}
-    m.w=newW;m.x=newX;m.h=newH;m.y=newY;
+    var finalW=m.lockW?o.w:sized[o.idx].w;
+    var finalH=m.lockH?o.h:sized[o.idx].h;
+    // Center of original shape in group bbox
+    var origCx=o.x+o.w/2, origCy=o.y+o.h/2;
+    // Center proportionally scaled within new group bbox
+    var newCx=ax+(origCx-g.bx)*sx, newCy=ay+(origCy-g.by)*sy;
+    // Position = center - half size
+    var finalX=Math.round(newCx-finalW/2);
+    var finalY=Math.round(newCy-finalH/2);
+    // For chained elements, keep chain position unless starter
+    if(inChainX[o.idx]&&!xChainStarters[o.idx]) finalX=m.x;
+    if(inChainY[o.idx]&&!yChainStarters[o.idx]) finalY=m.y;
+    m.w=finalW;m.x=finalX;m.h=finalH;m.y=finalY;
   });
 
   // Pass 3b: snap chain starters and unchained elements to internal lines
