@@ -1526,32 +1526,74 @@ function anchorScreenPos(wx,wy,ww,wh,rot,sc,o,fx,fy){
 }
 function scaleGroupChildren(origChildren,newW,newH,origW,origH){
   var sx=newW/origW, sy=newH/origH;
-  var EDGE_TOL=0.5;
-  return origChildren.map(function(oc){
+  var T=0.5; // edge tolerance
+
+  // Pass 1: compute post-resize positions for locked children
+  var locked=[];
+  origChildren.forEach(function(oc,i){
+    if(oc.type==='shape_line'||oc.type==='shape_arc') return;
+    if(oc.lockW){
+      var nx;
+      if(Math.abs(oc.x+oc.w-origW)<T) nx=newW-oc.w;
+      else if(Math.abs(oc.x)<T) nx=0;
+      else nx=Math.round(oc.x/origW*newW);
+      locked.push({i:i,axis:'x',origL:oc.x,origR:oc.x+oc.w,newL:nx,newR:nx+oc.w});
+    }
+    if(oc.lockH){
+      var ny;
+      if(Math.abs(oc.y+oc.h-origH)<T) ny=newH-oc.h;
+      else if(Math.abs(oc.y)<T) ny=0;
+      else ny=Math.round(oc.y/origH*newH);
+      locked.push({i:i,axis:'y',origL:oc.y,origR:oc.y+oc.h,newL:ny,newR:ny+oc.h});
+    }
+  });
+
+  // Pass 2: build result
+  return origChildren.map(function(oc,i){
     var c=JSON.parse(JSON.stringify(oc));
     if(c.type==='shape_line'||c.type==='shape_arc'){
       c.x1=Math.round(c.x1*sx);c.y1=Math.round(c.y1*sy);
       c.x2=Math.round(c.x2*sx);c.y2=Math.round(c.y2*sy);
       if(c.sagitta) c.sagitta=Math.round(c.sagitta*(sx+sy)/2);
+      return c;
+    }
+    // X axis
+    if(oc.lockW){
+      c.w=oc.w;
+      if(Math.abs(oc.x+oc.w-origW)<T) c.x=newW-oc.w;
+      else if(Math.abs(oc.x)<T) c.x=0;
+      else c.x=Math.round(oc.x/origW*newW);
     }else{
-      // X axis
-      if(oc.lockW){
-        c.w=oc.w;
-        if(Math.abs(oc.x+oc.w-origW)<EDGE_TOL) c.x=newW-oc.w;
-        else c.x=Math.round(oc.x/origW*newW);
-      }else{
-        c.w=Math.round(oc.w*sx);
-        c.x=Math.round(oc.x*sx);
-      }
-      // Y axis
-      if(oc.lockH){
-        c.h=oc.h;
-        if(Math.abs(oc.y+oc.h-origH)<EDGE_TOL) c.y=newH-oc.h;
-        else c.y=Math.round(oc.y/origH*newH);
-      }else{
-        c.h=Math.round(oc.h*sy);
-        c.y=Math.round(oc.y*sy);
-      }
+      // Proportional base
+      var cl=Math.round(oc.x*sx), cr=Math.round((oc.x+oc.w)*sx);
+      // Snap left edge to locked neighbor's right edge or group left
+      var origL=oc.x, origR=oc.x+oc.w;
+      locked.forEach(function(lk){
+        if(lk.axis!=='x'||lk.i===i) return;
+        if(Math.abs(origL-lk.origR)<T) cl=lk.newR;
+        if(Math.abs(origR-lk.origL)<T) cr=lk.newL;
+      });
+      if(Math.abs(origL)<T) cl=0;
+      if(Math.abs(origR-origW)<T) cr=newW;
+      c.x=cl;c.w=Math.max(1,cr-cl);
+    }
+    // Y axis
+    if(oc.lockH){
+      c.h=oc.h;
+      if(Math.abs(oc.y+oc.h-origH)<T) c.y=newH-oc.h;
+      else if(Math.abs(oc.y)<T) c.y=0;
+      else c.y=Math.round(oc.y/origH*newH);
+    }else{
+      var ct=Math.round(oc.y*sy), cb=Math.round((oc.y+oc.h)*sy);
+      var origB=oc.y, origT=oc.y+oc.h;
+      locked.forEach(function(lk){
+        if(lk.axis!=='y'||lk.i===i) return;
+        if(Math.abs(origB-lk.origR)<T) ct=lk.newR;
+        if(Math.abs(origT-lk.origL)<T) cb=lk.newL;
+      });
+      if(Math.abs(origB)<T) ct=0;
+      if(Math.abs(origT-origH)<T) cb=newH;
+      c.y=ct;c.h=Math.max(1,cb-ct);
     }
     return c;
   });
