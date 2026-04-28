@@ -3069,9 +3069,10 @@ function eraserHitTest(wx,wy){
           bestDist=ed;bestIdx=i;bestSide=ei;bestIsEdge=true;
         }
       }
-      // Interior hit: only wins if no edge hit exists
+      // Interior hit: only wins if no edge hit exists, and only for non-rect or rect without gaps
       if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
-        if(!bestIsEdge&&(bestIdx===-1||tolerance<bestDist)){bestDist=0;bestIdx=i;bestSide=null;}
+        if(m.type==='shape_rect'&&m.gaps) {} // rect with gaps: no interior hit
+        else if(!bestIsEdge&&(bestIdx===-1||tolerance<bestDist)){bestDist=0;bestIdx=i;bestSide=null;}
       }
     }
   });
