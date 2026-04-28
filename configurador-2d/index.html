@@ -1731,14 +1731,14 @@ function groupResizeMove(e){
       m.y2=Math.round(ay+(o.y2-g.by)*sy);
       return;
     }
-    m.w=sized[o.idx].w;
-    if(!inChainX[o.idx]||xChainStarters[o.idx]){
-      m.x=Math.round(ax+(o.x-g.bx)*sx);
-    }
-    m.h=sized[o.idx].h;
-    if(!inChainY[o.idx]||yChainStarters[o.idx]){
-      m.y=Math.round(ay+(o.y-g.by)*sy);
-    }
+    var newW=sized[o.idx].w;
+    var newH=sized[o.idx].h;
+    var newX=(!inChainX[o.idx]||xChainStarters[o.idx])?Math.round(ax+(o.x-g.bx)*sx):m.x;
+    var newY=(!inChainY[o.idx]||yChainStarters[o.idx])?Math.round(ay+(o.y-g.by)*sy):m.y;
+    // Respect lockW/lockH: keep size, adjust position so center follows group
+    if(m.lockW){var cxShift=(newW-o.w)/2;newX+=cxShift;newW=o.w;}
+    if(m.lockH){var cyShift=(newH-o.h)/2;newY+=cyShift;newH=o.h;}
+    m.w=newW;m.x=newX;m.h=newH;m.y=newY;
   });
 
   // Pass 3b: snap chain starters and unchained elements to internal lines
