@@ -3429,14 +3429,13 @@ function eraserClick(e){
       if(slen<0.001){saveHistory();_modules.splice(bestIdx,1);}
       else{
         var sideName=sideNames[closestSide];
-        if(!m.gaps) m.gaps={};
-        if(!m.gaps[sideName]) m.gaps[sideName]=[];
+        var existingGaps=(m.gaps&&m.gaps[sideName])?m.gaps[sideName]:[];
         // Compute click t along side
         var clickProj=((wx-cSide.x1)*sdx+(wy-cSide.y1)*sdy)/(slen*slen);
         var clickT=Math.max(0,Math.min(1,clickProj));
         // Check if already in gap
         var inGap=false;
-        m.gaps[sideName].forEach(function(g){if(clickT>=g[0]-0.001&&clickT<=g[1]+0.001) inGap=true;});
+        existingGaps.forEach(function(g){if(clickT>=g[0]-0.001&&clickT<=g[1]+0.001) inGap=true;});
         if(inGap) return;
         // Get cut points from other modules via findEraseSeg
         var eraseSeg=findEraseSeg(cSide.x1,cSide.y1,cSide.x2,cSide.y2,wx,wy,bestIdx);
@@ -3446,7 +3445,7 @@ function eraserClick(e){
         if(t1>t2){var tmp=t1;t1=t2;t2=tmp;}
         // Constrain by existing gap boundaries: add gap endpoints as cut points
         var cutTs=[t1,t2];
-        m.gaps[sideName].forEach(function(g){
+        existingGaps.forEach(function(g){
           if(g[0]>t1+0.001&&g[0]<t2-0.001) cutTs.push(g[0]);
           if(g[1]>t1+0.001&&g[1]<t2-0.001) cutTs.push(g[1]);
         });
@@ -3457,6 +3456,8 @@ function eraserClick(e){
           if(clickT>=cutTs[sti]-0.001&&clickT<=cutTs[sti+1]+0.001){subT1=cutTs[sti];subT2=cutTs[sti+1];break;}
         }
         saveHistory();
+        if(!m.gaps) m.gaps={};
+        if(!m.gaps[sideName]) m.gaps[sideName]=[];
         m.gaps[sideName].push([subT1,subT2]);
         // Merge overlapping gaps for this side
         m.gaps[sideName].sort(function(a,b){return a[0]-b[0];});
