@@ -1732,14 +1732,31 @@ function groupResizeMove(e){
       return;
     }
     // Size: locked keeps original, unlocked uses scaled
-    m.w=m.lockW?o.w:sized[o.idx].w;
-    m.h=m.lockH?o.h:sized[o.idx].h;
-    // Position: locked stays at original, unlocked scales from anchor
+    var finalW=m.lockW?o.w:sized[o.idx].w;
+    var finalH=m.lockH?o.h:sized[o.idx].h;
+    m.w=finalW;m.h=finalH;
+    // Position: scale the near-anchor edge proportionally, then derive x from edge + size
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
-      m.x=m.lockW?o.x:Math.round(ax+(o.x-g.bx)*sx);
+      var ancIsLeft=(ax===g.bx)||(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
+      if(ancIsLeft){
+        // Anchor is left: left edge of shape scales from anchor
+        m.x=Math.round(ax+(o.x-g.bx)*sx);
+      }else{
+        // Anchor is right: right edge of shape scales from anchor
+        var origRight=o.x+o.w;
+        var newRight=Math.round(ax+aw+(origRight-(g.bx+g.bw))*sx);
+        m.x=newRight-finalW;
+      }
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
-      m.y=m.lockH?o.y:Math.round(ay+(o.y-g.by)*sy);
+      var ancIsBottom=(ay===g.by)||(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
+      if(ancIsBottom){
+        m.y=Math.round(ay+(o.y-g.by)*sy);
+      }else{
+        var origTop=o.y+o.h;
+        var newTop=Math.round(ay+ah+(origTop-(g.by+g.bh))*sy);
+        m.y=newTop-finalH;
+      }
     }
   });
 
