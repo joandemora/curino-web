@@ -1744,7 +1744,7 @@ function groupResizeMove(e){
     m.w=finalW;m.h=finalH;
     // Position: scale the near-anchor edge proportionally, then derive x from edge + size
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
-      var ancIsLeft=(ax===g.bx)||(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
+      var ancIsLeft=(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
       if(ancIsLeft){
         // Anchor is left: left edge of shape scales from anchor
         m.x=Math.round(ax+(o.x-g.bx)*sx);
@@ -1754,10 +1754,10 @@ function groupResizeMove(e){
         var newRight=Math.round(ax+aw+(origRight-(g.bx+g.bw))*sx);
         m.x=newRight-finalW;
       }
-      console.log('[GR-posX]','idx=',o.idx,'ancIsLeft=',ancIsLeft,'lockW=',m.lockW,'o.x=',o.x,'o.w=',o.w,'sized.w=',sized[o.idx].w,'finalW=',finalW,'m.x=',m.x);
+      console.log('[GR-posX]','idx=',o.idx,'ancIsLeft=',ancIsLeft,'lockW=',m.lockW,'o.x=',o.x,'o.w=',o.w,'sized.w=',sized[o.idx].w,'finalW=',finalW,'m.x=',m.x,'inChainX=',!!inChainX[o.idx],'xStarter=',!!xChainStarters[o.idx]);
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
-      var ancIsBottom=(ay===g.by)||(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
+      var ancIsBottom=(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
       if(ancIsBottom){
         m.y=Math.round(ay+(o.y-g.by)*sy);
       }else{
@@ -1765,7 +1765,7 @@ function groupResizeMove(e){
         var newTop=Math.round(ay+ah+(origTop-(g.by+g.bh))*sy);
         m.y=newTop-finalH;
       }
-      console.log('[GR-posY]','idx=',o.idx,'ancIsBottom=',ancIsBottom,'lockH=',m.lockH,'o.y=',o.y,'o.h=',o.h,'sized.h=',sized[o.idx].h,'finalH=',finalH,'m.y=',m.y);
+      console.log('[GR-posY]','idx=',o.idx,'ancIsBottom=',ancIsBottom,'lockH=',m.lockH,'o.y=',o.y,'o.h=',o.h,'sized.h=',sized[o.idx].h,'finalH=',finalH,'m.y=',m.y,'inChainY=',!!inChainY[o.idx],'yStarter=',!!yChainStarters[o.idx]);
     }
   });
 
@@ -1816,6 +1816,7 @@ function groupResizeMove(e){
       var cur=_modules[chain[k].idx];
       cur.y=prev.y+prev.h;
       cur.h=cur.lockH?chain[k].h:sized[chain[k].idx].h;
+      console.log('[GR-chainY]','idx=',chain[k].idx,'prev.idx=',chain[k-1].idx,'cur.y=',cur.y,'cur.h=',cur.h,'lockH=',cur.lockH);
     }
   });
   xChains.forEach(function(chain){
@@ -1824,6 +1825,7 @@ function groupResizeMove(e){
       var cur=_modules[chain[k].idx];
       cur.x=prev.x+prev.w;
       cur.w=cur.lockW?chain[k].w:sized[chain[k].idx].w;
+      console.log('[GR-chainX]','idx=',chain[k].idx,'prev.idx=',chain[k-1].idx,'cur.x=',cur.x,'prev.x=',prev.x,'prev.w=',prev.w,'cur.w=',cur.w,'lockW=',cur.lockW);
     }
   });
 
