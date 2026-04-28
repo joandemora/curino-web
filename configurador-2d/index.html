@@ -1726,6 +1726,7 @@ function groupResizeMove(e){
   xChains.forEach(function(c){xChainStarters[c[0].idx]=true;});
 
   // Pass 3a: proportional position for chain starters + unchained elements, apply sizes
+  console.log('[GR-anchor]','pos=',p,'ax=',ax,'g.bx=',g.bx,'aw=',aw,'g.bw=',g.bw,'ay=',ay,'g.by=',g.by,'ah=',ah,'g.bh=',g.bh,'sx=',sx.toFixed(3),'sy=',sy.toFixed(3));
   g.originals.forEach(function(o){
     var m=_modules[o.idx];
     if(o.isLine){
@@ -1752,6 +1753,7 @@ function groupResizeMove(e){
         var newRight=Math.round(ax+aw+(origRight-(g.bx+g.bw))*sx);
         m.x=newRight-finalW;
       }
+      console.log('[GR-posX]','idx=',o.idx,'ancIsLeft=',ancIsLeft,'lockW=',m.lockW,'o.x=',o.x,'o.w=',o.w,'sized.w=',sized[o.idx].w,'finalW=',finalW,'m.x=',m.x);
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
       var ancIsBottom=(ay===g.by)||(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
@@ -1762,6 +1764,7 @@ function groupResizeMove(e){
         var newTop=Math.round(ay+ah+(origTop-(g.by+g.bh))*sy);
         m.y=newTop-finalH;
       }
+      console.log('[GR-posY]','idx=',o.idx,'ancIsBottom=',ancIsBottom,'lockH=',m.lockH,'o.y=',o.y,'o.h=',o.h,'sized.h=',sized[o.idx].h,'finalH=',finalH,'m.y=',m.y);
     }
   });
 
