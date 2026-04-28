@@ -261,7 +261,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
       </div>
       <!-- MIS DIBUJOS -->
       <div class="c2d-section" id="savedDrawingsSection">
-        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open');loadSavedDrawings()">Mis dibujos</div>
+        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open');if(this.parentElement.classList.contains('open'))loadSavedDrawings()">Mis dibujos</div>
         <div class="c2d-section-body" id="savedDrawingsBody">
         </div>
       </div>
