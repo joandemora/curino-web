@@ -3098,7 +3098,7 @@ function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
   }
   _modules.forEach(function(other,j){
     if(j===skipIdx) return;
-    if(other.type==='shape_line'||other.type==='shape_arc'){
+    if(other.type==='shape_line'){
       // Intersection
       var inter=segIntersect(lx1,ly1,lx2,ly2,other.x1,other.y1,other.x2,other.y2);
       if(inter) intersections.push(inter);
@@ -3133,6 +3133,10 @@ function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
       for(var ci2=0;ci2<cpts.length-1;ci2++){
         var cinter=segIntersect(lx1,ly1,lx2,ly2,cpts[ci2].x,cpts[ci2].y,cpts[ci2+1].x,cpts[ci2+1].y);
         if(cinter) intersections.push(cinter);
+      }
+      // Arc endpoints on our segment
+      if(other.type==='shape_arc'){
+        tryAddPoint(other.x1,other.y1);tryAddPoint(other.x2,other.y2);
       }
     }
   });
