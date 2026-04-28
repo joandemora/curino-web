@@ -1525,61 +1525,33 @@ function anchorScreenPos(wx,wy,ww,wh,rot,sc,o,fx,fy){
   return{x:csx+offx*cos-offy*sin, y:csy+offx*sin+offy*cos};
 }
 function scaleGroupChildren(origChildren,newW,newH,origW,origH){
-  // Compute lock-aware scale factors
-  var tlw=0,tlh=0;
-  origChildren.forEach(function(oc){
-    if(oc.type==='shape_line'||oc.type==='shape_arc') return;
-    if(oc.lockW) tlw+=oc.w;
-    if(oc.lockH) tlh+=oc.h;
-  });
-  var scalableW=origW-tlw, scalableH=origH-tlh;
-  var rsx=scalableW>0?(newW-tlw)/scalableW:(newW/origW);
-  var rsy=scalableH>0?(newH-tlh)/scalableH:(newH/origH);
-  // Sort children left-to-right for X layout, bottom-to-top for Y layout
-  var children=origChildren.map(function(oc,i){return{i:i,oc:oc};});
-  // Compute new sizes first
-  var sized=origChildren.map(function(oc){
-    if(oc.type==='shape_line'||oc.type==='shape_arc') return null;
-    return{
-      w:oc.lockW?oc.w:Math.round(oc.w*rsx),
-      h:oc.lockH?oc.h:Math.round(oc.h*rsy)
-    };
-  });
-  // Build result with repositioned children
-  return origChildren.map(function(oc,i){
+  var sx=newW/origW, sy=newH/origH;
+  var EDGE_TOL=0.5;
+  return origChildren.map(function(oc){
     var c=JSON.parse(JSON.stringify(oc));
     if(c.type==='shape_line'||c.type==='shape_arc'){
-      var lsx=newW/origW, lsy=newH/origH;
-      c.x1=Math.round(c.x1*lsx);c.y1=Math.round(c.y1*lsy);
-      c.x2=Math.round(c.x2*lsx);c.y2=Math.round(c.y2*lsy);
-      if(c.sagitta) c.sagitta=Math.round(c.sagitta*(lsx+lsy)/2);
+      c.x1=Math.round(c.x1*sx);c.y1=Math.round(c.y1*sy);
+      c.x2=Math.round(c.x2*sx);c.y2=Math.round(c.y2*sy);
+      if(c.sagitta) c.sagitta=Math.round(c.sagitta*(sx+sy)/2);
     }else{
-      c.w=sized[i].w;c.h=sized[i].h;
-      // X position: scale the scalable space proportionally
-      // Split original x into: locked-width portions before this child stay fixed,
-      // scalable portions before this child scale with rsx
-      var origX=oc.x, lockedBefore=0, scalableBefore=0;
-      origChildren.forEach(function(other,j){
-        if(j===i||other.type==='shape_line'||other.type==='shape_arc') return;
-        // Count elements whose right edge <= this element's left edge (to the left)
-        if(other.x+other.w<=origX+1){
-          if(other.lockW) lockedBefore+=other.w;
-          else scalableBefore+=other.w;
-        }
-      });
-      var gapBefore=origX-lockedBefore-scalableBefore;
-      c.x=Math.round(lockedBefore+scalableBefore*rsx+gapBefore*rsx);
-      // Same for Y
-      var origY=oc.y, lockedBeforeY=0, scalableBeforeY=0;
-      origChildren.forEach(function(other,j){
-        if(j===i||other.type==='shape_line'||other.type==='shape_arc') return;
-        if(other.y+other.h<=origY+1){
-          if(other.lockH) lockedBeforeY+=other.h;
-          else scalableBeforeY+=other.h;
-        }
-      });
-      var gapBeforeY=origY-lockedBeforeY-scalableBeforeY;
-      c.y=Math.round(lockedBeforeY+scalableBeforeY*rsy+gapBeforeY*rsy);
+      // X axis
+      if(oc.lockW){
+        c.w=oc.w;
+        if(Math.abs(oc.x+oc.w-origW)<EDGE_TOL) c.x=newW-oc.w;
+        else c.x=Math.round(oc.x/origW*newW);
+      }else{
+        c.w=Math.round(oc.w*sx);
+        c.x=Math.round(oc.x*sx);
+      }
+      // Y axis
+      if(oc.lockH){
+        c.h=oc.h;
+        if(Math.abs(oc.y+oc.h-origH)<EDGE_TOL) c.y=newH-oc.h;
+        else c.y=Math.round(oc.y/origH*newH);
+      }else{
+        c.h=Math.round(oc.h*sy);
+        c.y=Math.round(oc.y*sy);
+      }
     }
     return c;
   });
