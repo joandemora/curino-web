@@ -1726,9 +1726,10 @@ function groupResizeMove(e){
   xChains.forEach(function(c){xChainStarters[c[0].idx]=true;});
 
   // Pass 3a: proportional position for chain starters + unchained elements, apply sizes
-  console.log('[GR-anchor]','pos=',p,'ax=',ax,'g.bx=',g.bx,'aw=',aw,'g.bw=',g.bw,'ay=',ay,'g.by=',g.by,'ah=',ah,'g.bh=',g.bh,'sx=',sx.toFixed(3),'sy=',sy.toFixed(3));
-  g.originals.forEach(function(o){
+  console.log('[GR-anchor]','pos=',p,'ax=',ax,'g.bx=',g.bx,'aw=',aw,'g.bw=',g.bw,'ay=',ay,'g.by=',g.by,'ah=',ah,'g.bh=',g.bh,'sx=',sx.toFixed(3),'sy=',sy.toFixed(3),'originals.length=',g.originals.length);
+  g.originals.forEach(function(o,loopIdx){
     var m=_modules[o.idx];
+    console.log('[GR-loop-iter]','loopIdx=',loopIdx,'idx=',o.idx,'m.type=',m.type,'lockW=',m.lockW,'lockH=',m.lockH,'isLine=',o.isLine);
     if(o.isLine){
       // Lines: scale endpoints proportionally
       m.x1=Math.round(ax+(o.x1-g.bx)*sx);
