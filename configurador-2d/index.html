@@ -1123,12 +1123,22 @@ function renderProps(){
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   // Group properties
   if(m.type==='group'){
-    panel.innerHTML=
-      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Dibujo ('+m.children.length+' elementos)</div></div>'+
+    var groupHTML=
+      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Dibujo ('+m.children.length+' elementos)</div></div>';
+    if(m.savedDrawingId){
+      groupHTML+='<div class="c2d-prop"><label>Nombre</label><input id="savedDrawingNameInput" type="text" value="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'" data-id="'+m.savedDrawingId+'" data-prev="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'"></div>';
+    }
+    groupHTML+=
       '<div class="c2d-prop"><label>Ancho (mm)</label><div style="font-size:13px;padding:6px 0">'+m.w+'</div></div>'+
       '<div class="c2d-prop"><label>Alto (mm)</label><div style="font-size:13px;padding:6px 0">'+m.h+'</div></div>'+
       '<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>'+
       '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    panel.innerHTML=groupHTML;
+    if(m.savedDrawingId){
+      var inp=document.getElementById('savedDrawingNameInput');
+      inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();this.blur();}});
+      inp.addEventListener('blur',function(){renameSavedDrawing(this);});
+    }
     return;
   }
   // Shape properties
@@ -1301,6 +1311,7 @@ wrap.addEventListener('drop',function(e){
   if(_dragData.type==='saved_drawing'){
     var m=JSON.parse(JSON.stringify(_dragData.savedGroup));
     m.x=x;m.y=y;
+    m.savedDrawingId=_dragData.savedId;m.savedDrawingName=_dragData.savedName;
     clampToPaper(m);_modules.push(m);saveHistory();
     _dragData=null;draw();renderModules();selectModule(_modules.length-1);
     return;
@@ -2901,12 +2912,29 @@ async function loadSavedDrawings(){
     card.querySelector('.c2d-saved-del').onclick=function(e){e.stopPropagation();};
     card.querySelector('.c2d-saved-del').onmousedown=function(e){e.stopPropagation();deleteSavedDrawing(row.id);};
     card.addEventListener('dragstart',function(e){
-      _dragData={type:'saved_drawing',savedGroup:row.data,w:row.data.w||100,h:row.data.h||100};
+      _dragData={type:'saved_drawing',savedGroup:row.data,savedId:row.id,savedName:row.name,w:row.data.w||100,h:row.data.h||100};
       e.dataTransfer.setData('text','module');
     });
     body.appendChild(card);
   });
   _savedDrawingsLoaded=true;
+}
+
+async function renameSavedDrawing(inp){
+  var newName=inp.value.trim();
+  var prevName=inp.dataset.prev;
+  var id=inp.dataset.id;
+  if(!newName||newName===prevName) {inp.value=prevName;return;}
+  var result=await _supabase.from('saved_drawings').update({name:newName}).eq('id',id);
+  if(result.error){
+    alert('Error al renombrar: '+result.error.message);
+    inp.value=prevName;
+    return;
+  }
+  inp.dataset.prev=newName;
+  // Update the module's savedDrawingName
+  if(_sel.size===1){var m=_modules[_sel.values().next().value];if(m&&m.savedDrawingId===id) m.savedDrawingName=newName;}
+  loadSavedDrawings();
 }
 
 async function deleteSavedDrawing(id){
