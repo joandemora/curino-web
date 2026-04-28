@@ -1588,10 +1588,6 @@ function resizeEnd(){
 // Group resize (proportional scaling)
 var _groupResize=null;
 function startGroupResize(e,pos,bx,by,bw,bh){
-  // Derive pos from target element class (robust against closure issues)
-  var cl=e.target.className||'';
-  var match=cl.match(/c2d-handle-(\w+)/);
-  if(match&&match[1]!=='rot') pos=match[1];
   // Store original module states
   var originals=[];
   _sel.forEach(function(i){
@@ -1656,22 +1652,36 @@ function groupResizeMove(e){
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
+  // Compute realSx/realSy: scale factors excluding locked elements
+  // so unlocked elements absorb all resize delta
+  var totalLockedW=0,totalLockedH=0;
+  g.originals.forEach(function(o){
+    if(o.isLine) return;
+    var m=_modules[o.idx];
+    if(m.lockW) totalLockedW+=o.w;
+    if(m.lockH) totalLockedH+=o.h;
+  });
+  var scalableW=g.bw-totalLockedW;
+  var scalableH=g.bh-totalLockedH;
+  var realSx=scalableW>0?(aw-totalLockedW)/scalableW:sx;
+  var realSy=scalableH>0?(ah-totalLockedH)/scalableH:sy;
+
   var fixedH={'barra':40,'zapatero':200};
   var fixedD={'barra':40,'tapeta':19,'zocalo':19};
   var clampD={'puerta_batiente':{min:19,max:30}};
   var clampH={'estante':{min:19,max:40}};
   var ADJ_TOL=2; // adjacency tolerance in mm
 
-  // Pass 1: compute sizes for all elements (proportional with clamps)
+  // Pass 1: compute sizes for all elements (use realSx/realSy so unlocked absorb all delta)
   var sized={};
   g.originals.forEach(function(o){
-    if(o.isLine){sized[o.idx]={w:0,h:0,d:0};return;} // lines handled separately in Pass 3a
+    if(o.isLine){sized[o.idx]={w:0,h:0,d:0};return;}
     var t=_modules[o.idx].type;
-    var nw=(t==='divisor')?o.w:Math.max(GRID,Math.round(o.w*sx));
+    var nw=(t==='divisor')?o.w:Math.max(GRID,Math.round(o.w*realSx));
     var nh,nd;
     if(t in fixedH) nh=o.h;
-    else if(t in clampH) nh=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*sy)));
-    else nh=Math.max(GRID,Math.round(o.h*sy));
+    else if(t in clampH) nh=Math.max(clampH[t].min,Math.min(clampH[t].max,Math.round(o.h*realSy)));
+    else nh=Math.max(GRID,Math.round(o.h*realSy));
     nd=o.d;
     sized[o.idx]={w:nw,h:nh,d:nd};
   });
@@ -1739,13 +1749,14 @@ function groupResizeMove(e){
     var finalW=m.lockW?o.w:sized[o.idx].w;
     var finalH=m.lockH?o.h:sized[o.idx].h;
     m.w=finalW;m.h=finalH;
-    // Position: locked elements translate proportionally (center-based), unlocked scale edge-based
+    // Position for chain starters and unchained elements
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
-      if(m.lockW){
-        var origCx=o.x+o.w/2;
-        var newCx=ax+(origCx-g.bx)*sx;
-        m.x=Math.round(newCx-o.w/2);
+      if(xChainStarters[o.idx]){
+        // Chain starter: position at ax + unscaled offset from bbox left
+        // With realSx sizing, the chain total fills aw exactly
+        m.x=Math.round(ax+(o.x-g.bx));
       }else{
+        // Unchained: proportional position from anchor edge
         var ancIsLeft=(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
         if(ancIsLeft){
           m.x=Math.round(ax+(o.x-g.bx)*sx);
@@ -1757,10 +1768,8 @@ function groupResizeMove(e){
       }
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
-      if(m.lockH){
-        var origCy=o.y+o.h/2;
-        var newCy=ay+(origCy-g.by)*sy;
-        m.y=Math.round(newCy-o.h/2);
+      if(yChainStarters[o.idx]){
+        m.y=Math.round(ay+(o.y-g.by));
       }else{
         var ancIsBottom=(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
         if(ancIsBottom){
@@ -1815,23 +1824,20 @@ function groupResizeMove(e){
   });
 
   // Pass 3c: accumulate chain followers from (now-snapped) starters
-  // Locked elements keep their Pass 3a position (proportional center), skip them
   yChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
-      var cur=_modules[chain[k].idx];
-      if(cur.lockH) continue;
       var prev=_modules[chain[k-1].idx];
+      var cur=_modules[chain[k].idx];
       cur.y=prev.y+prev.h;
-      cur.h=sized[chain[k].idx].h;
+      cur.h=cur.lockH?chain[k].h:sized[chain[k].idx].h;
     }
   });
   xChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
-      var cur=_modules[chain[k].idx];
-      if(cur.lockW) continue;
       var prev=_modules[chain[k-1].idx];
+      var cur=_modules[chain[k].idx];
       cur.x=prev.x+prev.w;
-      cur.w=sized[chain[k].idx].w;
+      cur.w=cur.lockW?chain[k].w:sized[chain[k].idx].w;
     }
   });
 
