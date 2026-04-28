@@ -1298,6 +1298,13 @@ wrap.addEventListener('drop',function(e){
   var x=snap((e.clientX-rect.left-o.x)/sc);
   var screenY=(e.clientY-rect.top-o.y)/sc;
   var y=snap(-screenY-_dragData.h);
+  if(_dragData.type==='saved_drawing'){
+    var m=JSON.parse(JSON.stringify(_dragData.savedGroup));
+    m.x=x;m.y=y;
+    clampToPaper(m);_modules.push(m);saveHistory();
+    _dragData=null;draw();renderModules();selectModule(_modules.length-1);
+    return;
+  }
   var pz=0;
   var isShape=_dragData.type.startsWith('shape_');
   var newMod;
@@ -2888,29 +2895,18 @@ async function loadSavedDrawings(){
   body.innerHTML='';
   rows.forEach(function(row){
     var card=document.createElement('div');card.className='c2d-saved-card';
-    var img=row.thumbnail?'<img class="c2d-saved-thumb" src="'+row.thumbnail+'"/>':'<div class="c2d-saved-thumb"></div>';
+    card.draggable=true;
+    var img=row.thumbnail?'<img class="c2d-saved-thumb" draggable="false" src="'+row.thumbnail+'"/>':'<div class="c2d-saved-thumb"></div>';
     card.innerHTML=img+'<span class="c2d-saved-name">'+row.name+'</span><button class="c2d-saved-del" title="Eliminar">&times;</button>';
-    card.querySelector('.c2d-saved-del').onclick=function(e){e.stopPropagation();deleteSavedDrawing(row.id);};
-    card.onclick=function(){insertSavedDrawing(row.data);};
+    card.querySelector('.c2d-saved-del').onclick=function(e){e.stopPropagation();};
+    card.querySelector('.c2d-saved-del').onmousedown=function(e){e.stopPropagation();deleteSavedDrawing(row.id);};
+    card.addEventListener('dragstart',function(e){
+      _dragData={type:'saved_drawing',savedGroup:row.data,w:row.data.w||100,h:row.data.h||100};
+      e.dataTransfer.setData('text','module');
+    });
     body.appendChild(card);
   });
   _savedDrawingsLoaded=true;
-}
-
-function insertSavedDrawing(groupData){
-  saveHistory();
-  var m=JSON.parse(JSON.stringify(groupData));
-  var o2=origin(),sc=s();
-  var wrapRect=wrap.getBoundingClientRect();
-  var vcx=wrapRect.width/2, vcy=wrapRect.height/2;
-  var wx=(vcx-o2.x)/sc;
-  var wy=-(vcy-o2.y)/sc;
-  m.x=Math.round(wx-m.w/2);
-  m.y=Math.round(wy-m.h/2);
-  _modules.push(m);
-  _sel.clear();_sel.add(_modules.length-1);
-  draw();renderModules();renderProps();
-  savePages();updateActiveThumb();
 }
 
 async function deleteSavedDrawing(id){
