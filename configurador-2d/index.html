@@ -1591,7 +1591,6 @@ function startGroupResize(e,pos,bx,by,bw,bh){
   // Derive pos from target element class (robust against closure issues)
   var cl=e.target.className||'';
   var match=cl.match(/c2d-handle-(\w+)/);
-  console.log('[GR-start]','closure-pos=',pos,'target-class=',cl,'extracted=',match?match[1]:'none');
   if(match&&match[1]!=='rot') pos=match[1];
   // Store original module states
   var originals=[];
@@ -1726,10 +1725,8 @@ function groupResizeMove(e){
   xChains.forEach(function(c){xChainStarters[c[0].idx]=true;});
 
   // Pass 3a: proportional position for chain starters + unchained elements, apply sizes
-  console.log('[GR-anchor]','pos=',p,'ax=',ax,'g.bx=',g.bx,'aw=',aw,'g.bw=',g.bw,'ay=',ay,'g.by=',g.by,'ah=',ah,'g.bh=',g.bh,'sx=',sx.toFixed(3),'sy=',sy.toFixed(3),'originals.length=',g.originals.length);
-  g.originals.forEach(function(o,loopIdx){
+  g.originals.forEach(function(o){
     var m=_modules[o.idx];
-    console.log('[GR-loop-iter]','loopIdx=',loopIdx,'idx=',o.idx,'m.type=',m.type,'lockW=',m.lockW,'lockH=',m.lockH,'isLine=',o.isLine);
     if(o.isLine){
       // Lines: scale endpoints proportionally
       m.x1=Math.round(ax+(o.x1-g.bx)*sx);
@@ -1754,7 +1751,6 @@ function groupResizeMove(e){
         var newRight=Math.round(ax+aw+(origRight-(g.bx+g.bw))*sx);
         m.x=newRight-finalW;
       }
-      console.log('[GR-posX]','idx=',o.idx,'ancIsLeft=',ancIsLeft,'lockW=',m.lockW,'o.x=',o.x,'o.w=',o.w,'sized.w=',sized[o.idx].w,'finalW=',finalW,'m.x=',m.x,'inChainX=',!!inChainX[o.idx],'xStarter=',!!xChainStarters[o.idx]);
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
       var ancIsBottom=(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
@@ -1765,7 +1761,6 @@ function groupResizeMove(e){
         var newTop=Math.round(ay+ah+(origTop-(g.by+g.bh))*sy);
         m.y=newTop-finalH;
       }
-      console.log('[GR-posY]','idx=',o.idx,'ancIsBottom=',ancIsBottom,'lockH=',m.lockH,'o.y=',o.y,'o.h=',o.h,'sized.h=',sized[o.idx].h,'finalH=',finalH,'m.y=',m.y,'inChainY=',!!inChainY[o.idx],'yStarter=',!!yChainStarters[o.idx]);
     }
   });
 
@@ -1812,20 +1807,28 @@ function groupResizeMove(e){
   // Pass 3c: accumulate chain followers from (now-snapped) starters
   yChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
-      var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
-      cur.y=prev.y+prev.h;
-      cur.h=cur.lockH?chain[k].h:sized[chain[k].idx].h;
-      console.log('[GR-chainY]','idx=',chain[k].idx,'prev.idx=',chain[k-1].idx,'cur.y=',cur.y,'cur.h=',cur.h,'lockH=',cur.lockH);
+      if(cur.lockH){
+        cur.y=chain[k].y;
+        cur.h=chain[k].h;
+      }else{
+        var prev=_modules[chain[k-1].idx];
+        cur.y=prev.y+prev.h;
+        cur.h=sized[chain[k].idx].h;
+      }
     }
   });
   xChains.forEach(function(chain){
     for(var k=1;k<chain.length;k++){
-      var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
-      cur.x=prev.x+prev.w;
-      cur.w=cur.lockW?chain[k].w:sized[chain[k].idx].w;
-      console.log('[GR-chainX]','idx=',chain[k].idx,'prev.idx=',chain[k-1].idx,'cur.x=',cur.x,'prev.x=',prev.x,'prev.w=',prev.w,'cur.w=',cur.w,'lockW=',cur.lockW);
+      if(cur.lockW){
+        cur.x=chain[k].x;
+        cur.w=chain[k].w;
+      }else{
+        var prev=_modules[chain[k-1].idx];
+        cur.x=prev.x+prev.w;
+        cur.w=sized[chain[k].idx].w;
+      }
     }
   });
 
