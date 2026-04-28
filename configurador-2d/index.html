@@ -729,12 +729,14 @@ function renderModules(){
     var isShape=m.type.startsWith('shape_');
     if(isShape){
       var st=m.stroke||'#000000';var stw=Math.max(1,(m.strokeWidth||1)*sc);var fl=m.fill||'none';
+      var sDash=m.strokeStyle==='dashed'?' stroke-dasharray="8 4"':m.strokeStyle==='dotted'?' stroke-dasharray="2 3" stroke-linecap="round"':'';
       var useCSS=false;
       if(m.type==='shape_line'){
         var isHoriz=(m.y1===m.y2),isVert=(m.x1===m.x2);
         if(isHoriz||isVert){
           useCSS=true;div.classList.add('css-shape');
-          var bw=Math.round(stw)+'px solid '+st;
+          var bStyle=m.strokeStyle==='dashed'?'dashed':m.strokeStyle==='dotted'?'dotted':'solid';
+          var bw=Math.round(stw)+'px '+bStyle+' '+st;
           if(isHoriz){
             div.style.cssText+='border:none!important;background:transparent!important;border-top:'+bw+'!important;height:0px!important;overflow:visible!important;';
           }else{
@@ -745,7 +747,7 @@ function renderModules(){
           var lpad=m._bboxPad||6;
           var lsx1=(m.x1-m._bboxOx)*sc+lpad, lsy1=(Math.max(m.y1,m.y2)-m.y1)*sc+lpad;
           var lsx2=(m.x2-m._bboxOx)*sc+lpad, lsy2=(Math.max(m.y1,m.y2)-m.y2)*sc+lpad;
-          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/></svg>';
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><line x1="'+lsx1+'" y1="'+lsy1+'" x2="'+lsx2+'" y2="'+lsy2+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' stroke-linecap="round"/></svg>';
         }
       }else if(m.type==='shape_rect'){
         var hasGaps=m.gaps&&(
@@ -772,7 +774,7 @@ function renderModules(){
             visR.forEach(function(vr){
               var lx1=rs.x1+(rs.x2-rs.x1)*vr[0], ly1=rs.y1+(rs.y2-rs.y1)*vr[0];
               var lx2=rs.x1+(rs.x2-rs.x1)*vr[1], ly2=rs.y1+(rs.y2-rs.y1)*vr[1];
-              svgRect+='<line x1="'+lx1+'" y1="'+ly1+'" x2="'+lx2+'" y2="'+ly2+'" stroke="'+st+'" stroke-width="'+stw+'" stroke-linecap="round"/>';
+              svgRect+='<line x1="'+lx1+'" y1="'+ly1+'" x2="'+lx2+'" y2="'+ly2+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' stroke-linecap="round"/>';
             });
           });
           svgRect+='</svg>';
@@ -780,7 +782,8 @@ function renderModules(){
         }else{
           useCSS=true;div.classList.add('css-shape');
           var bg=(fl&&fl!=='none')?fl:'transparent';
-          div.style.cssText+='border:'+Math.round(stw)+'px solid '+st+'!important;background:'+bg+'!important;box-sizing:border-box;';
+          var rStyle=m.strokeStyle==='dashed'?'dashed':m.strokeStyle==='dotted'?'dotted':'solid';
+          div.style.cssText+='border:'+Math.round(stw)+'px '+rStyle+' '+st+'!important;background:'+bg+'!important;box-sizing:border-box;';
         }
       }else if(m.type==='shape_curve'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
@@ -804,14 +807,14 @@ function renderModules(){
               var py=u*u*by0+2*u*t*bcyR+t*t*by2;
               pts2.push(((px-bOx)*sc/mw*mw)+','+((bOy-py)*sc/mh*mh));
             }
-            if(pts2.length>1) svgBez+='<polyline points="'+pts2.join(' ')+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/>';
+            if(pts2.length>1) svgBez+='<polyline points="'+pts2.join(' ')+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' fill="none" stroke-linecap="round" shape-rendering="auto"/>';
           });
           svgBez+='</svg>';
           inner=svgBez;
         }else{
           var cpx=(m.cpx!=null?m.cpx:0.5)*mw;
           var cpy=(m.cpy!=null?m.cpy:0)*mh;
-          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M0,'+mh+' Q'+cpx+','+cpy+' '+mw+','+mh+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' fill="'+fl+'" stroke-linecap="round" shape-rendering="auto"/></svg>';
         }
       }else if(m.type==='shape_arc'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
@@ -870,13 +873,13 @@ function renderModules(){
             var vsx2=(vx2-m._bboxOx)*sc+apad,vsy2=(bboxTop-vy2)*sc+apad;
             var span=Math.abs(va2-va1);
             var largeArc=span>Math.PI?1:0;
-            svgPaths+='<path d="M'+vsx1+','+vsy1+' A'+arcRpx+','+arcRpx+' 0 '+largeArc+' '+sweepFlag+' '+vsx2+','+vsy2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/>';
+            svgPaths+='<path d="M'+vsx1+','+vsy1+' A'+arcRpx+','+arcRpx+' 0 '+largeArc+' '+sweepFlag+' '+vsx2+','+vsy2+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' fill="none" stroke-linecap="round" shape-rendering="auto"/>';
           });
           inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">'+svgPaths+'</svg>';
         }else{
           var ax1=(m.x1-m._bboxOx)*sc+apad, ay1=(bboxTop-m.y1)*sc+apad;
           var ax2=(m.x2-m._bboxOx)*sc+apad, ay2=(bboxTop-m.y2)*sc+apad;
-          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweepFlag+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><path d="M'+ax1+','+ay1+' A'+arcRpx+','+arcRpx+' 0 0 '+sweepFlag+' '+ax2+','+ay2+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' fill="none" stroke-linecap="round" shape-rendering="auto"/></svg>';
         }
       }else if(m.type==='shape_circle'){
         div.classList.add('no-frame');div.style.border='none';div.style.background='transparent';
@@ -917,11 +920,11 @@ function renderModules(){
             var sx1=cCx+cRx*Math.cos(a1),sy1=cCy-cRy*Math.sin(a1);
             var sx2=cCx+cRx*Math.cos(a2),sy2=cCy-cRy*Math.sin(a2);
             var largeArc=span>Math.PI?1:0;
-            svgCircPaths+='<path d="M'+sx1+','+sy1+' A'+cRx+','+cRy+' 0 '+largeArc+' 0 '+sx2+','+sy2+'" stroke="'+st+'" stroke-width="'+stw+'" fill="none" shape-rendering="auto"/>';
+            svgCircPaths+='<path d="M'+sx1+','+sy1+' A'+cRx+','+cRy+' 0 '+largeArc+' 0 '+sx2+','+sy2+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' fill="none" shape-rendering="auto"/>';
           });
           inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'">'+svgCircPaths+'</svg>';
         }else{
-          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'" fill="'+fl+'" shape-rendering="auto"/></svg>';
+          inner='<svg style="position:absolute;top:0;left:0;width:'+mw+'px;height:'+mh+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+mw+' '+mh+'"><ellipse cx="'+(mw/2)+'" cy="'+(mh/2)+'" rx="'+(mw/2-stw/2)+'" ry="'+(mh/2-stw/2)+'" stroke="'+st+'" stroke-width="'+stw+'"'+sDash+' fill="'+fl+'" shape-rendering="auto"/></svg>';
         }
       }
     }
@@ -1133,7 +1136,8 @@ function renderProps(){
       shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro Y':'Alto')+' (mm)</label><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)"></div>';
     }
     shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
-      '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>';
+      '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>'+
+      '<div class="c2d-prop"><label>Estilo trazo</label><select onchange="updateProp(\'strokeStyle\',this.value)"><option value="solid"'+((m.strokeStyle||'solid')==='solid'?' selected':'')+'>Continuo</option><option value="dashed"'+(m.strokeStyle==='dashed'?' selected':'')+'>Rayas</option><option value="dotted"'+(m.strokeStyle==='dotted'?' selected':'')+'>Puntos</option></select></div>';
     if(m.type!=='shape_line'&&m.type!=='shape_arc'){
       shapeHTML+='<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>';
     }
@@ -1196,7 +1200,7 @@ function toggleCajetin(on){
 function updateProp(key,val){
   if(_sel.size!==1) return;saveHistory();
   var idx=_sel.values().next().value;
-  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill')?val:(key==='strokeWidth'?parseFloat(val)||1:parseInt(val)||0);
+  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill'||key==='strokeStyle')?val:(key==='strokeWidth'?parseFloat(val)||1:parseInt(val)||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
   if(key==='w'&&_modules[idx].type==='divisor') return;
