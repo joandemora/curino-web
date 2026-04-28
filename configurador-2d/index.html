@@ -1721,6 +1721,7 @@ function groupResizeMove(e){
   xChains.forEach(function(c){xChainStarters[c[0].idx]=true;});
 
   // Pass 3a: proportional position for chain starters + unchained elements, apply sizes
+  console.log('[GR-anchor]','handle=',p,'ax=',ax,'g.bx=',g.bx,'aw=',aw,'g.bw=',g.bw,'ay=',ay,'g.by=',g.by,'ah=',ah,'g.bh=',g.bh,'sx=',sx.toFixed(3),'sy=',sy.toFixed(3));
   g.originals.forEach(function(o){
     var m=_modules[o.idx];
     if(o.isLine){
@@ -1738,6 +1739,7 @@ function groupResizeMove(e){
     // Position: scale the near-anchor edge proportionally, then derive x from edge + size
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
       var ancIsLeft=(ax===g.bx)||(p==='r'||p==='tr'||p==='br'||p==='t'||p==='b');
+      console.log('[GR-posX]','idx=',o.idx,'ancIsLeft=',ancIsLeft,'ax===g.bx=',(ax===g.bx),'lockW=',m.lockW,'o.x=',o.x,'o.w=',o.w,'finalW=',finalW);
       if(ancIsLeft){
         // Anchor is left: left edge of shape scales from anchor
         m.x=Math.round(ax+(o.x-g.bx)*sx);
@@ -1750,6 +1752,7 @@ function groupResizeMove(e){
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
       var ancIsBottom=(ay===g.by)||(p==='t'||p==='tl'||p==='tr'||p==='l'||p==='r');
+      console.log('[GR-posY]','idx=',o.idx,'ancIsBottom=',ancIsBottom,'ay===g.by=',(ay===g.by),'lockH=',m.lockH,'o.y=',o.y,'o.h=',o.h,'finalH=',finalH);
       if(ancIsBottom){
         m.y=Math.round(ay+(o.y-g.by)*sy);
       }else{
