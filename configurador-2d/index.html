@@ -1734,12 +1734,12 @@ function groupResizeMove(e){
     // Size: locked keeps original, unlocked uses scaled
     m.w=m.lockW?o.w:sized[o.idx].w;
     m.h=m.lockH?o.h:sized[o.idx].h;
-    // Position: corner scales proportionally from anchor (same for locked and unlocked)
+    // Position: locked stays at original, unlocked scales from anchor
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
-      m.x=Math.round(ax+(o.x-g.bx)*sx);
+      m.x=m.lockW?o.x:Math.round(ax+(o.x-g.bx)*sx);
     }
     if(!inChainY[o.idx]||yChainStarters[o.idx]){
-      m.y=Math.round(ay+(o.y-g.by)*sy);
+      m.y=m.lockH?o.y:Math.round(ay+(o.y-g.by)*sy);
     }
   });
 
