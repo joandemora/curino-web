@@ -62,7 +62,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-props-overlay h3{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin-bottom:.75rem}
 .c2d-prop{margin-bottom:.75rem}
 .c2d-prop label{display:block;font-size:11px;color:var(--mid);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.05em}
-.c2d-lock-toggle{cursor:pointer;font-size:14px;user-select:none;opacity:0.6;transition:opacity .2s}
+.c2d-lock-toggle{cursor:pointer;font-size:14px;user-select:none;opacity:0.6;transition:opacity .2s;background:none;border:none;padding:2px 4px;line-height:1}
 .c2d-lock-toggle:hover{opacity:1}
 .c2d-prop input,.c2d-prop select{width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:var(--font);font-size:13px}
 .c2d-prop input:focus,.c2d-prop select:focus{outline:none;border-color:var(--black)}
@@ -1134,8 +1134,8 @@ function renderProps(){
         shapeHTML+='<div class="c2d-prop"><label>\u00C1ngulo (\u00B0)</label><input type="number" value="'+arcAngle+'" min="0" max="180" step="1" onchange="updateArcAngle(parseInt(this.value))"></div>';
       }
     }else{
-      shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)" style="flex:1"><span class="c2d-lock-toggle" onclick="toggleLock(\'lockW\')">'+(m.lockW?'\uD83D\uDD12':'\uD83D\uDD13')+'</span></div></div>';
-      shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro Y':'Alto')+' (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)" style="flex:1"><span class="c2d-lock-toggle" onclick="toggleLock(\'lockH\')">'+(m.lockH?'\uD83D\uDD12':'\uD83D\uDD13')+'</span></div></div>';
+      shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro X':'Ancho')+' (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" onchange="updateProp(\'w\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockW\')">'+(m.lockW?'\uD83D\uDD12':'\uD83D\uDD13')+'</button></div></div>';
+      shapeHTML+='<div class="c2d-prop"><label>'+(m.type==='shape_circle'?'Di\u00E1metro Y':'Alto')+' (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" onchange="updateProp(\'h\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockH\')">'+(m.lockH?'\uD83D\uDD12':'\uD83D\uDD13')+'</button></div></div>';
     }
     shapeHTML+='<div class="c2d-prop"><label>Color trazo</label><input type="color" value="'+(m.stroke||'#000000')+'" onchange="updateProp(\'stroke\',this.value)"></div>'+
       '<div class="c2d-prop"><label>Grosor (mm)</label><input type="number" value="'+(m.strokeWidth||1)+'" min="0.5" max="20" step="0.5" onchange="updateShapeStroke(parseFloat(this.value))"></div>'+
