@@ -1790,13 +1790,13 @@ function groupResizeMove(e){
       var delta=target-edge;
       if(Math.abs(delta)<1) return;
       if(c.edgeIdx===0) m.x+=delta;
-      else{m.w+=delta;if(m.w<GRID)m.w=GRID;}
+      else if(!m.lockW){m.w+=delta;if(m.w<GRID)m.w=GRID;}
     }else{
       var edge=c.edgeIdx===0?m.y:m.y+m.h;
       var delta=target-edge;
       if(Math.abs(delta)<1) return;
       if(c.edgeIdx===0) m.y+=delta;
-      else{var ft={'barra':1,'zapatero':1};if(!(m.type in ft)){m.h+=delta;if(m.h<GRID)m.h=GRID;}}
+      else if(!m.lockH){var ft={'barra':1,'zapatero':1};if(!(m.type in ft)){m.h+=delta;if(m.h<GRID)m.h=GRID;}}
     }
   });
 
@@ -1806,7 +1806,7 @@ function groupResizeMove(e){
       var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
       cur.y=prev.y+prev.h;
-      cur.h=sized[chain[k].idx].h;
+      cur.h=cur.lockH?chain[k].h:sized[chain[k].idx].h;
     }
   });
   xChains.forEach(function(chain){
@@ -1814,7 +1814,7 @@ function groupResizeMove(e){
       var prev=_modules[chain[k-1].idx];
       var cur=_modules[chain[k].idx];
       cur.x=prev.x+prev.w;
-      cur.w=sized[chain[k].idx].w;
+      cur.w=cur.lockW?chain[k].w:sized[chain[k].idx].w;
     }
   });
 
