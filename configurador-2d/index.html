@@ -1524,6 +1524,66 @@ function anchorScreenPos(wx,wy,ww,wh,rot,sc,o,fx,fy){
   var cos=Math.cos(rot),sin=Math.sin(rot);
   return{x:csx+offx*cos-offy*sin, y:csy+offx*sin+offy*cos};
 }
+function scaleGroupChildren(origChildren,newW,newH,origW,origH){
+  // Compute lock-aware scale factors
+  var tlw=0,tlh=0;
+  origChildren.forEach(function(oc){
+    if(oc.type==='shape_line'||oc.type==='shape_arc') return;
+    if(oc.lockW) tlw+=oc.w;
+    if(oc.lockH) tlh+=oc.h;
+  });
+  var scalableW=origW-tlw, scalableH=origH-tlh;
+  var rsx=scalableW>0?(newW-tlw)/scalableW:(newW/origW);
+  var rsy=scalableH>0?(newH-tlh)/scalableH:(newH/origH);
+  // Sort children left-to-right for X layout, bottom-to-top for Y layout
+  var children=origChildren.map(function(oc,i){return{i:i,oc:oc};});
+  // Compute new sizes first
+  var sized=origChildren.map(function(oc){
+    if(oc.type==='shape_line'||oc.type==='shape_arc') return null;
+    return{
+      w:oc.lockW?oc.w:Math.round(oc.w*rsx),
+      h:oc.lockH?oc.h:Math.round(oc.h*rsy)
+    };
+  });
+  // Build result with repositioned children
+  return origChildren.map(function(oc,i){
+    var c=JSON.parse(JSON.stringify(oc));
+    if(c.type==='shape_line'||c.type==='shape_arc'){
+      var lsx=newW/origW, lsy=newH/origH;
+      c.x1=Math.round(c.x1*lsx);c.y1=Math.round(c.y1*lsy);
+      c.x2=Math.round(c.x2*lsx);c.y2=Math.round(c.y2*lsy);
+      if(c.sagitta) c.sagitta=Math.round(c.sagitta*(lsx+lsy)/2);
+    }else{
+      c.w=sized[i].w;c.h=sized[i].h;
+      // X position: scale the scalable space proportionally
+      // Split original x into: locked-width portions before this child stay fixed,
+      // scalable portions before this child scale with rsx
+      var origX=oc.x, lockedBefore=0, scalableBefore=0;
+      origChildren.forEach(function(other,j){
+        if(j===i||other.type==='shape_line'||other.type==='shape_arc') return;
+        // Count elements whose right edge <= this element's left edge (to the left)
+        if(other.x+other.w<=origX+1){
+          if(other.lockW) lockedBefore+=other.w;
+          else scalableBefore+=other.w;
+        }
+      });
+      var gapBefore=origX-lockedBefore-scalableBefore;
+      c.x=Math.round(lockedBefore+scalableBefore*rsx+gapBefore*rsx);
+      // Same for Y
+      var origY=oc.y, lockedBeforeY=0, scalableBeforeY=0;
+      origChildren.forEach(function(other,j){
+        if(j===i||other.type==='shape_line'||other.type==='shape_arc') return;
+        if(other.y+other.h<=origY+1){
+          if(other.lockH) lockedBeforeY+=other.h;
+          else scalableBeforeY+=other.h;
+        }
+      });
+      var gapBeforeY=origY-lockedBeforeY-scalableBeforeY;
+      c.y=Math.round(lockedBeforeY+scalableBeforeY*rsy+gapBeforeY*rsy);
+    }
+    return c;
+  });
+}
 function resizeMove(e){
   if(!_resizing) return;
   clearSnapLines();
@@ -1592,21 +1652,9 @@ function resizeMove(e){
   if(m.lockW){m.w=r.origW;m.x=r.origX;}
   if(m.lockH){m.h=r.origH;m.y=r.origY;}
 
-  // Scale group children proportionally
+  // Scale group children proportionally (respecting locks)
   if(m.type==='group'&&r.origChildren&&r.origW>0&&r.origH>0){
-    var sx=m.w/r.origW, sy=m.h/r.origH;
-    m.children=r.origChildren.map(function(oc){
-      var c=JSON.parse(JSON.stringify(oc));
-      if(c.type==='shape_line'||c.type==='shape_arc'){
-        c.x1=Math.round(c.x1*sx);c.y1=Math.round(c.y1*sy);
-        c.x2=Math.round(c.x2*sx);c.y2=Math.round(c.y2*sy);
-        if(c.sagitta) c.sagitta=Math.round(c.sagitta*(sx+sy)/2);
-      }else{
-        c.x=Math.round(c.x*sx);c.y=Math.round(c.y*sy);
-        c.w=Math.round(c.w*sx);c.h=Math.round(c.h*sy);
-      }
-      return c;
-    });
+    m.children=scaleGroupChildren(r.origChildren,m.w,m.h,r.origW,r.origH);
   }
 
   clampToPaper(m);
@@ -1784,21 +1832,9 @@ function groupResizeMove(e){
     var finalW=m.lockW?o.w:sized[o.idx].w;
     var finalH=m.lockH?o.h:sized[o.idx].h;
     m.w=finalW;m.h=finalH;
-    // Scale group children proportionally
+    // Scale group children proportionally (respecting locks)
     if(m.type==='group'&&o.origChildren&&o.w>0&&o.h>0){
-      var gsx=finalW/o.w,gsy=finalH/o.h;
-      m.children=o.origChildren.map(function(oc){
-        var c=JSON.parse(JSON.stringify(oc));
-        if(c.type==='shape_line'||c.type==='shape_arc'){
-          c.x1=Math.round(c.x1*gsx);c.y1=Math.round(c.y1*gsy);
-          c.x2=Math.round(c.x2*gsx);c.y2=Math.round(c.y2*gsy);
-          if(c.sagitta) c.sagitta=Math.round(c.sagitta*(gsx+gsy)/2);
-        }else{
-          c.x=Math.round(c.x*gsx);c.y=Math.round(c.y*gsy);
-          c.w=Math.round(c.w*gsx);c.h=Math.round(c.h*gsy);
-        }
-        return c;
-      });
+      m.children=scaleGroupChildren(o.origChildren,finalW,finalH,o.w,o.h);
     }
     // Position for chain starters and unchained elements
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
