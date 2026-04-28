@@ -129,6 +129,16 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-slide-add:hover{border-color:var(--accent);color:var(--accent)}
 .c2d-slide.drag-over{border-color:var(--coral);border-style:dashed}
 
+/* Saved drawings panel */
+.c2d-saved-msg{padding:8px 4px;font-size:11px;color:var(--mid)}
+.c2d-saved-card{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer;transition:border-color .2s;position:relative}
+.c2d-saved-card:hover{border-color:var(--black)}
+.c2d-saved-thumb{width:48px;height:48px;background:var(--bg);border:1px solid var(--border);border-radius:4px;flex-shrink:0;object-fit:contain}
+.c2d-saved-name{font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c2d-saved-del{width:18px;height:18px;background:none;border:none;color:var(--mid);font-size:14px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%;transition:color .15s}
+.c2d-saved-card:hover .c2d-saved-del{display:flex}
+.c2d-saved-del:hover{color:#dc2626}
+
 /* Responsive */
 @media(max-width:900px){
   .c2d-layout{grid-template-columns:1fr}
@@ -250,9 +260,9 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
         </div>
       </div>
       <!-- MIS DIBUJOS -->
-      <div class="c2d-section">
-        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Mis dibujos</div>
-        <div class="c2d-section-body">
+      <div class="c2d-section" id="savedDrawingsSection">
+        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open');loadSavedDrawings()">Mis dibujos</div>
+        <div class="c2d-section-body" id="savedDrawingsBody">
         </div>
       </div>
     </div>
@@ -2616,6 +2626,7 @@ function showCtx(x,y,onModule){
     if(_sel.size>=2) items+='<div class="c2d-ctx-sep"></div><div class="c2d-ctx-item" onclick="ctxAction(\'createGroup\')">Crear Dibujo</div>';
     var selMod=_sel.size===1?_modules[_sel.values().next().value]:null;
     if(selMod&&selMod.type==='group') items+='<div class="c2d-ctx-item" onclick="ctxAction(\'ungroupDibujo\')">Desagrupar Dibujo</div>';
+    if(selMod&&selMod.type==='group') items+='<div class="c2d-ctx-item" onclick="ctxAction(\'saveDrawing\')">Guardar Dibujo</div>';
   }else{
     if(_clipboard&&_clipboard.length) items+='<div class="c2d-ctx-item" onclick="ctxAction(\'paste\')">Pegar<span>Ctrl+V</span></div>';
     else items+='<div class="c2d-ctx-item" style="color:var(--mid);cursor:default">Pegar</div>';
@@ -2665,6 +2676,7 @@ function ctxAction(action){
   }
   if(action==='createGroup') createGroup();
   if(action==='ungroupDibujo') ungroupDibujo();
+  if(action==='saveDrawing') saveDrawingToLib();
   if(action==='select'){
     _marqueeMode=true;
     wrap.style.cursor='crosshair';
@@ -2768,6 +2780,143 @@ function selectAll(){
   _sel.clear();
   _modules.forEach(function(_,i){_sel.add(i);});
   renderModules();renderProps();
+}
+
+// ── SAVED DRAWINGS (Mis dibujos) ──
+var _savedDrawingsLoaded=false;
+
+function generateGroupThumbnail(group){
+  var size=120;
+  var c=document.createElement('canvas');c.width=size;c.height=size;
+  var x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,size,size);
+  var gw=group.w||1,gh=group.h||1;
+  var pad=8;
+  var sc=Math.min((size-pad*2)/gw,(size-pad*2)/gh);
+  var ox=pad+(size-pad*2-gw*sc)/2;
+  var oy=pad+(size-pad*2-gh*sc)/2;
+  (group.children||[]).forEach(function(ch){
+    var st=ch.stroke||'#000';
+    var sw=Math.max(1,(ch.strokeWidth||1)*sc);
+    x.strokeStyle=st;x.lineWidth=sw;x.lineCap='round';
+    if(ch.type==='shape_line'){
+      x.beginPath();
+      x.moveTo(ox+ch.x1*sc, oy+(gh-ch.y1)*sc);
+      x.lineTo(ox+ch.x2*sc, oy+(gh-ch.y2)*sc);
+      x.stroke();
+    }else if(ch.type==='shape_rect'){
+      var rx=ox+ch.x*sc, ry=oy+(gh-ch.y-ch.h)*sc, rw=ch.w*sc, rh=ch.h*sc;
+      if(ch.fill&&ch.fill!=='none'){x.fillStyle=ch.fill;x.fillRect(rx,ry,rw,rh);}
+      x.strokeRect(rx,ry,rw,rh);
+    }else if(ch.type==='shape_circle'){
+      var ccx=ox+(ch.x+ch.w/2)*sc, ccy=oy+(gh-ch.y-ch.h/2)*sc;
+      var crx=ch.w/2*sc, cry=ch.h/2*sc;
+      x.beginPath();x.ellipse(ccx,ccy,crx,cry,0,0,Math.PI*2);
+      if(ch.fill&&ch.fill!=='none'){x.fillStyle=ch.fill;x.fill();}
+      x.stroke();
+    }else if(ch.type==='shape_arc'){
+      var ax1=ch.x1,ay1=ch.y1,ax2=ch.x2,ay2=ch.y2,sag=ch.sagitta||100;
+      var adx=ax2-ax1,ady=ay2-ay1;
+      var chord=Math.sqrt(adx*adx+ady*ady)||1;
+      var halfC=chord/2;
+      var sagAbs=Math.min(Math.abs(sag),halfC);
+      var arcR=(halfC*halfC)/(2*sagAbs)+sagAbs/2;
+      var mx=(ax1+ax2)/2,my=(ay1+ay2)/2;
+      var nx=-ady/chord,ny=adx/chord;
+      var sign=sag>0?1:-1;
+      var d=arcR-sagAbs;
+      var cxA=mx+nx*sign*d,cyA=my+ny*sign*d;
+      var startA=Math.atan2(ay1-cyA,ax1-cxA);
+      var endA=Math.atan2(ay2-cyA,ax2-cxA);
+      x.beginPath();
+      x.arc(ox+cxA*sc,oy+(gh-cyA)*sc,arcR*sc,-(startA),-(endA),sag>0);
+      x.stroke();
+    }else if(ch.type==='shape_curve'){
+      var bx=ch.x||0,by=ch.y||0,bw=ch.w||1,bh=ch.h||1;
+      var cp_x=bx+(ch.cpx!=null?ch.cpx:0.5)*bw;
+      var cp_y=by+(ch.cpy!=null?ch.cpy:0)*bh;
+      x.beginPath();
+      x.moveTo(ox+bx*sc, oy+(gh-by)*sc);
+      x.quadraticCurveTo(ox+cp_x*sc, oy+(gh-cp_y)*sc, ox+(bx+bw)*sc, oy+(gh-by)*sc);
+      if(ch.fill&&ch.fill!=='none'){x.fillStyle=ch.fill;x.fill();}
+      x.stroke();
+    }else{
+      // Fallback: generic rect
+      var fx=ox+(ch.x||0)*sc, fy=oy+(gh-(ch.y||0)-(ch.h||0))*sc;
+      x.strokeRect(fx,fy,(ch.w||0)*sc,(ch.h||0)*sc);
+    }
+  });
+  return c.toDataURL('image/png');
+}
+
+async function saveDrawingToLib(){
+  if(!_supabase||!_currentUser){
+    alert('Inicia sesi\u00F3n para guardar dibujos.');
+    return;
+  }
+  if(_sel.size!==1) return;
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];
+  if(m.type!=='group') return;
+  var name=prompt('Nombre del dibujo:','Dibujo');
+  if(!name) return;
+  var thumb=generateGroupThumbnail(m);
+  var data=JSON.parse(JSON.stringify(m));
+  var result=await _supabase.from('saved_drawings').insert({
+    user_id:_currentUser.id,
+    name:name,
+    data:data,
+    thumbnail:thumb
+  });
+  if(result.error){alert('Error al guardar: '+result.error.message);return;}
+  loadSavedDrawings();
+  var sec=document.getElementById('savedDrawingsSection');
+  if(!sec.classList.contains('open')) sec.classList.add('open');
+}
+
+async function loadSavedDrawings(){
+  var body=document.getElementById('savedDrawingsBody');
+  if(!_supabase||!_currentUser){
+    body.innerHTML='<div class="c2d-saved-msg">Inicia sesi\u00F3n para ver tus dibujos guardados</div>';
+    return;
+  }
+  body.innerHTML='<div class="c2d-saved-msg">Cargando...</div>';
+  var result=await _supabase.from('saved_drawings').select('*').eq('user_id',_currentUser.id).order('created_at',{ascending:false});
+  if(result.error){body.innerHTML='<div class="c2d-saved-msg">Error al cargar</div>';return;}
+  var rows=result.data||[];
+  if(rows.length===0){body.innerHTML='<div class="c2d-saved-msg">A\u00FAn no tienes dibujos guardados</div>';return;}
+  body.innerHTML='';
+  rows.forEach(function(row){
+    var card=document.createElement('div');card.className='c2d-saved-card';
+    var img=row.thumbnail?'<img class="c2d-saved-thumb" src="'+row.thumbnail+'"/>':'<div class="c2d-saved-thumb"></div>';
+    card.innerHTML=img+'<span class="c2d-saved-name">'+row.name+'</span><button class="c2d-saved-del" title="Eliminar">&times;</button>';
+    card.querySelector('.c2d-saved-del').onclick=function(e){e.stopPropagation();deleteSavedDrawing(row.id);};
+    card.onclick=function(){insertSavedDrawing(row.data);};
+    body.appendChild(card);
+  });
+  _savedDrawingsLoaded=true;
+}
+
+function insertSavedDrawing(groupData){
+  saveHistory();
+  var m=JSON.parse(JSON.stringify(groupData));
+  var o2=origin(),sc=s();
+  var wrapRect=wrap.getBoundingClientRect();
+  var vcx=wrapRect.width/2, vcy=wrapRect.height/2;
+  var wx=(vcx-o2.x)/sc;
+  var wy=-(vcy-o2.y)/sc;
+  m.x=Math.round(wx-m.w/2);
+  m.y=Math.round(wy-m.h/2);
+  _modules.push(m);
+  _sel.clear();_sel.add(_modules.length-1);
+  draw();renderModules();renderProps();
+  savePages();updateActiveThumb();
+}
+
+async function deleteSavedDrawing(id){
+  if(!confirm('\u00BFEliminar este dibujo?')) return;
+  await _supabase.from('saved_drawings').delete().eq('id',id);
+  loadSavedDrawings();
 }
 
 // ── ERASER TOOL ──
