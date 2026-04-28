@@ -1630,7 +1630,8 @@ function startGroupResize(e,pos,bx,by,bw,bh){
       var lx=Math.min(m.x1,m.x2),ly=Math.min(m.y1,m.y2);
       originals.push({idx:i,x:lx,y:ly,w:Math.abs(m.x2-m.x1),h:Math.abs(m.y2-m.y1),d:0,pz:0,isLine:true,x1:m.x1,y1:m.y1,x2:m.x2,y2:m.y2});
     }else{
-      originals.push({idx:i,x:m.x,y:m.y,w:m.w,h:m.h,d:m.d||600,pz:m.pz||0});
+      originals.push({idx:i,x:m.x,y:m.y,w:m.w,h:m.h,d:m.d||600,pz:m.pz||0,
+        origChildren:m.type==='group'?JSON.parse(JSON.stringify(m.children)):null});
     }
   });
   // Detect coincidences between element edges and internal lines of other elements
@@ -1783,6 +1784,22 @@ function groupResizeMove(e){
     var finalW=m.lockW?o.w:sized[o.idx].w;
     var finalH=m.lockH?o.h:sized[o.idx].h;
     m.w=finalW;m.h=finalH;
+    // Scale group children proportionally
+    if(m.type==='group'&&o.origChildren&&o.w>0&&o.h>0){
+      var gsx=finalW/o.w,gsy=finalH/o.h;
+      m.children=o.origChildren.map(function(oc){
+        var c=JSON.parse(JSON.stringify(oc));
+        if(c.type==='shape_line'||c.type==='shape_arc'){
+          c.x1=Math.round(c.x1*gsx);c.y1=Math.round(c.y1*gsy);
+          c.x2=Math.round(c.x2*gsx);c.y2=Math.round(c.y2*gsy);
+          if(c.sagitta) c.sagitta=Math.round(c.sagitta*(gsx+gsy)/2);
+        }else{
+          c.x=Math.round(c.x*gsx);c.y=Math.round(c.y*gsy);
+          c.w=Math.round(c.w*gsx);c.h=Math.round(c.h*gsy);
+        }
+        return c;
+      });
+    }
     // Position for chain starters and unchained elements
     if(!inChainX[o.idx]||xChainStarters[o.idx]){
       if(xChainStarters[o.idx]){
