@@ -2791,11 +2791,18 @@ function circleIntersections(cx,cy,rx,ry,skipIdx,targetRotation){
         var rcx=m.x+m.w/2,rcy=m.y+m.h/2;
         rCorners=rCorners.map(function(c){return snapRotPt(c.x,c.y,rcx,rcy,m.rotation*Math.PI/180);});
       }
-      var c0=toLocal(rCorners[0].x,rCorners[0].y),c1=toLocal(rCorners[1].x,rCorners[1].y),c2=toLocal(rCorners[2].x,rCorners[2].y),c3=toLocal(rCorners[3].x,rCorners[3].y);
-      segs.push([c0.x,c0.y,c1.x,c1.y]);
-      segs.push([c1.x,c1.y,c2.x,c2.y]);
-      segs.push([c2.x,c2.y,c3.x,c3.y]);
-      segs.push([c3.x,c3.y,c0.x,c0.y]);
+      var lc=[toLocal(rCorners[0].x,rCorners[0].y),toLocal(rCorners[1].x,rCorners[1].y),toLocal(rCorners[2].x,rCorners[2].y),toLocal(rCorners[3].x,rCorners[3].y)];
+      for(var rsi=0;rsi<4;rsi++){
+        var rsn=(rsi+1)%4;
+        var rHits=segCircleIntersect(lc[rsi].x,lc[rsi].y,lc[rsn].x,lc[rsn].y,cx,cy,rx,ry);
+        rHits.forEach(function(h){
+          // Compute u along the rect side to check gaps
+          var rsdx=lc[rsn].x-lc[rsi].x,rsdy=lc[rsn].y-lc[rsi].y;
+          var rsl2=rsdx*rsdx+rsdy*rsdy;
+          var rsu=rsl2>0?((h.x-lc[rsi].x)*rsdx+(h.y-lc[rsi].y)*rsdy)/rsl2:0;
+          if(!rectSideInGap(m,rsi,rsu)) pts.push(h);
+        });
+      }
     }
     segs.forEach(function(seg){
       var hits=segCircleIntersect(seg[0],seg[1],seg[2],seg[3],cx,cy,rx,ry);
@@ -2987,6 +2994,26 @@ function curvePoints(m,n){
   }
   return pts;
 }
+// Check if t falls in any gap of a rect side
+var RECT_SIDE_NAMES=['bottom','right','top','left'];
+function rectSideInGap(m,sideIdx,t){
+  if(!m.gaps) return false;
+  var sName=RECT_SIDE_NAMES[sideIdx];
+  var sGaps=m.gaps[sName];
+  if(!sGaps||sGaps.length===0) return false;
+  for(var gi=0;gi<sGaps.length;gi++){
+    if(t>=sGaps[gi][0]-0.001&&t<=sGaps[gi][1]+0.001) return true;
+  }
+  return false;
+}
+// Compute t parameter of a point along a rect side (0=start, 1=end)
+function rectSideT(corners,sideIdx,px,py){
+  var c0=corners[sideIdx],c1=corners[(sideIdx+1)%4];
+  var sdx=c1.x-c0.x,sdy=c1.y-c0.y;
+  var slen2=sdx*sdx+sdy*sdy;
+  if(slen2===0) return 0;
+  return Math.max(0,Math.min(1,((px-c0.x)*sdx+(py-c0.y)*sdy)/slen2));
+}
 // Distance from point to a polyline curve
 function distToCurve(m,wx,wy){
   var pts=curvePoints(m);
@@ -3036,7 +3063,11 @@ function eraserHitTest(wx,wy){
         var et=Math.max(0,Math.min(1,((wx-corners[ei].x)*edx+(wy-corners[ei].y)*edy)/elen2));
         var epx=corners[ei].x+et*edx,epy=corners[ei].y+et*edy;
         var ed=Math.sqrt((wx-epx)*(wx-epx)+(wy-epy)*(wy-epy));
-        if(ed<=tolerance&&(ed<=bestDist||!bestIsEdge)){bestDist=ed;bestIdx=i;bestSide=ei;bestIsEdge=true;}
+        if(ed<=tolerance&&(ed<=bestDist||!bestIsEdge)){
+          // Skip if this point falls in a gap
+          if(m.type==='shape_rect'&&rectSideInGap(m,ei,et)) continue;
+          bestDist=ed;bestIdx=i;bestSide=ei;bestIsEdge=true;
+        }
       }
       // Interior hit: only wins if no edge hit exists
       if(!m.rotation&&wx>=m.x&&wx<=m.x+m.w&&wy>=m.y&&wy<=m.y+m.h){
@@ -3081,13 +3112,18 @@ function findEraseSeg(lx1,ly1,lx2,ly2,wx,wy,skipIdx){
         var orot=other.rotation*Math.PI/180;
         corners=corners.map(function(c){return snapRotPt(c.x,c.y,ocx,ocy,orot);});
       }
-      // Edge intersections
+      // Edge intersections (skip gapped portions)
       for(var ci=0;ci<4;ci++){
         var cn=(ci+1)%4;
         var inter=segIntersect(lx1,ly1,lx2,ly2,corners[ci].x,corners[ci].y,corners[cn].x,corners[cn].y);
-        if(inter) intersections.push(inter);
+        if(inter){
+          // Compute u (t along the rect side) from intersection point
+          var sdx2=corners[cn].x-corners[ci].x,sdy2=corners[cn].y-corners[ci].y;
+          var sl2=sdx2*sdx2+sdy2*sdy2;
+          var sideU=sl2>0?((inter.x-corners[ci].x)*sdx2+(inter.y-corners[ci].y)*sdy2)/sl2:0;
+          if(!rectSideInGap(other,ci,sideU)) intersections.push(inter);
+        }
       }
-      // Corners on our segment
       corners.forEach(function(c){tryAddPoint(c.x,c.y);});
     }
     // Intersections with curves (circles, arcs, beziers) via polyline
