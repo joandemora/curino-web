@@ -996,8 +996,13 @@ function renderModules(){
           var cstV=child.stroke||'#000';var cstwV=Math.max(1,(child.strokeWidth||1)*sc);
           var cflV=child.fill||'none';
           var cvDash=child.strokeStyle==='dashed'?' stroke-dasharray="8 4"':child.strokeStyle==='dotted'?' stroke-dasharray="2 3" stroke-linecap="round"':'';
-          var cvCpx=(child.cpx!=null?child.cpx:0.5)*cw;
-          var cvCpy=(child.cpy!=null?child.cpy:0)*ch;
+          // cpx/cpy may be fraction (0-1) or absolute mm — normalize to fraction
+          var cpxF=child.cpx!=null?child.cpx:0.5;
+          var cpyF=child.cpy!=null?child.cpy:0;
+          if(cpxF>1.01&&child.w>0) cpxF/=child.w;
+          if(Math.abs(cpyF)>2.01&&child.h>0) cpyF/=child.h;
+          var cvCpx=cpxF*cw;
+          var cvCpy=cpyF*ch;
           cdiv.style.border='none';cdiv.style.background='transparent';
           cdiv.innerHTML='<svg style="position:absolute;top:0;left:0;width:'+cw+'px;height:'+ch+'px;overflow:visible;pointer-events:none" viewBox="0 0 '+cw+' '+ch+'"><path d="M0,'+ch+' Q'+cvCpx+','+cvCpy+' '+cw+','+ch+'" stroke="'+cstV+'" stroke-width="'+cstwV+'"'+cvDash+' fill="'+cflV+'"/></svg>';
         }else if(child.type==='shape_arc'){
