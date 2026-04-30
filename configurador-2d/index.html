@@ -1715,56 +1715,6 @@ function anchorScreenPos(wx,wy,ww,wh,rot,sc,o,fx,fy){
   var cos=Math.cos(rot),sin=Math.sin(rot);
   return{x:csx+offx*cos-offy*sin, y:csy+offx*sin+offy*cos};
 }
-// Pass 3 helper: preserve adjacency pairs along an axis (x or y).
-// For each connected component of children that touch consecutively,
-// re-position them so contact is preserved exactly. Anchor strategy:
-//   - if the chain's lower edge was at the group's lower edge → anchor lo to 0
-//   - if the chain's upper edge was at the group's upper edge → anchor hi to newDim
-//   - otherwise → keep the chain centered proportionally
-function preserveGroupAdjacency(result,origChildren,axis,origDim,newDim){
-  var bk=axis==='y'?'y':'x', sk=axis==='y'?'h':'w';
-  var valid=[];
-  origChildren.forEach(function(oc,i){
-    if(oc.type==='shape_line'||oc.type==='shape_arc') return;
-    if(!oc[sk]) return;
-    valid.push(i);
-  });
-  if(valid.length<2) return;
-  // Union-find over adjacency pairs (A.top===B.bottom along axis)
-  var par=origChildren.map(function(_,i){return i;});
-  function find(i){return par[i]===i?i:(par[i]=find(par[i]));}
-  function uni(i,j){par[find(i)]=find(j);}
-  for(var ii=0;ii<valid.length;ii++){
-    var A=origChildren[valid[ii]];
-    for(var jj=0;jj<valid.length;jj++){
-      if(ii===jj) continue;
-      var B=origChildren[valid[jj]];
-      if(Math.abs((A[bk]+A[sk])-B[bk])<0.5) uni(valid[ii],valid[jj]);
-    }
-  }
-  // Group into chains
-  var chains={};
-  valid.forEach(function(i){var r=find(i);if(!chains[r])chains[r]=[];chains[r].push(i);});
-  Object.keys(chains).forEach(function(k){
-    var mem=chains[k];
-    if(mem.length<2) return;
-    mem.sort(function(a,b){return origChildren[a][bk]-origChildren[b][bk];});
-    var first=origChildren[mem[0]],last=origChildren[mem[mem.length-1]];
-    var anchorLo=Math.abs(first[bk])<0.5;
-    var anchorHi=Math.abs(last[bk]+last[sk]-origDim)<0.5;
-    var total=0;mem.forEach(function(i){total+=result[i][sk];});
-    var start;
-    if(anchorLo) start=0;
-    else if(anchorHi) start=newDim-total;
-    else{
-      var oc=(first[bk]+last[bk]+last[sk])/2;
-      var nc=oc/origDim*newDim;
-      start=nc-total/2;
-    }
-    var cur=start;
-    mem.forEach(function(i){result[i][bk]=Math.round(cur);cur+=result[i][sk];});
-  });
-}
 function scaleGroupChildren(origChildren,newW,newH,origW,origH){
   var sx=newW/origW, sy=newH/origH;
   var T=0.5; // edge tolerance
@@ -1790,7 +1740,7 @@ function scaleGroupChildren(origChildren,newW,newH,origW,origH){
   });
 
   // Pass 2: build result
-  var result=origChildren.map(function(oc,i){
+  return origChildren.map(function(oc,i){
     var c=JSON.parse(JSON.stringify(oc));
     if(c.type==='shape_line'||c.type==='shape_arc'){
       c.x1=Math.round(c.x1*sx);c.y1=Math.round(c.y1*sy);
@@ -1838,11 +1788,6 @@ function scaleGroupChildren(origChildren,newW,newH,origW,origH){
     }
     return c;
   });
-  // Pass 3: preserve adjacency pairs (chains where children touched before resize
-  // must keep touching after resize, regardless of locks)
-  preserveGroupAdjacency(result,origChildren,'x',origW,newW);
-  preserveGroupAdjacency(result,origChildren,'y',origH,newH);
-  return result;
 }
 function resizeMove(e){
   if(!_resizing) return;
