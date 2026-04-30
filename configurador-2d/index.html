@@ -211,6 +211,17 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
   <!-- RIGHT: Palette + Properties overlay -->
   <div class="c2d-right">
     <div class="c2d-palette">
+      <!-- DIBUJO -->
+      <div class="c2d-section">
+        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Dibujar</div>
+        <div class="c2d-section-body">
+          <div class="c2d-mod" draggable="true" data-type="shape_line" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">╱</div>Línea<span class="c2d-mod-size">500mm</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_rect" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">▭</div>Rectángulo<span class="c2d-mod-size">500×300</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_arc" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">⌒</div>Curva<span class="c2d-mod-size">500mm</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_circle" data-w="300" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">○</div>Círculo<span class="c2d-mod-size">⌀300</span></div>
+          <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌓</div>B&eacute;zier<span class="c2d-mod-size">500×300</span></div>
+        </div>
+      </div>
       <!-- ARMARIO -->
       <div class="c2d-section open">
         <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Armario</div>
@@ -248,17 +259,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
           <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="600" data-h="850"><div class="c2d-mod-icon">LV</div>Lavavajillas<span class="c2d-mod-size">600&times;850</span></div>
           <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="600" data-h="1800"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico<span class="c2d-mod-size">600&times;1800</span></div>
           <div class="c2d-mod" draggable="true" data-type="horno" data-w="600" data-h="600"><div class="c2d-mod-icon">HO</div>Horno<span class="c2d-mod-size">600&times;600</span></div>
-        </div>
-      </div>
-      <!-- DIBUJO -->
-      <div class="c2d-section">
-        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Dibujo</div>
-        <div class="c2d-section-body">
-          <div class="c2d-mod" draggable="true" data-type="shape_line" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">╱</div>Línea<span class="c2d-mod-size">500mm</span></div>
-          <div class="c2d-mod" draggable="true" data-type="shape_rect" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">▭</div>Rectángulo<span class="c2d-mod-size">500×300</span></div>
-          <div class="c2d-mod" draggable="true" data-type="shape_arc" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">⌒</div>Curva<span class="c2d-mod-size">500mm</span></div>
-          <div class="c2d-mod" draggable="true" data-type="shape_circle" data-w="300" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">○</div>Círculo<span class="c2d-mod-size">⌀300</span></div>
-          <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌓</div>B&eacute;zier<span class="c2d-mod-size">500×300</span></div>
         </div>
       </div>
       <!-- MIS DIBUJOS -->
