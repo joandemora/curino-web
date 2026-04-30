@@ -303,7 +303,7 @@ var _pages=[]; // [{modules:[], showCajetin:true, history:[], historyIdx:-1}]
 var _activePageIdx=0;
 var _meta={}; // active page per-page state (showCajetin)
 var GRID=50; // snap grid in mm
-var SNAP_RADIUS=25; // magnetic snap radius in mm (GRID/2)
+var SNAP_RADIUS=10; // magnetic snap radius in mm
 var _dragData=null;
 var _resizing=null;
 // Supabase
@@ -1793,6 +1793,7 @@ function startGroupResize(e,pos,bx,by,bw,bh){
 }
 function groupResizeMove(e){
   if(!_groupResize) return;
+  clearSnapLines();
   var g=_groupResize,sc=s(),p=g.pos;
   var dx=(e.clientX-g.startX)/sc,dy=(e.clientY-g.startY)/sc;
   dy=-dy;
@@ -1805,6 +1806,25 @@ function groupResizeMove(e){
   var ay=g.by,ah=g.bh;
   if(p==='t'||p==='tl'||p==='tr'){ah=Math.max(GRID,g.bh+dy);}
   if(p==='b'||p==='bl'||p==='br'){ah=Math.max(GRID,g.bh-dy);ay=g.by+g.bh-ah;}
+
+  // Magnetic snap of moving bbox edges to other elements (excludes selected)
+  var grSkip=new Set();g.originals.forEach(function(o){grSkip.add(o.idx);});
+  var grXEdges=getSnapEdges('x',grSkip);
+  var grYEdges=getSnapEdges('y',grSkip);
+  if(p==='r'||p==='tr'||p==='br'){
+    var rawR=ax+aw,snR=magSnap(rawR,grXEdges,sc);
+    if(snR!==snap(rawR)){aw=Math.max(GRID,snR-ax);showSnapLine(snR,'x');}
+  }else if(p==='l'||p==='tl'||p==='bl'){
+    var rawL=ax,snL=magSnap(rawL,grXEdges,sc);
+    if(snL!==snap(rawL)){var rEdge=g.bx+g.bw;aw=Math.max(GRID,rEdge-snL);ax=rEdge-aw;showSnapLine(snL,'x');}
+  }
+  if(p==='t'||p==='tl'||p==='tr'){
+    var rawT=ay+ah,snT=magSnap(rawT,grYEdges,sc);
+    if(snT!==snap(rawT)){ah=Math.max(GRID,snT-ay);showSnapLine(snT,'y');}
+  }else if(p==='b'||p==='bl'||p==='br'){
+    var rawB=ay,snB=magSnap(rawB,grYEdges,sc);
+    if(snB!==snap(rawB)){var tEdge=g.by+g.bh;ah=Math.max(GRID,tEdge-snB);ay=tEdge-ah;showSnapLine(snB,'y');}
+  }
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
@@ -2040,6 +2060,7 @@ function groupResizeMove(e){
   renderModules();renderProps();
 }
 function groupResizeEnd(){
+  clearSnapLines();
   _groupResize=null;
   document.removeEventListener('mousemove',groupResizeMove);
   document.removeEventListener('mouseup',groupResizeEnd);
