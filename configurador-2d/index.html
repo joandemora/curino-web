@@ -1715,6 +1715,65 @@ function anchorScreenPos(wx,wy,ww,wh,rot,sc,o,fx,fy){
   var cos=Math.cos(rot),sin=Math.sin(rot);
   return{x:csx+offx*cos-offy*sin, y:csy+offx*sin+offy*cos};
 }
+// Pass 3 helper: preserve adjacency of LINEAR chains along an axis.
+// A chain is "linear" iff every member has ≤1 neighbor on each side
+// (no T-junctions, no cycles, no parallel branches). For non-linear
+// topologies (e.g. a frame with 4 rects), this pass does nothing —
+// Pass 2's snap-to-locked-neighbor already handles those correctly.
+// Only positions are modified (never sizes, never the group's m.w/m.h).
+function preserveGroupAdjacency(result,origChildren,axis,origDim,newDim){
+  var bk=axis==='y'?'y':'x', sk=axis==='y'?'h':'w';
+  var valid=[];
+  origChildren.forEach(function(oc,i){
+    if(oc.type==='shape_line'||oc.type==='shape_arc') return;
+    if(!oc[sk]) return;
+    valid.push(i);
+  });
+  if(valid.length<2) return;
+  // Detect adjacency: A is below B if A[bk]+A[sk] ≈ B[bk]
+  var aboveOf={},belowOf={};
+  valid.forEach(function(i){aboveOf[i]=[];belowOf[i]=[];});
+  for(var ii=0;ii<valid.length;ii++){
+    var A=origChildren[valid[ii]];
+    for(var jj=0;jj<valid.length;jj++){
+      if(ii===jj) continue;
+      var B=origChildren[valid[jj]];
+      if(Math.abs((A[bk]+A[sk])-B[bk])<0.5){
+        aboveOf[valid[ii]].push(valid[jj]); // B is above A
+        belowOf[valid[jj]].push(valid[ii]); // A is below B
+      }
+    }
+  }
+  // Union-find chains
+  var par={};valid.forEach(function(i){par[i]=i;});
+  function find(i){return par[i]===i?i:(par[i]=find(par[i]));}
+  function uni(i,j){par[find(i)]=find(j);}
+  valid.forEach(function(i){aboveOf[i].forEach(function(j){uni(i,j);});});
+  var chains={};
+  valid.forEach(function(i){var r=find(i);if(!chains[r])chains[r]=[];chains[r].push(i);});
+  Object.keys(chains).forEach(function(k){
+    var mem=chains[k];
+    if(mem.length<2) return;
+    // Linearity check: each member has ≤1 neighbor on each side
+    var linear=mem.every(function(i){return aboveOf[i].length<=1 && belowOf[i].length<=1;});
+    if(!linear) return;
+    mem.sort(function(a,b){return origChildren[a][bk]-origChildren[b][bk];});
+    var first=origChildren[mem[0]],last=origChildren[mem[mem.length-1]];
+    var anchorLo=Math.abs(first[bk])<0.5;
+    var anchorHi=Math.abs(last[bk]+last[sk]-origDim)<0.5;
+    var total=0;mem.forEach(function(i){total+=result[i][sk];});
+    var start;
+    if(anchorLo) start=0;
+    else if(anchorHi) start=newDim-total;
+    else{
+      var oc=(first[bk]+last[bk]+last[sk])/2;
+      var nc=oc/origDim*newDim;
+      start=nc-total/2;
+    }
+    var cur=start;
+    mem.forEach(function(i){result[i][bk]=Math.round(cur);cur+=result[i][sk];});
+  });
+}
 function scaleGroupChildren(origChildren,newW,newH,origW,origH){
   var sx=newW/origW, sy=newH/origH;
   var T=0.5; // edge tolerance
@@ -1740,7 +1799,7 @@ function scaleGroupChildren(origChildren,newW,newH,origW,origH){
   });
 
   // Pass 2: build result
-  return origChildren.map(function(oc,i){
+  var result=origChildren.map(function(oc,i){
     var c=JSON.parse(JSON.stringify(oc));
     if(c.type==='shape_line'||c.type==='shape_arc'){
       c.x1=Math.round(c.x1*sx);c.y1=Math.round(c.y1*sy);
@@ -1788,6 +1847,10 @@ function scaleGroupChildren(origChildren,newW,newH,origW,origH){
     }
     return c;
   });
+  // Pass 3: preserve adjacency for LINEAR chains (skips frames/T-junctions/cycles)
+  preserveGroupAdjacency(result,origChildren,'x',origW,newW);
+  preserveGroupAdjacency(result,origChildren,'y',origH,newH);
+  return result;
 }
 function resizeMove(e){
   if(!_resizing) return;
