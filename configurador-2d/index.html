@@ -1511,37 +1511,43 @@ function dragModuleMove(e){
   if(!_dragMod) return;var sc=s();
   clearSnapLines();
   var dx=(e.clientX-_dragMod.startX)/sc;
-  var dy=(e.clientY-_dragMod.startY)/sc;
-  var ref=_dragMod.origins[0],m0=_modules[ref.idx];
-  // Compute reference position (handle lines with x1/y1/x2/y2)
-  var refX=ref.isLine?Math.min(ref.x1,ref.x2):ref.x;
-  var refY=ref.isLine?Math.min(ref.y1,ref.y2):ref.y;
-  var refW=ref.isLine?Math.abs(ref.x2-ref.x1):m0.w;
-  var refH=ref.isLine?Math.abs(ref.y2-ref.y1):m0.h;
+  var dyScreen=(e.clientY-_dragMod.startY)/sc;
+  var dyWorld=-dyScreen; // world Y up = screen Y down inverted
   var xEdges=getSnapEdges('x',_sel);
-  // Snap X using first module's left and right edges
-  var rawX=refX+dx;
-  var snappedLeft=magSnap(rawX,xEdges,sc);
-  var snappedRight=magSnap(rawX+refW,xEdges,sc);
-  var finalX;
-  if(Math.abs(snappedLeft-rawX)<Math.abs(snappedRight-(rawX+refW))){
-    finalX=snappedLeft;if(snappedLeft!==snap(rawX)) showSnapLine(snappedLeft,'x');
-  }else{
-    finalX=snappedRight-refW;if(snappedRight!==snap(rawX+refW)) showSnapLine(snappedRight,'x');
-  }
-  var xOff=finalX-refX;
-  // Snap Y axis
   var yEdges=getSnapEdges('y',_sel);
-  var rawY=refY-dy;
-  var snBot2=magSnap(rawY,yEdges,sc);
-  var snTop2=magSnap(rawY+refH,yEdges,sc);
-  var finalY;
-  if(Math.abs(snBot2-rawY)<Math.abs(snTop2-(rawY+refH))){
-    finalY=snBot2;if(snBot2!==snap(rawY)) showSnapLine(snBot2,'y');
-  }else{
-    finalY=snTop2-refH;if(snTop2!==snap(rawY+refH)) showSnapLine(snTop2,'y');
-  }
-  var yOff=finalY-refY;
+  // Find best snap correction across ALL selected elements.
+  // For each origin, try snapping its left/right (X) and bottom/top (Y) edges.
+  // Pick the correction with smallest magnitude (within SNAP_RADIUS).
+  var xCorr=0,xSnapVal=null;
+  var yCorr=0,ySnapVal=null;
+  _dragMod.origins.forEach(function(o){
+    var m=_modules[o.idx];
+    var oLeft,oRight,oBot,oTop;
+    if(o.isLine){
+      oLeft=Math.min(o.x1,o.x2);oRight=Math.max(o.x1,o.x2);
+      oBot=Math.min(o.y1,o.y2);oTop=Math.max(o.y1,o.y2);
+    }else{
+      oLeft=o.x;oRight=o.x+m.w;oBot=o.y;oTop=o.y+m.h;
+    }
+    [oLeft+dx,oRight+dx].forEach(function(rawEdge){
+      var sn=magSnap(rawEdge,xEdges,sc);
+      if(sn!==snap(rawEdge)){
+        var delta=sn-rawEdge;
+        if(xSnapVal===null||Math.abs(delta)<Math.abs(xCorr)){xCorr=delta;xSnapVal=sn;}
+      }
+    });
+    [oBot+dyWorld,oTop+dyWorld].forEach(function(rawEdge){
+      var sn=magSnap(rawEdge,yEdges,sc);
+      if(sn!==snap(rawEdge)){
+        var delta=sn-rawEdge;
+        if(ySnapVal===null||Math.abs(delta)<Math.abs(yCorr)){yCorr=delta;ySnapVal=sn;}
+      }
+    });
+  });
+  if(xSnapVal!==null) showSnapLine(xSnapVal,'x');
+  if(ySnapVal!==null) showSnapLine(ySnapVal,'y');
+  var xOff=dx+xCorr;
+  var yOff=dyWorld+yCorr;
   // Apply offsets to all selected + clamp to paper
   _dragMod.origins.forEach(function(o){
     var m=_modules[o.idx];
