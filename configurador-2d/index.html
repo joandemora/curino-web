@@ -2401,6 +2401,14 @@ function lineDragMove(e){
     if(snX!==snap(rawX)) showSnapLine(snX,'x');
     if(snY!==snap(rawY)) showSnapLine(snY,'y');
   }
+  // Shift constraint (shape_line only): lock to horizontal or vertical
+  // through the fixed endpoint based on which axis the cursor moved further on.
+  if(e.shiftKey&&m.type==='shape_line'){
+    var fixedX=_lineDrag.pt===1?_lineDrag.origX2:_lineDrag.origX1;
+    var fixedY=_lineDrag.pt===1?_lineDrag.origY2:_lineDrag.origY1;
+    if(Math.abs(rawX-fixedX)>=Math.abs(rawY-fixedY)) snY=fixedY;
+    else snX=fixedX;
+  }
   snX=Math.round(snX);snY=Math.round(snY);
   if(_lineDrag.pt===1){m.x1=snX;m.y1=snY;}
   else{m.x2=snX;m.y2=snY;}
