@@ -1346,9 +1346,25 @@ wrap.addEventListener('dragover',function(e){e.preventDefault();});
 wrap.addEventListener('drop',function(e){
   e.preventDefault();if(!_dragData) return;
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
-  var x=snap((e.clientX-rect.left-o.x)/sc);
+  var rawX=(e.clientX-rect.left-o.x)/sc;
   var screenY=(e.clientY-rect.top-o.y)/sc;
-  var y=snap(-screenY-_dragData.h);
+  var rawY=-screenY-_dragData.h;
+  // Magnetic snap to existing element edges, fallback to grid snap (or raw mm if grid hidden)
+  var emptySkip=new Set();
+  var dropXEdges=getSnapEdges('x',emptySkip);
+  var dropYEdges=getSnapEdges('y',emptySkip);
+  var x=magSnap(rawX,dropXEdges,sc);
+  var y=magSnap(rawY,dropYEdges,sc);
+  // Try snapping the right edge too (x+w); if it snaps closer, use that
+  if(_dragData.w){
+    var snapRight=magSnap(rawX+_dragData.w,dropXEdges,sc);
+    if(Math.abs(snapRight-(rawX+_dragData.w))<Math.abs(x-rawX)) x=snapRight-_dragData.w;
+  }
+  if(_dragData.h){
+    var snapTop=magSnap(rawY+_dragData.h,dropYEdges,sc);
+    if(Math.abs(snapTop-(rawY+_dragData.h))<Math.abs(y-rawY)) y=snapTop-_dragData.h;
+  }
+  x=Math.round(x);y=Math.round(y);
   if(_dragData.type==='saved_drawing'){
     var m=JSON.parse(JSON.stringify(_dragData.savedGroup));
     m.x=x;m.y=y;
@@ -1425,7 +1441,7 @@ function getSnapEdges(axis,skipIndices){
       else if(axis==='y'){edges.push(m.y1,m.y2);}
       return;
     }
-    if(m.type==='group'||!m.w) return;
+    if(!m.w) return;
     // Skip aligned edges for rotated elements — only snap by points
     if(m.rotation&&m.rotation%360!==0) return;
     if(axis==='x'){
@@ -1454,7 +1470,7 @@ function getSnapPoints(skipIndices){
     if(m.type==='shape_line'||m.type==='shape_arc'){
       // Line endpoints are already in world position (no rotation field)
       pts.push({x:m.x1,y:m.y1},{x:m.x2,y:m.y2});
-    }else if(m.w&&m.h&&m.type!=='group'){
+    }else if(m.w&&m.h){
       var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x,y:m.y+m.h},{x:m.x+m.w,y:m.y+m.h}];
       var center={x:m.x+m.w/2,y:m.y+m.h/2};
       if(m.rotation&&m.rotation%360!==0){
