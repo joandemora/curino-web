@@ -212,8 +212,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
   <div class="c2d-right">
     <div class="c2d-palette">
       <!-- DIBUJO -->
-      <div class="c2d-section">
-        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Dibujar</div>
+      <div class="c2d-section open">
+        <div class="c2d-section-title" onclick="accordionToggle(this,'c2d-section')">Dibujar</div>
         <div class="c2d-section-body">
           <div class="c2d-mod" draggable="true" data-type="shape_line" data-w="500" data-h="0"><div class="c2d-mod-icon" style="font-size:14px">╱</div>Línea<span class="c2d-mod-size">500mm</span></div>
           <div class="c2d-mod" draggable="true" data-type="shape_rect" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">▭</div>Rectángulo<span class="c2d-mod-size">500×300</span></div>
@@ -223,12 +223,12 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
         </div>
       </div>
       <!-- BIBLIOTECA -->
-      <div class="c2d-section open">
-        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open')">Biblioteca</div>
+      <div class="c2d-section">
+        <div class="c2d-section-title" onclick="accordionToggle(this,'c2d-section')">Biblioteca</div>
         <div class="c2d-section-body">
           <!-- ARMARIO -->
           <div class="c2d-sub open">
-            <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Armario</div>
+            <div class="c2d-sub-title" onclick="accordionToggle(this,'c2d-sub')">Armario</div>
             <div class="c2d-sub-body">
               <div class="c2d-sub open">
                 <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Interior</div>
@@ -254,7 +254,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
           </div>
           <!-- COCINA -->
           <div class="c2d-sub">
-            <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Cocina</div>
+            <div class="c2d-sub-title" onclick="accordionToggle(this,'c2d-sub')">Cocina</div>
             <div class="c2d-sub-body">
               <div class="c2d-mod" draggable="true" data-type="modulo_bajo" data-w="600" data-h="850"><div class="c2d-mod-icon">MB</div>M&oacute;dulo bajo<span class="c2d-mod-size">600&times;850</span></div>
               <div class="c2d-mod" draggable="true" data-type="modulo_alto" data-w="600" data-h="700"><div class="c2d-mod-icon">MA</div>M&oacute;dulo alto<span class="c2d-mod-size">600&times;700</span></div>
@@ -269,7 +269,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
       </div>
       <!-- MIS DIBUJOS -->
       <div class="c2d-section" id="savedDrawingsSection">
-        <div class="c2d-section-title" onclick="this.parentElement.classList.toggle('open');if(this.parentElement.classList.contains('open'))loadSavedDrawings()">Mis dibujos</div>
+        <div class="c2d-section-title" onclick="if(accordionToggle(this,'c2d-section'))loadSavedDrawings()">Mis dibujos</div>
         <div class="c2d-section-body" id="savedDrawingsBody">
         </div>
       </div>
@@ -321,6 +321,20 @@ var cvs=document.getElementById('cvs');
 var ctx=cvs.getContext('2d');
 var wrap=document.getElementById('canvasWrap');
 var layer=document.getElementById('modulesLayer');
+
+// Accordion: toggle the panel's parent and close any sibling panels of the same class
+// within the same direct container. Returns true if the panel ends up open.
+function accordionToggle(titleEl,cls){
+  var panel=titleEl.parentElement;
+  var willOpen=!panel.classList.contains('open');
+  var siblings=panel.parentElement.children;
+  for(var i=0;i<siblings.length;i++){
+    var s=siblings[i];
+    if(s!==panel&&s.classList.contains(cls)) s.classList.remove('open');
+  }
+  panel.classList.toggle('open');
+  return willOpen;
+}
 
 var _panX=0,_panY=0;
 var _cajetinRect=null;
