@@ -1098,7 +1098,7 @@ function renderModules(){
           var chord=Math.sqrt(adx*adx+ady*ady)||1;
           var sagAbs=Math.min(Math.abs(child.sagitta||100),chord/2);
           var arcR=(chord*chord/4)/(2*sagAbs)+sagAbs/2;
-          var sweep=(child.sagitta||100)>0?0:1;
+          var sweep=(child.sagitta||100)>0?1:0;
           var padA=Math.max(cstwA,4);
           cdiv.style.width=(cw+padA*2)+'px';cdiv.style.height=(ch+padA*2)+'px';
           cdiv.style.left=(cx-padA)+'px';cdiv.style.top=(cy-padA)+'px';
