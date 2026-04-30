@@ -489,6 +489,20 @@ function applyPaperScale(){
   _zoom=_baseZoom*_userZoom;
   draw();renderModules();
 }
+// Base zoom options (always present). 400% is added only when scale >= 50.
+var BASE_ZOOMS=[100,125,150,200,300];
+var EXTRA_ZOOM_AT_LARGE_SCALE=400;
+function rebuildZoomOptions(){
+  var sel=document.getElementById('zoomSelect');
+  var zooms=BASE_ZOOMS.slice();
+  if(_drawScale>=50) zooms.push(EXTRA_ZOOM_AT_LARGE_SCALE);
+  sel.innerHTML='';
+  zooms.forEach(function(z){
+    var opt=document.createElement('option');
+    opt.value=z;opt.textContent=z+'%';
+    sel.appendChild(opt);
+  });
+}
 function updateZoomSelect(){
   var pct=Math.round(_userZoom*100);
   var sel=document.getElementById('zoomSelect');
@@ -526,6 +540,10 @@ function changePaper(){
 function changeScale(){
   _drawScale=parseInt(document.getElementById('scaleSelect').value)||30;
   localStorage.setItem('c2d_scale',_drawScale.toString());
+  rebuildZoomOptions();
+  // Reset zoom to 100% on every scale change (executes the full zoom path)
+  document.getElementById('zoomSelect').value='100';
+  changeZoomSelect();
   applyPaperScale();renderSlides();document.activeElement.blur();
 }
 
@@ -3088,6 +3106,7 @@ function finishInit(){
   saveHistory();resizeCanvas();
   document.getElementById('paperFormat').value=_paper;
   document.getElementById('scaleSelect').value=_drawScale;
+  rebuildZoomOptions();
   document.getElementById('zoomSelect').value=Math.round(_userZoom*100);
   if(_gridVisible) document.getElementById('btnGrid').classList.add('active');
   applyPaperScale();
