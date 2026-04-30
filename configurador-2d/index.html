@@ -1978,6 +1978,21 @@ function resizeMove(e){
     if(nh2>=hMin){m.y=Math.round(topEdge-nh2);m.h=Math.round(nh2);if(!hasRot&&snB2!==snap(rawBot2)) showSnapLine(snB2,'y');}
   }
 
+  // Shift: maintain aspect ratio. Locks override Shift; rotated elements skip.
+  if(e.shiftKey&&!hasRot&&!m.lockW&&!m.lockH&&r.origW>0&&r.origH>0){
+    var ar=r.origW/r.origH;
+    var drvW;
+    if(p==='r'||p==='l') drvW=true;
+    else if(p==='t'||p==='b') drvW=false;
+    else drvW=(Math.abs(dx)/r.origW)>=(Math.abs(dy)/r.origH);
+    var rW=m.w,rH=m.h;
+    if(drvW) rH=Math.max(GRID,Math.round(rW/ar));
+    else rW=Math.max(GRID,Math.round(rH*ar));
+    m.w=rW;m.h=rH;
+    m.x=(p==='l'||p==='tl'||p==='bl')?r.origX+r.origW-rW:r.origX;
+    m.y=(p==='b'||p==='bl'||p==='br')?r.origY+r.origH-rH:r.origY;
+  }
+
   // Compensate: keep anchor at its original screen position
   if(hasRot){
     var anchorAfter=anchorScreenPos(m.x,m.y,m.w,m.h,rotAngle,sc,o2,aFx,aFy);
@@ -2097,6 +2112,20 @@ function groupResizeMove(e){
     var rawB=ay,snB=magSnap(rawB,grYEdges,sc);
     var tEdge=g.by+g.bh;ah=Math.round(Math.max(GRID,tEdge-snB));ay=Math.round(tEdge-ah);
     if(snB!==snap(rawB)) showSnapLine(snB,'y');
+  }
+
+  // Shift: maintain bbox aspect ratio (group resize). Per-element locks
+  // are still respected in Pass 3a via realSx/totalLockedW.
+  if(e.shiftKey&&g.bw>0&&g.bh>0){
+    var gAr=g.bw/g.bh;
+    var grDrvW;
+    if(p==='r'||p==='l') grDrvW=true;
+    else if(p==='t'||p==='b') grDrvW=false;
+    else grDrvW=(Math.abs(dx)/g.bw)>=(Math.abs(dy)/g.bh);
+    if(grDrvW) ah=Math.round(Math.max(GRID,aw/gAr));
+    else aw=Math.round(Math.max(GRID,ah*gAr));
+    ax=(p==='l'||p==='tl'||p==='bl')?Math.round(g.bx+g.bw-aw):g.bx;
+    ay=(p==='b'||p==='bl'||p==='br')?Math.round(g.by+g.bh-ah):g.by;
   }
 
   var sx=aw/g.bw,sy=ah/g.bh;
