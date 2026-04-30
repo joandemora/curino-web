@@ -363,7 +363,7 @@ function paperBounds(){
   var ds=drawingSizeMM();
   return{left:0, right:ds.w, bottom:0, top:ds.h};
 }
-function snap(v){return Math.round(v/GRID)*GRID;}
+function snap(v){return _gridVisible?Math.round(v/GRID)*GRID:Math.round(v);}
 
 // Origin: centers total content (drawing + cartouche) in marginRect
 function origin(){
