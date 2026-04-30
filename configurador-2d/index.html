@@ -1567,6 +1567,22 @@ function getSnapEdges(axis,skipIndices){
       else if(axis==='y'){edges.push(m.y1,m.y2);}
       return;
     }
+    if(m.type==='group'){
+      // Group bbox edges (already covered for outer bbox)
+      if(axis==='x'){edges.push(m.x,m.x+m.w);}
+      else if(axis==='y'){edges.push(m.y,m.y+m.h);}
+      // Plus each child's edges in world coords (child coords + group offset)
+      (m.children||[]).forEach(function(ch){
+        if(ch.type==='shape_line'||ch.type==='shape_arc'){
+          if(axis==='x'){edges.push(m.x+ch.x1,m.x+ch.x2,m.x+Math.min(ch.x1,ch.x2),m.x+Math.max(ch.x1,ch.x2));}
+          else if(axis==='y'){edges.push(m.y+ch.y1,m.y+ch.y2,m.y+Math.min(ch.y1,ch.y2),m.y+Math.max(ch.y1,ch.y2));}
+        }else if(ch.w&&ch.h){
+          if(axis==='x'){edges.push(m.x+ch.x,m.x+ch.x+ch.w);}
+          else if(axis==='y'){edges.push(m.y+ch.y,m.y+ch.y+ch.h);}
+        }
+      });
+      return;
+    }
     if(!m.w) return;
     // Skip aligned edges for rotated elements — only snap by points
     if(m.rotation&&m.rotation%360!==0) return;
@@ -1596,6 +1612,23 @@ function getSnapPoints(skipIndices){
     if(m.type==='shape_line'||m.type==='shape_arc'){
       // Line endpoints are already in world position (no rotation field)
       pts.push({x:m.x1,y:m.y1},{x:m.x2,y:m.y2});
+    }else if(m.type==='group'){
+      // Group bbox corners + center
+      var gCorners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x,y:m.y+m.h},{x:m.x+m.w,y:m.y+m.h}];
+      pts.push.apply(pts,gCorners);
+      pts.push({x:m.x+m.w/2,y:m.y+m.h/2});
+      // Plus each child's corners/endpoints in world coords (group rotation not applied; rotated groups skip)
+      if(!(m.rotation&&m.rotation%360!==0)){
+        (m.children||[]).forEach(function(ch){
+          if(ch.type==='shape_line'||ch.type==='shape_arc'){
+            pts.push({x:m.x+ch.x1,y:m.y+ch.y1},{x:m.x+ch.x2,y:m.y+ch.y2});
+          }else if(ch.w&&ch.h){
+            pts.push({x:m.x+ch.x,y:m.y+ch.y},{x:m.x+ch.x+ch.w,y:m.y+ch.y});
+            pts.push({x:m.x+ch.x,y:m.y+ch.y+ch.h},{x:m.x+ch.x+ch.w,y:m.y+ch.y+ch.h});
+            pts.push({x:m.x+ch.x+ch.w/2,y:m.y+ch.y+ch.h/2});
+          }
+        });
+      }
     }else if(m.w&&m.h){
       var corners=[{x:m.x,y:m.y},{x:m.x+m.w,y:m.y},{x:m.x,y:m.y+m.h},{x:m.x+m.w,y:m.y+m.h}];
       var center={x:m.x+m.w/2,y:m.y+m.h/2};
