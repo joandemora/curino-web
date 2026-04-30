@@ -1351,6 +1351,7 @@ wrap.addEventListener('drop',function(e){
     m.x=x;m.y=y;
     m.savedDrawingId=_dragData.savedId;m.savedDrawingName=_dragData.savedName;
     clampToPaper(m);_modules.push(m);saveHistory();
+    if(_eraserMode) exitEraser();
     _dragData=null;draw();renderModules();selectModule(_modules.length-1);
     return;
   }
@@ -1376,6 +1377,7 @@ wrap.addEventListener('drop',function(e){
   clampToPaper(newMod);
   _modules.push(newMod);
   saveHistory();
+  if(_eraserMode) exitEraser();
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
