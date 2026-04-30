@@ -322,6 +322,32 @@ var ctx=cvs.getContext('2d');
 var wrap=document.getElementById('canvasWrap');
 var layer=document.getElementById('modulesLayer');
 
+// Fake cursor overlay for Shift-resize: shows a resize-direction icon at the
+// handle's current world position so the user perceives the cursor as glued
+// to the handle even when Shift's aspect-ratio constraint pulls it away.
+var _fakeCursorEl=null;
+function showFakeCursor(handlePos,worldX,worldY){
+  if(!_fakeCursorEl){
+    _fakeCursorEl=document.createElement('div');
+    _fakeCursorEl.style.cssText='position:fixed;width:22px;height:22px;margin-left:-11px;margin-top:-11px;pointer-events:none;z-index:99999;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;color:#000;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 2px #fff;font-weight:700';
+    document.body.appendChild(_fakeCursorEl);
+  }
+  var glyph={r:'↔',l:'↔',t:'↕',b:'↕',tl:'⤡',br:'⤡',tr:'⤢',bl:'⤢'}[handlePos]||'⤡';
+  _fakeCursorEl.textContent=glyph;
+  var sc=s(),o=origin();
+  var wRect=wrap.getBoundingClientRect();
+  var sx=wRect.left+o.x+worldX*sc;
+  var sy=wRect.top+o.y-worldY*sc;
+  _fakeCursorEl.style.left=sx+'px';
+  _fakeCursorEl.style.top=sy+'px';
+  _fakeCursorEl.style.display='flex';
+  wrap.style.cursor='none';
+}
+function hideFakeCursor(){
+  if(_fakeCursorEl) _fakeCursorEl.style.display='none';
+  wrap.style.cursor='';
+}
+
 // Accordion: toggle the panel's parent and close any sibling panels of the same class
 // within the same direct container. Returns true if the panel ends up open.
 function accordionToggle(titleEl,cls){
@@ -1979,7 +2005,8 @@ function resizeMove(e){
   }
 
   // Shift: maintain aspect ratio. Locks override Shift; rotated elements skip.
-  if(e.shiftKey&&!hasRot&&!m.lockW&&!m.lockH&&r.origW>0&&r.origH>0){
+  var shiftActive=e.shiftKey&&!hasRot&&!m.lockW&&!m.lockH&&r.origW>0&&r.origH>0;
+  if(shiftActive){
     var ar=r.origW/r.origH;
     var drvW;
     if(p==='r'||p==='l') drvW=true;
@@ -1992,6 +2019,12 @@ function resizeMove(e){
     m.x=(p==='l'||p==='tl'||p==='bl')?r.origX+r.origW-rW:r.origX;
     m.y=(p==='b'||p==='bl'||p==='br')?r.origY+r.origH-rH:r.origY;
   }
+  if(shiftActive){
+    // Fake cursor at handle position
+    var hx=(p==='l'||p==='tl'||p==='bl')?m.x:(p==='r'||p==='tr'||p==='br')?m.x+m.w:m.x+m.w/2;
+    var hy=(p==='b'||p==='bl'||p==='br')?m.y:(p==='t'||p==='tl'||p==='tr')?m.y+m.h:m.y+m.h/2;
+    showFakeCursor(p,hx,hy);
+  }else hideFakeCursor();
 
   // Compensate: keep anchor at its original screen position
   if(hasRot){
@@ -2019,6 +2052,7 @@ function resizeMove(e){
 }
 function resizeEnd(){
   clearSnapLines();
+  hideFakeCursor();
   _resizing=null;
   document.removeEventListener('mousemove',resizeMove);
   document.removeEventListener('mouseup',resizeEnd);draw();
@@ -2116,7 +2150,8 @@ function groupResizeMove(e){
 
   // Shift: maintain bbox aspect ratio (group resize). Per-element locks
   // are still respected in Pass 3a via realSx/totalLockedW.
-  if(e.shiftKey&&g.bw>0&&g.bh>0){
+  var grShift=e.shiftKey&&g.bw>0&&g.bh>0;
+  if(grShift){
     var gAr=g.bw/g.bh;
     var grDrvW;
     if(p==='r'||p==='l') grDrvW=true;
@@ -2127,6 +2162,11 @@ function groupResizeMove(e){
     ax=(p==='l'||p==='tl'||p==='bl')?Math.round(g.bx+g.bw-aw):g.bx;
     ay=(p==='b'||p==='bl'||p==='br')?Math.round(g.by+g.bh-ah):g.by;
   }
+  if(grShift){
+    var ghx=(p==='l'||p==='tl'||p==='bl')?ax:(p==='r'||p==='tr'||p==='br')?ax+aw:ax+aw/2;
+    var ghy=(p==='b'||p==='bl'||p==='br')?ay:(p==='t'||p==='tl'||p==='tr')?ay+ah:ay+ah/2;
+    showFakeCursor(p,ghx,ghy);
+  }else hideFakeCursor();
 
   var sx=aw/g.bw,sy=ah/g.bh;
 
@@ -2363,6 +2403,7 @@ function groupResizeMove(e){
 }
 function groupResizeEnd(){
   clearSnapLines();
+  hideFakeCursor();
   _groupResize=null;
   document.removeEventListener('mousemove',groupResizeMove);
   document.removeEventListener('mouseup',groupResizeEnd);
