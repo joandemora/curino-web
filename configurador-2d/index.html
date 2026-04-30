@@ -1290,14 +1290,16 @@ function renderProps(){
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   // Group properties
   if(m.type==='group'){
+    var gLockClosed='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
+    var gLockOpen='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>';
     var groupHTML=
       '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Dibujo ('+m.children.length+' elementos)</div></div>';
     if(m.savedDrawingId){
       groupHTML+='<div class="c2d-prop"><label>Nombre</label><input id="savedDrawingNameInput" type="text" value="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'" data-id="'+m.savedDrawingId+'" data-prev="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'"></div>';
     }
     groupHTML+=
-      '<div class="c2d-prop"><label>Ancho (mm)</label><div style="font-size:13px;padding:6px 0">'+m.w+'</div></div>'+
-      '<div class="c2d-prop"><label>Alto (mm)</label><div style="font-size:13px;padding:6px 0">'+m.h+'</div></div>'+
+      '<div class="c2d-prop"><label>Ancho (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" '+(m.lockW?'disabled ':'')+'onchange="updateProp(\'w\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockW?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockW\')">'+(m.lockW?gLockClosed:gLockOpen)+'</button></div></div>'+
+      '<div class="c2d-prop"><label>Alto (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" '+(m.lockH?'disabled ':'')+'onchange="updateProp(\'h\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockH?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockH\')">'+(m.lockH?gLockClosed:gLockOpen)+'</button></div></div>'+
       '<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>'+
       '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
     panel.innerHTML=groupHTML;
@@ -1407,6 +1409,20 @@ function updateProp(key,val){
   if(key==='sagitta'&&_modules[idx].type==='shape_arc'){
     var adist=Math.sqrt(Math.pow(_modules[idx].x2-_modules[idx].x1,2)+Math.pow(_modules[idx].y2-_modules[idx].y1,2));
     v=Math.max(-adist/2,Math.min(adist/2,v));
+  }
+  // Group w/h edit: ignore if locked, otherwise rescale children via scaleGroupChildren
+  if(_modules[idx].type==='group'&&(key==='w'||key==='h')){
+    var mg=_modules[idx];
+    if(key==='w'&&mg.lockW){renderProps();return;}
+    if(key==='h'&&mg.lockH){renderProps();return;}
+    if(v<GRID) v=GRID;
+    var ow=mg.w,oh=mg.h;
+    var nw=key==='w'?v:ow,nh=key==='h'?v:oh;
+    var origCh=JSON.parse(JSON.stringify(mg.children||[]));
+    mg.children=scaleGroupChildren(origCh,nw,nh,ow,oh);
+    mg[key]=v;
+    draw();renderModules();renderProps();
+    return;
   }
   _modules[idx][key]=v;
   draw();renderModules();renderProps();
