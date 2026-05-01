@@ -779,6 +779,7 @@ function renderModules(){
       svg+='</svg>';
       div.innerHTML=svg;
       div.onmousedown=function(e){
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}
         if(_eraserMode){
           e.stopPropagation();e.preventDefault();
           saveHistory();
@@ -791,7 +792,7 @@ function renderModules(){
         }
         startDimOffsetDrag(e,i);
       };
-      div.onclick=function(e){if(_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
       layer.appendChild(div);
       return;
     }
@@ -1341,8 +1342,8 @@ function renderModules(){
     }else{
       div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     }
-    div.onmousedown=function(e){if(_eraserMode){e.stopPropagation();e.preventDefault();eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
-    div.onclick=function(e){if(_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+    div.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_eraserMode){e.stopPropagation();e.preventDefault();eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
+    div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
       if(m.type==='shape_line'||m.type==='shape_arc'){
@@ -1359,7 +1360,7 @@ function renderModules(){
         [{px:ep1x,py:ep1y,pt:1},{px:ep2x,py:ep2y,pt:2}].forEach(function(ep){
           var h=document.createElement('div');
           h.className='c2d-handle';h.style.cssText='left:'+(ep.px-4)+'px;top:'+(ep.py-4)+'px;cursor:move;overflow:visible';
-          h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
+          h.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
           div.appendChild(h);
         });
         // Arc radius handle at apex of arc
@@ -1375,7 +1376,7 @@ function renderModules(){
           var amid_y=(bboxTopY-apexWy)*sc+lpad2;
           var rh=document.createElement('div');
           rh.className='c2d-cp';rh.style.left=amid_x+'px';rh.style.top=amid_y+'px';
-          rh.onmousedown=function(e){e.stopPropagation();e.preventDefault();startArcRadiusDrag(e,i);};
+          rh.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startArcRadiusDrag(e,i);};
           div.appendChild(rh);
         }
       }else{
@@ -1383,7 +1384,7 @@ function renderModules(){
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
-        h.onmousedown=function(e){e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
+        h.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
         div.appendChild(h);
       });
       }
@@ -1394,14 +1395,14 @@ function renderModules(){
         var cp=document.createElement('div');
         cp.className='c2d-cp';
         cp.style.left=cpxPx+'px';cp.style.top=cpyPx+'px';
-        cp.onmousedown=function(e){e.stopPropagation();e.preventDefault();startCurveDrag(e,i);};
+        cp.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startCurveDrag(e,i);};
         div.appendChild(cp);
       }
       // Rotation handle (not for lines — they rotate via endpoints)
       if(m.type!=='shape_line'&&m.type!=='shape_arc'){
         var rotH=document.createElement('div');
         rotH.className='c2d-handle c2d-handle-rot';
-        rotH.onmousedown=function(e){e.stopPropagation();e.preventDefault();startRotate(e,i);};
+        rotH.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startRotate(e,i);};
         div.appendChild(rotH);
       }
     }
@@ -1428,7 +1429,7 @@ function renderModules(){
     ['tl','t','tr','l','r','bl','b','br'].forEach(function(pos){
       var hd=document.createElement('div');
       hd.className='c2d-handle c2d-handle-'+pos;
-      hd.onmousedown=function(e){e.stopPropagation();e.preventDefault();startGroupResize(e,pos,bx1,by1,bw,bh);};
+      hd.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startGroupResize(e,pos,bx1,by1,bw,bh);};
       bbox.appendChild(hd);
     });
     layer.appendChild(bbox);
@@ -3702,6 +3703,7 @@ function toggleEraser(){
   _eraserMode=!_eraserMode;
   var btn=document.getElementById('btnEraser');
   if(_eraserMode){
+    if(_dimMode) exitDimMode();
     btn.classList.add('active');
     wrap.style.cursor='crosshair';
     _sel.clear();renderModules();renderProps();
