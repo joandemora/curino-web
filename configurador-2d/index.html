@@ -25,6 +25,11 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar .btn-eraser.active{background:var(--coral);color:#fff;border-color:var(--coral)}
 .c2d-toolbar .btn-grid.active{background:var(--black);color:#fff;border-color:var(--black)}
 .c2d-toolbar .btn-dim.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.c2d-dim-palette{display:none;align-items:center;gap:5px;padding:0 6px;border:1px solid var(--border);border-radius:6px;height:24px}
+.c2d-dim-palette.visible{display:inline-flex}
+.c2d-dim-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s}
+.c2d-dim-color:hover{transform:scale(1.15)}
+.c2d-dim-color.active{border-color:var(--black)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
@@ -189,6 +194,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg></button>
     <button class="btn-grid" id="btnGrid" onclick="toggleGrid()" title="Mostrar/ocultar cuadrícula"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg></button>
     <button class="btn-dim" id="btnDim" onclick="toggleDimMode('linear')" title="Acotar (lineal)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3" y2="14"/><line x1="21" y1="6" x2="21" y2="14"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="3,10 6,8 6,12" fill="currentColor"/><polygon points="21,10 18,8 18,12" fill="currentColor"/></svg></button>
+    <div class="c2d-dim-palette" id="dimPalette"></div>
     <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
       <button onclick="toggleExportMenu()">Exportar</button>
@@ -685,7 +691,7 @@ function draw(){
   if(_dimMode==='linear'&&_dimDraft&&_dimDraft.cursorX!=null){
     var sc_d=s(),o_d=origin();
     function tS(wx,wy){return[o_d.x+wx*sc_d, o_d.y-wy*sc_d];}
-    ctx.strokeStyle='#999';ctx.fillStyle='#999';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.strokeStyle=_dimColor;ctx.fillStyle=_dimColor;ctx.lineWidth=1;ctx.setLineDash([6,4]);
     if(_dimDraft.step===1){
       var s1=tS(_dimDraft.x1,_dimDraft.y1), c1=tS(_dimDraft.cursorX,_dimDraft.cursorY);
       ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(c1[0],c1[1]);ctx.stroke();
@@ -762,16 +768,17 @@ function renderModules(){
       var angDeg=Math.atan2(uy,ux)*180/Math.PI;
       // Flip text 180° if upside-down so it always reads left-to-right
       if(angDeg>90||angDeg<=-90) angDeg+=180;
-      var col=_sel.has(i)?'var(--accent)':'#444';
-      var sw=1; // 1px stroke for cad style
+      var col=m.color||DIM_COLOR_DEFAULT;
+      var sw=_sel.has(i)?1.6:1; // selected: slightly thicker stroke (color stays the same)
+      var dash='6 4';
       var label=g.value+' mm';
       var fontSize=Math.max(11,Math.min(14,12));
       var svg='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 '+dmw+' '+dmh+'">';
-      // Extension lines from p1→d1 and p2→d2
-      svg+='<line x1="'+v1[0]+'" y1="'+v1[1]+'" x2="'+w1[0]+'" y2="'+w1[1]+'" stroke="'+col+'" stroke-width="'+sw+'"/>';
-      svg+='<line x1="'+v2[0]+'" y1="'+v2[1]+'" x2="'+w2[0]+'" y2="'+w2[1]+'" stroke="'+col+'" stroke-width="'+sw+'"/>';
-      // Dim line (will be the click target)
-      svg+='<line x1="'+w1[0]+'" y1="'+w1[1]+'" x2="'+w2[0]+'" y2="'+w2[1]+'" stroke="'+col+'" stroke-width="'+sw+'" style="pointer-events:stroke;cursor:move" data-dimline="1"/>';
+      // Extension lines from p1→d1 and p2→d2 (dashed)
+      svg+='<line x1="'+v1[0]+'" y1="'+v1[1]+'" x2="'+w1[0]+'" y2="'+w1[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'"/>';
+      svg+='<line x1="'+v2[0]+'" y1="'+v2[1]+'" x2="'+w2[0]+'" y2="'+w2[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'"/>';
+      // Dim line (dashed; click target for offset drag)
+      svg+='<line x1="'+w1[0]+'" y1="'+w1[1]+'" x2="'+w2[0]+'" y2="'+w2[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'" style="pointer-events:stroke;cursor:move" data-dimline="1"/>';
       // Arrows
       svg+='<polygon points="'+w1[0]+','+w1[1]+' '+(a1bx+a1px)+','+(a1by+a1py)+' '+(a1bx-a1px)+','+(a1by-a1py)+'" fill="'+col+'"/>';
       svg+='<polygon points="'+w2[0]+','+w2[1]+' '+(a2bx+a1px)+','+(a2by+a1py)+' '+(a2bx-a1px)+','+(a2by-a1py)+'" fill="'+col+'"/>';
@@ -3600,15 +3607,35 @@ function toggleGrid(){
   draw();
 }
 // ── DIMENSION TOOL (Phase 1: linear) ──
+// Single source of truth for the dimension palette. Order = display order.
+var DIM_COLORS={lila:'#7e3ed8',black:'#222222',red:'#d8473a',green:'#3d9970',orange:'#e67e22'};
+var DIM_COLOR_DEFAULT=DIM_COLORS.lila;
+var _dimColor=localStorage.getItem('c2d_dimColor')||DIM_COLOR_DEFAULT;
 var _dimMode=null;          // null | 'linear' (later: 'angular' | 'radial')
 var _dimDraft=null;         // {step:0|1|2, x1,y1, x2,y2, cursorX,cursorY}
 var _dimOffsetDrag=null;    // {idx, origOffset}
+function buildDimPalette(){
+  var pal=document.getElementById('dimPalette');
+  if(!pal) return;
+  pal.innerHTML='';
+  Object.keys(DIM_COLORS).forEach(function(name){
+    var c=DIM_COLORS[name];
+    var dot=document.createElement('div');
+    dot.className='c2d-dim-color'+(c===_dimColor?' active':'');
+    dot.style.background=c;
+    dot.title=name.charAt(0).toUpperCase()+name.slice(1);
+    dot.onclick=function(){_dimColor=c;localStorage.setItem('c2d_dimColor',c);buildDimPalette();};
+    pal.appendChild(dot);
+  });
+}
 function toggleDimMode(kind){
   if(_dimMode===kind){exitDimMode();return;}
   if(_eraserMode) exitEraser();
   _dimMode=kind;
   _dimDraft={step:0};
   document.getElementById('btnDim').classList.add('active');
+  buildDimPalette();
+  document.getElementById('dimPalette').classList.add('visible');
   wrap.style.cursor='crosshair';
   wrap.classList.add('tool-mode-active');
   _sel.clear();renderModules();renderProps();
@@ -3618,6 +3645,8 @@ function exitDimMode(){
   _dimMode=null;_dimDraft=null;
   var btn=document.getElementById('btnDim');
   if(btn) btn.classList.remove('active');
+  var pal=document.getElementById('dimPalette');
+  if(pal) pal.classList.remove('visible');
   wrap.style.cursor='grab';
   if(!_eraserMode) wrap.classList.remove('tool-mode-active');
   draw();
@@ -3659,7 +3688,7 @@ function dimClick(e){
     saveHistory();
     _modules.push({type:'dimension',kind:'linear',
       x1:_dimDraft.x1,y1:_dimDraft.y1,x2:_dimDraft.x2,y2:_dimDraft.y2,
-      offset:off});
+      offset:off,color:_dimColor});
     _dimDraft={step:0};
     draw();renderModules();
     return;
