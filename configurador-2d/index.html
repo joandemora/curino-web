@@ -25,6 +25,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar .btn-eraser.active{background:var(--coral);color:#fff;border-color:var(--coral)}
 .c2d-toolbar .btn-grid.active{background:var(--black);color:#fff;border-color:var(--black)}
 .c2d-toolbar .btn-dim.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.c2d-toolbar .btn-dim-vis.active{background:var(--black);color:#fff;border-color:var(--black)}
 .c2d-dim-palette{display:none;align-items:center;gap:5px;padding:0 6px;border:1px solid var(--border);border-radius:6px;height:24px}
 .c2d-dim-palette.visible{display:inline-flex}
 .c2d-dim-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s}
@@ -201,6 +202,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <button onclick="undo()" title="Deshacer (Ctrl+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
     <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg></button>
     <button class="btn-grid" id="btnGrid" onclick="toggleGrid()" title="Mostrar/ocultar cuadrícula"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg></button>
+    <button class="btn-dim-vis" id="btnDimVis" onclick="toggleDimVisibility()" title="Mostrar/ocultar cotas"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
     <button class="btn-dim" id="btnDim" onclick="toggleDimMode()" title="Acotar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3" y2="14"/><line x1="21" y1="6" x2="21" y2="14"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="3,10 6,8 6,12" fill="currentColor"/><polygon points="21,10 18,8 18,12" fill="currentColor"/></svg></button>
     <div class="c2d-dim-kind" id="dimKindSelector"></div>
     <div class="c2d-dim-radial-toggle" id="dimRadialToggle"></div>
@@ -324,6 +326,7 @@ var PAPERS={A4:{w:297,h:210},A3:{w:420,h:297}}; // landscape orientation (w>h)
 var _paper=localStorage.getItem('c2d_paper')||'A4';
 var _drawScale=parseInt(localStorage.getItem('c2d_scale'))||30;
 var _gridVisible=localStorage.getItem('c2d_gridVisible')!=='0';
+var _dimVisible=localStorage.getItem('c2d_dimVisible')!=='0';
 var PAPER_MARGIN=0.02; // 2% margin
 var CAJETIN_H_RATIO=0.12; // cajetin takes 12% of paper height
 // Multi-page model
@@ -791,6 +794,8 @@ function renderModules(){
   var layerOffX=pr.x, layerOffY=pr.y;
   var _orphanedDimIdx=[]; // radial dims whose target circle is gone
   _modules.forEach(function(m,i){
+    // Hide all dimensions when the visibility toggle is off
+    if(!_dimVisible&&m.type==='dimension') return;
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
@@ -2043,6 +2048,7 @@ function getSnapEdges(axis,skipIndices){
   var edges=[];
   _modules.forEach(function(m,i){
     if(skipIndices.has(i)) return;
+    if(!_dimVisible&&m.type==='dimension') return;
     if(m.type==='shape_line'||m.type==='shape_arc'){
       // Lines don't use rotation field — endpoints are already in correct position
       if(axis==='x'){edges.push(m.x1,m.x2);}
@@ -2091,6 +2097,7 @@ function getSnapPoints(skipIndices){
   var pts=[];
   _modules.forEach(function(m,i){
     if(skipIndices.has(i)) return;
+    if(!_dimVisible&&m.type==='dimension') return;
     if(m.type==='shape_line'||m.type==='shape_arc'){
       // Line endpoints are already in world position (no rotation field)
       pts.push({x:m.x1,y:m.y1},{x:m.x2,y:m.y2});
@@ -3062,6 +3069,7 @@ function marqueeEnd(e){
     var mx2=Math.max(_marquee.startX,cx),my2=Math.max(_marquee.startY,cy);
     if(!_marquee.shift) _sel.clear();
     _modules.forEach(function(m,i){
+      if(!_dimVisible&&m.type==='dimension') return;
       var mleft,mtop,mw,mh;
       if(m.type==='shape_line'||m.type==='shape_arc'){var lmx=Math.min(m.x1,m.x2),lmy=Math.max(m.y1,m.y2);mleft=o.x+lmx*sc;mtop=o.y-lmy*sc;mw=Math.abs(m.x2-m.x1)*sc;mh=Math.abs(m.y2-m.y1)*sc;}
       else{mleft=o.x+m.x*sc;mtop=o.y-(m.y+m.h)*sc;mw=m.w*sc;mh=m.h*sc;}
@@ -3512,6 +3520,7 @@ function finishInit(){
   rebuildZoomOptions();
   document.getElementById('zoomSelect').value=Math.round(_userZoom*100);
   if(_gridVisible) document.getElementById('btnGrid').classList.add('active');
+  if(_dimVisible) document.getElementById('btnDimVis').classList.add('active');
   applyPaperScale();
   renderSlides();
 }
@@ -3719,7 +3728,7 @@ function ungroupDibujo(){
 
 function selectAll(){
   _sel.clear();
-  _modules.forEach(function(_,i){_sel.add(i);});
+  _modules.forEach(function(m,i){if(!_dimVisible&&m.type==='dimension') return;_sel.add(i);});
   renderModules();renderProps();
 }
 
@@ -3874,6 +3883,20 @@ function toggleGrid(){
   if(_gridVisible) btn.classList.add('active');
   else btn.classList.remove('active');
   draw();
+}
+function toggleDimVisibility(){
+  _dimVisible=!_dimVisible;
+  localStorage.setItem('c2d_dimVisible',_dimVisible?'1':'0');
+  var btn=document.getElementById('btnDimVis');
+  if(_dimVisible) btn.classList.add('active');
+  else btn.classList.remove('active');
+  // Drop dimension selections so hidden dims don't keep ghost selection state
+  if(!_dimVisible){
+    var keep=new Set();
+    _sel.forEach(function(idx){if(_modules[idx]&&_modules[idx].type!=='dimension') keep.add(idx);});
+    _sel=keep;
+  }
+  draw();renderModules();renderProps();
 }
 // ── DIMENSION TOOL (Phase 1: linear, Phase 2: angular) ──
 // Single source of truth for the dimension palette. Order = display order.
