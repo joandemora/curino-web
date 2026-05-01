@@ -870,9 +870,25 @@ function renderModules(){
     if(m.type==='dimension'&&m.kind==='angular'){
       var ag=dimAngularGeom(m);
       var pad=20;
-      // Bbox: encompass full circle of radius r around (cx,cy) + arm points
-      var bxArr=[m.cx-ag.radius,m.cx+ag.radius,ag.p2x,ag.p3x];
-      var byArr=[m.cy-ag.radius,m.cy+ag.radius,ag.p2y,ag.p3y];
+      // Tight bbox: only the points actually drawn — arc endpoints, arm
+      // endpoints, label, and any cardinal angle (0, π/2, π, -π/2) that
+      // falls inside the sector [a1, a1+span] (those are the arc extremes).
+      var bbPts=[{x:ag.arc1x,y:ag.arc1y},{x:ag.arc2x,y:ag.arc2y},
+        {x:ag.p2x,y:ag.p2y},{x:ag.p3x,y:ag.p3y},
+        {x:ag.labX,y:ag.labY}];
+      var aStart=ag.a1, aEnd=ag.a1+ag.span;
+      var aLow=Math.min(aStart,aEnd), aHigh=Math.max(aStart,aEnd);
+      [0,Math.PI/2,Math.PI,-Math.PI/2].forEach(function(card){
+        for(var k=-1;k<=1;k++){
+          var t=card+k*2*Math.PI;
+          if(t>=aLow&&t<=aHigh){
+            bbPts.push({x:m.cx+ag.radius*Math.cos(t),y:m.cy+ag.radius*Math.sin(t)});
+            break;
+          }
+        }
+      });
+      var bxArr=bbPts.map(function(p){return p.x;});
+      var byArr=bbPts.map(function(p){return p.y;});
       var dbx1=Math.min.apply(null,bxArr)-pad, dby1=Math.min.apply(null,byArr)-pad;
       var dbx2=Math.max.apply(null,bxArr)+pad, dby2=Math.max.apply(null,byArr)+pad;
       var dmw=(dbx2-dbx1)*sc, dmh=(dby2-dby1)*sc;
@@ -895,7 +911,8 @@ function renderModules(){
       var sp3=[vX(ag.p3x),vY(ag.p3y)];
       // SVG: y is flipped; world ccw (positive span) -> screen cw (sweep flag 1)
       var largeArc=Math.abs(ag.span)>Math.PI?1:0;
-      var sweep=ag.span>0?1:0;
+      // World CCW (span>0) → viewBox CCW after Y-flip → SVG sweep flag = 0
+      var sweep=ag.span>0?0:1;
       // Tangent unit at arc1 in screen: in world tangent_ccw=(-sin a1, cos a1); flip y → (-sin a1, -cos a1)
       var arrL=4*sc, arrW=2*sc;
       function tangentAtArc(angleW, towardCenter){
