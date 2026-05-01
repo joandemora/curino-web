@@ -34,6 +34,10 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-dim-kind.visible{display:inline-flex}
 .c2d-dim-kind button{background:var(--white);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;font-family:var(--font);cursor:pointer;height:24px}
 .c2d-dim-kind button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.c2d-dim-radial-toggle{display:none;align-items:center;gap:4px}
+.c2d-dim-radial-toggle.visible{display:inline-flex}
+.c2d-dim-radial-toggle button{background:var(--white);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;font-family:var(--font);cursor:pointer;height:24px;min-width:24px}
+.c2d-dim-radial-toggle button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
@@ -199,6 +203,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <button class="btn-grid" id="btnGrid" onclick="toggleGrid()" title="Mostrar/ocultar cuadrícula"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg></button>
     <button class="btn-dim" id="btnDim" onclick="toggleDimMode()" title="Acotar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3" y2="14"/><line x1="21" y1="6" x2="21" y2="14"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="3,10 6,8 6,12" fill="currentColor"/><polygon points="21,10 18,8 18,12" fill="currentColor"/></svg></button>
     <div class="c2d-dim-kind" id="dimKindSelector"></div>
+    <div class="c2d-dim-radial-toggle" id="dimRadialToggle"></div>
     <div class="c2d-dim-palette" id="dimPalette"></div>
     <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
@@ -716,6 +721,22 @@ function draw(){
         ctx.beginPath();ctx.moveTo(s2[0],s2[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
         ctx.beginPath();ctx.moveTo(sd1[0],sd1[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
       }
+    }else if(_dimMode==='radial'){
+      // step 1: target captured. Preview line from center along cursor angle to outside, with arrow at contour.
+      if(_dimDraft.step===1){
+        var rcx=_dimDraft.cx, rcy=_dimDraft.cy, rr=_dimDraft.radius;
+        var rang=Math.atan2(_dimDraft.cursorY-rcy,_dimDraft.cursorX-rcx);
+        var rux=Math.cos(rang), ruy=Math.sin(rang);
+        var sCenP=tS(rcx,rcy);
+        var sContP=tS(rcx+rr*rux,rcy+rr*ruy);
+        var sOutP=tS(rcx+(rr+Math.max(rr*0.35,30))*rux, rcy+(rr+Math.max(rr*0.35,30))*ruy);
+        if(_dimRadialKind==='diameter'){
+          var sFarP=tS(rcx-rr*rux,rcy-rr*ruy);
+          ctx.beginPath();ctx.moveTo(sFarP[0],sFarP[1]);ctx.lineTo(sOutP[0],sOutP[1]);ctx.stroke();
+        }else{
+          ctx.beginPath();ctx.moveTo(sCenP[0],sCenP[1]);ctx.lineTo(sOutP[0],sOutP[1]);ctx.stroke();
+        }
+      }
     }else if(_dimMode==='angular'){
       // step 1: line from cx,cy to cursor (defining arm 1)
       // step 2: arm 1 fixed; line from cx,cy to cursor (defining arm 2)
@@ -768,6 +789,7 @@ function renderModules(){
   // Offset: modules use left/top relative to layer, but origin is relative to wrap
   // So adjust: module screen pos = (o.x + m.x*sc) relative to wrap, but layer starts at ca.x
   var layerOffX=pr.x, layerOffY=pr.y;
+  var _orphanedDimIdx=[]; // radial dims whose target circle is gone
   _modules.forEach(function(m,i){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
@@ -911,6 +933,89 @@ function renderModules(){
       svg+='<g transform="translate('+slab[0]+','+slab[1]+')">';
       svg+='<rect x="'+(-textW/2)+'" y="'+(-fontSize*0.85)+'" width="'+textW+'" height="'+(fontSize*1.3)+'" fill="#fff" stroke="none"/>';
       svg+='<text x="0" y="'+(fontSize*0.35)+'" text-anchor="middle" font-family="sans-serif" font-size="'+fontSize+'" fill="'+col+'">'+label+'</text>';
+      svg+='</g>';
+      svg+='</svg>';
+      div.innerHTML=svg;
+      div.onmousedown=function(e){
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}
+        if(_eraserMode){
+          e.stopPropagation();e.preventDefault();
+          saveHistory();
+          var newSel=new Set();
+          _sel.forEach(function(s){if(s<i) newSel.add(s);else if(s>i) newSel.add(s-1);});
+          _sel=newSel;
+          _modules.splice(i,1);
+          draw();renderModules();renderProps();
+          return;
+        }
+        startDimOffsetDrag(e,i);
+      };
+      div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      layer.appendChild(div);
+      return;
+    }
+    if(m.type==='dimension'&&m.kind==='radial'){
+      var rg=dimRadialGeom(m);
+      if(!rg){
+        // Target circle is gone — auto-delete the radial dim
+        _orphanedDimIdx.push(i);
+        return;
+      }
+      // Sync stored snapshot to live target
+      m.cx=Math.round(rg.cx);m.cy=Math.round(rg.cy);m.radius=Math.round(rg.radius);
+      var pad=20;
+      var keyPts=[{x:rg.cx,y:rg.cy},rg.contour,rg.outer];
+      if(m.displayKind==='diameter') keyPts.push(rg.diameterFar);
+      var bxArr=keyPts.map(function(p){return p.x;});
+      var byArr=keyPts.map(function(p){return p.y;});
+      var dbx1=Math.min.apply(null,bxArr)-pad, dby1=Math.min.apply(null,byArr)-pad;
+      var dbx2=Math.max.apply(null,bxArr)+pad, dby2=Math.max.apply(null,byArr)+pad;
+      var dmw=(dbx2-dbx1)*sc, dmh=(dby2-dby1)*sc;
+      var dmx=o.x+dbx1*sc, dmy=o.y-dby2*sc;
+      div.classList.add('no-frame');
+      div.style.cssText='position:absolute;border:none;background:transparent;cursor:move';
+      div.style.left=(dmx-layerOffX)+'px';div.style.top=(dmy-layerOffY)+'px';
+      div.style.width=dmw+'px';div.style.height=dmh+'px';
+      function vXr(wx){return(wx-dbx1)*sc;}
+      function vYr(wy){return(dby2-wy)*sc;}
+      var col=m.color||DIM_COLOR_DEFAULT;
+      var sw=_sel.has(i)?1.6:1;
+      var dash='6 4';
+      var arrL=4*sc, arrW=2*sc;
+      var sCenter=[vXr(rg.cx),vYr(rg.cy)];
+      var sCont=[vXr(rg.contour.x),vYr(rg.contour.y)];
+      var sOuter=[vXr(rg.outer.x),vYr(rg.outer.y)];
+      var sFar=[vXr(rg.diameterFar.x),vYr(rg.diameterFar.y)];
+      var fontSize=12;
+      var textW=rg.label.length*fontSize*0.6+8;
+      var svg='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 '+dmw+' '+dmh+'">';
+      if(m.displayKind==='diameter'){
+        // Line spans diameter (far ↔ outer extends past contour for label)
+        svg+='<line x1="'+sFar[0]+'" y1="'+sFar[1]+'" x2="'+sOuter[0]+'" y2="'+sOuter[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'" style="pointer-events:stroke;cursor:move"/>';
+        // Arrows at the two contour intersections, pointing inward (toward center)
+        // Arrow at sCont (along +u): tip at sCont, base at sCont - arrL*u_screen
+        // u in screen coords: screen y is flipped, so u_screen = (cos a, -sin a)
+        var usx=Math.cos(rg.angle), usy=-Math.sin(rg.angle);
+        // Contour-side arrow tip at sCont, pointing OUTWARD (along +u) — base inward
+        var b1x=sCont[0]-usx*arrL, b1y=sCont[1]-usy*arrL;
+        var p1px=-usy*arrW/2, p1py=usx*arrW/2;
+        svg+='<polygon points="'+sCont[0]+','+sCont[1]+' '+(b1x+p1px)+','+(b1y+p1py)+' '+(b1x-p1px)+','+(b1y-p1py)+'" fill="'+col+'"/>';
+        // Far-side arrow tip at sFar pointing -u (outward there)
+        var b2x=sFar[0]+usx*arrL, b2y=sFar[1]+usy*arrL;
+        svg+='<polygon points="'+sFar[0]+','+sFar[1]+' '+(b2x+p1px)+','+(b2y+p1py)+' '+(b2x-p1px)+','+(b2y-p1py)+'" fill="'+col+'"/>';
+      }else{
+        // R: line from center to outer label position, arrow at contour pointing outward
+        svg+='<line x1="'+sCenter[0]+'" y1="'+sCenter[1]+'" x2="'+sOuter[0]+'" y2="'+sOuter[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'" style="pointer-events:stroke;cursor:move"/>';
+        var usx=Math.cos(rg.angle), usy=-Math.sin(rg.angle);
+        // Arrow at contour, tip at sCont pointing along +u (outward)
+        var b1x=sCont[0]-usx*arrL, b1y=sCont[1]-usy*arrL;
+        var p1px=-usy*arrW/2, p1py=usx*arrW/2;
+        svg+='<polygon points="'+sCont[0]+','+sCont[1]+' '+(b1x+p1px)+','+(b1y+p1py)+' '+(b1x-p1px)+','+(b1y-p1py)+'" fill="'+col+'"/>';
+      }
+      // Label at outer end with white background
+      svg+='<g transform="translate('+sOuter[0]+','+sOuter[1]+')">';
+      svg+='<rect x="'+(-textW/2)+'" y="'+(-fontSize*0.85)+'" width="'+textW+'" height="'+(fontSize*1.3)+'" fill="#fff" stroke="none"/>';
+      svg+='<text x="0" y="'+(fontSize*0.35)+'" text-anchor="middle" font-family="sans-serif" font-size="'+fontSize+'" fill="'+col+'">'+rg.label+'</text>';
       svg+='</g>';
       svg+='</svg>';
       div.innerHTML=svg;
@@ -1544,6 +1649,17 @@ function renderModules(){
     }
     layer.appendChild(div);
   });
+  // Auto-delete radial dims whose target circle no longer exists
+  if(_orphanedDimIdx.length>0){
+    _orphanedDimIdx.sort(function(a,b){return b-a;}).forEach(function(idx){
+      var newSel=new Set();
+      _sel.forEach(function(s){if(s<idx) newSel.add(s);else if(s>idx) newSel.add(s-1);});
+      _sel=newSel;
+      _modules.splice(idx,1);
+    });
+    // Re-render once to drop the orphaned divs
+    setTimeout(function(){renderModules();renderProps();},0);
+  }
 
   // Group bounding box with handles (multi-select only)
   if(_sel.size>1){
@@ -1610,6 +1726,12 @@ function renderProps(){
       var ag=dimAngularGeom(m);
       html+='<div class="c2d-prop"><label>Valor (\u00B0)</label><div style="font-size:13px;padding:6px 0">'+ag.valueDeg.toFixed(1)+'\u00B0</div></div>'+
         '<div class="c2d-prop"><label>Radio (mm)</label><input type="number" value="'+(m.radius||0)+'" step="10" min="1" onchange="updateProp(\'radius\',this.value)"></div>';
+    }else if(m.kind==='radial'){
+      var rg2=dimRadialGeom(m);
+      var rval=rg2?rg2.value:'\u2014';
+      var rlabel=m.displayKind==='diameter'?'\u00D8 '+rval:'R '+rval;
+      html+='<div class="c2d-prop"><label>Valor</label><div style="font-size:13px;padding:6px 0">'+rlabel+' mm</div></div>'+
+        '<div class="c2d-prop"><label>Tipo</label><select onchange="updateProp(\'displayKind\',this.value)"><option value="radius"'+(m.displayKind==='radius'?' selected':'')+'>Radio (R)</option><option value="diameter"'+(m.displayKind==='diameter'?' selected':'')+'>Di\u00E1metro (\u00D8)</option></select></div>';
     }
     panel.innerHTML=html+'<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
     return;
@@ -1725,7 +1847,7 @@ function toggleCajetin(on){
 function updateProp(key,val){
   if(_sel.size!==1) return;saveHistory();
   var idx=_sel.values().next().value;
-  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill'||key==='strokeStyle')?val:(key==='strokeWidth'?parseFloat(val)||1:Math.round(parseFloat(val))||0);
+  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill'||key==='strokeStyle'||key==='displayKind')?val:(key==='strokeWidth'?parseFloat(val)||1:Math.round(parseFloat(val))||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
   if(key==='w'&&_modules[idx].type==='divisor') return;
@@ -3741,11 +3863,13 @@ function toggleGrid(){
 var DIM_COLORS={lila:'#7e3ed8',black:'#222222',red:'#d8473a',green:'#3d9970',orange:'#e67e22'};
 var DIM_COLOR_DEFAULT=DIM_COLORS.lila;
 var _dimColor=localStorage.getItem('c2d_dimColor')||DIM_COLOR_DEFAULT;
-var _dimKind=localStorage.getItem('c2d_dimKind')||'linear'; // 'linear' | 'angular' (Phase 3: 'radial')
-var _dimMode=null;          // null when off; otherwise == kind in use ('linear'|'angular')
+var _dimKind=localStorage.getItem('c2d_dimKind')||'linear'; // 'linear' | 'angular' | 'radial'
+var _dimRadialKind=localStorage.getItem('c2d_dimRadialKind')||'radius'; // 'radius' | 'diameter'
+var _dimMode=null;          // null when off; otherwise == kind in use
 var _dimDraft=null;         // linear: {step:0|1|2, x1,y1,x2,y2,cursorX,cursorY}
                             // angular: {step:0|1|2|3, cx,cy, p2x,p2y,a1,len1, p3x,p3y,a2,len2, cursorX,cursorY}
-var _dimOffsetDrag=null;    // {idx, origOffset|origRadius}
+                            // radial: {step:0|1, targetIdx, cx,cy,radius, angle, cursorX,cursorY}
+var _dimOffsetDrag=null;    // {idx, origOffset|origRadius|origAngle}
 function buildDimPalette(){
   var pal=document.getElementById('dimPalette');
   if(!pal) return;
@@ -3764,7 +3888,7 @@ function buildDimKindSelector(){
   var sel=document.getElementById('dimKindSelector');
   if(!sel) return;
   sel.innerHTML='';
-  [['linear','Lineal'],['angular','Angular']].forEach(function(p){
+  [['linear','Lineal'],['angular','Angular'],['radial','Radial']].forEach(function(p){
     var btn=document.createElement('button');
     btn.textContent=p[1];
     btn.className=(p[0]===_dimKind?'active':'');
@@ -3772,11 +3896,34 @@ function buildDimKindSelector(){
       _dimKind=p[0];
       localStorage.setItem('c2d_dimKind',_dimKind);
       buildDimKindSelector();
-      // If active, switch the running mode and reset draft
+      updateDimRadialToggleVisibility();
       if(_dimMode){_dimMode=_dimKind;_dimDraft={step:0};draw();}
     };
     sel.appendChild(btn);
   });
+}
+function buildDimRadialToggle(){
+  var sel=document.getElementById('dimRadialToggle');
+  if(!sel) return;
+  sel.innerHTML='';
+  [['radius','R'],['diameter','Ø']].forEach(function(p){
+    var btn=document.createElement('button');
+    btn.textContent=p[1];
+    btn.title=p[0]==='radius'?'Radio':'Diámetro';
+    btn.className=(p[0]===_dimRadialKind?'active':'');
+    btn.onclick=function(){
+      _dimRadialKind=p[0];
+      localStorage.setItem('c2d_dimRadialKind',_dimRadialKind);
+      buildDimRadialToggle();
+    };
+    sel.appendChild(btn);
+  });
+}
+function updateDimRadialToggleVisibility(){
+  var t=document.getElementById('dimRadialToggle');
+  if(!t) return;
+  if(_dimMode&&_dimKind==='radial') t.classList.add('visible');
+  else t.classList.remove('visible');
 }
 function toggleDimMode(){
   if(_dimMode){exitDimMode();return;}
@@ -3785,9 +3932,11 @@ function toggleDimMode(){
   _dimDraft={step:0};
   document.getElementById('btnDim').classList.add('active');
   buildDimKindSelector();
+  buildDimRadialToggle();
   buildDimPalette();
   document.getElementById('dimKindSelector').classList.add('visible');
   document.getElementById('dimPalette').classList.add('visible');
+  updateDimRadialToggleVisibility();
   wrap.style.cursor='crosshair';
   wrap.classList.add('tool-mode-active');
   _sel.clear();renderModules();renderProps();
@@ -3802,6 +3951,8 @@ function exitDimMode(){
   if(pal) pal.classList.remove('visible');
   var ks=document.getElementById('dimKindSelector');
   if(ks) ks.classList.remove('visible');
+  var rt=document.getElementById('dimRadialToggle');
+  if(rt) rt.classList.remove('visible');
   wrap.style.cursor='grab';
   if(!_eraserMode) wrap.classList.remove('tool-mode-active');
   draw();
@@ -3871,6 +4022,93 @@ function dimClick(e){
   if(!_dimMode||!_dimDraft) return;
   if(_dimMode==='linear') return dimClickLinear(e);
   if(_dimMode==='angular') return dimClickAngular(e);
+  if(_dimMode==='radial') return dimClickRadial(e);
+}
+// Hit-test: nearest shape_circle whose center or contour is within SNAP_RADIUS
+function dimRadialHitCircle(e){
+  var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+  var rawX=(e.clientX-rect.left-o.x)/sc;
+  var rawY=-(e.clientY-rect.top-o.y)/sc;
+  var bestIdx=-1, bestD=SNAP_RADIUS;
+  _modules.forEach(function(m,i){
+    if(m.type!=='shape_circle') return;
+    if(!m.w||!m.h) return;
+    var ccx=m.x+m.w/2, ccy=m.y+m.h/2;
+    var r=m.w/2;
+    var dCenter=Math.hypot(rawX-ccx, rawY-ccy);
+    var dContour=Math.abs(dCenter-r);
+    var dMin=Math.min(dCenter,dContour);
+    if(dMin<bestD){bestD=dMin; bestIdx=i;}
+  });
+  if(bestIdx<0) return null;
+  var t=_modules[bestIdx];
+  return{idx:bestIdx,
+    cx:Math.round(t.x+t.w/2),
+    cy:Math.round(t.y+t.h/2),
+    radius:Math.round(t.w/2)};
+}
+function dimClickRadial(e){
+  if(_dimDraft.step===0){
+    var hit=dimRadialHitCircle(e);
+    if(!hit) return; // no circle under cursor → click ignored
+    _dimDraft.targetIdx=hit.idx;
+    _dimDraft.cx=hit.cx;_dimDraft.cy=hit.cy;_dimDraft.radius=hit.radius;
+    _dimDraft.step=1;
+    draw();return;
+  }
+  if(_dimDraft.step===1){
+    var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+    var rawX=(e.clientX-rect.left-o.x)/sc;
+    var rawY=-(e.clientY-rect.top-o.y)/sc;
+    var ang=Math.atan2(rawY-_dimDraft.cy, rawX-_dimDraft.cx);
+    saveHistory();
+    _modules.push({type:'dimension',kind:'radial',
+      targetIdx:_dimDraft.targetIdx,
+      cx:_dimDraft.cx,cy:_dimDraft.cy,radius:_dimDraft.radius,
+      angle:ang,
+      displayKind:_dimRadialKind,
+      color:_dimColor});
+    _dimDraft={step:0};
+    draw();renderModules();
+    return;
+  }
+}
+// Resolve a radial dim's target on render. Returns the live target circle's
+// {cx, cy, radius} or null if the target is gone (caller deletes the dim).
+// Uses targetIdx first; if it's stale, searches by snapshot center.
+function dimRadialResolveTarget(m){
+  var t=_modules[m.targetIdx];
+  if(t&&t.type==='shape_circle'&&t.w&&t.h){
+    return{cx:t.x+t.w/2, cy:t.y+t.h/2, radius:t.w/2, idx:m.targetIdx};
+  }
+  // Stale index: try to re-find by snapshot center match
+  for(var i=0;i<_modules.length;i++){
+    var c=_modules[i];
+    if(c.type!=='shape_circle'||!c.w||!c.h) continue;
+    var ccx=c.x+c.w/2, ccy=c.y+c.h/2;
+    if(Math.abs(ccx-m.cx)<2&&Math.abs(ccy-m.cy)<2){
+      m.targetIdx=i;
+      return{cx:ccx, cy:ccy, radius:c.w/2, idx:i};
+    }
+  }
+  return null;
+}
+function dimRadialGeom(m){
+  var t=dimRadialResolveTarget(m);
+  if(!t) return null;
+  var ang=m.angle||0;
+  var ux=Math.cos(ang), uy=Math.sin(ang);
+  var r=t.radius;
+  var contour={x:t.cx+r*ux, y:t.cy+r*uy};
+  // Outer label position: extend past contour for the label (~40% of radius)
+  var labOffset=Math.max(r*0.35,30);
+  var outer={x:t.cx+(r+labOffset)*ux, y:t.cy+(r+labOffset)*uy};
+  var diameterFar={x:t.cx-r*ux, y:t.cy-r*uy};
+  var value=m.displayKind==='diameter'?Math.round(r*2):Math.round(r);
+  return{cx:t.cx,cy:t.cy,radius:r,angle:ang,ux:ux,uy:uy,
+    contour:contour,outer:outer,diameterFar:diameterFar,
+    value:value,
+    label:(m.displayKind==='diameter'?'Ø ':'R ')+value+' mm'};
 }
 function dimClickLinear(e){
   var w=dimWorldFromEvent(e);
@@ -3977,7 +4215,8 @@ function startDimOffsetDrag(e,idx){
   var m=_modules[idx];
   _dimOffsetDrag={idx:idx,
     origOffset:m.offset||0,
-    origRadius:m.radius||0};
+    origRadius:m.radius||0,
+    origAngle:m.angle||0};
   document.addEventListener('mousemove',dimOffsetDragMove);
   document.addEventListener('mouseup',dimOffsetDragEnd);
 }
@@ -3993,6 +4232,11 @@ function dimOffsetDragMove(e){
     m.offset=Math.round(rx*g.nx+ry*g.ny);
   }else if(m.kind==='angular'){
     m.radius=Math.max(1,Math.round(Math.hypot(curX-m.cx,curY-m.cy)));
+  }else if(m.kind==='radial'){
+    var rg=dimRadialResolveTarget(m);
+    if(rg){
+      m.angle=Math.atan2(curY-rg.cy, curX-rg.cx);
+    }
   }
   draw();renderModules();renderProps();
 }
