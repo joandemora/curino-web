@@ -3643,6 +3643,7 @@ function toggleDimMode(kind){
 function exitDimMode(){
   if(!_dimMode) return;
   _dimMode=null;_dimDraft=null;
+  hideDimSnapOverlay();
   var btn=document.getElementById('btnDim');
   if(btn) btn.classList.remove('active');
   var pal=document.getElementById('dimPalette');
@@ -3665,6 +3666,52 @@ function dimWorldFromEvent(e){
   if(bestPt) return{x:Math.round(bestPt.x),y:Math.round(bestPt.y),snapped:true};
   // Fallback: grid snap on each axis
   return{x:snap(rawX),y:snap(rawY),snapped:false};
+}
+// Magnetic snap overlay: visible only while in dim mode and a getSnapPoints
+// target is within SNAP_RADIUS of the cursor. Two layered DOM elements over
+// the snapped world position: a small crosshair "fake cursor" + a tinted
+// circle indicator. Real wrap cursor switched to 'none' so only the fake
+// crosshair shows; otherwise wrap cursor stays at 'crosshair'.
+var _dimSnapFakeCursor=null,_dimSnapIndicator=null;
+function showDimSnapOverlay(worldX,worldY){
+  if(!_dimSnapFakeCursor){
+    _dimSnapFakeCursor=document.createElement('div');
+    _dimSnapFakeCursor.style.cssText='position:fixed;width:18px;height:18px;margin-left:-9px;margin-top:-9px;pointer-events:none;z-index:99998';
+    _dimSnapFakeCursor.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><line x1="9" y1="0" x2="9" y2="18" stroke="#000" stroke-width="1.5"/><line x1="0" y1="9" x2="18" y2="9" stroke="#000" stroke-width="1.5"/></svg>';
+    document.body.appendChild(_dimSnapFakeCursor);
+  }
+  if(!_dimSnapIndicator){
+    _dimSnapIndicator=document.createElement('div');
+    _dimSnapIndicator.style.cssText='position:fixed;width:14px;height:14px;margin-left:-7px;margin-top:-7px;border-radius:50%;pointer-events:none;z-index:99997;opacity:.5';
+    document.body.appendChild(_dimSnapIndicator);
+  }
+  _dimSnapIndicator.style.background=_dimColor;
+  var sc=s(),o=origin();
+  var wRect=wrap.getBoundingClientRect();
+  var sx=wRect.left+o.x+worldX*sc;
+  var sy=wRect.top+o.y-worldY*sc;
+  _dimSnapFakeCursor.style.left=sx+'px';_dimSnapFakeCursor.style.top=sy+'px';_dimSnapFakeCursor.style.display='block';
+  _dimSnapIndicator.style.left=sx+'px';_dimSnapIndicator.style.top=sy+'px';_dimSnapIndicator.style.display='block';
+  wrap.style.cursor='none';
+}
+function hideDimSnapOverlay(){
+  if(_dimSnapFakeCursor) _dimSnapFakeCursor.style.display='none';
+  if(_dimSnapIndicator) _dimSnapIndicator.style.display='none';
+  if(_dimMode) wrap.style.cursor='crosshair';
+}
+// Returns the magnetic snap target {x,y} or null. No grid fallback —
+// only used to drive the overlay visibility (grid snap doesn't trigger it).
+function dimMagneticTarget(e){
+  var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+  var rawX=(e.clientX-rect.left-o.x)/sc;
+  var rawY=-(e.clientY-rect.top-o.y)/sc;
+  var pts=getSnapPoints(new Set());
+  var best=null,bestD=SNAP_RADIUS;
+  pts.forEach(function(p){
+    var d=Math.sqrt(Math.pow(rawX-p.x,2)+Math.pow(rawY-p.y,2));
+    if(d<bestD){bestD=d;best=p;}
+  });
+  return best?{x:Math.round(best.x),y:Math.round(best.y)}:null;
 }
 function dimClick(e){
   if(!_dimMode||!_dimDraft) return;
@@ -3763,13 +3810,23 @@ function exitEraser(){
 var _lastEraserEvent=null;
 wrap.addEventListener('mousemove',function(e){
   if(_eraserMode){_lastEraserEvent=e;updateEraserPreview(e);}
-  if(_dimMode&&_dimDraft&&_dimDraft.step>=1){
-    var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
-    _dimDraft.cursorX=(e.clientX-rect.left-o.x)/sc;
-    _dimDraft.cursorY=-(e.clientY-rect.top-o.y)/sc;
-    draw();
+  if(_dimMode){
+    var t=dimMagneticTarget(e);
+    if(t) showDimSnapOverlay(t.x,t.y);
+    else hideDimSnapOverlay();
+    if(_dimDraft&&_dimDraft.step>=1){
+      if(t){
+        _dimDraft.cursorX=t.x;_dimDraft.cursorY=t.y;
+      }else{
+        var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+        _dimDraft.cursorX=(e.clientX-rect.left-o.x)/sc;
+        _dimDraft.cursorY=-(e.clientY-rect.top-o.y)/sc;
+      }
+      draw();
+    }
   }
 });
+wrap.addEventListener('mouseleave',function(){if(_dimMode) hideDimSnapOverlay();});
 
 // Line segment intersection: returns {x,y,t} or null
 // t is parameter along first segment (0..1)
