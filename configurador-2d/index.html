@@ -30,6 +30,10 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-dim-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s}
 .c2d-dim-color:hover{transform:scale(1.15)}
 .c2d-dim-color.active{border-color:var(--black)}
+.c2d-dim-kind{display:none;align-items:center;gap:4px}
+.c2d-dim-kind.visible{display:inline-flex}
+.c2d-dim-kind button{background:var(--white);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;font-family:var(--font);cursor:pointer;height:24px}
+.c2d-dim-kind button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
@@ -193,7 +197,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <button onclick="undo()" title="Deshacer (Ctrl+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
     <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg></button>
     <button class="btn-grid" id="btnGrid" onclick="toggleGrid()" title="Mostrar/ocultar cuadrícula"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg></button>
-    <button class="btn-dim" id="btnDim" onclick="toggleDimMode('linear')" title="Acotar (lineal)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3" y2="14"/><line x1="21" y1="6" x2="21" y2="14"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="3,10 6,8 6,12" fill="currentColor"/><polygon points="21,10 18,8 18,12" fill="currentColor"/></svg></button>
+    <button class="btn-dim" id="btnDim" onclick="toggleDimMode()" title="Acotar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3" y2="14"/><line x1="21" y1="6" x2="21" y2="14"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="3,10 6,8 6,12" fill="currentColor"/><polygon points="21,10 18,8 18,12" fill="currentColor"/></svg></button>
+    <div class="c2d-dim-kind" id="dimKindSelector"></div>
     <div class="c2d-dim-palette" id="dimPalette"></div>
     <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
@@ -688,28 +693,60 @@ function draw(){
   }
 
   // Dimension tool preview (canvas-only; not part of any module yet)
-  if(_dimMode==='linear'&&_dimDraft&&_dimDraft.cursorX!=null){
+  if(_dimMode&&_dimDraft&&_dimDraft.cursorX!=null){
     var sc_d=s(),o_d=origin();
     function tS(wx,wy){return[o_d.x+wx*sc_d, o_d.y-wy*sc_d];}
     ctx.strokeStyle=_dimColor;ctx.fillStyle=_dimColor;ctx.lineWidth=1;ctx.setLineDash([6,4]);
-    if(_dimDraft.step===1){
-      var s1=tS(_dimDraft.x1,_dimDraft.y1), c1=tS(_dimDraft.cursorX,_dimDraft.cursorY);
-      ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(c1[0],c1[1]);ctx.stroke();
-    }else if(_dimDraft.step===2){
-      var dx2=_dimDraft.x2-_dimDraft.x1, dy2=_dimDraft.y2-_dimDraft.y1;
-      var len2=Math.sqrt(dx2*dx2+dy2*dy2)||1;
-      var nx2=-dy2/len2, ny2=dx2/len2;
-      var rx2=_dimDraft.cursorX-_dimDraft.x1, ry2=_dimDraft.cursorY-_dimDraft.y1;
-      var off2=rx2*nx2+ry2*ny2;
-      var dd1x=_dimDraft.x1+off2*nx2, dd1y=_dimDraft.y1+off2*ny2;
-      var dd2x=_dimDraft.x2+off2*nx2, dd2y=_dimDraft.y2+off2*ny2;
-      var s1=tS(_dimDraft.x1,_dimDraft.y1), s2=tS(_dimDraft.x2,_dimDraft.y2);
-      var sd1=tS(dd1x,dd1y), sd2=tS(dd2x,dd2y);
-      // Original line and extension lines
-      ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(s2[0],s2[1]);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(sd1[0],sd1[1]);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(s2[0],s2[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(sd1[0],sd1[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
+    if(_dimMode==='linear'){
+      if(_dimDraft.step===1){
+        var s1=tS(_dimDraft.x1,_dimDraft.y1), c1=tS(_dimDraft.cursorX,_dimDraft.cursorY);
+        ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(c1[0],c1[1]);ctx.stroke();
+      }else if(_dimDraft.step===2){
+        var dx2=_dimDraft.x2-_dimDraft.x1, dy2=_dimDraft.y2-_dimDraft.y1;
+        var len2=Math.sqrt(dx2*dx2+dy2*dy2)||1;
+        var nx2=-dy2/len2, ny2=dx2/len2;
+        var rx2=_dimDraft.cursorX-_dimDraft.x1, ry2=_dimDraft.cursorY-_dimDraft.y1;
+        var off2=rx2*nx2+ry2*ny2;
+        var dd1x=_dimDraft.x1+off2*nx2, dd1y=_dimDraft.y1+off2*ny2;
+        var dd2x=_dimDraft.x2+off2*nx2, dd2y=_dimDraft.y2+off2*ny2;
+        var s1=tS(_dimDraft.x1,_dimDraft.y1), s2=tS(_dimDraft.x2,_dimDraft.y2);
+        var sd1=tS(dd1x,dd1y), sd2=tS(dd2x,dd2y);
+        ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(s2[0],s2[1]);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(sd1[0],sd1[1]);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(s2[0],s2[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(sd1[0],sd1[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
+      }
+    }else if(_dimMode==='angular'){
+      // step 1: line from cx,cy to cursor (defining arm 1)
+      // step 2: arm 1 fixed; line from cx,cy to cursor (defining arm 2)
+      // step 3: both arms fixed; preview arc at cursor distance
+      if(_dimDraft.step>=1){
+        var sc_v=tS(_dimDraft.cx,_dimDraft.cy);
+        if(_dimDraft.step===1){
+          var sc_c=tS(_dimDraft.cursorX,_dimDraft.cursorY);
+          ctx.beginPath();ctx.moveTo(sc_v[0],sc_v[1]);ctx.lineTo(sc_c[0],sc_c[1]);ctx.stroke();
+        }else if(_dimDraft.step===2){
+          var sp2_=tS(_dimDraft.p2x,_dimDraft.p2y);
+          var sc_c=tS(_dimDraft.cursorX,_dimDraft.cursorY);
+          ctx.beginPath();ctx.moveTo(sc_v[0],sc_v[1]);ctx.lineTo(sp2_[0],sp2_[1]);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(sc_v[0],sc_v[1]);ctx.lineTo(sc_c[0],sc_c[1]);ctx.stroke();
+        }else if(_dimDraft.step===3){
+          var rPrev=Math.hypot(_dimDraft.cursorX-_dimDraft.cx,_dimDraft.cursorY-_dimDraft.cy);
+          var spanP=_dimDraft.a2-_dimDraft.a1;
+          while(spanP>Math.PI) spanP-=2*Math.PI;
+          while(spanP<=-Math.PI) spanP+=2*Math.PI;
+          var sp2_=tS(_dimDraft.p2x,_dimDraft.p2y);
+          var sp3_=tS(_dimDraft.p3x,_dimDraft.p3y);
+          var pa1=tS(_dimDraft.cx+rPrev*Math.cos(_dimDraft.a1),_dimDraft.cy+rPrev*Math.sin(_dimDraft.a1));
+          var pa2=tS(_dimDraft.cx+rPrev*Math.cos(_dimDraft.a1+spanP),_dimDraft.cy+rPrev*Math.sin(_dimDraft.a1+spanP));
+          ctx.beginPath();ctx.moveTo(sp2_[0],sp2_[1]);ctx.lineTo(pa1[0],pa1[1]);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(sp3_[0],sp3_[1]);ctx.lineTo(pa2[0],pa2[1]);ctx.stroke();
+          // Arc preview using canvas arc(): canvas y is down → reverse rotation sign
+          ctx.beginPath();
+          ctx.arc(sc_v[0],sc_v[1],rPrev*sc_d,-_dimDraft.a1,-(_dimDraft.a1+spanP),spanP>0);
+          ctx.stroke();
+        }
+      }
     }
     ctx.setLineDash([]);
   }
@@ -785,6 +822,93 @@ function renderModules(){
       // Text with white background rect
       var textW=label.length*fontSize*0.6+8;
       svg+='<g transform="translate('+midX+','+midY+') rotate('+angDeg+')">';
+      svg+='<rect x="'+(-textW/2)+'" y="'+(-fontSize*0.85)+'" width="'+textW+'" height="'+(fontSize*1.3)+'" fill="#fff" stroke="none"/>';
+      svg+='<text x="0" y="'+(fontSize*0.35)+'" text-anchor="middle" font-family="sans-serif" font-size="'+fontSize+'" fill="'+col+'">'+label+'</text>';
+      svg+='</g>';
+      svg+='</svg>';
+      div.innerHTML=svg;
+      div.onmousedown=function(e){
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}
+        if(_eraserMode){
+          e.stopPropagation();e.preventDefault();
+          saveHistory();
+          var newSel=new Set();
+          _sel.forEach(function(s){if(s<i) newSel.add(s);else if(s>i) newSel.add(s-1);});
+          _sel=newSel;
+          _modules.splice(i,1);
+          draw();renderModules();renderProps();
+          return;
+        }
+        startDimOffsetDrag(e,i);
+      };
+      div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      layer.appendChild(div);
+      return;
+    }
+    if(m.type==='dimension'&&m.kind==='angular'){
+      var ag=dimAngularGeom(m);
+      var pad=20;
+      // Bbox: encompass full circle of radius r around (cx,cy) + arm points
+      var bxArr=[m.cx-ag.radius,m.cx+ag.radius,ag.p2x,ag.p3x];
+      var byArr=[m.cy-ag.radius,m.cy+ag.radius,ag.p2y,ag.p3y];
+      var dbx1=Math.min.apply(null,bxArr)-pad, dby1=Math.min.apply(null,byArr)-pad;
+      var dbx2=Math.max.apply(null,bxArr)+pad, dby2=Math.max.apply(null,byArr)+pad;
+      var dmw=(dbx2-dbx1)*sc, dmh=(dby2-dby1)*sc;
+      var dmx=o.x+dbx1*sc, dmy=o.y-dby2*sc;
+      div.classList.add('no-frame');
+      div.style.cssText='position:absolute;border:none;background:transparent;cursor:move';
+      div.style.left=(dmx-layerOffX)+'px';div.style.top=(dmy-layerOffY)+'px';
+      div.style.width=dmw+'px';div.style.height=dmh+'px';
+      function vX(wx){return(wx-dbx1)*sc;}
+      function vY(wy){return(dby2-wy)*sc;}
+      var col=m.color||DIM_COLOR_DEFAULT;
+      var sw=_sel.has(i)?1.6:1;
+      var dash='6 4';
+      var rPx=ag.radius*sc;
+      // Arc endpoints in viewBox
+      var sa1=[vX(ag.arc1x),vY(ag.arc1y)];
+      var sa2=[vX(ag.arc2x),vY(ag.arc2y)];
+      // Arms (original arm endpoints)
+      var sp2=[vX(ag.p2x),vY(ag.p2y)];
+      var sp3=[vX(ag.p3x),vY(ag.p3y)];
+      // SVG: y is flipped; world ccw (positive span) -> screen cw (sweep flag 1)
+      var largeArc=Math.abs(ag.span)>Math.PI?1:0;
+      var sweep=ag.span>0?1:0;
+      // Tangent unit at arc1 in screen: in world tangent_ccw=(-sin a1, cos a1); flip y → (-sin a1, -cos a1)
+      var arrL=4*sc, arrW=2*sc;
+      function tangentAtArc(angleW, towardCenter){
+        // Tangent in world ccw direction: (-sin a, cos a). Flip y for screen: (-sin a, -cos a).
+        // Toward midA: pick sign matching the sweep direction.
+        var tx=-Math.sin(angleW), ty=-Math.cos(angleW);
+        // We want tangent pointing toward the other end of the arc (along sweep)
+        if(towardCenter) return [tx,ty];
+        return [tx,ty];
+      }
+      // Arrow at arc1 pointing toward arc2 (along sweep direction)
+      var dirSign1=ag.span>0?1:-1;
+      var t1x=-Math.sin(ag.a1)*dirSign1, t1y=-Math.cos(ag.a1)*dirSign1;
+      var a1bx=sa1[0]+t1x*arrL, a1by=sa1[1]+t1y*arrL;
+      var a1px=-t1y*arrW/2, a1py=t1x*arrW/2;
+      // Arrow at arc2 pointing toward arc1 (opposite sweep direction)
+      var t2x=Math.sin(ag.a1+ag.span)*dirSign1, t2y=Math.cos(ag.a1+ag.span)*dirSign1;
+      var a2bx=sa2[0]+t2x*arrL, a2by=sa2[1]+t2y*arrL;
+      var a2px=-t2y*arrW/2, a2py=t2x*arrW/2;
+      // Label
+      var slab=[vX(ag.labX),vY(ag.labY)];
+      var label=ag.valueDeg.toFixed(1)+'°';
+      var fontSize=12;
+      var textW=label.length*fontSize*0.6+8;
+      var svg='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 '+dmw+' '+dmh+'">';
+      // Extension lines from arms to the arc
+      svg+='<line x1="'+sp2[0]+'" y1="'+sp2[1]+'" x2="'+sa1[0]+'" y2="'+sa1[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'"/>';
+      svg+='<line x1="'+sp3[0]+'" y1="'+sp3[1]+'" x2="'+sa2[0]+'" y2="'+sa2[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'"/>';
+      // Arc (click target)
+      svg+='<path d="M'+sa1[0]+','+sa1[1]+' A'+rPx+','+rPx+' 0 '+largeArc+' '+sweep+' '+sa2[0]+','+sa2[1]+'" stroke="'+col+'" stroke-width="'+sw+'" stroke-dasharray="'+dash+'" fill="none" style="pointer-events:stroke;cursor:move"/>';
+      // Arrows (filled, solid)
+      svg+='<polygon points="'+sa1[0]+','+sa1[1]+' '+(a1bx+a1px)+','+(a1by+a1py)+' '+(a1bx-a1px)+','+(a1by-a1py)+'" fill="'+col+'"/>';
+      svg+='<polygon points="'+sa2[0]+','+sa2[1]+' '+(a2bx+a2px)+','+(a2by+a2py)+' '+(a2bx-a2px)+','+(a2by-a2py)+'" fill="'+col+'"/>';
+      // Label (horizontal, with white background)
+      svg+='<g transform="translate('+slab[0]+','+slab[1]+')">';
       svg+='<rect x="'+(-textW/2)+'" y="'+(-fontSize*0.85)+'" width="'+textW+'" height="'+(fontSize*1.3)+'" fill="#fff" stroke="none"/>';
       svg+='<text x="0" y="'+(fontSize*0.35)+'" text-anchor="middle" font-family="sans-serif" font-size="'+fontSize+'" fill="'+col+'">'+label+'</text>';
       svg+='</g>';
@@ -1476,13 +1600,18 @@ function renderProps(){
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
   // Dimension properties
   if(m.type==='dimension'){
-    var dg=dimGeom(m);
     var kindLabel=m.kind==='linear'?'Acotaci\u00F3n lineal':(m.kind==='angular'?'Acotaci\u00F3n angular':'Acotaci\u00F3n radial');
-    panel.innerHTML=
-      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+kindLabel+'</div></div>'+
-      '<div class="c2d-prop"><label>Valor (mm)</label><div style="font-size:13px;padding:6px 0">'+dg.value+'</div></div>'+
-      '<div class="c2d-prop"><label>Offset (mm)</label><input type="number" value="'+(m.offset||0)+'" step="10" onchange="updateProp(\'offset\',this.value)"></div>'+
-      '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    var html='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+kindLabel+'</div></div>';
+    if(m.kind==='linear'){
+      var dg=dimGeom(m);
+      html+='<div class="c2d-prop"><label>Valor (mm)</label><div style="font-size:13px;padding:6px 0">'+dg.value+'</div></div>'+
+        '<div class="c2d-prop"><label>Offset (mm)</label><input type="number" value="'+(m.offset||0)+'" step="10" onchange="updateProp(\'offset\',this.value)"></div>';
+    }else if(m.kind==='angular'){
+      var ag=dimAngularGeom(m);
+      html+='<div class="c2d-prop"><label>Valor (\u00B0)</label><div style="font-size:13px;padding:6px 0">'+ag.valueDeg.toFixed(1)+'\u00B0</div></div>'+
+        '<div class="c2d-prop"><label>Radio (mm)</label><input type="number" value="'+(m.radius||0)+'" step="10" min="1" onchange="updateProp(\'radius\',this.value)"></div>';
+    }
+    panel.innerHTML=html+'<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
     return;
   }
   // Group properties
@@ -1603,6 +1732,7 @@ function updateProp(key,val){
   if(key==='h'&&_modules[idx].type==='barra') v=40;
   if(key==='d'&&(_modules[idx].type==='barra'||_modules[idx].type==='tapeta'||_modules[idx].type==='zocalo')) return;
   if(key==='d'&&_modules[idx].type==='puerta_batiente') v=Math.max(19,Math.min(30,v));
+  if(key==='radius'&&_modules[idx].type==='dimension') v=Math.max(1,v);
   if(key==='sagitta'&&_modules[idx].type==='shape_arc'){
     var adist=Math.sqrt(Math.pow(_modules[idx].x2-_modules[idx].x1,2)+Math.pow(_modules[idx].y2-_modules[idx].y1,2));
     v=Math.max(-adist/2,Math.min(adist/2,v));
@@ -3606,14 +3736,16 @@ function toggleGrid(){
   else btn.classList.remove('active');
   draw();
 }
-// ── DIMENSION TOOL (Phase 1: linear) ──
+// ── DIMENSION TOOL (Phase 1: linear, Phase 2: angular) ──
 // Single source of truth for the dimension palette. Order = display order.
 var DIM_COLORS={lila:'#7e3ed8',black:'#222222',red:'#d8473a',green:'#3d9970',orange:'#e67e22'};
 var DIM_COLOR_DEFAULT=DIM_COLORS.lila;
 var _dimColor=localStorage.getItem('c2d_dimColor')||DIM_COLOR_DEFAULT;
-var _dimMode=null;          // null | 'linear' (later: 'angular' | 'radial')
-var _dimDraft=null;         // {step:0|1|2, x1,y1, x2,y2, cursorX,cursorY}
-var _dimOffsetDrag=null;    // {idx, origOffset}
+var _dimKind=localStorage.getItem('c2d_dimKind')||'linear'; // 'linear' | 'angular' (Phase 3: 'radial')
+var _dimMode=null;          // null when off; otherwise == kind in use ('linear'|'angular')
+var _dimDraft=null;         // linear: {step:0|1|2, x1,y1,x2,y2,cursorX,cursorY}
+                            // angular: {step:0|1|2|3, cx,cy, p2x,p2y,a1,len1, p3x,p3y,a2,len2, cursorX,cursorY}
+var _dimOffsetDrag=null;    // {idx, origOffset|origRadius}
 function buildDimPalette(){
   var pal=document.getElementById('dimPalette');
   if(!pal) return;
@@ -3628,13 +3760,33 @@ function buildDimPalette(){
     pal.appendChild(dot);
   });
 }
-function toggleDimMode(kind){
-  if(_dimMode===kind){exitDimMode();return;}
+function buildDimKindSelector(){
+  var sel=document.getElementById('dimKindSelector');
+  if(!sel) return;
+  sel.innerHTML='';
+  [['linear','Lineal'],['angular','Angular']].forEach(function(p){
+    var btn=document.createElement('button');
+    btn.textContent=p[1];
+    btn.className=(p[0]===_dimKind?'active':'');
+    btn.onclick=function(){
+      _dimKind=p[0];
+      localStorage.setItem('c2d_dimKind',_dimKind);
+      buildDimKindSelector();
+      // If active, switch the running mode and reset draft
+      if(_dimMode){_dimMode=_dimKind;_dimDraft={step:0};draw();}
+    };
+    sel.appendChild(btn);
+  });
+}
+function toggleDimMode(){
+  if(_dimMode){exitDimMode();return;}
   if(_eraserMode) exitEraser();
-  _dimMode=kind;
+  _dimMode=_dimKind;
   _dimDraft={step:0};
   document.getElementById('btnDim').classList.add('active');
+  buildDimKindSelector();
   buildDimPalette();
+  document.getElementById('dimKindSelector').classList.add('visible');
   document.getElementById('dimPalette').classList.add('visible');
   wrap.style.cursor='crosshair';
   wrap.classList.add('tool-mode-active');
@@ -3648,6 +3800,8 @@ function exitDimMode(){
   if(btn) btn.classList.remove('active');
   var pal=document.getElementById('dimPalette');
   if(pal) pal.classList.remove('visible');
+  var ks=document.getElementById('dimKindSelector');
+  if(ks) ks.classList.remove('visible');
   wrap.style.cursor='grab';
   if(!_eraserMode) wrap.classList.remove('tool-mode-active');
   draw();
@@ -3715,13 +3869,16 @@ function dimMagneticTarget(e){
 }
 function dimClick(e){
   if(!_dimMode||!_dimDraft) return;
+  if(_dimMode==='linear') return dimClickLinear(e);
+  if(_dimMode==='angular') return dimClickAngular(e);
+}
+function dimClickLinear(e){
   var w=dimWorldFromEvent(e);
   if(_dimDraft.step===0){
     _dimDraft.x1=w.x;_dimDraft.y1=w.y;_dimDraft.step=1;
     draw();return;
   }
   if(_dimDraft.step===1){
-    // Reject zero-length
     if(w.x===_dimDraft.x1&&w.y===_dimDraft.y1) return;
     _dimDraft.x2=w.x;_dimDraft.y2=w.y;_dimDraft.step=2;
     draw();return;
@@ -3741,7 +3898,44 @@ function dimClick(e){
     return;
   }
 }
-// Helper used by render and offset drag
+function dimClickAngular(e){
+  // Click 1: vertex (snap), Click 2: arm 1 (snap), Click 3: arm 2 (snap),
+  // Click 4: confirm radius (no snap, raw distance to vertex)
+  if(_dimDraft.step<3){
+    var w=dimWorldFromEvent(e);
+    if(_dimDraft.step===0){_dimDraft.cx=w.x;_dimDraft.cy=w.y;_dimDraft.step=1;draw();return;}
+    if(_dimDraft.step===1){
+      if(w.x===_dimDraft.cx&&w.y===_dimDraft.cy) return;
+      _dimDraft.p2x=w.x;_dimDraft.p2y=w.y;
+      _dimDraft.a1=Math.atan2(w.y-_dimDraft.cy,w.x-_dimDraft.cx);
+      _dimDraft.len1=Math.round(Math.hypot(w.x-_dimDraft.cx,w.y-_dimDraft.cy));
+      _dimDraft.step=2;draw();return;
+    }
+    if(_dimDraft.step===2){
+      if(w.x===_dimDraft.cx&&w.y===_dimDraft.cy) return;
+      _dimDraft.p3x=w.x;_dimDraft.p3y=w.y;
+      _dimDraft.a2=Math.atan2(w.y-_dimDraft.cy,w.x-_dimDraft.cx);
+      _dimDraft.len2=Math.round(Math.hypot(w.x-_dimDraft.cx,w.y-_dimDraft.cy));
+      _dimDraft.step=3;draw();return;
+    }
+  }
+  if(_dimDraft.step===3){
+    var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+    var rawX=(e.clientX-rect.left-o.x)/sc;
+    var rawY=-(e.clientY-rect.top-o.y)/sc;
+    var radius=Math.max(1,Math.round(Math.hypot(rawX-_dimDraft.cx,rawY-_dimDraft.cy)));
+    saveHistory();
+    _modules.push({type:'dimension',kind:'angular',
+      cx:_dimDraft.cx,cy:_dimDraft.cy,
+      a1:_dimDraft.a1,a2:_dimDraft.a2,
+      len1:_dimDraft.len1,len2:_dimDraft.len2,
+      radius:radius,color:_dimColor});
+    _dimDraft={step:0};
+    draw();renderModules();
+    return;
+  }
+}
+// Helper used by linear render and offset drag
 function dimGeom(m){
   var dx=m.x2-m.x1, dy=m.y2-m.y1;
   var len=Math.sqrt(dx*dx+dy*dy)||1;
@@ -3756,11 +3950,34 @@ function dimGeom(m){
     value:Math.round(len)
   };
 }
+// Helper used by angular render and radius drag.
+// Computes the natural shorter-arc sweep from a1, normalizes span to (-π, π].
+function dimAngularGeom(m){
+  var span=m.a2-m.a1;
+  while(span>Math.PI) span-=2*Math.PI;
+  while(span<=-Math.PI) span+=2*Math.PI;
+  var midA=m.a1+span/2;
+  var r=m.radius||100;
+  var l1=m.len1!=null?m.len1:r;
+  var l2=m.len2!=null?m.len2:r;
+  return{
+    a1:m.a1,a2:m.a2,span:span,midA:midA,radius:r,
+    p2x:m.cx+l1*Math.cos(m.a1), p2y:m.cy+l1*Math.sin(m.a1),
+    p3x:m.cx+l2*Math.cos(m.a2), p3y:m.cy+l2*Math.sin(m.a2),
+    arc1x:m.cx+r*Math.cos(m.a1), arc1y:m.cy+r*Math.sin(m.a1),
+    arc2x:m.cx+r*Math.cos(m.a1+span), arc2y:m.cy+r*Math.sin(m.a1+span),
+    labX:m.cx+r*Math.cos(midA), labY:m.cy+r*Math.sin(midA),
+    valueDeg:Math.round(Math.abs(span)*180/Math.PI*10)/10
+  };
+}
 function startDimOffsetDrag(e,idx){
   e.preventDefault();e.stopPropagation();
   if(!_sel.has(idx)) selectModule(idx,e.shiftKey);
   saveHistory();
-  _dimOffsetDrag={idx:idx,origOffset:_modules[idx].offset||0};
+  var m=_modules[idx];
+  _dimOffsetDrag={idx:idx,
+    origOffset:m.offset||0,
+    origRadius:m.radius||0};
   document.addEventListener('mousemove',dimOffsetDragMove);
   document.addEventListener('mouseup',dimOffsetDragEnd);
 }
@@ -3770,9 +3987,13 @@ function dimOffsetDragMove(e){
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var curX=(e.clientX-rect.left-o.x)/sc;
   var curY=-(e.clientY-rect.top-o.y)/sc;
-  var g=dimGeom(m);
-  var rx=curX-m.x1, ry=curY-m.y1;
-  m.offset=Math.round(rx*g.nx+ry*g.ny);
+  if(m.kind==='linear'){
+    var g=dimGeom(m);
+    var rx=curX-m.x1, ry=curY-m.y1;
+    m.offset=Math.round(rx*g.nx+ry*g.ny);
+  }else if(m.kind==='angular'){
+    m.radius=Math.max(1,Math.round(Math.hypot(curX-m.cx,curY-m.cy)));
+  }
   draw();renderModules();renderProps();
 }
 function dimOffsetDragEnd(){
