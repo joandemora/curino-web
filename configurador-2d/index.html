@@ -24,6 +24,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar .btn-save.saving{opacity:.6;pointer-events:none}
 .c2d-toolbar .btn-eraser.active{background:var(--coral);color:#fff;border-color:var(--coral)}
 .c2d-toolbar .btn-grid.active{background:var(--black);color:#fff;border-color:var(--black)}
+.c2d-toolbar .btn-dim.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .c2d-dims{font-size:11px;color:var(--mid);display:flex;align-items:center;gap:.75rem}
 .c2d-dims select{border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-family:var(--font);font-size:11px;background:var(--white);cursor:pointer}
 
@@ -182,6 +183,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <button onclick="undo()" title="Deshacer (Ctrl+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
     <button onclick="redo()" title="Rehacer (Ctrl+Shift+Z)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" shape-rendering="geometricPrecision"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg></button>
     <button class="btn-grid" id="btnGrid" onclick="toggleGrid()" title="Mostrar/ocultar cuadrícula"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg></button>
+    <button class="btn-dim" id="btnDim" onclick="toggleDimMode('linear')" title="Acotar (lineal)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3" y2="14"/><line x1="21" y1="6" x2="21" y2="14"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="3,10 6,8 6,12" fill="currentColor"/><polygon points="21,10 18,8 18,12" fill="currentColor"/></svg></button>
     <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
       <button onclick="toggleExportMenu()">Exportar</button>
@@ -674,6 +676,33 @@ function draw(){
     if(line) ctx.fillText(line,cjScrX+pad,ly);
   }
 
+  // Dimension tool preview (canvas-only; not part of any module yet)
+  if(_dimMode==='linear'&&_dimDraft&&_dimDraft.cursorX!=null){
+    var sc_d=s(),o_d=origin();
+    function tS(wx,wy){return[o_d.x+wx*sc_d, o_d.y-wy*sc_d];}
+    ctx.strokeStyle='#999';ctx.fillStyle='#999';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    if(_dimDraft.step===1){
+      var s1=tS(_dimDraft.x1,_dimDraft.y1), c1=tS(_dimDraft.cursorX,_dimDraft.cursorY);
+      ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(c1[0],c1[1]);ctx.stroke();
+    }else if(_dimDraft.step===2){
+      var dx2=_dimDraft.x2-_dimDraft.x1, dy2=_dimDraft.y2-_dimDraft.y1;
+      var len2=Math.sqrt(dx2*dx2+dy2*dy2)||1;
+      var nx2=-dy2/len2, ny2=dx2/len2;
+      var rx2=_dimDraft.cursorX-_dimDraft.x1, ry2=_dimDraft.cursorY-_dimDraft.y1;
+      var off2=rx2*nx2+ry2*ny2;
+      var dd1x=_dimDraft.x1+off2*nx2, dd1y=_dimDraft.y1+off2*ny2;
+      var dd2x=_dimDraft.x2+off2*nx2, dd2y=_dimDraft.y2+off2*ny2;
+      var s1=tS(_dimDraft.x1,_dimDraft.y1), s2=tS(_dimDraft.x2,_dimDraft.y2);
+      var sd1=tS(dd1x,dd1y), sd2=tS(dd2x,dd2y);
+      // Original line and extension lines
+      ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(s2[0],s2[1]);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s1[0],s1[1]);ctx.lineTo(sd1[0],sd1[1]);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s2[0],s2[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(sd1[0],sd1[1]);ctx.lineTo(sd2[0],sd2[1]);ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
   ctx.restore(); // end paper clip
 }
 
@@ -695,6 +724,77 @@ function renderModules(){
     var div=document.createElement('div');
     div.className='c2d-module'+(_sel.has(i)?' selected':'');
     var mw,mh,mx,my;
+    // Dimension: render as SVG overlay (own layout, not via x/y/w/h)
+    if(m.type==='dimension'&&m.kind==='linear'){
+      var g=dimGeom(m);
+      var pad=20; // mm padding for arrows + text
+      var allX=[m.x1,m.x2,g.d1x,g.d2x], allY=[m.y1,m.y2,g.d1y,g.d2y];
+      var dbx1=Math.min.apply(null,allX)-pad, dby1=Math.min.apply(null,allY)-pad;
+      var dbx2=Math.max.apply(null,allX)+pad, dby2=Math.max.apply(null,allY)+pad;
+      var dmw=(dbx2-dbx1)*sc, dmh=(dby2-dby1)*sc;
+      var dmx=o.x+dbx1*sc, dmy=o.y-dby2*sc;
+      div.classList.add('no-frame');
+      div.style.cssText='position:absolute;border:none;background:transparent;cursor:move';
+      div.style.left=(dmx-layerOffX)+'px';div.style.top=(dmy-layerOffY)+'px';
+      div.style.width=dmw+'px';div.style.height=dmh+'px';
+      // Convert world coords to viewBox-local pixels
+      function vX(wx){return(wx-dbx1)*sc;}
+      function vY(wy){return(dby2-wy)*sc;}
+      var v1=[vX(m.x1),vY(m.y1)], v2=[vX(m.x2),vY(m.y2)];
+      var w1=[vX(g.d1x),vY(g.d1y)], w2=[vX(g.d2x),vY(g.d2y)];
+      // Unit along dim line in viewBox space
+      var ddx=w2[0]-w1[0], ddy=w2[1]-w1[1];
+      var dlen=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+      var ux=ddx/dlen, uy=ddy/dlen;
+      var arrL=4*sc, arrW=2*sc; // 4mm long, 2mm wide
+      // Arrow at d1 pointing inward (toward d2): tip at w1, base at w1+arrL*u
+      var a1bx=w1[0]+ux*arrL, a1by=w1[1]+uy*arrL;
+      var a1px=-uy*arrW/2, a1py=ux*arrW/2;
+      // Arrow at d2 pointing inward (toward d1): tip at w2, base at w2-arrL*u
+      var a2bx=w2[0]-ux*arrL, a2by=w2[1]-uy*arrL;
+      // Text at midpoint of dim line
+      var midX=(w1[0]+w2[0])/2, midY=(w1[1]+w2[1])/2;
+      var angDeg=Math.atan2(uy,ux)*180/Math.PI;
+      // Flip text 180° if upside-down so it always reads left-to-right
+      if(angDeg>90||angDeg<=-90) angDeg+=180;
+      var col=_sel.has(i)?'var(--accent)':'#444';
+      var sw=1; // 1px stroke for cad style
+      var label=g.value+' mm';
+      var fontSize=Math.max(11,Math.min(14,12));
+      var svg='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none" viewBox="0 0 '+dmw+' '+dmh+'">';
+      // Extension lines from p1→d1 and p2→d2
+      svg+='<line x1="'+v1[0]+'" y1="'+v1[1]+'" x2="'+w1[0]+'" y2="'+w1[1]+'" stroke="'+col+'" stroke-width="'+sw+'"/>';
+      svg+='<line x1="'+v2[0]+'" y1="'+v2[1]+'" x2="'+w2[0]+'" y2="'+w2[1]+'" stroke="'+col+'" stroke-width="'+sw+'"/>';
+      // Dim line (will be the click target)
+      svg+='<line x1="'+w1[0]+'" y1="'+w1[1]+'" x2="'+w2[0]+'" y2="'+w2[1]+'" stroke="'+col+'" stroke-width="'+sw+'" style="pointer-events:stroke;cursor:move" data-dimline="1"/>';
+      // Arrows
+      svg+='<polygon points="'+w1[0]+','+w1[1]+' '+(a1bx+a1px)+','+(a1by+a1py)+' '+(a1bx-a1px)+','+(a1by-a1py)+'" fill="'+col+'"/>';
+      svg+='<polygon points="'+w2[0]+','+w2[1]+' '+(a2bx+a1px)+','+(a2by+a1py)+' '+(a2bx-a1px)+','+(a2by-a1py)+'" fill="'+col+'"/>';
+      // Text with white background rect
+      var textW=label.length*fontSize*0.6+8;
+      svg+='<g transform="translate('+midX+','+midY+') rotate('+angDeg+')">';
+      svg+='<rect x="'+(-textW/2)+'" y="'+(-fontSize*0.85)+'" width="'+textW+'" height="'+(fontSize*1.3)+'" fill="#fff" stroke="none"/>';
+      svg+='<text x="0" y="'+(fontSize*0.35)+'" text-anchor="middle" font-family="sans-serif" font-size="'+fontSize+'" fill="'+col+'">'+label+'</text>';
+      svg+='</g>';
+      svg+='</svg>';
+      div.innerHTML=svg;
+      div.onmousedown=function(e){
+        if(_eraserMode){
+          e.stopPropagation();e.preventDefault();
+          saveHistory();
+          var newSel=new Set();
+          _sel.forEach(function(s){if(s<i) newSel.add(s);else if(s>i) newSel.add(s-1);});
+          _sel=newSel;
+          _modules.splice(i,1);
+          draw();renderModules();renderProps();
+          return;
+        }
+        startDimOffsetDrag(e,i);
+      };
+      div.onclick=function(e){if(_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      layer.appendChild(div);
+      return;
+    }
     // Lines and arcs use x1,y1,x2,y2 — compute bounding box
     if(m.type==='shape_line'||m.type==='shape_arc'){
       var lx1=Math.min(m.x1,m.x2),ly1=Math.min(m.y1,m.y2);
@@ -1361,6 +1461,17 @@ function renderProps(){
   var idx=_sel.values().next().value;
   var m=_modules[idx];
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
+  // Dimension properties
+  if(m.type==='dimension'){
+    var dg=dimGeom(m);
+    var kindLabel=m.kind==='linear'?'Acotaci\u00F3n lineal':(m.kind==='angular'?'Acotaci\u00F3n angular':'Acotaci\u00F3n radial');
+    panel.innerHTML=
+      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+kindLabel+'</div></div>'+
+      '<div class="c2d-prop"><label>Valor (mm)</label><div style="font-size:13px;padding:6px 0">'+dg.value+'</div></div>'+
+      '<div class="c2d-prop"><label>Offset (mm)</label><input type="number" value="'+(m.offset||0)+'" step="10" onchange="updateProp(\'offset\',this.value)"></div>'+
+      '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    return;
+  }
   // Group properties
   if(m.type==='group'){
     var gLockClosed='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
@@ -2606,6 +2717,8 @@ wrap.addEventListener('mousedown',function(e){
   if(e.target!==wrap&&e.target!==cvs&&e.target!==layer) return;
   e.preventDefault();
   var rect=wrap.getBoundingClientRect();
+  // Dimension mode: handle click
+  if(_dimMode){dimClick(e);return;}
   // Eraser mode: handle click
   if(_eraserMode){eraserClick(e);return;}
   // Cajetin click: open editor panel
@@ -3480,6 +3593,110 @@ function toggleGrid(){
   else btn.classList.remove('active');
   draw();
 }
+// ── DIMENSION TOOL (Phase 1: linear) ──
+var _dimMode=null;          // null | 'linear' (later: 'angular' | 'radial')
+var _dimDraft=null;         // {step:0|1|2, x1,y1, x2,y2, cursorX,cursorY}
+var _dimOffsetDrag=null;    // {idx, origOffset}
+function toggleDimMode(kind){
+  if(_dimMode===kind){exitDimMode();return;}
+  if(_eraserMode) exitEraser();
+  _dimMode=kind;
+  _dimDraft={step:0};
+  document.getElementById('btnDim').classList.add('active');
+  wrap.style.cursor='crosshair';
+  _sel.clear();renderModules();renderProps();
+}
+function exitDimMode(){
+  if(!_dimMode) return;
+  _dimMode=null;_dimDraft=null;
+  var btn=document.getElementById('btnDim');
+  if(btn) btn.classList.remove('active');
+  wrap.style.cursor='grab';
+  draw();
+}
+// Compute world coords from a mouse event, with snap to existing geometry
+function dimWorldFromEvent(e){
+  var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+  var rawX=(e.clientX-rect.left-o.x)/sc;
+  var rawY=-(e.clientY-rect.top-o.y)/sc;
+  var pts=getSnapPoints(new Set());
+  var bestPt=null,bestDist=SNAP_RADIUS;
+  pts.forEach(function(p){
+    var d=Math.sqrt(Math.pow(rawX-p.x,2)+Math.pow(rawY-p.y,2));
+    if(d<bestDist){bestDist=d;bestPt=p;}
+  });
+  if(bestPt) return{x:Math.round(bestPt.x),y:Math.round(bestPt.y),snapped:true};
+  // Fallback: grid snap on each axis
+  return{x:snap(rawX),y:snap(rawY),snapped:false};
+}
+function dimClick(e){
+  if(!_dimMode||!_dimDraft) return;
+  var w=dimWorldFromEvent(e);
+  if(_dimDraft.step===0){
+    _dimDraft.x1=w.x;_dimDraft.y1=w.y;_dimDraft.step=1;
+    draw();return;
+  }
+  if(_dimDraft.step===1){
+    // Reject zero-length
+    if(w.x===_dimDraft.x1&&w.y===_dimDraft.y1) return;
+    _dimDraft.x2=w.x;_dimDraft.y2=w.y;_dimDraft.step=2;
+    draw();return;
+  }
+  if(_dimDraft.step===2){
+    var dx=_dimDraft.x2-_dimDraft.x1, dy=_dimDraft.y2-_dimDraft.y1;
+    var len=Math.sqrt(dx*dx+dy*dy)||1;
+    var nx=-dy/len, ny=dx/len;
+    var rx=w.x-_dimDraft.x1, ry=w.y-_dimDraft.y1;
+    var off=Math.round(rx*nx+ry*ny);
+    saveHistory();
+    _modules.push({type:'dimension',kind:'linear',
+      x1:_dimDraft.x1,y1:_dimDraft.y1,x2:_dimDraft.x2,y2:_dimDraft.y2,
+      offset:off});
+    _dimDraft={step:0};
+    draw();renderModules();
+    return;
+  }
+}
+// Helper used by render and offset drag
+function dimGeom(m){
+  var dx=m.x2-m.x1, dy=m.y2-m.y1;
+  var len=Math.sqrt(dx*dx+dy*dy)||1;
+  var nx=-dy/len, ny=dx/len;
+  var off=m.offset||0;
+  return{
+    dx:dx,dy:dy,len:len,
+    ux:dx/len,uy:dy/len,
+    nx:nx,ny:ny,off:off,
+    d1x:m.x1+off*nx, d1y:m.y1+off*ny,
+    d2x:m.x2+off*nx, d2y:m.y2+off*ny,
+    value:Math.round(len)
+  };
+}
+function startDimOffsetDrag(e,idx){
+  e.preventDefault();e.stopPropagation();
+  if(!_sel.has(idx)) selectModule(idx,e.shiftKey);
+  saveHistory();
+  _dimOffsetDrag={idx:idx,origOffset:_modules[idx].offset||0};
+  document.addEventListener('mousemove',dimOffsetDragMove);
+  document.addEventListener('mouseup',dimOffsetDragEnd);
+}
+function dimOffsetDragMove(e){
+  if(!_dimOffsetDrag) return;
+  var m=_modules[_dimOffsetDrag.idx];if(!m) return;
+  var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+  var curX=(e.clientX-rect.left-o.x)/sc;
+  var curY=-(e.clientY-rect.top-o.y)/sc;
+  var g=dimGeom(m);
+  var rx=curX-m.x1, ry=curY-m.y1;
+  m.offset=Math.round(rx*g.nx+ry*g.ny);
+  draw();renderModules();renderProps();
+}
+function dimOffsetDragEnd(){
+  _dimOffsetDrag=null;
+  document.removeEventListener('mousemove',dimOffsetDragMove);
+  document.removeEventListener('mouseup',dimOffsetDragEnd);
+}
+
 var _eraserMode=false;
 function toggleEraser(){
   _eraserMode=!_eraserMode;
@@ -3505,6 +3722,12 @@ function exitEraser(){
 var _lastEraserEvent=null;
 wrap.addEventListener('mousemove',function(e){
   if(_eraserMode){_lastEraserEvent=e;updateEraserPreview(e);}
+  if(_dimMode&&_dimDraft&&_dimDraft.step>=1){
+    var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
+    _dimDraft.cursorX=(e.clientX-rect.left-o.x)/sc;
+    _dimDraft.cursorY=-(e.clientY-rect.top-o.y)/sc;
+    draw();
+  }
 });
 
 // Line segment intersection: returns {x,y,t} or null
@@ -4498,7 +4721,7 @@ document.addEventListener('contextmenu',function(e){
   }
 });
 document.addEventListener('click',function(){hideCtx();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();if(_sel.size>0||_cajetinSelected) clearSelection();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();exitDimMode();if(_sel.size>0||_cajetinSelected) clearSelection();}});
 </script>
 
 </body>
