@@ -25,8 +25,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar .btn-eraser.active{background:var(--coral);color:#fff;border-color:var(--coral)}
 .c2d-toolbar .btn-grid.active{background:var(--black);color:#fff;border-color:var(--black)}
 .c2d-toolbar .btn-dim.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.c2d-dim-vis-btn{background:var(--white);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:11px;font-family:var(--font);cursor:pointer;height:24px;display:inline-flex;align-items:center;justify-content:center}
-.c2d-dim-vis-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .c2d-dim-palette{display:none;align-items:center;gap:5px;padding:0 6px;border:1px solid var(--border);border-radius:6px;height:24px}
 .c2d-dim-palette.visible{display:inline-flex}
 .c2d-dim-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s}
@@ -207,7 +205,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <div class="c2d-dim-kind" id="dimKindSelector"></div>
     <div class="c2d-dim-radial-toggle" id="dimRadialToggle"></div>
     <div class="c2d-dim-palette" id="dimPalette"></div>
-    <button class="c2d-dim-vis-btn" id="btnDimVis" onclick="toggleDimVisibility()" title="Mostrar/ocultar cotas existentes" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button class="btn-grid" id="btnDimVis" onclick="toggleDimVisibility()" title="Mostrar/ocultar cotas existentes" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
     <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
       <button onclick="toggleExportMenu()">Exportar</button>
