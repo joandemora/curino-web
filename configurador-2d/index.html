@@ -4807,6 +4807,10 @@ function dimClickLinear(e){
   }
   if(_dimDraft.step===1){
     if(w.x===_dimDraft.x1&&w.y===_dimDraft.y1) return;
+    if(e.shiftKey){
+      var sdx=Math.abs(w.x-_dimDraft.x1), sdy=Math.abs(w.y-_dimDraft.y1);
+      if(sdx>=sdy) w.y=_dimDraft.y1; else w.x=_dimDraft.x1;
+    }
     _dimDraft.x2=w.x;_dimDraft.y2=w.y;_dimDraft.step=2;
     draw();return;
   }
@@ -4967,8 +4971,6 @@ wrap.addEventListener('mousemove',function(e){
   if(_eraserMode){_lastEraserEvent=e;updateEraserPreview(e);}
   if(_dimMode){
     var t=dimMagneticTarget(e);
-    if(t) showDimSnapOverlay(t.x,t.y);
-    else hideDimSnapOverlay();
     if(_dimDraft&&_dimDraft.step>=1){
       if(t){
         _dimDraft.cursorX=t.x;_dimDraft.cursorY=t.y;
@@ -4977,8 +4979,18 @@ wrap.addEventListener('mousemove',function(e){
         _dimDraft.cursorX=(e.clientX-rect.left-o.x)/sc;
         _dimDraft.cursorY=-(e.clientY-rect.top-o.y)/sc;
       }
+      // Shift on linear @ step 1: project cursor to dominant axis (H or V)
+      if(_dimMode==='linear'&&_dimDraft.step===1&&e.shiftKey){
+        var msdx=Math.abs(_dimDraft.cursorX-_dimDraft.x1);
+        var msdy=Math.abs(_dimDraft.cursorY-_dimDraft.y1);
+        if(msdx>=msdy) _dimDraft.cursorY=_dimDraft.y1;
+        else _dimDraft.cursorX=_dimDraft.x1;
+        if(t){t.x=_dimDraft.cursorX;t.y=_dimDraft.cursorY;}
+      }
       draw();
     }
+    if(t) showDimSnapOverlay(t.x,t.y);
+    else hideDimSnapOverlay();
   }
 });
 wrap.addEventListener('mouseleave',function(){if(_dimMode) hideDimSnapOverlay();});
