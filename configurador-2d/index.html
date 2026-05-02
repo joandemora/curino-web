@@ -4413,27 +4413,72 @@ function dimClick(e){
   if(_dimMode==='radial') return dimClickRadial(e);
 }
 // Hit-test: nearest shape_circle whose center or contour is within SNAP_RADIUS
+// Returns {cx, cy, radius, a1, a2} for a circle or arc target; null if module
+// is neither shape_circle nor shape_arc. Arc geometry mirrors the formula
+// used in the top-level shape_arc render (sagitta + chord → center, radius).
+// a1/a2 are the angular bounds of the arc (only set for shape_arc).
+function dimRadialTargetGeom(m){
+  if(m.type==='shape_circle'&&m.w&&m.h){
+    return{cx:m.x+m.w/2, cy:m.y+m.h/2, radius:m.w/2, a1:null, a2:null};
+  }
+  if(m.type==='shape_arc'){
+    var dx=m.x2-m.x1, dy=m.y2-m.y1;
+    var chord=Math.sqrt(dx*dx+dy*dy)||1;
+    var halfC=chord/2;
+    var sagAbs=Math.min(Math.abs(m.sagitta||100),halfC);
+    if(sagAbs<1) return null;
+    var arcR=(halfC*halfC)/(2*sagAbs)+sagAbs/2;
+    var midX=(m.x1+m.x2)/2, midY=(m.y1+m.y2)/2;
+    var nx=-dy/chord, ny=dx/chord;
+    var sign=(m.sagitta||100)>0?1:-1;
+    var dist=arcR-sagAbs;
+    var cx=midX-nx*sign*dist, cy=midY-ny*sign*dist;
+    var a1=Math.atan2(m.y1-cy, m.x1-cx);
+    var a2=Math.atan2(m.y2-cy, m.x2-cx);
+    return{cx:cx, cy:cy, radius:arcR, a1:a1, a2:a2};
+  }
+  return null;
+}
+// Returns true if angle (radians) lies within the arc sector defined by a1,a2.
+// Uses the shorter sweep (≤ π) — same convention as dimAngularGeom.
+function angleInArcSector(ang,a1,a2){
+  var span=a2-a1;
+  while(span>Math.PI) span-=2*Math.PI;
+  while(span<=-Math.PI) span+=2*Math.PI;
+  var lo=span>=0?a1:a1+span, hi=span>=0?a1+span:a1;
+  // Normalize ang into [lo, lo+2π)
+  while(ang<lo) ang+=2*Math.PI;
+  while(ang>=lo+2*Math.PI) ang-=2*Math.PI;
+  return ang<=hi;
+}
 function dimRadialHitCircle(e){
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var rawX=(e.clientX-rect.left-o.x)/sc;
   var rawY=-(e.clientY-rect.top-o.y)/sc;
   var bestIdx=-1, bestD=SNAP_RADIUS;
   _modules.forEach(function(m,i){
-    if(m.type!=='shape_circle') return;
-    if(!m.w||!m.h) return;
-    var ccx=m.x+m.w/2, ccy=m.y+m.h/2;
-    var r=m.w/2;
-    var dCenter=Math.hypot(rawX-ccx, rawY-ccy);
-    var dContour=Math.abs(dCenter-r);
-    var dMin=Math.min(dCenter,dContour);
+    var g=dimRadialTargetGeom(m);
+    if(!g) return;
+    var dCenter=Math.hypot(rawX-g.cx, rawY-g.cy);
+    var dMin=dCenter;
+    var contourCheck;
+    if(g.a1==null){
+      // Full circle: contour anywhere
+      contourCheck=Math.abs(dCenter-g.radius);
+    }else{
+      // Arc: contour only inside the sector
+      var ang=Math.atan2(rawY-g.cy, rawX-g.cx);
+      contourCheck=angleInArcSector(ang,g.a1,g.a2)?Math.abs(dCenter-g.radius):Infinity;
+    }
+    if(contourCheck<dMin) dMin=contourCheck;
     if(dMin<bestD){bestD=dMin; bestIdx=i;}
   });
   if(bestIdx<0) return null;
-  var t=_modules[bestIdx];
+  var g=dimRadialTargetGeom(_modules[bestIdx]);
   return{idx:bestIdx,
-    cx:Math.round(t.x+t.w/2),
-    cy:Math.round(t.y+t.h/2),
-    radius:Math.round(t.w/2)};
+    cx:Math.round(g.cx),
+    cy:Math.round(g.cy),
+    radius:Math.round(g.radius)};
 }
 function dimClickRadial(e){
   if(_dimDraft.step===0){
@@ -4466,17 +4511,17 @@ function dimClickRadial(e){
 // Uses targetIdx first; if it's stale, searches by snapshot center.
 function dimRadialResolveTarget(m){
   var t=_modules[m.targetIdx];
-  if(t&&t.type==='shape_circle'&&t.w&&t.h){
-    return{cx:t.x+t.w/2, cy:t.y+t.h/2, radius:t.w/2, idx:m.targetIdx};
+  if(t){
+    var g=dimRadialTargetGeom(t);
+    if(g) return{cx:g.cx, cy:g.cy, radius:g.radius, idx:m.targetIdx};
   }
-  // Stale index: try to re-find by snapshot center match
+  // Stale index: try to re-find by snapshot center match (within 2mm)
   for(var i=0;i<_modules.length;i++){
-    var c=_modules[i];
-    if(c.type!=='shape_circle'||!c.w||!c.h) continue;
-    var ccx=c.x+c.w/2, ccy=c.y+c.h/2;
-    if(Math.abs(ccx-m.cx)<2&&Math.abs(ccy-m.cy)<2){
+    var g2=dimRadialTargetGeom(_modules[i]);
+    if(!g2) continue;
+    if(Math.abs(g2.cx-m.cx)<2&&Math.abs(g2.cy-m.cy)<2){
       m.targetIdx=i;
-      return{cx:ccx, cy:ccy, radius:c.w/2, idx:i};
+      return{cx:g2.cx, cy:g2.cy, radius:g2.radius, idx:i};
     }
   }
   return null;
