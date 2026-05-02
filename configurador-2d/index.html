@@ -2139,6 +2139,8 @@ wrap.addEventListener('drop',function(e){
     m.savedDrawingId=_dragData.savedId;m.savedDrawingName=_dragData.savedName;
     clampToPaper(m);_modules.push(m);saveHistory();
     if(_eraserMode) exitEraser();
+    if(_dimMode) exitDimMode();
+    if(_textMode) exitTextMode();
     _dragData=null;draw();renderModules();selectModule(_modules.length-1);
     return;
   }
@@ -2165,6 +2167,8 @@ wrap.addEventListener('drop',function(e){
   _modules.push(newMod);
   saveHistory();
   if(_eraserMode) exitEraser();
+  if(_dimMode) exitDimMode();
+  if(_textMode) exitTextMode();
   _dragData=null;draw();renderModules();selectModule(_modules.length-1);
 });
 
