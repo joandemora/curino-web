@@ -662,7 +662,7 @@ function draw(){
   // Curino logo (right side of row 1). Falls back to "& Curino" text
   // until the SVG image finishes loading.
   if(_curinoLogo.complete&&_curinoLogo.naturalWidth>0){
-    var lh=rowH*0.6;
+    var lh=rowH*0.9;
     var ar=_curinoLogo.naturalWidth/_curinoLogo.naturalHeight;
     var lw=lh*ar;
     var lx=cjScrX+cjScrW-pad-lw;
