@@ -2355,6 +2355,21 @@ function dragModuleMove(e){
       }
     });
   });
+  // Center snap: combined bbox center vs paper center (slides-style guides)
+  var dmMinL=Infinity,dmMaxR=-Infinity,dmMinB=Infinity,dmMaxT=-Infinity;
+  _dragMod.origins.forEach(function(o){
+    var m=_modules[o.idx],oL,oR,oB,oT;
+    if(o.isLine){oL=Math.min(o.x1,o.x2);oR=Math.max(o.x1,o.x2);oB=Math.min(o.y1,o.y2);oT=Math.max(o.y1,o.y2);}
+    else{oL=o.x;oR=o.x+m.w;oB=o.y;oT=o.y+m.h;}
+    if(oL<dmMinL)dmMinL=oL;if(oR>dmMaxR)dmMaxR=oR;
+    if(oB<dmMinB)dmMinB=oB;if(oT>dmMaxT)dmMaxT=oT;
+  });
+  var pbDM=paperBounds();
+  var pCX=(pbDM.left+pbDM.right)/2, pCY=(pbDM.bottom+pbDM.top)/2;
+  var newCX=(dmMinL+dmMaxR)/2+dx, newCY=(dmMinB+dmMaxT)/2+dyWorld;
+  var dCenterX=pCX-newCX, dCenterY=pCY-newCY;
+  if(Math.abs(dCenterX)<SNAP_RADIUS&&(xSnapVal===null||Math.abs(dCenterX)<Math.abs(xCorr))){xCorr=dCenterX;xSnapVal=pCX;}
+  if(Math.abs(dCenterY)<SNAP_RADIUS&&(ySnapVal===null||Math.abs(dCenterY)<Math.abs(yCorr))){yCorr=dCenterY;ySnapVal=pCY;}
   if(xSnapVal!==null) showSnapLine(xSnapVal,'x');
   if(ySnapVal!==null) showSnapLine(ySnapVal,'y');
   // Fallback to grid snap when no magnetic correction fired (uses first origin's edge as ref)
@@ -2616,6 +2631,43 @@ function resizeMove(e){
     showFakeCursor(p,hx,hy);
   }else hideFakeCursor();
 
+  // Center snap (paper) — adjust the moving edge so the bbox center lands on
+  // the paper's center axis. Only when not rotated and not in shift-aspect mode.
+  if(!hasRot&&!shiftActive&&m.w&&m.h){
+    var pbR=paperBounds();
+    var pCXr=(pbR.left+pbR.right)/2, pCYr=(pbR.bottom+pbR.top)/2;
+    if(p==='r'||p==='tr'||p==='br'){
+      var nc=m.x+m.w/2;
+      if(Math.abs(nc-pCXr)<SNAP_RADIUS){
+        m.w=Math.round(Math.max(GRID,2*(pCXr-m.x)));
+        showSnapLine(pCXr,'x');
+      }
+    }else if(p==='l'||p==='tl'||p==='bl'){
+      var nc=m.x+m.w/2;
+      if(Math.abs(nc-pCXr)<SNAP_RADIUS){
+        var rEdgeR=r.origX+r.origW;
+        var nW=Math.round(Math.max(GRID,2*(rEdgeR-pCXr)));
+        m.w=nW;m.x=Math.round(rEdgeR-nW);
+        showSnapLine(pCXr,'x');
+      }
+    }
+    if(p==='t'||p==='tl'||p==='tr'){
+      var ncy=m.y+m.h/2;
+      if(Math.abs(ncy-pCYr)<SNAP_RADIUS){
+        m.h=Math.round(Math.max(GRID,2*(pCYr-m.y)));
+        showSnapLine(pCYr,'y');
+      }
+    }else if(p==='b'||p==='bl'||p==='br'){
+      var ncy=m.y+m.h/2;
+      if(Math.abs(ncy-pCYr)<SNAP_RADIUS){
+        var tEdgeR=r.origY+r.origH;
+        var nH=Math.round(Math.max(GRID,2*(tEdgeR-pCYr)));
+        m.h=nH;m.y=Math.round(tEdgeR-nH);
+        showSnapLine(pCYr,'y');
+      }
+    }
+  }
+
   // Compensate: keep anchor at its original screen position
   if(hasRot){
     var anchorAfter=anchorScreenPos(m.x,m.y,m.w,m.h,rotAngle,sc,o2,aFx,aFy);
@@ -2736,6 +2788,36 @@ function groupResizeMove(e){
     var rawB=ay,snB=magSnap(rawB,grYEdges,sc);
     var tEdge=g.by+g.bh;ah=Math.round(Math.max(GRID,tEdge-snB));ay=Math.round(tEdge-ah);
     if(snB!==snap(rawB)) showSnapLine(snB,'y');
+  }
+
+  // Center snap (paper) — adjust the moving bbox edge to land bbox center on paper axis
+  var pbG=paperBounds();
+  var pCXg=(pbG.left+pbG.right)/2, pCYg=(pbG.bottom+pbG.top)/2;
+  if(p==='r'||p==='tr'||p==='br'){
+    if(Math.abs((ax+aw/2)-pCXg)<SNAP_RADIUS){
+      aw=Math.round(Math.max(GRID,2*(pCXg-ax)));
+      showSnapLine(pCXg,'x');
+    }
+  }else if(p==='l'||p==='tl'||p==='bl'){
+    if(Math.abs((ax+aw/2)-pCXg)<SNAP_RADIUS){
+      var rEdgeG=g.bx+g.bw;
+      aw=Math.round(Math.max(GRID,2*(rEdgeG-pCXg)));
+      ax=Math.round(rEdgeG-aw);
+      showSnapLine(pCXg,'x');
+    }
+  }
+  if(p==='t'||p==='tl'||p==='tr'){
+    if(Math.abs((ay+ah/2)-pCYg)<SNAP_RADIUS){
+      ah=Math.round(Math.max(GRID,2*(pCYg-ay)));
+      showSnapLine(pCYg,'y');
+    }
+  }else if(p==='b'||p==='bl'||p==='br'){
+    if(Math.abs((ay+ah/2)-pCYg)<SNAP_RADIUS){
+      var tEdgeG=g.by+g.bh;
+      ah=Math.round(Math.max(GRID,2*(tEdgeG-pCYg)));
+      ay=Math.round(tEdgeG-ah);
+      showSnapLine(pCYg,'y');
+    }
   }
 
   // Shift: maintain bbox aspect ratio (group resize). Per-element locks
