@@ -3407,7 +3407,30 @@ function redo(){
 // Clipboard
 var _clipboard=null;
 document.addEventListener('keydown',function(e){
-  var inInput=document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='SELECT';
+  var ae=document.activeElement;
+  var inInput=ae.tagName==='INPUT'||ae.tagName==='SELECT'||ae.tagName==='TEXTAREA'||ae.isContentEditable;
+  // Arrow keys: move selected modules 1mm (10mm with Shift). Blocked while
+  // a tool mode is active so it doesn't conflict with creation flows.
+  if(_sel.size>0&&!inInput&&!_eraserMode&&!_dimMode&&!_textMode&&
+     (e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowDown')){
+    e.preventDefault();
+    var step=e.shiftKey?10:1;
+    var dx=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;
+    var dy=e.key==='ArrowDown'?-step:e.key==='ArrowUp'?step:0; // world Y is up
+    saveHistory();
+    _sel.forEach(function(idx){
+      var m=_modules[idx];if(!m) return;
+      if(m.x1!==undefined){m.x1+=dx;m.x2+=dx;}
+      if(m.y1!==undefined){m.y1+=dy;m.y2+=dy;}
+      if(m.x!==undefined&&m.x1===undefined) m.x+=dx;
+      if(m.y!==undefined&&m.y1===undefined) m.y+=dy;
+      if(m.cx!==undefined) m.cx+=dx;
+      if(m.cy!==undefined) m.cy+=dy;
+      if(m.w&&m.h&&m.x!==undefined&&m.x1===undefined) clampToPaper(m);
+    });
+    draw();renderModules();renderProps();
+    return;
+  }
   // Delete
   if((e.key==='Delete'||e.key==='Backspace')&&_sel.size>0&&!inInput){
     e.preventDefault();deleteSelected();return;
