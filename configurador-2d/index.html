@@ -108,6 +108,10 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-canvas-wrap.tool-mode-active .c2d-module.selected,
 .c2d-canvas-wrap.tool-mode-active .c2d-module.no-frame:hover,
 .c2d-canvas-wrap.tool-mode-active .c2d-module.no-frame.selected{box-shadow:none!important;border-color:var(--black)!important}
+/* Force crosshair on the entire canvas + every descendant while a tool mode is on,
+   beating per-element cursor rules (handles, modules, control points, etc.) */
+.c2d-canvas-wrap.tool-mode-active,
+.c2d-canvas-wrap.tool-mode-active *{cursor:crosshair!important}
 .c2d-module.css-shape.selected{box-shadow:0 0 0 2px var(--accent)}
 .c2d-module-label{text-align:center;line-height:1.3;pointer-events:none}
 /* Resize handles */
