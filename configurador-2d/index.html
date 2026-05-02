@@ -3414,7 +3414,7 @@ document.addEventListener('keydown',function(e){
   if(_sel.size>0&&!inInput&&!_eraserMode&&!_dimMode&&!_textMode&&
      (e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowDown')){
     e.preventDefault();
-    var step=e.shiftKey?10:1;
+    var step=e.shiftKey?1:10;
     var dx=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;
     var dy=e.key==='ArrowDown'?-step:e.key==='ArrowUp'?step:0; // world Y is up
     saveHistory();
