@@ -2305,6 +2305,12 @@ function showSnapDot(wx,wy){
 }
 var _snapLines=[];
 function clearSnapLines(){_snapLines.forEach(function(el){el.remove();});_snapLines=[];}
+// Defensive: any mouseup anywhere wipes stray snap guides. Covers cases
+// where the specific drag/resize end handler doesn't fire (mode toggled
+// mid-drag, right-click context menu, cursor leaving the wrap, lost focus).
+// Safe to fire unconditionally — the next mousemove regenerates the lines
+// if a drag/resize is still in progress and snap is still active.
+document.addEventListener('mouseup',clearSnapLines);
 function showSnapLine(val,axis){
   // Append to wrap (not layer) so renderModules's layer.innerHTML='' doesn't
   // wipe it during the same drag/resize tick. Position is wrap-relative.
@@ -4301,6 +4307,7 @@ function updateDimRadialToggleVisibility(){
   else t.classList.remove('visible');
 }
 function toggleDimMode(){
+  clearSnapLines();
   if(_dimMode){exitDimMode();return;}
   if(_eraserMode) exitEraser();
   if(_textMode) exitTextMode();
@@ -4694,6 +4701,7 @@ function buildTextPopover(){
   });
 }
 function toggleTextMode(){
+  clearSnapLines();
   if(_textMode){exitTextMode();return;}
   if(_eraserMode) exitEraser();
   if(_dimMode) exitDimMode();
@@ -4941,6 +4949,7 @@ function dimOffsetDragEnd(){
 
 var _eraserMode=false;
 function toggleEraser(){
+  clearSnapLines();
   _eraserMode=!_eraserMode;
   var btn=document.getElementById('btnEraser');
   if(_eraserMode){
@@ -5986,7 +5995,7 @@ document.addEventListener('contextmenu',function(e){
   }
 });
 document.addEventListener('click',function(){hideCtx();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();exitDimMode();exitTextMode();if(_sel.size>0||_cajetinSelected) clearSelection();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();exitDimMode();exitTextMode();clearSnapLines();if(_sel.size>0||_cajetinSelected) clearSelection();}});
 </script>
 
 </body>
