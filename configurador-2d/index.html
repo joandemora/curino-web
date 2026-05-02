@@ -4431,7 +4431,7 @@ function toggleTextMode(){
   document.getElementById('btnText').classList.add('active');
   buildTextPopover();
   document.getElementById('textPopover').classList.add('visible');
-  wrap.style.cursor='text';
+  wrap.style.cursor='crosshair';
   wrap.classList.add('tool-mode-active');
   _sel.clear();renderModules();renderProps();
 }
