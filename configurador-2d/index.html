@@ -1484,6 +1484,18 @@ function renderModules(){
         }
       }
     }
+    if(m.type==='image'){
+      div.classList.add('no-frame');
+      div.style.border='none';div.style.background='transparent';div.style.overflow='hidden';
+      var imgRec=getImageCacheEntry(m.url);
+      if(imgRec.state==='loaded'){
+        inner='<img src="'+m.url+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;display:block" draggable="false">';
+      }else if(imgRec.state==='error'){
+        inner='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#fdecec;color:#a33;font-size:11px;text-align:center;line-height:1.3">Imagen no<br>disponible</div>';
+      }else{
+        inner='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#f4f4f4;color:#888;font-size:11px">Cargando…</div>';
+      }
+    }
     if(m.type==='group'){
       div.style.border='none';div.style.background='transparent';
       m.children.forEach(function(child){
@@ -1853,6 +1865,19 @@ function renderProps(){
       '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
     return;
   }
+  // Image properties
+  if(m.type==='image'){
+    panel.innerHTML=
+      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Imagen</div></div>'+
+      '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="10" min="1" onchange="updateProp(\'w\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="10" min="1" onchange="updateProp(\'h\',this.value)"></div>'+
+      '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="10" onchange="updateProp(\'x\',parseInt(this.value)||0)"></div>'+
+      '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="10" onchange="updateProp(\'y\',parseInt(this.value)||0)"></div>'+
+      '<div class="c2d-prop"><label>Rotación (°)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value)||0)"></div>'+
+      '<div class="c2d-prop"><input type="file" id="imgReplaceFile" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="display:none" onchange="if(this.files[0])replaceProjectImage('+idx+',this.files[0])"><button type="button" onclick="document.getElementById(\'imgReplaceFile\').click()" style="width:100%;padding:6px;border:1px solid var(--border);background:var(--white);border-radius:4px;cursor:pointer;font-size:12px">Reemplazar imagen</button></div>'+
+      '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    return;
+  }
   // Dimension properties
   if(m.type==='dimension'){
     var kindLabel=m.kind==='linear'?'Acotaci\u00F3n lineal':(m.kind==='angular'?'Acotaci\u00F3n angular':'Acotaci\u00F3n radial');
@@ -2116,6 +2141,19 @@ document.querySelectorAll('.c2d-mod').forEach(function(el){
 });
 wrap.addEventListener('dragover',function(e){e.preventDefault();});
 wrap.addEventListener('drop',function(e){
+  // Files dropped from the desktop → project-images upload path.
+  // Falls through to the saved_drawing / palette drag flow below otherwise.
+  if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files.length){
+    var imgFiles=Array.from(e.dataTransfer.files).filter(function(f){return f.type&&f.type.indexOf('image/')===0;});
+    if(imgFiles.length){
+      e.preventDefault();
+      var fr=wrap.getBoundingClientRect(),fsc=s(),fo=origin();
+      var fwx=(e.clientX-fr.left-fo.x)/fsc;
+      var fwy=-(e.clientY-fr.top-fo.y)/fsc;
+      imgFiles.forEach(function(f,i){uploadProjectImage(f,fwx+i*20,fwy-i*20);});
+      return;
+    }
+  }
   e.preventDefault();if(!_dragData) return;
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var rawX=(e.clientX-rect.left-o.x)/sc;
@@ -3742,6 +3780,81 @@ function getProjectData(){
   };
 }
 
+// ── PROJECT IMAGES (Supabase Storage: project-images bucket) ──
+// Cache of Image instances per URL so we don't recreate them on every render.
+// Each entry transitions through 'loading' → 'loaded' | 'error'; renderModules
+// is re-invoked when state flips so the placeholder swaps for the real image.
+var _imageCache={};
+function getImageCacheEntry(url){
+  if(!url) return {state:'error'};
+  if(!_imageCache[url]){
+    var rec={state:'loading',img:new Image()};
+    rec.img.crossOrigin='anonymous';
+    rec.img.onload=function(){rec.state='loaded';rec.naturalW=rec.img.naturalWidth;rec.naturalH=rec.img.naturalHeight;renderModules();draw();};
+    rec.img.onerror=function(){rec.state='error';renderModules();};
+    rec.img.src=url;
+    _imageCache[url]=rec;
+  }
+  return _imageCache[url];
+}
+function readImageDims(file){
+  return new Promise(function(resolve){
+    var u=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){URL.revokeObjectURL(u);resolve({w:img.naturalWidth||200,h:img.naturalHeight||200});};
+    img.onerror=function(){URL.revokeObjectURL(u);resolve({w:200,h:200});};
+    img.src=u;
+  });
+}
+var ALLOWED_IMAGE_TYPES=['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/svg+xml'];
+async function uploadProjectImage(file,worldX,worldY){
+  if(!_supabase||!_currentUser){alert('Inicia sesión para subir imágenes.');return;}
+  if(!file||!file.type||!file.type.startsWith('image/')){alert('Sólo se admiten archivos de imagen.');return;}
+  if(ALLOWED_IMAGE_TYPES.indexOf(file.type)<0){alert('Formato no admitido. Usa PNG, JPG, WebP, GIF o SVG.');return;}
+  if(file.size>5*1024*1024){alert('La imagen supera el límite de 5 MB.');return;}
+  var dims=await readImageDims(file);
+  // Default size: 200mm wide max, preserving aspect ratio
+  var targetW=Math.round(Math.min(200,dims.w));
+  var targetH=Math.round(targetW*(dims.h/dims.w));
+  if(targetH<1) targetH=1;
+  var ext=(file.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(!ext) ext='png';
+  var path=_currentUser.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  var up=await _supabase.storage.from('project-images').upload(path,file,{upsert:false,cacheControl:'3600',contentType:file.type});
+  if(up.error){alert('Error al subir la imagen: '+up.error.message);return;}
+  var url=_supabase.storage.from('project-images').getPublicUrl(path).data.publicUrl;
+  saveHistory();
+  _modules.push({
+    type:'image',
+    x:Math.round(worldX-targetW/2),
+    y:Math.round(worldY-targetH/2),
+    w:targetW,h:targetH,
+    rotation:0,
+    url:url,
+    naturalW:dims.w,naturalH:dims.h,
+    storagePath:path
+  });
+  _sel.clear();_sel.add(_modules.length-1);
+  draw();renderModules();renderProps();
+}
+async function replaceProjectImage(idx,file){
+  var m=_modules[idx];
+  if(!m||m.type!=='image') return;
+  if(!_supabase||!_currentUser){alert('Inicia sesión para subir imágenes.');return;}
+  if(!file||ALLOWED_IMAGE_TYPES.indexOf(file.type)<0){alert('Formato no admitido.');return;}
+  if(file.size>5*1024*1024){alert('La imagen supera el límite de 5 MB.');return;}
+  var ext=(file.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(!ext) ext='png';
+  var path=_currentUser.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  var up=await _supabase.storage.from('project-images').upload(path,file,{upsert:false,cacheControl:'3600',contentType:file.type});
+  if(up.error){alert('Error al subir la imagen: '+up.error.message);return;}
+  var url=_supabase.storage.from('project-images').getPublicUrl(path).data.publicUrl;
+  var dims=await readImageDims(file);
+  saveHistory();
+  m.url=url;m.storagePath=path;m.naturalW=dims.w;m.naturalH=dims.h;
+  draw();renderModules();renderProps();
+}
+
 // ── USER LOGO (Supabase: user_logos table + user-logos bucket) ──
 async function loadUserLogo(){
   if(!_supabase||!_currentUser){_userLogoUrl=null;return;}
@@ -5021,6 +5134,32 @@ function exitEraser(){
   if(!_dimMode&&!_textMode) wrap.classList.remove('tool-mode-active');
   clearEraserPreview();
 }
+
+// Cmd+V / Ctrl+V with an image in the OS clipboard → upload + insert at the
+// viewport center. The internal-clipboard paste of copied modules is handled
+// by the keydown listener (uses _clipboard) and runs first; if it called
+// preventDefault for a module paste, the OS paste event still fires but our
+// handler bails because clipboardData has no image files.
+document.addEventListener('paste',function(e){
+  var tgt=e.target||document.activeElement;
+  if(tgt&&(tgt.tagName==='INPUT'||tgt.tagName==='TEXTAREA'||tgt.isContentEditable)) return;
+  if(!e.clipboardData||!e.clipboardData.items) return;
+  var imgFiles=[];
+  for(var i=0;i<e.clipboardData.items.length;i++){
+    var it=e.clipboardData.items[i];
+    if(it.kind==='file'&&it.type&&it.type.indexOf('image/')===0){
+      var f=it.getAsFile();
+      if(f) imgFiles.push(f);
+    }
+  }
+  if(!imgFiles.length) return;
+  e.preventDefault();
+  // Insert at the world point currently at the center of the viewport.
+  var pr=wrap.getBoundingClientRect(),psc=s(),po=origin();
+  var pwx=(pr.width/2-po.x)/psc;
+  var pwy=-(pr.height/2-po.y)/psc;
+  imgFiles.forEach(function(f,k){uploadProjectImage(f,pwx+k*20,pwy-k*20);});
+});
 
 var _lastEraserEvent=null;
 wrap.addEventListener('mousemove',function(e){
