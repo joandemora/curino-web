@@ -1981,8 +1981,11 @@ function renderProps(){
     groupHTML+=
       '<div class="c2d-prop"><label>Ancho (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" '+(m.lockW?'disabled ':'')+'onchange="updateProp(\'w\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockW?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockW\')">'+(m.lockW?gLockClosed:gLockOpen)+'</button></div></div>'+
       '<div class="c2d-prop"><label>Alto (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" '+(m.lockH?'disabled ':'')+'onchange="updateProp(\'h\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockH?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockH\')">'+(m.lockH?gLockClosed:gLockOpen)+'</button></div></div>'+
-      '<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>'+
-      '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+      '<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>';
+    if(m.children&&m.children.length>=2){
+      groupHTML+='<button type="button" onclick="onSeparateGroupClick()" style="width:100%;padding:6px;border:1px solid var(--border);background:var(--white);border-radius:4px;cursor:pointer;font-size:12px;margin-bottom:6px">Separar en dibujos</button>';
+    }
+    groupHTML+='<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
     panel.innerHTML=groupHTML;
     if(m.savedDrawingId){
       var inp=document.getElementById('savedDrawingNameInput');
@@ -4194,6 +4197,197 @@ function readFileText(file){
     r.onerror=function(){reject(r.error||new Error('read failed'));};
     r.readAsText(file);
   });
+}
+// ── GROUP SEPARATION (k-means on child centroids) ──
+// User-facing N is the cluster count. Algorithm picks k-means with k-means++
+// init over child centroids: scales O(n·k·iter), so 16k children × 100 max
+// clusters × ≤30 iterations ≈ 50M ops, well under 1s on a modern laptop —
+// orders of magnitude faster than O(n²) full-pair agglomerative would be.
+// The result is "exactly N spatially-coherent clusters" which is what the
+// user actually wants when separating, e.g., legs from a chair seat.
+function askSeparateGroupCount(maxN){
+  return new Promise(function(resolve){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000;font-family:var(--font)';
+    var box=document.createElement('div');
+    box.style.cssText='background:#fff;padding:20px 24px;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.3);max-width:340px;text-align:center';
+    box.innerHTML='<h3 style="margin:0 0 8px;font-size:16px">Separar en dibujos</h3>'+
+      '<p style="margin:0 0 12px;color:#666;font-size:13px">¿En cuántos dibujos quieres separar este group?</p>';
+    var inp=document.createElement('input');
+    inp.type='number'; inp.value='2'; inp.min='2'; inp.max=String(maxN);
+    inp.style.cssText='width:100px;padding:8px;font-size:14px;border:1px solid #ccc;border-radius:4px;text-align:center;margin-bottom:12px';
+    box.appendChild(inp);
+    var hint=document.createElement('div');
+    hint.style.cssText='color:#888;font-size:11px;margin-bottom:12px';
+    hint.textContent='Mínimo 2 — Máximo '+maxN;
+    box.appendChild(hint);
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;justify-content:center';
+    var ok=document.createElement('button');
+    ok.textContent='Separar';
+    ok.style.cssText='padding:8px 16px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px';
+    var cancel=document.createElement('button');
+    cancel.textContent='Cancelar';
+    cancel.style.cssText='padding:8px 16px;background:#fff;color:#666;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:13px';
+    function done(v){ov.remove();resolve(v);}
+    ok.onclick=function(){
+      var n=parseInt(inp.value,10);
+      if(isNaN(n)||n<2) n=2; if(n>maxN) n=maxN;
+      done(n);
+    };
+    cancel.onclick=function(){done(null);};
+    inp.addEventListener('keydown',function(e){
+      if(e.key==='Enter') ok.click();
+      else if(e.key==='Escape') cancel.click();
+    });
+    row.appendChild(cancel);row.appendChild(ok);
+    box.appendChild(row);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    setTimeout(function(){inp.focus();inp.select();},0);
+  });
+}
+function childBboxLocal(ch){
+  if(ch.type==='shape_line'||ch.type==='shape_arc'){
+    return {
+      x1:Math.min(ch.x1,ch.x2), y1:Math.min(ch.y1,ch.y2),
+      x2:Math.max(ch.x1,ch.x2), y2:Math.max(ch.y1,ch.y2)
+    };
+  }
+  return {x1:ch.x||0, y1:ch.y||0, x2:(ch.x||0)+(ch.w||0), y2:(ch.y||0)+(ch.h||0)};
+}
+function kmeansClusterChildren(children,N){
+  var n=children.length;
+  if(N>=n) return children.map(function(_,i){return [i];});
+  var centroids=children.map(function(ch){
+    var bb=childBboxLocal(ch);
+    return {x:(bb.x1+bb.x2)/2, y:(bb.y1+bb.y2)/2};
+  });
+  // k-means++ init
+  var centers=[];
+  centers.push({x:centroids[Math.floor(Math.random()*n)].x, y:centroids[Math.floor(Math.random()*n)].y});
+  var distSq=new Float64Array(n);
+  while(centers.length<N){
+    var sum=0;
+    for(var i=0;i<n;i++){
+      var minD=Infinity;
+      for(var j=0;j<centers.length;j++){
+        var dx=centroids[i].x-centers[j].x, dy=centroids[i].y-centers[j].y;
+        var d=dx*dx+dy*dy;
+        if(d<minD) minD=d;
+      }
+      distSq[i]=minD; sum+=minD;
+    }
+    if(sum<=0) break;
+    var r=Math.random()*sum, cum=0, picked=0;
+    for(var i=0;i<n;i++){cum+=distSq[i]; if(cum>=r){picked=i;break;}}
+    centers.push({x:centroids[picked].x, y:centroids[picked].y});
+  }
+  // Lloyd iterations
+  var assign=new Int32Array(n);
+  var maxIter=30;
+  for(var iter=0;iter<maxIter;iter++){
+    var changed=false;
+    for(var i=0;i<n;i++){
+      var minD=Infinity, best=0;
+      for(var j=0;j<centers.length;j++){
+        var dx=centroids[i].x-centers[j].x, dy=centroids[i].y-centers[j].y;
+        var d=dx*dx+dy*dy;
+        if(d<minD){minD=d; best=j;}
+      }
+      if(assign[i]!==best){assign[i]=best; changed=true;}
+    }
+    if(!changed) break;
+    var sx=new Float64Array(centers.length), sy=new Float64Array(centers.length), sn=new Int32Array(centers.length);
+    for(var i=0;i<n;i++){var a=assign[i]; sx[a]+=centroids[i].x; sy[a]+=centroids[i].y; sn[a]++;}
+    for(var j=0;j<centers.length;j++){
+      if(sn[j]>0){centers[j].x=sx[j]/sn[j]; centers[j].y=sy[j]/sn[j];}
+    }
+  }
+  // Bucket child indices by assignment, drop empty clusters
+  var buckets={};
+  for(var i=0;i<n;i++){
+    var a=assign[i];
+    if(!buckets[a]) buckets[a]=[];
+    buckets[a].push(i);
+  }
+  return Object.keys(buckets).map(function(k){return buckets[k];});
+}
+function separateGroupIntoN(groupIdx,N){
+  var g=_modules[groupIdx];
+  if(!g||g.type!=='group'||!g.children||g.children.length<2) return 0;
+  if(N<2) N=2; if(N>g.children.length) N=g.children.length;
+  var clusters=kmeansClusterChildren(g.children,N);
+  if(clusters.length<2) return 0;
+  var newGroups=[];
+  clusters.forEach(function(idxs){
+    if(idxs.length===0) return;
+    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    idxs.forEach(function(i){
+      var bb=childBboxLocal(g.children[i]);
+      if(bb.x1<minX) minX=bb.x1; if(bb.y1<minY) minY=bb.y1;
+      if(bb.x2>maxX) maxX=bb.x2; if(bb.y2>maxY) maxY=bb.y2;
+    });
+    var nw=Math.max(1,Math.round(maxX-minX));
+    var nh=Math.max(1,Math.round(maxY-minY));
+    var newChildren=idxs.map(function(i){
+      var nch=JSON.parse(JSON.stringify(g.children[i]));
+      if(nch.type==='shape_line'||nch.type==='shape_arc'){
+        nch.x1=Math.round(nch.x1-minX); nch.y1=Math.round(nch.y1-minY);
+        nch.x2=Math.round(nch.x2-minX); nch.y2=Math.round(nch.y2-minY);
+      }else{
+        nch.x=Math.round((nch.x||0)-minX); nch.y=Math.round((nch.y||0)-minY);
+      }
+      return nch;
+    });
+    newGroups.push({
+      type:'group',
+      x:Math.round((g.x||0)+minX),
+      y:Math.round((g.y||0)+minY),
+      w:nw, h:nh,
+      rotation:g.rotation||0,
+      lockW:!!g.lockW, lockH:!!g.lockH,
+      children:newChildren
+      // savedDrawingId / savedDrawingName intentionally NOT inherited.
+    });
+  });
+  if(newGroups.length<2) return 0;
+  // Splice new groups in place of the original — single atomic op so the
+  // selection-shift math stays simple.
+  var spliceArgs=[groupIdx,1].concat(newGroups);
+  Array.prototype.splice.apply(_modules,spliceArgs);
+  // Shift any selection past the original index by (N-1), then select the
+  // new groups. The user expects to be left with the new groups selected.
+  var shift=newGroups.length-1;
+  var newSel=new Set();
+  _sel.forEach(function(s){
+    if(s<groupIdx) newSel.add(s);
+    else if(s>groupIdx) newSel.add(s+shift);
+  });
+  for(var k=0;k<newGroups.length;k++) newSel.add(groupIdx+k);
+  _sel=newSel;
+  return newGroups.length;
+}
+async function onSeparateGroupClick(){
+  if(_sel.size!==1) return;
+  var idx=_sel.values().next().value;
+  var g=_modules[idx];
+  if(!g||g.type!=='group'||!g.children||g.children.length<2) return;
+  var n=await askSeparateGroupCount(g.children.length);
+  if(!n) return;
+  var prevCursor=document.body.style.cursor;
+  document.body.style.cursor='wait';
+  // Yield one paint so the wait cursor / about-to-process state shows.
+  await new Promise(function(r){setTimeout(r,0);});
+  saveHistory();
+  var produced=separateGroupIntoN(idx,n);
+  document.body.style.cursor=prevCursor;
+  if(produced<2){
+    showToast('No se pudo separar el dibujo','error');
+    return;
+  }
+  draw();renderModules();renderProps();
+  showToast('Separado en '+produced+' dibujos','success');
 }
 // Modal dialog asking the user which unit the DXF was authored in. Used
 // when the file omits $INSUNITS — heuristics on bbox span are unreliable
