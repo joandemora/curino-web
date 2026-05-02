@@ -25,6 +25,17 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-toolbar .btn-eraser.active{background:var(--coral);color:#fff;border-color:var(--coral)}
 .c2d-toolbar .btn-grid.active{background:var(--black);color:#fff;border-color:var(--black)}
 .c2d-toolbar .btn-dim.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.c2d-toolbar .btn-text.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.c2d-text-popover{display:none;align-items:center;gap:6px;padding:0 6px;border:1px solid var(--border);border-radius:6px;height:24px}
+.c2d-text-popover.visible{display:inline-flex}
+.c2d-text-popover .grp{display:inline-flex;gap:3px;align-items:center}
+.c2d-text-popover .sep{width:1px;height:14px;background:var(--border)}
+.c2d-text-popover button{background:none;border:none;padding:1px 6px;font-size:11px;cursor:pointer;border-radius:4px;color:var(--mid);font-family:var(--font);height:20px;min-width:18px;display:inline-flex;align-items:center;justify-content:center}
+.c2d-text-popover button:hover:not(.active){background:var(--bg)}
+.c2d-text-popover button.active{background:var(--accent);color:#fff}
+.c2d-text-popover .b{font-weight:700}
+.c2d-text-popover .i{font-style:italic}
+.c2d-text-floating{position:absolute;z-index:100;background:rgba(255,255,255,.95);border:1px solid var(--accent);outline:none;padding:2px 4px;font-family:sans-serif;line-height:1;white-space:pre}
 .c2d-dim-palette{display:none;align-items:center;gap:5px;padding:0 6px;border:1px solid var(--border);border-radius:6px;height:24px}
 .c2d-dim-palette.visible{display:inline-flex}
 .c2d-dim-color{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s}
@@ -206,6 +217,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
     <div class="c2d-dim-radial-toggle" id="dimRadialToggle"></div>
     <div class="c2d-dim-palette" id="dimPalette"></div>
     <button class="btn-grid" id="btnDimVis" onclick="toggleDimVisibility()" title="Mostrar/ocultar cotas existentes" style="display:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button class="btn-text" id="btnText" onclick="toggleTextMode()" title="Texto"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="9" y1="20" x2="15" y2="20"/></svg></button>
+    <div class="c2d-text-popover" id="textPopover"></div>
     <button class="btn-eraser" id="btnEraser" onclick="toggleEraser()" title="Borrar (goma)">&#x2702;</button>
     <div class="c2d-export-wrap">
       <button onclick="toggleExportMenu()">Exportar</button>
@@ -893,7 +906,7 @@ function renderModules(){
       svg+='</svg>';
       div.innerHTML=svg;
       div.onmousedown=function(e){
-        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}
         if(_eraserMode){
           e.stopPropagation();e.preventDefault();
           saveHistory();
@@ -906,7 +919,7 @@ function renderModules(){
         }
         startDimOffsetDrag(e,i);
       };
-      div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
       layer.appendChild(div);
       return;
     }
@@ -997,7 +1010,7 @@ function renderModules(){
       svg+='</svg>';
       div.innerHTML=svg;
       div.onmousedown=function(e){
-        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}
         if(_eraserMode){
           e.stopPropagation();e.preventDefault();
           saveHistory();
@@ -1010,7 +1023,7 @@ function renderModules(){
         }
         startDimOffsetDrag(e,i);
       };
-      div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
       layer.appendChild(div);
       return;
     }
@@ -1080,7 +1093,7 @@ function renderModules(){
       svg+='</svg>';
       div.innerHTML=svg;
       div.onmousedown=function(e){
-        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}
         if(_eraserMode){
           e.stopPropagation();e.preventDefault();
           saveHistory();
@@ -1093,7 +1106,50 @@ function renderModules(){
         }
         startDimOffsetDrag(e,i);
       };
-      div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      layer.appendChild(div);
+      return;
+    }
+    // Text module: render as positioned div with the styled text content
+    if(m.type==='text'){
+      // Sync m.w to current measured width (font/style may have changed)
+      m.w=Math.round(measureTextMM(m.text||'',m.size,m.bold,m.italic));
+      m.h=m.size;
+      var tmw=m.w*sc, tmh=m.h*sc;
+      var tmx=o.x+m.x*sc, tmy=o.y-(m.y+m.h)*sc;
+      div.style.left=(tmx-layerOffX)+'px';div.style.top=(tmy-layerOffY)+'px';
+      div.style.width=tmw+'px';div.style.height=tmh+'px';
+      div.style.border='none';div.style.background='transparent';
+      div.style.font=textFont(tmh,m.bold,m.italic);
+      div.style.color=m.color||'#000';
+      div.style.lineHeight='1';
+      div.style.whiteSpace='pre';
+      div.style.cursor='move';
+      div.style.userSelect='none';
+      div.style.display='flex';
+      div.style.alignItems='flex-start';
+      div.textContent=m.text||'';
+      div.onmousedown=function(e){
+        if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}
+        if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}
+        if(_eraserMode){
+          e.stopPropagation();e.preventDefault();
+          saveHistory();
+          var newSel=new Set();
+          _sel.forEach(function(s){if(s<i) newSel.add(s);else if(s>i) newSel.add(s-1);});
+          _sel=newSel;
+          _modules.splice(i,1);
+          draw();renderModules();renderProps();
+          return;
+        }
+        startDragModule(e,i);
+      };
+      div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+      div.ondblclick=function(e){
+        if(_textMode||_dimMode||_eraserMode) return;
+        e.stopPropagation();e.preventDefault();
+        editTextInline(i);
+      };
       layer.appendChild(div);
       return;
     }
@@ -1643,8 +1699,8 @@ function renderModules(){
     }else{
       div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
     }
-    div.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_eraserMode){e.stopPropagation();e.preventDefault();eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
-    div.onclick=function(e){if(_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
+    div.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}if(_eraserMode){e.stopPropagation();e.preventDefault();eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
+    div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
     // Resize handles (only on single selection)
     if(_sel.size===1&&_sel.has(i)){
       if(m.type==='shape_line'||m.type==='shape_arc'){
@@ -1661,7 +1717,7 @@ function renderModules(){
         [{px:ep1x,py:ep1y,pt:1},{px:ep2x,py:ep2y,pt:2}].forEach(function(ep){
           var h=document.createElement('div');
           h.className='c2d-handle';h.style.cssText='left:'+(ep.px-4)+'px;top:'+(ep.py-4)+'px;cursor:move;overflow:visible';
-          h.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
+          h.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}e.stopPropagation();e.preventDefault();startLineDrag(e,i,ep.pt);};
           div.appendChild(h);
         });
         // Arc radius handle at apex of arc
@@ -1677,7 +1733,7 @@ function renderModules(){
           var amid_y=(bboxTopY-apexWy)*sc+lpad2;
           var rh=document.createElement('div');
           rh.className='c2d-cp';rh.style.left=amid_x+'px';rh.style.top=amid_y+'px';
-          rh.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startArcRadiusDrag(e,i);};
+          rh.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}e.stopPropagation();e.preventDefault();startArcRadiusDrag(e,i);};
           div.appendChild(rh);
         }
       }else{
@@ -1685,7 +1741,7 @@ function renderModules(){
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
-        h.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
+        h.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}e.stopPropagation();e.preventDefault();startResize(e,i,pos);};
         div.appendChild(h);
       });
       }
@@ -1696,14 +1752,14 @@ function renderModules(){
         var cp=document.createElement('div');
         cp.className='c2d-cp';
         cp.style.left=cpxPx+'px';cp.style.top=cpyPx+'px';
-        cp.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startCurveDrag(e,i);};
+        cp.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}e.stopPropagation();e.preventDefault();startCurveDrag(e,i);};
         div.appendChild(cp);
       }
       // Rotation handle (not for lines — they rotate via endpoints)
       if(m.type!=='shape_line'&&m.type!=='shape_arc'){
         var rotH=document.createElement('div');
         rotH.className='c2d-handle c2d-handle-rot';
-        rotH.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startRotate(e,i);};
+        rotH.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}e.stopPropagation();e.preventDefault();startRotate(e,i);};
         div.appendChild(rotH);
       }
     }
@@ -1741,7 +1797,7 @@ function renderModules(){
     ['tl','t','tr','l','r','bl','b','br'].forEach(function(pos){
       var hd=document.createElement('div');
       hd.className='c2d-handle c2d-handle-'+pos;
-      hd.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}e.stopPropagation();e.preventDefault();startGroupResize(e,pos,bx1,by1,bw,bh);};
+      hd.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}e.stopPropagation();e.preventDefault();startGroupResize(e,pos,bx1,by1,bw,bh);};
       bbox.appendChild(hd);
     });
     layer.appendChild(bbox);
@@ -1774,6 +1830,25 @@ function renderProps(){
   var idx=_sel.values().next().value;
   var m=_modules[idx];
   if(!m){panel.innerHTML='<div class="c2d-empty">Selecciona un m\u00F3dulo</div>';return;}
+  // Text properties
+  if(m.type==='text'){
+    var colorDots='';
+    Object.keys(DIM_COLORS).forEach(function(name){
+      var c=DIM_COLORS[name];
+      colorDots+='<div class="c2d-dim-color'+(c===m.color?' active':'')+'" style="background:'+c+';width:14px;height:14px;border-radius:50%;cursor:pointer;display:inline-block;border:2px solid '+(c===m.color?'var(--black)':'transparent')+'" onclick="updateProp(\'color\',\''+c+'\')" title="'+name+'"></div> ';
+    });
+    panel.innerHTML=
+      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Texto</div></div>'+
+      '<div class="c2d-prop"><label>Contenido</label><textarea rows="3" style="width:100%;font-family:var(--font);font-size:12px;padding:4px;border:1px solid var(--border);border-radius:4px;resize:vertical" onchange="updateTextContent(this.value)">'+(m.text||'').replace(/</g,'&lt;')+'</textarea></div>'+
+      '<div class="c2d-prop"><label>Tama\u00F1o (mm)</label><input type="number" value="'+m.size+'" min="5" max="500" step="5" onchange="updateTextSize(parseInt(this.value)||50)"></div>'+
+      '<div class="c2d-prop"><label>Color</label><div style="display:flex;gap:5px;align-items:center;padding:6px 0">'+colorDots+'</div></div>'+
+      '<div class="c2d-prop"><label>Estilo</label><div style="display:flex;gap:6px;padding:6px 0">'+
+        '<button type="button" onclick="updateProp(\'bold\','+(!m.bold)+')" style="padding:4px 10px;font-weight:700;font-size:12px;background:'+(m.bold?'var(--accent)':'var(--white)')+';color:'+(m.bold?'#fff':'var(--black)')+';border:1px solid '+(m.bold?'var(--accent)':'var(--border)')+';border-radius:4px;cursor:pointer">B</button>'+
+        '<button type="button" onclick="updateProp(\'italic\','+(!m.italic)+')" style="padding:4px 10px;font-style:italic;font-size:12px;background:'+(m.italic?'var(--accent)':'var(--white)')+';color:'+(m.italic?'#fff':'var(--black)')+';border:1px solid '+(m.italic?'var(--accent)':'var(--border)')+';border-radius:4px;cursor:pointer">I</button>'+
+      '</div></div>'+
+      '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    return;
+  }
   // Dimension properties
   if(m.type==='dimension'){
     var kindLabel=m.kind==='linear'?'Acotaci\u00F3n lineal':(m.kind==='angular'?'Acotaci\u00F3n angular':'Acotaci\u00F3n radial');
@@ -1924,7 +1999,7 @@ function toggleCajetin(on){
 function updateProp(key,val){
   if(_sel.size!==1) return;saveHistory();
   var idx=_sel.values().next().value;
-  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill'||key==='strokeStyle'||key==='displayKind')?val:(key==='strokeWidth'?parseFloat(val)||1:Math.round(parseFloat(val))||0);
+  var v=(key==='type'||key==='apertura'||key==='stroke'||key==='fill'||key==='strokeStyle'||key==='displayKind'||key==='color')?val:(key==='bold'||key==='italic')?!!val:(key==='strokeWidth'?parseFloat(val)||1:Math.round(parseFloat(val))||0);
   if(key==='h'&&_modules[idx].type==='estante') v=Math.max(19,Math.min(40,v));
   if(key==='h'&&_modules[idx].type==='zapatero') v=200;
   if(key==='w'&&_modules[idx].type==='divisor') return;
@@ -1951,6 +2026,31 @@ function updateProp(key,val){
     return;
   }
   _modules[idx][key]=v;
+  // For text modules, re-measure width when bold/italic/size/text changed
+  if(_modules[idx].type==='text'&&(key==='bold'||key==='italic'||key==='size')){
+    var tm=_modules[idx];
+    tm.w=Math.round(measureTextMM(tm.text||'',tm.size,tm.bold,tm.italic));
+    tm.h=tm.size;
+  }
+  draw();renderModules();renderProps();
+}
+function updateTextContent(val){
+  if(_sel.size!==1) return;
+  saveHistory();
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];if(!m||m.type!=='text') return;
+  m.text=val;
+  m.w=Math.round(measureTextMM(val,m.size,m.bold,m.italic));
+  draw();renderModules();
+}
+function updateTextSize(val){
+  if(_sel.size!==1) return;
+  saveHistory();
+  var idx=_sel.values().next().value;
+  var m=_modules[idx];if(!m||m.type!=='text') return;
+  m.size=Math.max(5,Math.min(500,val));
+  m.h=m.size;
+  m.w=Math.round(measureTextMM(m.text||'',m.size,m.bold,m.italic));
   draw();renderModules();renderProps();
 }
 function toggleLock(key){
@@ -3063,6 +3163,8 @@ wrap.addEventListener('mousedown',function(e){
   var rect=wrap.getBoundingClientRect();
   // Dimension mode: handle click
   if(_dimMode){dimClick(e);return;}
+  // Text mode: handle click
+  if(_textMode){textClick(e);return;}
   // Eraser mode: handle click
   if(_eraserMode){eraserClick(e);return;}
   // Cajetin click: open editor panel
@@ -4075,6 +4177,7 @@ function updateDimRadialToggleVisibility(){
 function toggleDimMode(){
   if(_dimMode){exitDimMode();return;}
   if(_eraserMode) exitEraser();
+  if(_textMode) exitTextMode();
   // Entering the tool: ensure dimensions are visible — no point in
   // creating a dim while existing ones are hidden. Persist the change.
   if(!_dimVisible){
@@ -4113,7 +4216,7 @@ function exitDimMode(){
   var vb=document.getElementById('btnDimVis');
   if(vb) vb.style.display='none';
   wrap.style.cursor='grab';
-  if(!_eraserMode) wrap.classList.remove('tool-mode-active');
+  if(!_eraserMode&&!_textMode) wrap.classList.remove('tool-mode-active');
   draw();
 }
 // Compute world coords from a mouse event, with snap to existing geometry
@@ -4269,6 +4372,159 @@ function dimRadialGeom(m){
     value:value,
     label:(m.displayKind==='diameter'?'Ø ':'R ')+value+' mm'};
 }
+
+// ── TEXT TOOL ──
+var TEXT_SIZES={Pequeño:30,Medio:50,Grande:80};
+var _textMode=false;
+var _textSize=parseInt(localStorage.getItem('c2d_textSize'))||50;
+var _textColor=localStorage.getItem('c2d_textColor')||DIM_COLORS.black;
+var _textBold=localStorage.getItem('c2d_textBold')==='1';
+var _textItalic=localStorage.getItem('c2d_textItalic')==='1';
+var _textInput=null; // active floating <input>, when typing
+function buildTextPopover(){
+  var pop=document.getElementById('textPopover');
+  if(!pop) return;
+  var html='<span class="grp">';
+  Object.keys(TEXT_SIZES).forEach(function(label){
+    var size=TEXT_SIZES[label];
+    html+='<button data-size="'+size+'" class="'+(size===_textSize?'active':'')+'" title="'+label+' ('+size+'mm)">'+label.charAt(0)+'</button>';
+  });
+  html+='</span><span class="sep"></span>';
+  html+='<span class="grp">'+
+    '<button class="b '+(_textBold?'active':'')+'" data-style="bold" title="Negrita">B</button>'+
+    '<button class="i '+(_textItalic?'active':'')+'" data-style="italic" title="Cursiva">I</button>'+
+  '</span><span class="sep"></span><span class="grp" id="textColorDots"></span>';
+  pop.innerHTML=html;
+  // Wire size buttons
+  pop.querySelectorAll('button[data-size]').forEach(function(btn){
+    btn.onclick=function(){_textSize=parseInt(btn.dataset.size);localStorage.setItem('c2d_textSize',_textSize);buildTextPopover();};
+  });
+  // Wire style buttons
+  pop.querySelectorAll('button[data-style]').forEach(function(btn){
+    btn.onclick=function(){
+      if(btn.dataset.style==='bold'){_textBold=!_textBold;localStorage.setItem('c2d_textBold',_textBold?'1':'0');}
+      else{_textItalic=!_textItalic;localStorage.setItem('c2d_textItalic',_textItalic?'1':'0');}
+      buildTextPopover();
+    };
+  });
+  // Color dots (reuse the same dot styling as the dim palette)
+  var dots=pop.querySelector('#textColorDots');
+  Object.keys(DIM_COLORS).forEach(function(name){
+    var c=DIM_COLORS[name];
+    var dot=document.createElement('div');
+    dot.className='c2d-dim-color'+(c===_textColor?' active':'');
+    dot.style.background=c;
+    dot.title=name.charAt(0).toUpperCase()+name.slice(1);
+    dot.onclick=function(){_textColor=c;localStorage.setItem('c2d_textColor',c);buildTextPopover();};
+    dots.appendChild(dot);
+  });
+}
+function toggleTextMode(){
+  if(_textMode){exitTextMode();return;}
+  if(_eraserMode) exitEraser();
+  if(_dimMode) exitDimMode();
+  _textMode=true;
+  document.getElementById('btnText').classList.add('active');
+  buildTextPopover();
+  document.getElementById('textPopover').classList.add('visible');
+  wrap.style.cursor='text';
+  wrap.classList.add('tool-mode-active');
+  _sel.clear();renderModules();renderProps();
+}
+function exitTextMode(){
+  if(!_textMode) return;
+  _textMode=false;
+  if(_textInput) cancelTextInput();
+  document.getElementById('btnText').classList.remove('active');
+  document.getElementById('textPopover').classList.remove('visible');
+  wrap.style.cursor='grab';
+  if(!_eraserMode&&!_dimMode) wrap.classList.remove('tool-mode-active');
+}
+// Build font-css string for ctx.font / div.style.font, given a size in mm units
+function textFont(sizeMM,bold,italic){
+  return (italic?'italic ':'')+(bold?'700 ':'400 ')+sizeMM+'px sans-serif';
+}
+// Measure text width in mm using ctx
+function measureTextMM(str,sizeMM,bold,italic){
+  ctx.save();
+  ctx.font=textFont(sizeMM,bold,italic);
+  var w=ctx.measureText(str||'').width;
+  ctx.restore();
+  return w;
+}
+// Open the floating input at world position (wx, wy) with current style.
+// onConfirm(text) is called when the user presses Enter/blurs with non-empty;
+// onCancel() is called on Escape or empty confirm.
+function openTextInput(wx,wy,initialText,sizeMM,bold,italic,color,onConfirm,onCancel){
+  if(_textInput) cancelTextInput();
+  var sc=s(),o=origin();
+  var rect=wrap.getBoundingClientRect();
+  var pxSize=sizeMM*sc;
+  var inp=document.createElement('input');
+  inp.type='text';
+  inp.className='c2d-text-floating';
+  inp.value=initialText||'';
+  // Position screen-relative to wrap
+  var screenX=o.x+wx*sc;
+  var screenY=o.y-(wy+sizeMM)*sc; // top of text
+  inp.style.left=screenX+'px';
+  inp.style.top=screenY+'px';
+  inp.style.font=textFont(pxSize,bold,italic);
+  inp.style.color=color||'#000';
+  inp.style.minWidth='80px';
+  wrap.appendChild(inp);
+  _textInput={el:inp,onConfirm:onConfirm,onCancel:onCancel};
+  setTimeout(function(){inp.focus();inp.select();},0);
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();confirmTextInput();}
+    else if(e.key==='Escape'){e.preventDefault();cancelTextInput();}
+  });
+  inp.addEventListener('blur',function(){
+    // Defer so Enter handler runs first if applicable
+    setTimeout(function(){if(_textInput&&_textInput.el===inp) confirmTextInput();},0);
+  });
+}
+function confirmTextInput(){
+  if(!_textInput) return;
+  var t=_textInput.el.value.trim();
+  var cb=_textInput.onConfirm,cancelCb=_textInput.onCancel;
+  _textInput.el.remove();
+  _textInput=null;
+  if(t){if(cb)cb(t);}else{if(cancelCb)cancelCb();}
+}
+function cancelTextInput(){
+  if(!_textInput) return;
+  if(_textInput.onCancel) _textInput.onCancel();
+  _textInput.el.remove();
+  _textInput=null;
+}
+function textClick(e){
+  // While the floating input is up, don't create another one
+  if(_textInput) return;
+  // Get world position with snap
+  var w=dimWorldFromEvent(e);
+  // Open input; on confirm, push module
+  var size=_textSize, color=_textColor, bold=_textBold, italic=_textItalic;
+  openTextInput(w.x,w.y,'',size,bold,italic,color,function(text){
+    saveHistory();
+    var widthMM=Math.round(measureTextMM(text,size,bold,italic));
+    _modules.push({type:'text',x:w.x,y:w.y,w:widthMM,h:size,text:text,size:size,color:color,bold:bold,italic:italic});
+    draw();renderModules();
+  },null);
+}
+// Open the floating input on top of an existing text module to edit it.
+function editTextInline(idx){
+  var m=_modules[idx];
+  if(!m||m.type!=='text') return;
+  if(_textInput) cancelTextInput();
+  openTextInput(m.x,m.y,m.text,m.size,m.bold,m.italic,m.color,function(text){
+    saveHistory();
+    m.text=text;
+    m.w=Math.round(measureTextMM(text,m.size,m.bold,m.italic));
+    draw();renderModules();renderProps();
+  },null);
+}
+
 function dimClickLinear(e){
   var w=dimWorldFromEvent(e);
   if(_dimDraft.step===0){
@@ -4411,6 +4667,7 @@ function toggleEraser(){
   var btn=document.getElementById('btnEraser');
   if(_eraserMode){
     if(_dimMode) exitDimMode();
+    if(_textMode) exitTextMode();
     btn.classList.add('active');
     wrap.style.cursor='crosshair';
     wrap.classList.add('tool-mode-active');
@@ -4418,7 +4675,7 @@ function toggleEraser(){
   }else{
     btn.classList.remove('active');
     wrap.style.cursor='grab';
-    if(!_dimMode) wrap.classList.remove('tool-mode-active');
+    if(!_dimMode&&!_textMode) wrap.classList.remove('tool-mode-active');
     clearEraserPreview();
   }
 }
@@ -4427,7 +4684,7 @@ function exitEraser(){
   _eraserMode=false;
   document.getElementById('btnEraser').classList.remove('active');
   wrap.style.cursor='grab';
-  if(!_dimMode) wrap.classList.remove('tool-mode-active');
+  if(!_dimMode&&!_textMode) wrap.classList.remove('tool-mode-active');
   clearEraserPreview();
 }
 
@@ -5443,7 +5700,7 @@ document.addEventListener('contextmenu',function(e){
   }
 });
 document.addEventListener('click',function(){hideCtx();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();exitDimMode();if(_sel.size>0||_cajetinSelected) clearSelection();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){hideCtx();exitEraser();exitDimMode();exitTextMode();if(_sel.size>0||_cajetinSelected) clearSelection();}});
 </script>
 
 </body>
