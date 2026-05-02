@@ -135,12 +135,11 @@ nav{
 .account{max-width:1200px;margin:100px auto 4rem;padding:0 32px}
 .account-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;gap:1rem}
 .account-title-wrap{display:flex;align-items:center;gap:1rem;flex:1;min-width:0}
-.account-logo{width:64px;height:64px;border:1px solid var(--border);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden}
+.account-logo{width:64px;height:64px;border:1px solid var(--border);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:border-color .15s;position:relative}
 .account-logo:hover{border-color:var(--black)}
 .account-logo img{max-width:54px;max-height:54px;object-fit:contain}
-.account-logo-actions{display:flex;flex-direction:column;gap:6px}
-.account-logo-actions button{padding:4px 10px;font-size:11px;font-family:var(--font);background:var(--white);border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap}
-.account-logo-actions button:hover{border-color:var(--black);background:var(--bg)}
+.account-logo-clear{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:1px solid #fff;font-size:13px;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-family:var(--font);transition:background .15s,transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.account-logo-clear:hover{background:#dc2626;transform:scale(1.1)}
 .account-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;letter-spacing:-.02em;text-transform:none;text-align:left}
 .account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-height:320px}
@@ -375,12 +374,9 @@ footer{
     <div class="account-title-wrap">
       <div class="account-logo" id="accountLogoWrap" title="Cambiar logo" onclick="document.getElementById('accountLogoFile').click()">
         <img id="accountLogoImg" src="/assets/imagenes/logo-curino.svg" alt="Logo">
+        <button type="button" class="account-logo-clear" id="accountLogoClear" title="Restaurar logo Curino" style="display:none" onclick="event.stopPropagation();removeUserLogo()">×</button>
       </div>
       <h1 class="account-title" id="accountGreeting">Mi cuenta</h1>
-      <div class="account-logo-actions" id="accountLogoActions" style="display:none">
-        <button onclick="document.getElementById('accountLogoFile').click()">Subir logo</button>
-        <button id="accountLogoRestoreBtn" onclick="removeUserLogo()" style="display:none">Restaurar Curino</button>
-      </div>
       <input type="file" id="accountLogoFile" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" style="display:none" onchange="if(this.files[0])uploadUserLogo(this.files[0])">
     </div>
     <button class="btn btn-danger btn-small" onclick="logoutUser()">Cerrar sesion</button>
@@ -650,7 +646,6 @@ var _supabase=null,_currentUser=null;
 
 function initAccount(){
   document.getElementById('accountPage').style.display='block';
-  document.getElementById('accountLogoActions').style.display='flex';
   loadProfile();
   loadProjects();
   loadAddresses();
@@ -664,13 +659,13 @@ var CURINO_LOGO_URL='/assets/imagenes/logo-curino.svg';
 var _userLogoUrl=null;
 function refreshLogoImg(){
   var img=document.getElementById('accountLogoImg');
-  var restoreBtn=document.getElementById('accountLogoRestoreBtn');
+  var clearBtn=document.getElementById('accountLogoClear');
   if(_userLogoUrl){
     img.src=_userLogoUrl+(_userLogoUrl.indexOf('?')>=0?'&':'?')+'t='+Date.now();
-    if(restoreBtn) restoreBtn.style.display='block';
+    if(clearBtn) clearBtn.style.display='flex';
   }else{
     img.src=CURINO_LOGO_URL;
-    if(restoreBtn) restoreBtn.style.display='none';
+    if(clearBtn) clearBtn.style.display='none';
   }
 }
 async function loadUserLogo(){
@@ -702,7 +697,6 @@ async function uploadUserLogo(file){
 }
 async function removeUserLogo(){
   if(!_supabase||!_currentUser) return;
-  if(!confirm('¿Restaurar el logo Curino por defecto?')) return;
   ['svg','png','jpg','jpeg'].forEach(function(ext){
     _supabase.storage.from('user-logos').remove([_currentUser.id+'/logo.'+ext]);
   });
