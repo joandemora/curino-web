@@ -332,6 +332,12 @@ var _modules=[];
 var _sel=new Set(); // selected indices
 var _history=[];
 var _historyIdx=-1;
+// Group bitmap cache: heavy groups (e.g. DXF imports of hundreds of children)
+// pre-render to an offscreen canvas instead of emitting one DOM/SVG node per
+// child. Key = "<groupCacheId>_<w>_<h>_<scaleBucket>", value = HTMLCanvasElement.
+var GROUP_CACHE_THRESHOLD=50;
+var _groupCanvasCache=new Map();
+var _groupCacheIdCounter=1;
 var _baseZoom=1; // from paper + drawScale
 var _userZoom=1;  // manual zoom (1 = 100%)
 var _zoom=1;      // effective = _baseZoom * _userZoom
@@ -1547,7 +1553,21 @@ function renderModules(){
     }
     if(m.type==='group'){
       div.style.border='none';div.style.background='transparent';
-      m.children.forEach(function(child){
+      // Heavy groups (e.g. DXF imports) render to a single cached canvas
+      // instead of N×SVG-bearing divs. Threshold and cache logic above.
+      var _grpCached=(m.children||[]).length>=GROUP_CACHE_THRESHOLD;
+      if(_grpCached){
+        var srcC=getOrRenderGroupCanvas(m,sc);
+        var dstC=document.createElement('canvas');
+        dstC.width=srcC.width; dstC.height=srcC.height;
+        dstC.style.cssText='position:absolute;left:0;top:0;width:'+(srcC.dataset.cssW||mw)+'px;height:'+(srcC.dataset.cssH||mh)+'px;pointer-events:none';
+        var dstCtx=dstC.getContext('2d');
+        dstCtx.imageSmoothingEnabled=true;
+        dstCtx.imageSmoothingQuality='high';
+        dstCtx.drawImage(srcC,0,0);
+        div.appendChild(dstC);
+      }
+      if(!_grpCached) m.children.forEach(function(child){
         var cdiv=document.createElement('div');
         cdiv.style.position='absolute';cdiv.style.pointerEvents='none';
         var cw,ch,cx,cy;
@@ -2395,6 +2415,103 @@ function showSnapDot(wx,wy){
 }
 var _snapLines=[];
 function clearSnapLines(){_snapLines.forEach(function(el){el.remove();});_snapLines=[];}
+// ── GROUP BITMAP CACHE (heavy children → single offscreen canvas) ──
+// Returns a cached HTMLCanvasElement painted with the group's children. The
+// cache key bakes in (w, h, scaleBucket) so any geometry-affecting change —
+// resize, scaleGroupChildren, zoom — produces a new key and forces a
+// regeneration. Rotation is applied via CSS transform on the wrapping div,
+// so it does NOT need to invalidate the cache. The bucket rounds sc to two
+// decimal places so a continuous pinch-zoom doesn't burn a regen per frame.
+function paintChildToCanvas(ctx,ch,gH,sc){
+  var stroke=ch.stroke||'#000000';
+  var sw=Math.max(0.5,(ch.strokeWidth||1)*sc);
+  ctx.strokeStyle=stroke;
+  ctx.lineWidth=sw;
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  if(ch.strokeStyle==='dashed') ctx.setLineDash([8,4]);
+  else if(ch.strokeStyle==='dotted') ctx.setLineDash([2,3]);
+  else ctx.setLineDash([]);
+  function ty(wy){return(gH-wy)*sc;}
+  if(ch.type==='shape_line'){
+    ctx.beginPath();
+    ctx.moveTo(ch.x1*sc, ty(ch.y1));
+    ctx.lineTo(ch.x2*sc, ty(ch.y2));
+    ctx.stroke();
+  }else if(ch.type==='shape_arc'){
+    var dx=ch.x2-ch.x1, dy=ch.y2-ch.y1;
+    var chord=Math.sqrt(dx*dx+dy*dy)||1;
+    var halfC=chord/2;
+    var sagAbs=Math.min(Math.abs(ch.sagitta||100),halfC);
+    if(sagAbs<0.1){
+      ctx.beginPath();ctx.moveTo(ch.x1*sc,ty(ch.y1));ctx.lineTo(ch.x2*sc,ty(ch.y2));ctx.stroke();
+    }else{
+      var arcR=(halfC*halfC)/(2*sagAbs)+sagAbs/2;
+      var midX=(ch.x1+ch.x2)/2, midY=(ch.y1+ch.y2)/2;
+      var nx=-dy/chord, ny=dx/chord;
+      var sign=(ch.sagitta||100)>0?1:-1;
+      var dist=arcR-sagAbs;
+      var ccx=midX-nx*sign*dist, ccy=midY-ny*sign*dist;
+      var a1=Math.atan2(ch.y1-ccy, ch.x1-ccx);
+      var a2=Math.atan2(ch.y2-ccy, ch.x2-ccx);
+      // Canvas is y-down: world angle θ → canvas angle -θ. World CCW (sagitta<0
+      // here, since dxfArcToShapes emits negative sagitta for CCW arcs) →
+      // canvas anticlockwise direction.
+      var ccw=sign<0;
+      ctx.beginPath();
+      ctx.arc(ccx*sc, ty(ccy), arcR*sc, -a1, -a2, ccw);
+      ctx.stroke();
+    }
+  }else if(ch.type==='shape_circle'){
+    var rcx=(ch.x+ch.w/2)*sc, rcy=ty(ch.y+ch.h/2);
+    var rrx=Math.max(0.1,ch.w/2*sc-sw/2), rry=Math.max(0.1,ch.h/2*sc-sw/2);
+    if(ch.fill&&ch.fill!=='none'){ctx.fillStyle=ch.fill;ctx.beginPath();ctx.ellipse(rcx,rcy,rrx,rry,0,0,2*Math.PI);ctx.fill();}
+    ctx.beginPath();ctx.ellipse(rcx,rcy,rrx,rry,0,0,2*Math.PI);ctx.stroke();
+  }else if(ch.type==='shape_rect'){
+    var qx=ch.x*sc, qy=ty(ch.y+ch.h);
+    var qw=ch.w*sc, qh=ch.h*sc;
+    if(ch.fill&&ch.fill!=='none'){ctx.fillStyle=ch.fill;ctx.fillRect(qx,qy,qw,qh);}
+    ctx.strokeRect(qx+sw/2, qy+sw/2, Math.max(0.1,qw-sw), Math.max(0.1,qh-sw));
+  }else if(ch.type==='shape_curve'){
+    var cpxF=ch.cpx!=null?ch.cpx:0.5, cpyF=ch.cpy!=null?ch.cpy:0;
+    if(cpxF>1.01&&ch.w>0) cpxF/=ch.w;
+    if(Math.abs(cpyF)>2.01&&ch.h>0) cpyF/=ch.h;
+    var p0x=ch.x*sc, p0y=ty(ch.y);
+    var p1x=(ch.x+cpxF*ch.w)*sc, p1y=ty(ch.y+cpyF*ch.h);
+    var p2x=(ch.x+ch.w)*sc, p2y=ty(ch.y);
+    ctx.beginPath();ctx.moveTo(p0x,p0y);ctx.quadraticCurveTo(p1x,p1y,p2x,p2y);
+    if(ch.fill&&ch.fill!=='none'){ctx.fillStyle=ch.fill;ctx.fill();}
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+function getOrRenderGroupCanvas(g,sc){
+  if(!g._cacheId) g._cacheId='g'+(_groupCacheIdCounter++);
+  var bucket=Math.round(sc*100); // snap to 0.01 increments
+  var key=g._cacheId+'_'+g.w+'_'+g.h+'_'+bucket;
+  var hit=_groupCanvasCache.get(key);
+  if(hit) return hit;
+  // Drop any stale entry for this same group (different w/h or zoom bucket).
+  // Keeps the cache at one entry per group → memory bounded by the number
+  // of heavy groups loaded, not the number of zoom levels visited.
+  var staleKeys=[];
+  _groupCanvasCache.forEach(function(v,k){if(k.indexOf(g._cacheId+'_')===0) staleKeys.push(k);});
+  staleKeys.forEach(function(k){_groupCanvasCache.delete(k);});
+  var dpr=window.devicePixelRatio||1;
+  var px=Math.max(1,Math.round(g.w*sc));
+  var py=Math.max(1,Math.round(g.h*sc));
+  var c=document.createElement('canvas');
+  c.width=px*dpr; c.height=py*dpr;
+  c.dataset.cssW=px; c.dataset.cssH=py;
+  var cctx=c.getContext('2d');
+  cctx.setTransform(dpr,0,0,dpr,0,0);
+  cctx.imageSmoothingEnabled=true;
+  cctx.imageSmoothingQuality='high';
+  (g.children||[]).forEach(function(ch){paintChildToCanvas(cctx,ch,g.h,sc);});
+  _groupCanvasCache.set(key,c);
+  return c;
+}
+function clearGroupCanvasCache(){_groupCanvasCache.clear();}
 // Defensive: any mouseup anywhere wipes stray snap guides. Covers cases
 // where the specific drag/resize end handler doesn't fire (mode toggled
 // mid-drag, right-click context menu, cursor leaving the wrap, lost focus).
@@ -4326,6 +4443,9 @@ async function removeUserLogo(){
 }
 
 function loadProjectData(data){
+  // New project → groups are different objects so previous cached canvases
+  // are dead weight. Cleared eagerly to bound memory.
+  clearGroupCanvasCache();
   if(data.paper){_paper=data.paper;localStorage.setItem('c2d_paper',_paper);}
   if(data.drawScale){_drawScale=data.drawScale;localStorage.setItem('c2d_scale',_drawScale.toString());}
   if(data.projectMeta) _projectMeta=data.projectMeta;
