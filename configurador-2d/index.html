@@ -2190,16 +2190,19 @@ document.querySelectorAll('.c2d-mod').forEach(function(el){
 });
 wrap.addEventListener('dragover',function(e){e.preventDefault();});
 wrap.addEventListener('drop',function(e){
-  // Files dropped from the desktop → project-images upload path.
+  // Files dropped from the desktop → project-images upload OR DXF import.
   // Falls through to the saved_drawing / palette drag flow below otherwise.
   if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files.length){
-    var imgFiles=Array.from(e.dataTransfer.files).filter(function(f){return f.type&&f.type.indexOf('image/')===0;});
-    if(imgFiles.length){
+    var allFiles=Array.from(e.dataTransfer.files);
+    var imgFiles=allFiles.filter(function(f){return f.type&&f.type.indexOf('image/')===0;});
+    var dxfFiles=allFiles.filter(function(f){return /\.dxf$/i.test(f.name||'');});
+    if(imgFiles.length||dxfFiles.length){
       e.preventDefault();
       var fr=wrap.getBoundingClientRect(),fsc=s(),fo=origin();
       var fwx=(e.clientX-fr.left-fo.x)/fsc;
       var fwy=-(e.clientY-fr.top-fo.y)/fsc;
       imgFiles.forEach(function(f,i){uploadProjectImage(f,fwx+i*20,fwy-i*20);});
+      dxfFiles.forEach(function(f,i){importDxfFromFile(f,fwx+i*20,fwy-i*20);});
       return;
     }
   }
@@ -3829,6 +3832,234 @@ function getProjectData(){
   };
 }
 
+// ── DXF IMPORT (custom inline parser for LINE / CIRCLE / ARC / LWPOLYLINE / POLYLINE) ──
+// DXFs are line-based: alternating "group code" and "value". The ENTITIES
+// section holds geometry. We parse only what we render (lines + circles +
+// arcs + polylines as line segments). Bulge in LWPOLYLINE is ignored; arcs
+// > 180° are split in two so they fit the configurator's sagitta clamp at
+// half-chord. TEXT, INSERT, BLOCK, DIMENSION, etc. are silently skipped.
+function showToast(msg,type){
+  var t=document.createElement('div');
+  var bg=type==='error'?'#c62828':(type==='success'?'#2e7d32':'#333');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:8px 16px;border-radius:4px;font-size:13px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:var(--font)';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){t.style.transition='opacity .4s';t.style.opacity='0';},2500);
+  setTimeout(function(){t.remove();},3000);
+}
+function parseDxf(text){
+  var lines=text.replace(/\r\n/g,'\n').split('\n');
+  // Build (code, value) pairs. Code lines may have leading whitespace.
+  var pairs=[];
+  for(var i=0;i+1<lines.length;i+=2){
+    var code=parseInt(lines[i].trim(),10);
+    if(isNaN(code)) continue;
+    pairs.push([code,lines[i+1].trim()]);
+  }
+  var insunits=0;
+  var section=null;
+  var entities=[];
+  var current=null;
+  var currentVertex=null;
+  function commit(){if(current){entities.push(current);current=null;currentVertex=null;}}
+  for(var k=0;k<pairs.length;k++){
+    var c=pairs[k][0], v=pairs[k][1];
+    if(c===0){
+      if(v==='SECTION'){
+        if(pairs[k+1]&&pairs[k+1][0]===2) section=pairs[k+1][1];
+      }else if(v==='ENDSEC'){
+        commit(); section=null;
+      }else if(v==='EOF'){
+        commit(); break;
+      }else if(section==='ENTITIES'){
+        if(v==='LINE'||v==='CIRCLE'||v==='ARC'||v==='LWPOLYLINE'||v==='POLYLINE'){
+          commit(); current={type:v,vertices:[],flags:0};
+        }else if(v==='VERTEX'){
+          if(current&&current.type==='POLYLINE'){
+            currentVertex={x:0,y:0};
+            current.vertices.push(currentVertex);
+          }
+        }else if(v==='SEQEND'){
+          commit();
+        }else{
+          commit();
+        }
+      }
+      continue;
+    }
+    if(section==='HEADER'&&c===9&&v==='$INSUNITS'){
+      if(pairs[k+1]&&pairs[k+1][0]===70) insunits=parseInt(pairs[k+1][1],10)||0;
+    }
+    if(section!=='ENTITIES'||!current) continue;
+    var nv=parseFloat(v);
+    if(current.type==='LINE'){
+      if(c===10) current.x1=nv; else if(c===20) current.y1=nv;
+      else if(c===11) current.x2=nv; else if(c===21) current.y2=nv;
+    }else if(current.type==='CIRCLE'){
+      if(c===10) current.cx=nv; else if(c===20) current.cy=nv;
+      else if(c===40) current.r=nv;
+    }else if(current.type==='ARC'){
+      if(c===10) current.cx=nv; else if(c===20) current.cy=nv;
+      else if(c===40) current.r=nv;
+      else if(c===50) current.a1=nv; else if(c===51) current.a2=nv;
+    }else if(current.type==='LWPOLYLINE'){
+      if(c===70) current.flags=parseInt(v,10)||0;
+      else if(c===10) current.vertices.push({x:nv,y:0});
+      else if(c===20&&current.vertices.length>0){
+        current.vertices[current.vertices.length-1].y=nv;
+      }
+    }else if(current.type==='POLYLINE'){
+      if(c===70) current.flags=parseInt(v,10)||0;
+      else if(currentVertex){
+        if(c===10) currentVertex.x=nv;
+        else if(c===20) currentVertex.y=nv;
+      }
+    }
+  }
+  commit();
+  return {insunits:insunits, entities:entities};
+}
+// $INSUNITS: 1=in, 2=ft, 4=mm, 5=cm, 6=m. 0/absent → heuristic on bbox size.
+function dxfScaleToMM(insunits, bboxMaxSpan){
+  if(insunits===4) return 1;
+  if(insunits===5) return 10;
+  if(insunits===6) return 1000;
+  if(insunits===1) return 25.4;
+  if(insunits===2) return 304.8;
+  // Heuristic: most carpentry dwgs span between a few cm and a few m.
+  // A unit-less file with bbox span < 100 likely meters → ×1000.
+  // Span 100..100000 likely already mm. Larger → assume µm or unrealistic.
+  if(bboxMaxSpan>0&&bboxMaxSpan<100) return 1000;
+  if(bboxMaxSpan>100000) return 0.001;
+  return 1;
+}
+// DXF arcs are CCW from a1 to a2; in this codebase positive sagitta puts
+// the arc on the +normal side (90° CCW of chord direction), so a CCW arc
+// must use NEGATIVE sagitta. Spans > 180° are split at the midpoint angle
+// since the configurator clamps |sagitta| ≤ chord/2 (i.e. arcs ≤ 180°).
+function dxfArcToShapes(cx,cy,r,a1Deg,a2Deg){
+  var a1=a1Deg*Math.PI/180, a2=a2Deg*Math.PI/180;
+  var span=a2-a1; while(span<0) span+=2*Math.PI; while(span>2*Math.PI) span-=2*Math.PI;
+  if(span<0.001) return [];
+  if(span>Math.PI+0.001){
+    var midA=a1+span/2;
+    return dxfArcToShapes(cx,cy,r,a1Deg,midA*180/Math.PI)
+      .concat(dxfArcToShapes(cx,cy,r,midA*180/Math.PI,a2Deg));
+  }
+  var x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+  var x2=cx+r*Math.cos(a2), y2=cy+r*Math.sin(a2);
+  var sag=-(r-r*Math.cos(span/2));
+  return [{type:'shape_arc',x1:x1,y1:y1,x2:x2,y2:y2,sagitta:sag,stroke:'#000000',strokeWidth:1}];
+}
+function dxfEntitiesToShapes(entities){
+  var shapes=[];
+  entities.forEach(function(e){
+    if(e.type==='LINE'){
+      if(e.x1==null||e.y1==null||e.x2==null||e.y2==null) return;
+      shapes.push({type:'shape_line',x1:e.x1,y1:e.y1,x2:e.x2,y2:e.y2,stroke:'#000000',strokeWidth:1});
+    }else if(e.type==='CIRCLE'){
+      if(e.cx==null||e.cy==null||!e.r) return;
+      shapes.push({type:'shape_circle',x:e.cx-e.r,y:e.cy-e.r,w:2*e.r,h:2*e.r,stroke:'#000000',strokeWidth:1,fill:'none'});
+    }else if(e.type==='ARC'){
+      if(e.cx==null||e.cy==null||!e.r||e.a1==null||e.a2==null) return;
+      Array.prototype.push.apply(shapes,dxfArcToShapes(e.cx,e.cy,e.r,e.a1,e.a2));
+    }else if(e.type==='LWPOLYLINE'||e.type==='POLYLINE'){
+      var vs=e.vertices||[];
+      if(vs.length<2) return;
+      for(var i=0;i<vs.length-1;i++){
+        shapes.push({type:'shape_line',x1:vs[i].x,y1:vs[i].y,x2:vs[i+1].x,y2:vs[i+1].y,stroke:'#000000',strokeWidth:1});
+      }
+      if((e.flags||0)&1){
+        shapes.push({type:'shape_line',x1:vs[vs.length-1].x,y1:vs[vs.length-1].y,x2:vs[0].x,y2:vs[0].y,stroke:'#000000',strokeWidth:1});
+      }
+    }
+  });
+  return shapes;
+}
+function readFileText(file){
+  return new Promise(function(resolve,reject){
+    var r=new FileReader();
+    r.onload=function(){resolve(r.result);};
+    r.onerror=function(){reject(r.error||new Error('read failed'));};
+    r.readAsText(file);
+  });
+}
+async function importDxfFromFile(file,worldX,worldY){
+  if(!file) return;
+  if(file.size>10*1024*1024){showToast('DXF demasiado grande (>10 MB)','error');return;}
+  var prevCursor=document.body.style.cursor;
+  document.body.style.cursor='wait';
+  try{
+    var text=await readFileText(file);
+    var parsed=parseDxf(text);
+    var rawShapes=dxfEntitiesToShapes(parsed.entities);
+    if(rawShapes.length===0){
+      showToast('DXF no contiene líneas, círculos ni arcos importables','error');
+      return;
+    }
+    // Compute bbox in DXF native units
+    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    rawShapes.forEach(function(sh){
+      var bx1,by1,bx2,by2;
+      if(sh.type==='shape_line'||sh.type==='shape_arc'){
+        bx1=Math.min(sh.x1,sh.x2);by1=Math.min(sh.y1,sh.y2);
+        bx2=Math.max(sh.x1,sh.x2);by2=Math.max(sh.y1,sh.y2);
+        if(sh.type==='shape_arc'){
+          var dx=sh.x2-sh.x1, dy=sh.y2-sh.y1;
+          var ch=Math.sqrt(dx*dx+dy*dy)||1;
+          var nxA=-dy/ch, nyA=dx/ch;
+          var sg=sh.sagitta||0;
+          var apx=(sh.x1+sh.x2)/2+nxA*(sg>0?1:-1)*Math.min(Math.abs(sg),ch/2);
+          var apy=(sh.y1+sh.y2)/2+nyA*(sg>0?1:-1)*Math.min(Math.abs(sg),ch/2);
+          bx1=Math.min(bx1,apx);by1=Math.min(by1,apy);
+          bx2=Math.max(bx2,apx);by2=Math.max(by2,apy);
+        }
+      }else{
+        bx1=sh.x;by1=sh.y;bx2=sh.x+sh.w;by2=sh.y+sh.h;
+      }
+      if(bx1<minX) minX=bx1; if(by1<minY) minY=by1;
+      if(bx2>maxX) maxX=bx2; if(by2>maxY) maxY=by2;
+    });
+    var bboxMaxSpan=Math.max(maxX-minX,maxY-minY);
+    var scaleMM=dxfScaleToMM(parsed.insunits,bboxMaxSpan);
+    // Scale + translate so bbox sits with origin (0,0) at its bottom-left
+    var sw=Math.round((maxX-minX)*scaleMM);
+    var sh2=Math.round((maxY-minY)*scaleMM);
+    if(sw<1||sh2<1){showToast('DXF con tamaño inválido tras conversión','error');return;}
+    function tx(v){return Math.round((v-minX)*scaleMM);}
+    function ty(v){return Math.round((v-minY)*scaleMM);}
+    function tlen(v){return Math.round(v*scaleMM);}
+    var children=rawShapes.map(function(sh){
+      if(sh.type==='shape_line'){
+        return {type:'shape_line',x1:tx(sh.x1),y1:ty(sh.y1),x2:tx(sh.x2),y2:ty(sh.y2),stroke:sh.stroke,strokeWidth:sh.strokeWidth};
+      }else if(sh.type==='shape_arc'){
+        return {type:'shape_arc',x1:tx(sh.x1),y1:ty(sh.y1),x2:tx(sh.x2),y2:ty(sh.y2),sagitta:tlen(sh.sagitta),stroke:sh.stroke,strokeWidth:sh.strokeWidth};
+      }else if(sh.type==='shape_circle'){
+        return {type:'shape_circle',x:tx(sh.x),y:ty(sh.y),w:tlen(sh.w),h:tlen(sh.h),stroke:sh.stroke,strokeWidth:sh.strokeWidth,fill:sh.fill};
+      }
+      return null;
+    }).filter(Boolean);
+    saveHistory();
+    var group={
+      type:'group',
+      x:Math.round(worldX-sw/2),
+      y:Math.round(worldY-sh2/2),
+      w:sw,h:sh2,
+      rotation:0,
+      children:children
+    };
+    _modules.push(group);
+    _sel.clear();_sel.add(_modules.length-1);
+    draw();renderModules();renderProps();
+    showToast('DXF importado: '+children.length+' elementos','success');
+  }catch(err){
+    console.error('DXF import error',err);
+    showToast('Error al leer el DXF','error');
+  }finally{
+    document.body.style.cursor=prevCursor;
+  }
+}
+
 // ── PROJECT IMAGES (Supabase Storage: project-images bucket) ──
 // Cache of Image instances per URL so we don't recreate them on every render.
 // Each entry transitions through 'loading' → 'loaded' | 'error'; renderModules
@@ -5193,21 +5424,23 @@ document.addEventListener('paste',function(e){
   var tgt=e.target||document.activeElement;
   if(tgt&&(tgt.tagName==='INPUT'||tgt.tagName==='TEXTAREA'||tgt.isContentEditable)) return;
   if(!e.clipboardData||!e.clipboardData.items) return;
-  var imgFiles=[];
+  var imgFiles=[],dxfFiles=[];
   for(var i=0;i<e.clipboardData.items.length;i++){
     var it=e.clipboardData.items[i];
-    if(it.kind==='file'&&it.type&&it.type.indexOf('image/')===0){
-      var f=it.getAsFile();
-      if(f) imgFiles.push(f);
-    }
+    if(it.kind!=='file') continue;
+    var f=it.getAsFile();
+    if(!f) continue;
+    if(it.type&&it.type.indexOf('image/')===0) imgFiles.push(f);
+    else if(/\.dxf$/i.test(f.name||'')) dxfFiles.push(f);
   }
-  if(!imgFiles.length) return;
+  if(!imgFiles.length&&!dxfFiles.length) return;
   e.preventDefault();
   // Insert at the world point currently at the center of the viewport.
   var pr=wrap.getBoundingClientRect(),psc=s(),po=origin();
   var pwx=(pr.width/2-po.x)/psc;
   var pwy=-(pr.height/2-po.y)/psc;
   imgFiles.forEach(function(f,k){uploadProjectImage(f,pwx+k*20,pwy-k*20);});
+  dxfFiles.forEach(function(f,k){importDxfFromFile(f,pwx+k*20,pwy-k*20);});
 });
 
 var _lastEraserEvent=null;
