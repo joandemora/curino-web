@@ -336,6 +336,13 @@ var CURINO_LOGO_URL='../assets/imagenes/logo-curino.svg';
 var _curinoLogo=new Image();
 _curinoLogo.onload=function(){draw();};
 _curinoLogo.src=CURINO_LOGO_URL;
+// User-uploaded logo (overrides Curino logo when present). Resolved
+// dynamically from the user_logos table at session init; not stored
+// per-project so it stays in sync across all the user's projects.
+var _userLogoUrl=null;
+var _userLogo=new Image();
+_userLogo.crossOrigin='anonymous';
+_userLogo.onload=function(){draw();};
 var _pages=[]; // [{modules:[], showCajetin:true, history:[], historyIdx:-1}]
 var _activePageIdx=0;
 var _meta={}; // active page per-page state (showCajetin)
@@ -659,15 +666,17 @@ function draw(){
   ctx.font='bold '+titleFont+'px '+ff;
   ctx.textAlign='left';
   ctx.fillText(_projectMeta.proyecto.toUpperCase(),cjScrX+pad,cjScrY+rowH*0.45);
-  // Curino logo (right side of row 1). Falls back to "& Curino" text
-  // until the SVG image finishes loading.
-  if(_curinoLogo.complete&&_curinoLogo.naturalWidth>0){
+  // Logo (right side of row 1): user logo if available, else Curino, else text
+  var logoImg=null;
+  if(_userLogoUrl&&_userLogo.complete&&_userLogo.naturalWidth>0) logoImg=_userLogo;
+  else if(_curinoLogo.complete&&_curinoLogo.naturalWidth>0) logoImg=_curinoLogo;
+  if(logoImg){
     var lh=rowH*0.9;
-    var ar=_curinoLogo.naturalWidth/_curinoLogo.naturalHeight;
+    var ar=logoImg.naturalWidth/logoImg.naturalHeight;
     var lw=lh*ar;
     var lx=cjScrX+cjScrW-pad-lw;
     var ly=cjScrY+(rowH-lh)/2;
-    ctx.drawImage(_curinoLogo,lx,ly,lw,lh);
+    ctx.drawImage(logoImg,lx,ly,lw,lh);
   }else{
     ctx.font='bold '+logoFont+'px '+ff;
     ctx.textAlign='right';
@@ -1856,7 +1865,24 @@ function renderCajetinProps(){
   overlay.querySelector('h3').textContent='Cajet\u00EDn';
   overlay.classList.add('visible');
   var showCj=_meta.showCajetin!==false;
+  var logoSrc=_userLogoUrl||CURINO_LOGO_URL;
+  var canEditLogo=!!(_supabase&&_currentUser);
+  var logoSection='<div class="c2d-prop"><label>Logo</label>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">'+
+      '<div style="flex:0 0 auto;width:64px;height:36px;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;background:#fff">'+
+        '<img src="'+logoSrc+'" style="max-width:58px;max-height:32px;object-fit:contain"/>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:4px;flex:1">'+
+        (canEditLogo
+          ? '<button onclick="document.getElementById(\'cajetinLogoFile\').click()" style="padding:4px 8px;font-size:11px;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:var(--white);font-family:var(--font)">Subir logo</button>'+
+            (_userLogoUrl?'<button onclick="removeUserLogo()" style="padding:4px 8px;font-size:11px;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:var(--white);font-family:var(--font)">Restaurar logo Curino</button>':'')
+          : '<div style="font-size:11px;color:var(--mid)">Inicia sesi\u00F3n para personalizar el logo</div>')+
+      '</div>'+
+    '</div>'+
+    (canEditLogo?'<input type="file" id="cajetinLogoFile" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" style="display:none" onchange="if(this.files[0])uploadUserLogo(this.files[0])">':'')+
+  '</div>';
   panel.innerHTML=
+    logoSection+
     '<div class="c2d-prop"><label>Mostrar cajet\u00EDn en esta diapositiva</label>'+
     '<label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;margin-top:4px">'+
     '<input type="checkbox" '+(showCj?'checked':'')+' onchange="toggleCajetin(this.checked)"> '+(showCj?'Visible':'Oculto')+'</label></div>'+
@@ -3466,6 +3492,56 @@ function getProjectData(){
   };
 }
 
+// ── USER LOGO (Supabase: user_logos table + user-logos bucket) ──
+async function loadUserLogo(){
+  if(!_supabase||!_currentUser){_userLogoUrl=null;return;}
+  try{
+    var r=await _supabase.from('user_logos').select('logo_url').eq('user_id',_currentUser.id).maybeSingle();
+    if(r.data&&r.data.logo_url){
+      _userLogoUrl=r.data.logo_url;
+      // Cache-buster avoids stale image after re-upload
+      _userLogo.src=_userLogoUrl+(_userLogoUrl.indexOf('?')>=0?'&':'?')+'t='+Date.now();
+    }else{
+      _userLogoUrl=null;
+    }
+  }catch(e){_userLogoUrl=null;}
+}
+async function uploadUserLogo(file){
+  if(!_supabase||!_currentUser){alert('Inicia sesión para subir un logo personalizado.');return;}
+  if(!file) return;
+  if(!/^image\/(svg\+xml|png|jpe?g)$/.test(file.type)){alert('Tipo de archivo no soportado. Usa SVG, PNG o JPG.');return;}
+  if(file.size>2*1024*1024){alert('Archivo demasiado grande (máximo 2 MB).');return;}
+  var ext=(file.name.split('.').pop()||'png').toLowerCase();
+  if(['svg','png','jpg','jpeg'].indexOf(ext)<0) ext='png';
+  var path=_currentUser.id+'/logo.'+ext;
+  // Remove other extensions for this user (so the bucket has only one logo file)
+  ['svg','png','jpg','jpeg'].forEach(function(e){
+    if(e!==ext) _supabase.storage.from('user-logos').remove([_currentUser.id+'/logo.'+e]);
+  });
+  var up=await _supabase.storage.from('user-logos').upload(path,file,{upsert:true,cacheControl:'3600',contentType:file.type});
+  if(up.error){alert('Error subiendo logo: '+up.error.message);return;}
+  var url=_supabase.storage.from('user-logos').getPublicUrl(path).data.publicUrl;
+  var save=await _supabase.from('user_logos').upsert({user_id:_currentUser.id,logo_url:url,updated_at:new Date().toISOString()});
+  if(save.error){alert('Error guardando referencia: '+save.error.message);return;}
+  _userLogoUrl=url;
+  _userLogo=new Image();_userLogo.crossOrigin='anonymous';
+  _userLogo.onload=function(){draw();};
+  _userLogo.src=url+'?t='+Date.now();
+  renderCajetinProps();
+}
+async function removeUserLogo(){
+  if(!_supabase||!_currentUser) return;
+  if(!confirm('¿Restaurar el logo Curino por defecto?')) return;
+  ['svg','png','jpg','jpeg'].forEach(function(ext){
+    _supabase.storage.from('user-logos').remove([_currentUser.id+'/logo.'+ext]);
+  });
+  await _supabase.from('user_logos').delete().eq('user_id',_currentUser.id);
+  _userLogoUrl=null;
+  _userLogo=new Image();_userLogo.crossOrigin='anonymous';
+  _userLogo.onload=function(){draw();};
+  draw();renderCajetinProps();
+}
+
 function loadProjectData(data){
   if(data.paper){_paper=data.paper;localStorage.setItem('c2d_paper',_paper);}
   if(data.drawScale){_drawScale=data.drawScale;localStorage.setItem('c2d_scale',_drawScale.toString());}
@@ -3548,6 +3624,7 @@ function finishInit(){
       _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
       var s=await _supabase.auth.getSession();
       if(s.data.session) _currentUser=s.data.session.user;
+      if(_currentUser) await loadUserLogo();
     }
   }catch(e){}
 
