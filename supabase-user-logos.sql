@@ -17,7 +17,9 @@ create policy "Users read own logo"
 create policy "Users insert own logo"
   on user_logos for insert with check (auth.uid() = user_id);
 create policy "Users update own logo"
-  on user_logos for update using (auth.uid() = user_id);
+  on user_logos for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 create policy "Users delete own logo"
   on user_logos for delete using (auth.uid() = user_id);
 
@@ -42,6 +44,10 @@ create policy "Users upload own logo"
 create policy "Users update own logo"
   on storage.objects for update
   using (
+    bucket_id = 'user-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
     bucket_id = 'user-logos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
