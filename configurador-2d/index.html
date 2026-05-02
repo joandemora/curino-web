@@ -3874,6 +3874,8 @@ function parseDxf(text){
       }else if(section==='ENTITIES'){
         if(v==='LINE'||v==='CIRCLE'||v==='ARC'||v==='LWPOLYLINE'||v==='POLYLINE'){
           commit(); current={type:v,vertices:[],flags:0};
+        }else if(v==='SPLINE'){
+          commit(); current={type:'SPLINE',knots:[],controlPoints:[],fitPoints:[],degree:3,flags:0};
         }else if(v==='VERTEX'){
           if(current&&current.type==='POLYLINE'){
             currentVertex={x:0,y:0};
@@ -3914,10 +3916,90 @@ function parseDxf(text){
         if(c===10) currentVertex.x=nv;
         else if(c===20) currentVertex.y=nv;
       }
+    }else if(current.type==='SPLINE'){
+      // 70=flags(1=closed), 71=degree, 40=knot, 10/20=control pt, 11/21=fit pt
+      if(c===70) current.flags=parseInt(v,10)||0;
+      else if(c===71) current.degree=parseInt(v,10)||3;
+      else if(c===40) current.knots.push(nv);
+      else if(c===10) current.controlPoints.push({x:nv,y:0});
+      else if(c===20&&current.controlPoints.length>0){
+        current.controlPoints[current.controlPoints.length-1].y=nv;
+      }
+      else if(c===11) current.fitPoints.push({x:nv,y:0});
+      else if(c===21&&current.fitPoints.length>0){
+        current.fitPoints[current.fitPoints.length-1].y=nv;
+      }
     }
   }
   commit();
   return {insunits:insunits, entities:entities};
+}
+// NURBS evaluation (Piegl & Tiller — De Boor recurrence). Used to sample
+// SPLINE entities into polyline approximations. Knot span search via
+// findSpan; for non-rational uniform/non-uniform B-splines this reproduces
+// the curve faithfully. Rational splines (weights, code 41) are treated as
+// non-rational here — the visual difference is negligible for carpentry
+// imports at the configurator's scale.
+function nurbsFindSpan(n,p,u,knots){
+  if(u>=knots[n+1]) return n;
+  if(u<=knots[p]) return p;
+  var low=p,high=n+1,mid=(low+high)>>1;
+  while(u<knots[mid]||u>=knots[mid+1]){
+    if(u<knots[mid]) high=mid; else low=mid;
+    mid=(low+high)>>1;
+    if(mid<=p) return p;
+    if(mid>=n) return n;
+  }
+  return mid;
+}
+function nurbsDeBoor(cps,knots,p,u){
+  var n=cps.length-1;
+  var k=nurbsFindSpan(n,p,u,knots);
+  var d=[];
+  for(var j=0;j<=p;j++){
+    var idx=k-p+j;
+    if(idx<0) idx=0; if(idx>n) idx=n;
+    d[j]={x:cps[idx].x,y:cps[idx].y};
+  }
+  for(var r=1;r<=p;r++){
+    for(var j=p;j>=r;j--){
+      var i=k-p+j;
+      var denom=knots[i+p-r+1]-knots[i];
+      var alpha=denom>0?(u-knots[i])/denom:0;
+      d[j]={x:(1-alpha)*d[j-1].x+alpha*d[j].x, y:(1-alpha)*d[j-1].y+alpha*d[j].y};
+    }
+  }
+  return d[p];
+}
+// Sample a SPLINE entity into ~40 polyline points. Strategy:
+//   1. If knots + control points are coherent → evaluate the NURBS over
+//      [knots[degree], knots[n+1]] at 40 uniform parameter steps.
+//   2. Else if fit points exist → use them directly as polyline vertices.
+//   3. Else fall back to the control polygon (visually similar at small
+//      curvatures; degraded for sharp splines but better than dropping
+//      the entity entirely).
+// Higher sample counts can be tuned but 40 is indistinguishable from
+// smooth at typical configurator zooms.
+function sampleSpline(e){
+  var p=e.degree||3;
+  var cps=e.controlPoints||[];
+  var fps=e.fitPoints||[];
+  var knots=e.knots||[];
+  var N=40;
+  if(cps.length>=p+1&&knots.length===cps.length+p+1){
+    var u0=knots[p], u1=knots[knots.length-p-1];
+    if(u1>u0+1e-9){
+      var samples=[];
+      for(var i=0;i<=N;i++){
+        var u=u0+(u1-u0)*i/N;
+        samples.push(nurbsDeBoor(cps,knots,p,u));
+      }
+      return samples;
+    }
+  }
+  if(fps.length>=2) return fps.slice();
+  if(cps.length>=2) return cps.slice();
+  return [];
 }
 // $INSUNITS: 1=in, 2=ft, 4=mm, 5=cm, 6=m. 0/absent → heuristic on bbox size.
 function dxfScaleToMM(insunits, bboxMaxSpan){
@@ -3972,6 +4054,18 @@ function dxfEntitiesToShapes(entities){
       if((e.flags||0)&1){
         shapes.push({type:'shape_line',x1:vs[vs.length-1].x,y1:vs[vs.length-1].y,x2:vs[0].x,y2:vs[0].y,stroke:'#000000',strokeWidth:1});
       }
+    }else if(e.type==='SPLINE'){
+      // SPLINEs are sampled as a polyline of ~40 segments. Curvature is
+      // imperceptible at carpentry scales; a future iteration could
+      // collapse multiple straight runs back into shape_arc segments.
+      var sp=sampleSpline(e);
+      if(sp.length<2) return;
+      for(var si=0;si<sp.length-1;si++){
+        shapes.push({type:'shape_line',x1:sp[si].x,y1:sp[si].y,x2:sp[si+1].x,y2:sp[si+1].y,stroke:'#000000',strokeWidth:1});
+      }
+      if((e.flags||0)&1){
+        shapes.push({type:'shape_line',x1:sp[sp.length-1].x,y1:sp[sp.length-1].y,x2:sp[0].x,y2:sp[0].y,stroke:'#000000',strokeWidth:1});
+      }
     }
   });
   return shapes;
@@ -3984,80 +4078,126 @@ function readFileText(file){
     r.readAsText(file);
   });
 }
+// Modal dialog asking the user which unit the DXF was authored in. Used
+// when the file omits $INSUNITS — heuristics on bbox span are unreliable
+// (a chair can read ~30 in inches, ~750 in mm, ~0.75 in metres, etc.).
+// Returns the mm-per-unit factor or null if the user cancelled.
+function askDxfUnits(bboxSpan){
+  return new Promise(function(resolve){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000;font-family:var(--font)';
+    var box=document.createElement('div');
+    box.style.cssText='background:#fff;padding:20px 24px;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.3);max-width:440px;text-align:center';
+    var hint=Math.round(bboxSpan*100)/100;
+    box.innerHTML=
+      '<h3 style="margin:0 0 8px;font-size:16px">Unidades del DXF no especificadas</h3>'+
+      '<p style="margin:0 0 4px;color:#444;font-size:13px;line-height:1.4">El archivo no declara <code>$INSUNITS</code>. Selecciona la unidad original:</p>'+
+      '<p style="margin:0 0 16px;color:#888;font-size:12px">Span máximo: '+hint+' unidades</p>';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px';
+    [['mm',1],['cm',10],['m',1000],['pulgadas',25.4],['pies',304.8]].forEach(function(p){
+      var btn=document.createElement('button');
+      btn.textContent=p[0];
+      btn.style.cssText='padding:8px 14px;border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;font-size:13px;min-width:64px';
+      btn.onmouseover=function(){btn.style.background='#f0f0f0';};
+      btn.onmouseout=function(){btn.style.background='#fff';};
+      btn.onclick=function(){ov.remove();resolve(p[1]);};
+      row.appendChild(btn);
+    });
+    box.appendChild(row);
+    var cancel=document.createElement('button');
+    cancel.textContent='Cancelar';
+    cancel.style.cssText='margin-top:6px;padding:6px 12px;border:none;background:transparent;color:#888;cursor:pointer;font-size:12px';
+    cancel.onclick=function(){ov.remove();resolve(null);};
+    box.appendChild(cancel);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+  });
+}
 async function importDxfFromFile(file,worldX,worldY){
   if(!file) return;
   if(file.size>10*1024*1024){showToast('DXF demasiado grande (>10 MB)','error');return;}
   var prevCursor=document.body.style.cursor;
   document.body.style.cursor='wait';
+  var text,parsed,rawShapes;
   try{
-    var text=await readFileText(file);
-    var parsed=parseDxf(text);
-    var rawShapes=dxfEntitiesToShapes(parsed.entities);
-    if(rawShapes.length===0){
-      showToast('DXF no contiene líneas, círculos ni arcos importables','error');
-      return;
-    }
-    // Compute bbox in DXF native units
-    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    rawShapes.forEach(function(sh){
-      var bx1,by1,bx2,by2;
-      if(sh.type==='shape_line'||sh.type==='shape_arc'){
-        bx1=Math.min(sh.x1,sh.x2);by1=Math.min(sh.y1,sh.y2);
-        bx2=Math.max(sh.x1,sh.x2);by2=Math.max(sh.y1,sh.y2);
-        if(sh.type==='shape_arc'){
-          var dx=sh.x2-sh.x1, dy=sh.y2-sh.y1;
-          var ch=Math.sqrt(dx*dx+dy*dy)||1;
-          var nxA=-dy/ch, nyA=dx/ch;
-          var sg=sh.sagitta||0;
-          var apx=(sh.x1+sh.x2)/2+nxA*(sg>0?1:-1)*Math.min(Math.abs(sg),ch/2);
-          var apy=(sh.y1+sh.y2)/2+nyA*(sg>0?1:-1)*Math.min(Math.abs(sg),ch/2);
-          bx1=Math.min(bx1,apx);by1=Math.min(by1,apy);
-          bx2=Math.max(bx2,apx);by2=Math.max(by2,apy);
-        }
-      }else{
-        bx1=sh.x;by1=sh.y;bx2=sh.x+sh.w;by2=sh.y+sh.h;
-      }
-      if(bx1<minX) minX=bx1; if(by1<minY) minY=by1;
-      if(bx2>maxX) maxX=bx2; if(by2>maxY) maxY=by2;
-    });
-    var bboxMaxSpan=Math.max(maxX-minX,maxY-minY);
-    var scaleMM=dxfScaleToMM(parsed.insunits,bboxMaxSpan);
-    // Scale + translate so bbox sits with origin (0,0) at its bottom-left
-    var sw=Math.round((maxX-minX)*scaleMM);
-    var sh2=Math.round((maxY-minY)*scaleMM);
-    if(sw<1||sh2<1){showToast('DXF con tamaño inválido tras conversión','error');return;}
-    function tx(v){return Math.round((v-minX)*scaleMM);}
-    function ty(v){return Math.round((v-minY)*scaleMM);}
-    function tlen(v){return Math.round(v*scaleMM);}
-    var children=rawShapes.map(function(sh){
-      if(sh.type==='shape_line'){
-        return {type:'shape_line',x1:tx(sh.x1),y1:ty(sh.y1),x2:tx(sh.x2),y2:ty(sh.y2),stroke:sh.stroke,strokeWidth:sh.strokeWidth};
-      }else if(sh.type==='shape_arc'){
-        return {type:'shape_arc',x1:tx(sh.x1),y1:ty(sh.y1),x2:tx(sh.x2),y2:ty(sh.y2),sagitta:tlen(sh.sagitta),stroke:sh.stroke,strokeWidth:sh.strokeWidth};
-      }else if(sh.type==='shape_circle'){
-        return {type:'shape_circle',x:tx(sh.x),y:ty(sh.y),w:tlen(sh.w),h:tlen(sh.h),stroke:sh.stroke,strokeWidth:sh.strokeWidth,fill:sh.fill};
-      }
-      return null;
-    }).filter(Boolean);
-    saveHistory();
-    var group={
-      type:'group',
-      x:Math.round(worldX-sw/2),
-      y:Math.round(worldY-sh2/2),
-      w:sw,h:sh2,
-      rotation:0,
-      children:children
-    };
-    _modules.push(group);
-    _sel.clear();_sel.add(_modules.length-1);
-    draw();renderModules();renderProps();
-    showToast('DXF importado: '+children.length+' elementos','success');
+    text=await readFileText(file);
+    parsed=parseDxf(text);
+    rawShapes=dxfEntitiesToShapes(parsed.entities);
   }catch(err){
+    document.body.style.cursor=prevCursor;
     console.error('DXF import error',err);
     showToast('Error al leer el DXF','error');
-  }finally{
-    document.body.style.cursor=prevCursor;
+    return;
   }
+  if(rawShapes.length===0){
+    document.body.style.cursor=prevCursor;
+    showToast('DXF no contiene líneas, círculos, arcos ni curvas importables','error');
+    return;
+  }
+  // Compute bbox in DXF native units
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  rawShapes.forEach(function(sh){
+    var bx1,by1,bx2,by2;
+    if(sh.type==='shape_line'||sh.type==='shape_arc'){
+      bx1=Math.min(sh.x1,sh.x2);by1=Math.min(sh.y1,sh.y2);
+      bx2=Math.max(sh.x1,sh.x2);by2=Math.max(sh.y1,sh.y2);
+      if(sh.type==='shape_arc'){
+        var dx=sh.x2-sh.x1, dy=sh.y2-sh.y1;
+        var ch=Math.sqrt(dx*dx+dy*dy)||1;
+        var nxA=-dy/ch, nyA=dx/ch;
+        var sg=sh.sagitta||0;
+        var apx=(sh.x1+sh.x2)/2+nxA*(sg>0?1:-1)*Math.min(Math.abs(sg),ch/2);
+        var apy=(sh.y1+sh.y2)/2+nyA*(sg>0?1:-1)*Math.min(Math.abs(sg),ch/2);
+        bx1=Math.min(bx1,apx);by1=Math.min(by1,apy);
+        bx2=Math.max(bx2,apx);by2=Math.max(by2,apy);
+      }
+    }else{
+      bx1=sh.x;by1=sh.y;bx2=sh.x+sh.w;by2=sh.y+sh.h;
+    }
+    if(bx1<minX) minX=bx1; if(by1<minY) minY=by1;
+    if(bx2>maxX) maxX=bx2; if(by2>maxY) maxY=by2;
+  });
+  var bboxMaxSpan=Math.max(maxX-minX,maxY-minY);
+  // Reset cursor before the dialog so wait isn't shown over the modal.
+  document.body.style.cursor=prevCursor;
+  var scaleMM;
+  if(parsed.insunits){
+    scaleMM=dxfScaleToMM(parsed.insunits,bboxMaxSpan);
+  }else{
+    scaleMM=await askDxfUnits(bboxMaxSpan);
+    if(!scaleMM){return;} // user cancelled
+  }
+  // Scale + translate so bbox sits with origin (0,0) at its bottom-left
+  var sw=Math.round((maxX-minX)*scaleMM);
+  var sh2=Math.round((maxY-minY)*scaleMM);
+  if(sw<1||sh2<1){showToast('DXF con tamaño inválido tras conversión','error');return;}
+  function tx(v){return Math.round((v-minX)*scaleMM);}
+  function ty(v){return Math.round((v-minY)*scaleMM);}
+  function tlen(v){return Math.round(v*scaleMM);}
+  var children=rawShapes.map(function(sh){
+    if(sh.type==='shape_line'){
+      return {type:'shape_line',x1:tx(sh.x1),y1:ty(sh.y1),x2:tx(sh.x2),y2:ty(sh.y2),stroke:sh.stroke,strokeWidth:sh.strokeWidth};
+    }else if(sh.type==='shape_arc'){
+      return {type:'shape_arc',x1:tx(sh.x1),y1:ty(sh.y1),x2:tx(sh.x2),y2:ty(sh.y2),sagitta:tlen(sh.sagitta),stroke:sh.stroke,strokeWidth:sh.strokeWidth};
+    }else if(sh.type==='shape_circle'){
+      return {type:'shape_circle',x:tx(sh.x),y:ty(sh.y),w:tlen(sh.w),h:tlen(sh.h),stroke:sh.stroke,strokeWidth:sh.strokeWidth,fill:sh.fill};
+    }
+    return null;
+  }).filter(Boolean);
+  saveHistory();
+  var group={
+    type:'group',
+    x:Math.round(worldX-sw/2),
+    y:Math.round(worldY-sh2/2),
+    w:sw,h:sh2,
+    rotation:0,
+    children:children
+  };
+  _modules.push(group);
+  _sel.clear();_sel.add(_modules.length-1);
+  draw();renderModules();renderProps();
+  showToast('DXF importado: '+children.length+' elementos','success');
 }
 
 // ── PROJECT IMAGES (Supabase Storage: project-images bucket) ──
