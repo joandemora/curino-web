@@ -4889,6 +4889,18 @@ function dimGeom(m){
     value:Math.round(len)
   };
 }
+// For pure-axis-aligned linear dims, return where the dim line sits on the
+// perpendicular axis (constant world Y for a horizontal dim, constant X for
+// a vertical one). Diagonals return null — alignment doesn't have a 1:1
+// mapping to the offset DOF on diagonals, and the use case ("varias cotas a
+// la misma altura") is for orthogonal layouts.
+function dimLineAxisInfo(m){
+  if(!m||m.type!=='dimension'||m.kind!=='linear') return null;
+  var g=dimGeom(m);
+  if(Math.abs(g.nx)<0.02&&Math.abs(g.ny)>0.98) return {axis:'y', val:g.d1y, normal:g.ny, anchor:m.y1};
+  if(Math.abs(g.ny)<0.02&&Math.abs(g.nx)>0.98) return {axis:'x', val:g.d1x, normal:g.nx, anchor:m.x1};
+  return null;
+}
 // Helper used by angular render and radius drag.
 // Computes the natural shorter-arc sweep from a1, normalizes span to (-π, π].
 function dimAngularGeom(m){
@@ -4924,15 +4936,49 @@ function startDimOffsetDrag(e,idx){
 function dimOffsetDragMove(e){
   if(!_dimOffsetDrag) return;
   var m=_modules[_dimOffsetDrag.idx];if(!m) return;
+  clearSnapLines();
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var curX=(e.clientX-rect.left-o.x)/sc;
   var curY=-(e.clientY-rect.top-o.y)/sc;
+  var tol=15/sc; // screen-space tolerance, mirroring the center-snap of commit bd68489
   if(m.kind==='linear'){
     var g=dimGeom(m);
     var rx=curX-m.x1, ry=curY-m.y1;
     m.offset=Math.round(rx*g.nx+ry*g.ny);
+    // Magenta alignment for axis-aligned linear dims:
+    // snap the dim line position to (a) paper center on the relevant axis,
+    // (b) the dim-line position of any other axis-aligned linear dim sharing
+    // the same orientation. Diagonals are skipped intentionally.
+    var info=dimLineAxisInfo(m);
+    if(info&&info.normal){
+      var pb=paperBounds();
+      var cands=[info.axis==='y'?(pb.bottom+pb.top)/2:(pb.left+pb.right)/2];
+      _modules.forEach(function(om,oi){
+        if(oi===_dimOffsetDrag.idx) return;
+        var oi2=dimLineAxisInfo(om);
+        if(oi2&&oi2.axis===info.axis) cands.push(oi2.val);
+      });
+      var bestC=null,bestD=tol;
+      cands.forEach(function(c){var d=Math.abs(info.val-c);if(d<bestD){bestD=d;bestC=c;}});
+      if(bestC!==null){
+        m.offset=Math.round((bestC-info.anchor)/info.normal);
+        showSnapLine(bestC,info.axis);
+      }
+    }
   }else if(m.kind==='angular'){
-    m.radius=Math.max(1,Math.round(Math.hypot(curX-m.cx,curY-m.cy)));
+    var newR=Math.max(1,Math.round(Math.hypot(curX-m.cx,curY-m.cy)));
+    m.radius=newR;
+    // Match the radius of another angular dim if within tolerance — keeps
+    // sets of angular cotas visually consistent. No magenta line: a radius
+    // match is a size, not a position; spatial guide would be misleading.
+    var bestR=null,bestRD=tol;
+    _modules.forEach(function(om,oi){
+      if(oi===_dimOffsetDrag.idx) return;
+      if(om.type!=='dimension'||om.kind!=='angular') return;
+      var d=Math.abs(newR-(om.radius||0));
+      if(d<bestRD){bestRD=d;bestR=om.radius;}
+    });
+    if(bestR!==null) m.radius=bestR;
   }else if(m.kind==='radial'){
     var rg=dimRadialResolveTarget(m);
     if(rg){
@@ -4942,6 +4988,7 @@ function dimOffsetDragMove(e){
   draw();renderModules();renderProps();
 }
 function dimOffsetDragEnd(){
+  clearSnapLines();
   _dimOffsetDrag=null;
   document.removeEventListener('mousemove',dimOffsetDragMove);
   document.removeEventListener('mouseup',dimOffsetDragEnd);
