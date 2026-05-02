@@ -857,7 +857,12 @@ function renderModules(){
     // Dimension: render as SVG overlay (own layout, not via x/y/w/h)
     if(m.type==='dimension'&&m.kind==='linear'){
       var g=dimGeom(m);
-      var pad=20; // mm padding for arrows + text
+      // Padding for arrows + text. html2canvas (used by exportPDF) does not
+      // honor overflow:visible on the SVG inside the div, so during export we
+      // inflate the bbox so the SVG box itself contains every drawn pixel.
+      // 120 viewBox px is well above the 12px font + 4mm arrow head + label bg.
+      // Hit-testing/selection bbox at runtime is untouched (still 20mm).
+      var pad=_exportMode?Math.max(20,120/sc):20;
       var allX=[m.x1,m.x2,g.d1x,g.d2x], allY=[m.y1,m.y2,g.d1y,g.d2y];
       var dbx1=Math.min.apply(null,allX)-pad, dby1=Math.min.apply(null,allY)-pad;
       var dbx2=Math.max.apply(null,allX)+pad, dby2=Math.max.apply(null,allY)+pad;
@@ -929,7 +934,7 @@ function renderModules(){
     }
     if(m.type==='dimension'&&m.kind==='angular'){
       var ag=dimAngularGeom(m);
-      var pad=20;
+      var pad=_exportMode?Math.max(20,120/sc):20;
       // Tight bbox: only the points actually drawn — arc endpoints, arm
       // endpoints, label, and any cardinal angle (0, π/2, π, -π/2) that
       // falls inside the sector [a1, a1+span] (those are the arc extremes).
@@ -1040,7 +1045,7 @@ function renderModules(){
       }
       // Sync stored snapshot to live target
       m.cx=Math.round(rg.cx);m.cy=Math.round(rg.cy);m.radius=Math.round(rg.radius);
-      var pad=20;
+      var pad=_exportMode?Math.max(20,120/sc):20;
       var keyPts=[{x:rg.cx,y:rg.cy},rg.contour,rg.outer];
       if(m.displayKind==='diameter') keyPts.push(rg.diameterFar);
       var bxArr=keyPts.map(function(p){return p.x;});
