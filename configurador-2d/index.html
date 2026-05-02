@@ -484,7 +484,20 @@ function clampToPaper(m){
   if(y+(m[hKey]||0)>b.top) m[yKey]=Math.round(b.top-(m[hKey]||0));
 }
 
-function resizeCanvas(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;clampPan();applyPaperScale();}
+function resizeCanvas(){
+  // Match canvas backing store to devicePixelRatio for sharp rendering on
+  // Retina/HiDPI displays. Set CSS size explicitly so the browser doesn't
+  // upscale a 1x bitmap. The 2D ctx is then scaled so all draw() code can
+  // keep using logical (CSS) pixel coordinates.
+  var dpr=window.devicePixelRatio||1;
+  var cssW=wrap.clientWidth, cssH=wrap.clientHeight;
+  cvs.width=cssW*dpr;cvs.height=cssH*dpr;
+  cvs.style.width=cssW+'px';cvs.style.height=cssH+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  clampPan();applyPaperScale();
+}
 var _resizeTimer=null;
 function saveMeta(){savePages();}
 // Hit-test: is point (px,py) inside cajetin rect?
@@ -593,7 +606,8 @@ function changeScale(){
 }
 
 function draw(){
-  var w=cvs.width,h=cvs.height,sc=s(),o=origin();
+  // Use CSS pixels (logical) — the ctx is scaled by DPR in resizeCanvas
+  var w=wrap.clientWidth, h=wrap.clientHeight, sc=s(), o=origin();
   ctx.clearRect(0,0,w,h);
 
   // Paper frame (fixed visual size, acts as reference)
@@ -3250,10 +3264,12 @@ function captureWrap(){
       logging:false
     });
   }).then(function(resultCanvas){
-    // Restore canvas to screen resolution
-    cvs.width=cssW;cvs.height=cssH;
-    cvs.style.width='';cvs.style.height='';
-    ctx.setTransform(1,0,0,1,0,0);
+    // Restore canvas to screen resolution with DPR (matches resizeCanvas)
+    var dpr=window.devicePixelRatio||1;
+    cvs.width=cssW*dpr;cvs.height=cssH*dpr;
+    cvs.style.width=cssW+'px';cvs.style.height=cssH+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     _exportMode=false;draw();renderModules();
     if(bbox) bbox.style.display='';
     return resultCanvas;
