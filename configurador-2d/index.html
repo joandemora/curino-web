@@ -864,6 +864,25 @@ function renderModules(){
       // Hit-testing/selection bbox at runtime is untouched (still 20mm).
       var pad=_exportMode?Math.max(20,120/sc):20;
       var allX=[m.x1,m.x2,g.d1x,g.d2x], allY=[m.y1,m.y2,g.d1y,g.d2y];
+      // Include the rotated text label rect explicitly in the export bbox.
+      // The pad alone wasn't enough — the label sits AT the dim line and its
+      // height (cap + ascender ≈ fontSize) extends past the geometric bbox in
+      // the perpendicular direction, and html2canvas crops anything outside
+      // the SVG box despite overflow:visible. Adding the 4 corners of the
+      // text rect (rotated to the dim direction, with breathing room) forces
+      // dby1/dby2 to expand enough.
+      if(_exportMode){
+        var _lLabel=g.value+' mm';
+        var _lFs=12;
+        var _lTextW=_lLabel.length*_lFs*0.6+8;
+        var _lHalfW=(_lTextW/2+4)/sc;            // along dim, +4px breathing
+        var _lHalfH=(_lFs*0.85+_lFs*0.45+8)/sc;  // perp to dim, full label rect + breathing
+        var _lMidX=(g.d1x+g.d2x)/2, _lMidY=(g.d1y+g.d2y)/2;
+        for(var _ls=-1;_ls<=1;_ls+=2) for(var _lt=-1;_lt<=1;_lt+=2){
+          allX.push(_lMidX+_ls*g.ux*_lHalfW+_lt*g.nx*_lHalfH);
+          allY.push(_lMidY+_ls*g.uy*_lHalfW+_lt*g.ny*_lHalfH);
+        }
+      }
       var dbx1=Math.min.apply(null,allX)-pad, dby1=Math.min.apply(null,allY)-pad;
       var dbx2=Math.max.apply(null,allX)+pad, dby2=Math.max.apply(null,allY)+pad;
       var dmw=(dbx2-dbx1)*sc, dmh=(dby2-dby1)*sc;
@@ -952,6 +971,19 @@ function renderModules(){
           }
         }
       });
+      // Include the (horizontal) label rect explicitly during export so the
+      // text height is captured by the bbox even when labX/labY sits at the
+      // edge of the geometric bbox.
+      if(_exportMode){
+        var _aLabel=ag.valueDeg.toFixed(1)+'°';
+        var _aFs=12;
+        var _aTextW=_aLabel.length*_aFs*0.6+8;
+        var _aHalfW=(_aTextW/2+4)/sc;
+        var _aHalfH=(_aFs*0.85+_aFs*0.45+8)/sc;
+        for(var _as=-1;_as<=1;_as+=2) for(var _at=-1;_at<=1;_at+=2){
+          bbPts.push({x:ag.labX+_as*_aHalfW, y:ag.labY+_at*_aHalfH});
+        }
+      }
       var bxArr=bbPts.map(function(p){return p.x;});
       var byArr=bbPts.map(function(p){return p.y;});
       var dbx1=Math.min.apply(null,bxArr)-pad, dby1=Math.min.apply(null,byArr)-pad;
@@ -1048,6 +1080,18 @@ function renderModules(){
       var pad=_exportMode?Math.max(20,120/sc):20;
       var keyPts=[{x:rg.cx,y:rg.cy},rg.contour,rg.outer];
       if(m.displayKind==='diameter') keyPts.push(rg.diameterFar);
+      // Include the (horizontal) label rect at rg.outer explicitly during
+      // export. The label is the dim element most prone to clipping because
+      // it sits exactly on the outermost geometric point.
+      if(_exportMode){
+        var _rFs=12;
+        var _rTextW=rg.label.length*_rFs*0.6+8;
+        var _rHalfW=(_rTextW/2+4)/sc;
+        var _rHalfH=(_rFs*0.85+_rFs*0.45+8)/sc;
+        for(var _rs=-1;_rs<=1;_rs+=2) for(var _rt=-1;_rt<=1;_rt+=2){
+          keyPts.push({x:rg.outer.x+_rs*_rHalfW, y:rg.outer.y+_rt*_rHalfH});
+        }
+      }
       var bxArr=keyPts.map(function(p){return p.x;});
       var byArr=keyPts.map(function(p){return p.y;});
       var dbx1=Math.min.apply(null,bxArr)-pad, dby1=Math.min.apply(null,byArr)-pad;
