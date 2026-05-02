@@ -4350,6 +4350,7 @@ function dimWorldFromEvent(e){
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var rawX=(e.clientX-rect.left-o.x)/sc;
   var rawY=-(e.clientY-rect.top-o.y)/sc;
+  // Priority 1: vertex / endpoint / center via getSnapPoints
   var pts=getSnapPoints(new Set());
   var bestPt=null,bestDist=SNAP_RADIUS;
   pts.forEach(function(p){
@@ -4357,8 +4358,106 @@ function dimWorldFromEvent(e){
     if(d<bestDist){bestDist=d;bestPt=p;}
   });
   if(bestPt) return{x:Math.round(bestPt.x),y:Math.round(bestPt.y),snapped:true};
-  // Fallback: grid snap on each axis
+  // Priority 2: nearest point on a trace (fallback when no vertex matches)
+  var traceHit=dimNearestTraceTarget(rawX,rawY);
+  if(traceHit) return{x:Math.round(traceHit.x),y:Math.round(traceHit.y),snapped:true};
+  // Priority 3: grid fallback
   return{x:snap(rawX),y:snap(rawY),snapped:false};
+}
+// Returns {x,y,dist} of the closest point on the module's trace to (rawX,rawY),
+// or null if it doesn't apply or is outside SNAP_RADIUS. offsetX/offsetY allow
+// recursive descent into group children (children store world-relative coords).
+function dimNearestPointOnTrace(rawX,rawY,m,offsetX,offsetY){
+  offsetX=offsetX||0; offsetY=offsetY||0;
+  // Work in module-local coords by subtracting the offset
+  var lx=rawX-offsetX, ly=rawY-offsetY;
+  function ret(px,py){
+    var d=Math.hypot(lx-px,ly-py);
+    if(d>=SNAP_RADIUS) return null;
+    return{x:px+offsetX, y:py+offsetY, dist:d};
+  }
+  if(m.type==='shape_line'){
+    var dx=m.x2-m.x1, dy=m.y2-m.y1;
+    var len2=dx*dx+dy*dy;
+    if(len2<1) return null;
+    var t=((lx-m.x1)*dx+(ly-m.y1)*dy)/len2;
+    if(t<0||t>1) return null; // outside segment — endpoints handled by getSnapPoints
+    return ret(m.x1+t*dx, m.y1+t*dy);
+  }
+  if(m.type==='shape_rect'){
+    if(!m.w||!m.h) return null;
+    var sides=[
+      [m.x,m.y, m.x+m.w,m.y],         // bottom
+      [m.x+m.w,m.y, m.x+m.w,m.y+m.h], // right
+      [m.x+m.w,m.y+m.h, m.x,m.y+m.h], // top
+      [m.x,m.y+m.h, m.x,m.y]          // left
+    ];
+    var best=null;
+    sides.forEach(function(s){
+      var sdx=s[2]-s[0], sdy=s[3]-s[1];
+      var sl2=sdx*sdx+sdy*sdy; if(sl2<1) return;
+      var t=((lx-s[0])*sdx+(ly-s[1])*sdy)/sl2;
+      if(t<0)t=0; if(t>1)t=1; // clamp to segment
+      var px=s[0]+t*sdx, py=s[1]+t*sdy;
+      var d=Math.hypot(lx-px,ly-py);
+      if(d<SNAP_RADIUS&&(!best||d<best.dist)) best={x:px+offsetX,y:py+offsetY,dist:d};
+    });
+    return best;
+  }
+  if(m.type==='shape_circle'){
+    if(!m.w||!m.h) return null;
+    var ccx=m.x+m.w/2, ccy=m.y+m.h/2, r=m.w/2;
+    var d=Math.hypot(lx-ccx,ly-ccy);
+    if(d<0.001) return null;
+    var px=ccx+(lx-ccx)/d*r, py=ccy+(ly-ccy)/d*r;
+    return ret(px,py);
+  }
+  if(m.type==='shape_arc'){
+    var g=dimRadialTargetGeom(m);
+    if(!g||g.a1==null) return null;
+    var ang=Math.atan2(ly-g.cy, lx-g.cx);
+    if(!angleInArcSector(ang,g.a1,g.a2)) return null;
+    var px=g.cx+g.radius*Math.cos(ang), py=g.cy+g.radius*Math.sin(ang);
+    return ret(px,py);
+  }
+  if(m.type==='shape_curve'){
+    if(!m.w||!m.h) return null;
+    // Sample the quadratic Bézier in world coords.
+    // P0=(m.x,m.y), P1=(m.x+cpxF*m.w, m.y+cpyF*m.h), P2=(m.x+m.w, m.y)
+    var cpxF=m.cpx!=null?m.cpx:0.5;
+    var cpyF=m.cpy!=null?m.cpy:0;
+    if(cpxF>1.01&&m.w>0) cpxF/=m.w;
+    if(Math.abs(cpyF)>2.01&&m.h>0) cpyF/=m.h;
+    var p0x=m.x, p0y=m.y;
+    var p1x=m.x+cpxF*m.w, p1y=m.y+cpyF*m.h;
+    var p2x=m.x+m.w, p2y=m.y;
+    var N=50, best=null;
+    for(var i=0;i<=N;i++){
+      var t=i/N, u=1-t;
+      var bx=u*u*p0x+2*u*t*p1x+t*t*p2x;
+      var by=u*u*p0y+2*u*t*p1y+t*t*p2y;
+      var d=Math.hypot(lx-bx,ly-by);
+      if(d<SNAP_RADIUS&&(!best||d<best.dist)) best={x:bx+offsetX,y:by+offsetY,dist:d};
+    }
+    return best;
+  }
+  if(m.type==='group'){
+    var bestG=null;
+    (m.children||[]).forEach(function(ch){
+      var r=dimNearestPointOnTrace(rawX,rawY,ch,offsetX+(m.x||0),offsetY+(m.y||0));
+      if(r&&(!bestG||r.dist<bestG.dist)) bestG=r;
+    });
+    return bestG;
+  }
+  return null;
+}
+function dimNearestTraceTarget(rawX,rawY){
+  var best=null;
+  _modules.forEach(function(m){
+    var r=dimNearestPointOnTrace(rawX,rawY,m,0,0);
+    if(r&&(!best||r.dist<best.dist)) best=r;
+  });
+  return best;
 }
 // Magnetic snap overlay: visible only while in dim mode and a getSnapPoints
 // target is within SNAP_RADIUS of the cursor. Two layered DOM elements over
@@ -4398,13 +4497,17 @@ function dimMagneticTarget(e){
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var rawX=(e.clientX-rect.left-o.x)/sc;
   var rawY=-(e.clientY-rect.top-o.y)/sc;
+  // Priority 1: vertex / endpoint / center
   var pts=getSnapPoints(new Set());
   var best=null,bestD=SNAP_RADIUS;
   pts.forEach(function(p){
     var d=Math.sqrt(Math.pow(rawX-p.x,2)+Math.pow(rawY-p.y,2));
     if(d<bestD){bestD=d;best=p;}
   });
-  return best?{x:Math.round(best.x),y:Math.round(best.y)}:null;
+  if(best) return{x:Math.round(best.x),y:Math.round(best.y)};
+  // Priority 2: nearest point on a trace
+  var traceHit=dimNearestTraceTarget(rawX,rawY);
+  return traceHit?{x:Math.round(traceHit.x),y:Math.round(traceHit.y)}:null;
 }
 function dimClick(e){
   if(!_dimMode||!_dimDraft) return;
