@@ -173,6 +173,11 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-saved-del{width:18px;height:18px;background:none;border:none;color:var(--mid);font-size:14px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%;transition:color .15s}
 .c2d-saved-card:hover .c2d-saved-del{display:flex}
 .c2d-saved-del:hover{color:#dc2626}
+.c2d-cat-name{font-size:11px;flex:1;overflow:hidden;line-height:1.3}
+.c2d-cat-name strong{display:block;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.c2d-cat-name .c2d-cat-brand{display:block;font-size:10px;color:var(--mid);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.c2d-cat-filter{width:100%;margin-bottom:6px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:#fff}
+.c2d-cat-retry{margin-top:6px;padding:4px 10px;font-size:11px;border:1px solid var(--border);background:#fff;border-radius:4px;cursor:pointer}
 
 /* Responsive */
 @media(max-width:900px){
@@ -308,6 +313,11 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
             </div>
           </div>
         </div>
+      </div>
+      <!-- MARCAS (catálogo público de piezas reales) -->
+      <div class="c2d-section" id="catalogSection">
+        <div class="c2d-section-title" onclick="if(accordionToggle(this,'c2d-section'))loadCatalog()">Marcas</div>
+        <div class="c2d-section-body" id="catalogBody"></div>
       </div>
       <!-- MIS DIBUJOS -->
       <div class="c2d-section" id="savedDrawingsSection">
@@ -2230,6 +2240,17 @@ wrap.addEventListener('drop',function(e){
     }
   }
   e.preventDefault();if(!_dragData) return;
+  // Catalog drag: fetch the row's DXF, import via the shared text path,
+  // unit dialog skipped if default_unit is known on the row.
+  if(_dragData.type==='catalog_dxf'){
+    var crect=wrap.getBoundingClientRect(),csc=s(),co=origin();
+    var cwx=(e.clientX-crect.left-co.x)/csc;
+    var cwy=-(e.clientY-crect.top-co.y)/csc;
+    var citem=_dragData.catalogItem;
+    _dragData=null;
+    handleCatalogDrop(citem,cwx,cwy);
+    return;
+  }
   var rect=wrap.getBoundingClientRect(),sc=s(),o=origin();
   var rawX=(e.clientX-rect.left-o.x)/sc;
   var screenY=(e.clientY-rect.top-o.y)/sc;
@@ -4425,24 +4446,23 @@ function askDxfUnits(bboxSpan){
     document.body.appendChild(ov);
   });
 }
-async function importDxfFromFile(file,worldX,worldY){
-  if(!file) return;
-  if(file.size>10*1024*1024){showToast('DXF demasiado grande (>10 MB)','error');return;}
-  var prevCursor=document.body.style.cursor;
-  document.body.style.cursor='wait';
-  var text,parsed,rawShapes;
+// Imports a DXF given as text. Used by both the file/paste path and the
+// catalog drag path. unitMmOverride is an optional mm-per-unit factor that
+// skips the unit dialog when the caller already knows it (e.g. a catalog
+// row carrying default_unit). catalogItem is an optional row from the
+// catalog_items table whose id/name/brand are tagged onto the resulting
+// group module for future features (re-download, "view details", etc.).
+async function importDxfText(text,worldX,worldY,unitMmOverride,catalogItem){
+  var parsed,rawShapes;
   try{
-    text=await readFileText(file);
     parsed=parseDxf(text);
     rawShapes=dxfEntitiesToShapes(parsed.entities);
   }catch(err){
-    document.body.style.cursor=prevCursor;
     console.error('DXF import error',err);
     showToast('Error al leer el DXF','error');
     return;
   }
   if(rawShapes.length===0){
-    document.body.style.cursor=prevCursor;
     showToast('DXF no contiene líneas, círculos, arcos ni curvas importables','error');
     return;
   }
@@ -4470,11 +4490,11 @@ async function importDxfFromFile(file,worldX,worldY){
     if(bx2>maxX) maxX=bx2; if(by2>maxY) maxY=by2;
   });
   var bboxMaxSpan=Math.max(maxX-minX,maxY-minY);
-  // Reset cursor before the dialog so wait isn't shown over the modal.
-  document.body.style.cursor=prevCursor;
   var scaleMM;
   if(parsed.insunits){
     scaleMM=dxfScaleToMM(parsed.insunits,bboxMaxSpan);
+  }else if(unitMmOverride){
+    scaleMM=unitMmOverride;
   }else{
     scaleMM=await askDxfUnits(bboxMaxSpan);
     if(!scaleMM){return;} // user cancelled
@@ -4505,10 +4525,33 @@ async function importDxfFromFile(file,worldX,worldY){
     rotation:0,
     children:children
   };
+  if(catalogItem){
+    if(catalogItem.id) group.catalogItemId=catalogItem.id;
+    if(catalogItem.name) group.catalogName=catalogItem.name;
+    if(catalogItem.brand) group.catalogBrand=catalogItem.brand;
+  }
   _modules.push(group);
   _sel.clear();_sel.add(_modules.length-1);
   draw();renderModules();renderProps();
-  showToast('DXF importado: '+children.length+' elementos','success');
+  var label=catalogItem&&catalogItem.name?catalogItem.name:'DXF';
+  showToast(label+' importado: '+children.length+' elementos','success');
+}
+async function importDxfFromFile(file,worldX,worldY){
+  if(!file) return;
+  if(file.size>10*1024*1024){showToast('DXF demasiado grande (>10 MB)','error');return;}
+  var prevCursor=document.body.style.cursor;
+  document.body.style.cursor='wait';
+  var text;
+  try{
+    text=await readFileText(file);
+  }catch(err){
+    document.body.style.cursor=prevCursor;
+    console.error('DXF read error',err);
+    showToast('Error al leer el DXF','error');
+    return;
+  }
+  document.body.style.cursor=prevCursor;
+  await importDxfText(text,worldX,worldY,null,null);
 }
 
 // ── PROJECT IMAGES (Supabase Storage: project-images bucket) ──
@@ -4918,6 +4961,176 @@ function selectAll(){
   _sel.clear();
   _modules.forEach(function(m,i){if(!_dimVisible&&m.type==='dimension') return;_sel.add(i);});
   renderModules();renderProps();
+}
+
+// ── CATALOG (Marcas) — Phase 1: read-only public catalog from Supabase ──
+// Categories live in this constant so they're easy to extend. Each entry has
+// a normalized `key` (matched against catalog_items.category/.subcategory
+// after lowercasing + stripping accents/whitespace) and a `label` used for
+// display. To add a new category or subcategory, append here.
+var CATALOG_CATEGORIES=[
+  {key:'asientos',label:'Asientos',subs:[
+    {key:'sillas',label:'Sillas'},
+    {key:'butacas',label:'Butacas'},
+    {key:'sofas',label:'Sofás'},
+    {key:'taburetes',label:'Taburetes'}
+  ]},
+  {key:'mesas',label:'Mesas',subs:[
+    {key:'comedor',label:'Comedor'},
+    {key:'centro',label:'Centro'},
+    {key:'auxiliares',label:'Auxiliares'},
+    {key:'despacho',label:'Despacho'}
+  ]},
+  {key:'almacenamiento',label:'Almacenamiento',subs:[
+    {key:'estanterias',label:'Estanterías'},
+    {key:'aparadores',label:'Aparadores'},
+    {key:'comodas',label:'Cómodas'},
+    {key:'vestidores',label:'Vestidores'}
+  ]},
+  {key:'iluminacion',label:'Iluminación',subs:[
+    {key:'sobremesa',label:'Sobremesa'},
+    {key:'pie',label:'Pie'},
+    {key:'suspension',label:'Suspensión'},
+    {key:'aplique',label:'Aplique'}
+  ]},
+  {key:'camas',label:'Camas',subs:[
+    {key:'individuales',label:'Individuales'},
+    {key:'matrimonio',label:'Matrimonio'},
+    {key:'cabeceros',label:'Cabeceros'}
+  ]},
+  {key:'exterior',label:'Exterior',subs:[
+    {key:'sillas',label:'Sillas'},
+    {key:'mesas',label:'Mesas'},
+    {key:'sombrillas',label:'Sombrillas'}
+  ]},
+  {key:'decoracion',label:'Decoración',subs:[
+    {key:'alfombras',label:'Alfombras'},
+    {key:'espejos',label:'Espejos'},
+    {key:'plantas',label:'Plantas'}
+  ]}
+];
+var _catalogItems=null;        // null = not loaded yet, [] = loaded empty, [...] = loaded
+var _catalogLoading=false;
+function _normCat(s){
+  if(!s) return '';
+  return String(s).toLowerCase()
+    .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íïì]/g,'i')
+    .replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/ñ/g,'n')
+    .replace(/\s+/g,'');
+}
+function _escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function loadCatalog(){
+  var body=document.getElementById('catalogBody');
+  if(!body) return;
+  if(_catalogItems){renderCatalog();return;}
+  if(_catalogLoading) return;
+  _catalogLoading=true;
+  body.innerHTML='<div class="c2d-saved-msg">Cargando catálogo…</div>';
+  if(!_supabase){
+    body.innerHTML='<div class="c2d-saved-msg">Catálogo no disponible</div>';
+    _catalogLoading=false;return;
+  }
+  try{
+    var r=await _supabase.from('catalog_items').select('*').eq('active',true);
+    if(r.error) throw r.error;
+    _catalogItems=(r.data||[]).slice().sort(function(a,b){
+      var ab=String(a.brand||'').localeCompare(String(b.brand||''));
+      if(ab) return ab;
+      return String(a.name||'').localeCompare(String(b.name||''));
+    });
+    renderCatalog();
+  }catch(e){
+    console.error('catalog load',e);
+    body.innerHTML='<div class="c2d-saved-msg">No se pudo cargar el catálogo<br><button class="c2d-cat-retry" onclick="loadCatalog()">Reintentar</button></div>';
+    _catalogItems=null;
+  }
+  _catalogLoading=false;
+}
+function renderCatalog(){
+  var body=document.getElementById('catalogBody');
+  if(!body) return;
+  body.innerHTML='';
+  CATALOG_CATEGORIES.forEach(function(cat){
+    var catDiv=document.createElement('div');
+    catDiv.className='c2d-sub';
+    var html='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(cat.label)+'</div>';
+    html+='<div class="c2d-sub-body">';
+    cat.subs.forEach(function(sub){
+      var items=_catalogItems.filter(function(it){
+        return _normCat(it.category)===cat.key && _normCat(it.subcategory)===sub.key;
+      });
+      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="'+sub.key+'">';
+      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(sub.label)+'</div>';
+      html+='<div class="c2d-sub-body">';
+      var brands=Array.from(new Set(items.map(function(it){return it.brand;}))).filter(Boolean).sort();
+      if(brands.length>1){
+        html+='<select class="c2d-cat-filter" onchange="filterCatalogBrand(this)"><option value="">Todas las marcas</option>';
+        brands.forEach(function(b){html+='<option value="'+_escHtml(b)+'">'+_escHtml(b)+'</option>';});
+        html+='</select>';
+      }
+      if(items.length===0){
+        html+='<div class="c2d-saved-msg">Sin piezas</div>';
+      }else{
+        items.forEach(function(it){
+          var thumb=it.thumbnail_url?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(it.thumbnail_url)+'"/>':'<div class="c2d-saved-thumb"></div>';
+          html+='<div class="c2d-saved-card c2d-cat-card" draggable="true" data-id="'+_escHtml(it.id)+'" data-brand="'+_escHtml(it.brand)+'">'+
+            thumb+
+            '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong><span class="c2d-cat-brand">'+_escHtml(it.brand)+'</span></div>'+
+          '</div>';
+        });
+      }
+      html+='</div></div>';
+    });
+    html+='</div>';
+    catDiv.innerHTML=html;
+    body.appendChild(catDiv);
+  });
+  body.querySelectorAll('.c2d-cat-card').forEach(function(card){
+    card.addEventListener('dragstart',function(e){
+      var id=card.dataset.id;
+      var item=(_catalogItems||[]).find(function(it){return it.id===id;});
+      if(!item) return;
+      _dragData={type:'catalog_dxf',catalogItem:item,w:item.width_mm||500,h:item.height_mm||500};
+      e.dataTransfer.setData('text','catalog');
+    });
+  });
+}
+function filterCatalogBrand(sel){
+  var subBody=sel.parentElement;
+  var v=sel.value;
+  subBody.querySelectorAll('.c2d-cat-card').forEach(function(c){
+    c.style.display=(!v||c.dataset.brand===v)?'':'none';
+  });
+}
+// Maps the catalog row's default_unit string ('mm', 'cm', 'm', 'in', 'ft')
+// to a mm-per-unit factor. Returns null if unknown — the import flow then
+// falls back to the unit dialog so the user can pick.
+function _catalogUnitToMm(u){
+  if(!u) return null;
+  var k=String(u).toLowerCase().trim();
+  if(k==='mm') return 1;
+  if(k==='cm') return 10;
+  if(k==='m') return 1000;
+  if(k==='in'||k==='inch'||k==='inches') return 25.4;
+  if(k==='ft'||k==='feet') return 304.8;
+  return null;
+}
+async function handleCatalogDrop(item,worldX,worldY){
+  if(!item||!item.dxf_url){showToast('DXF no disponible','error');return;}
+  var prevCursor=document.body.style.cursor;
+  document.body.style.cursor='wait';
+  showToast('Cargando '+item.name+'…');
+  try{
+    var resp=await fetch(item.dxf_url);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    var text=await resp.text();
+    document.body.style.cursor=prevCursor;
+    await importDxfText(text,worldX,worldY,_catalogUnitToMm(item.default_unit),item);
+  }catch(e){
+    document.body.style.cursor=prevCursor;
+    console.error('catalog drop',e);
+    showToast('Error al cargar '+item.name,'error');
+  }
 }
 
 // ── SAVED DRAWINGS (Mis dibujos) ──
