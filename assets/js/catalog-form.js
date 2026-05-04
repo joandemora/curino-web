@@ -88,11 +88,8 @@
       '.cf-variants-list{display:flex;flex-direction:column;gap:.6rem;margin-top:.6rem}',
       '.cf-variant{border:1px solid #e5e5e5;border-radius:8px;padding:.6rem;background:#fafaf7;display:grid;grid-template-columns:64px 1fr auto;gap:.6rem;align-items:start}',
       '.cf-variant input[type=text]{padding:.35rem .5rem;font-size:12px;border:1px solid #ddd;border-radius:4px;width:100%;font-family:inherit}',
-      '.cf-variant input[type=color]{width:40px;height:28px;padding:0;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff}',
       '.cf-variant input[type=file]{font-size:11px}',
       '.cf-var-fields{display:flex;flex-direction:column;gap:.35rem}',
-      '.cf-var-row-inline{display:flex;gap:.35rem;align-items:center}',
-      '.cf-var-row-inline input[type=text]{flex:1}',
       '.cf-var-remove{background:transparent;border:none;color:#a83232;cursor:pointer;font-size:18px;padding:0;width:24px;height:24px;line-height:1}',
       '.cf-var-remove:hover{color:#7a1f1f}',
       '.cf-add-variant{margin-top:.5rem;padding:.45rem .8rem;background:#fff;border:1px dashed #999;border-radius:4px;cursor:pointer;font-size:12px;color:#444;width:100%}',
@@ -317,7 +314,9 @@
     // ── Product photo + variants state (Fase D) ────────────────────────
     // mainPhoto: {existingUrl, newFile, removed} — `removed` only meaningful
     //            on edit, marks the existing photo for deletion on save.
-    // variants:  array of {id,name,color_hex,size,existingPhotoUrl,newFile}.
+    // variants:  array of {id,name,value,existingPhotoUrl,newFile}.
+    //            color_hex was removed in the post-Phase-D cleanup; rows
+    //            authored before still have it in the DB as fossil data.
     //            id is stable per variant so the storage path
     //            <prefix><uuid>_var_<id>.<ext> survives reorder/edit.
     // removedPhotoPaths: best-effort cleanup queue for variants the user
@@ -346,7 +345,6 @@
         variants.push({
           id:stableId||uuid(),
           name:typeName,
-          color_hex:v.color_hex||'',
           value:(v.value!=null?v.value:(v.size||''))||'',
           existingPhotoUrl:v.photo_url||null,
           newFile:null
@@ -385,9 +383,6 @@
             '<select data-field="name" class="cf-cluster-select">'+typeOpts+'</select>'+
             '<input type="text" placeholder="'+escHtml(valuePh)+'" value="'+escHtml(v.value||'')+'" data-field="value">'+
             '<input type="file" accept="image/jpeg,image/png,image/webp" data-field="file">'+
-            '<div class="cf-var-row-inline">'+
-              '<input type="color" value="'+(v.color_hex||'#cccccc')+'" data-field="color" title="Color hex">'+
-            '</div>'+
           '</div>'+
           '<button type="button" class="cf-var-remove" title="Eliminar variante">×</button>';
         var inputs=div.querySelectorAll('[data-field]');
@@ -403,7 +398,6 @@
               // about to fill next).
               if(valueInp) valueInp.placeholder=VARIANT_VALUE_HINT[v.name]||'Valor';
             }
-            else if(inp.dataset.field==='color') v.color_hex=inp.value;
             else if(inp.dataset.field==='value') v.value=inp.value;
             else if(inp.dataset.field==='file'&&inp.files&&inp.files[0]){
               if(inp.files[0].size>5*1024*1024){alert('Foto de variante demasiado grande (>5 MB).');inp.value='';return;}
@@ -438,7 +432,11 @@
       refreshMainPhotoPreview();
     });
     $('cfAddVariant').addEventListener('click',function(){
-      variants.push({id:uuid(),name:'',color_hex:'',size:'',existingPhotoUrl:null,newFile:null});
+      // Default new variants to the first type so the dropdown has a
+      // valid selection from the start. Empty `name` would render the
+      // placeholder option `—` which doesn't match any VARIANT_TYPES
+      // and would fail validation immediately.
+      variants.push({id:uuid(),name:VARIANT_TYPES[0],value:'',existingPhotoUrl:null,newFile:null});
       renderVariants();
     });
     function storagePathFromUrl(url,bucket){
@@ -609,12 +607,18 @@
 
       // Validate variants before doing any photo I/O so we fail fast.
       // name is the type (Material/Color/Talla); value is the actual choice.
-      // Variants stay optional — only the main photo is mandatory.
+      // The list itself is optional — only the main photo is mandatory.
+      // For each variant present, name + value + photo are all required;
+      // photo bullies covers both the new-and-not-uploaded case and the
+      // edited-and-cleared case (existingPhotoUrl gets nulled when the
+      // user removes the variant entirely; the X button handler also
+      // queues the orphan path for cleanup).
       for(var vi=0;vi<variants.length;vi++){
         var vv=variants[vi];
-        if(VARIANT_TYPES.indexOf(vv.name)<0){fail('Cada variante necesita un tipo válido.');return;}
-        if(!vv.value||!String(vv.value).trim()){fail('La variante de tipo "'+vv.name+'" necesita un valor.');return;}
-        if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante "'+vv.name+': '+vv.value+'" necesita una foto.');return;}
+        var vlabel='#'+(vi+1)+(vv.value?(' "'+vv.value+'"'):'');
+        if(VARIANT_TYPES.indexOf(vv.name)<0){fail('La variante '+vlabel+' necesita un tipo válido.');return;}
+        if(!vv.value||!String(vv.value).trim()){fail('La variante '+vlabel+' (tipo '+vv.name+') necesita un valor.');return;}
+        if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante '+vlabel+' debe tener foto.');return;}
       }
 
       // Photos: main product photo + per-variant photos. Skipped on errors
@@ -654,7 +658,10 @@
           finalVariants.push({
             name:vrec.name,                      // Material | Color | Talla
             value:String(vrec.value||'').trim(), // free text value
-            color_hex:vrec.color_hex||null,
+            // color_hex intentionally omitted — the picker was retired in
+            // the post-Phase-D cleanup. Existing rows in the DB that still
+            // have color_hex keep it as fossil data until next edit, when
+            // their `variants` JSONB gets rewritten without the field.
             photo_url:photoUrl
           });
         }
