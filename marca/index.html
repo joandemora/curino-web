@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/catalog-helpers.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--font:'Open Sans',system-ui,sans-serif}
@@ -369,7 +370,11 @@ function openItemModal(id){
   document.getElementById('itemActive').checked=_editingItem?!!_editingItem.active:true;
   document.getElementById('itemDxf').value='';
   document.getElementById('itemThumb').value='';
-  document.getElementById('itemDxfExisting').innerHTML=(_editingItem&&_editingItem.dxf_url)?'Actual: <a href="'+escHtml(_editingItem.dxf_url)+'" target="_blank">'+escHtml(_editingItem.dxf_url.split('/').pop())+'</a> (déjalo vacío para mantenerlo)':'';
+  // Default-view aware: show whatever DXF the configurador would pick on
+  // drop (views.top → other views → legacy dxf_url). Save flow still writes
+  // to the legacy column for now — Fase B will add per-view editing.
+  var _defaultDxfUrl=_editingItem?CurinoCatalog.getDefaultDxfUrl(_editingItem):null;
+  document.getElementById('itemDxfExisting').innerHTML=_defaultDxfUrl?'Actual: <a href="'+escHtml(_defaultDxfUrl)+'" target="_blank">'+escHtml(_defaultDxfUrl.split('/').pop())+'</a> (déjalo vacío para mantenerlo)':'';
   document.getElementById('itemThumbExisting').innerHTML=(_editingItem&&_editingItem.thumbnail_url)?'Actual: <a href="'+escHtml(_editingItem.thumbnail_url)+'" target="_blank">ver</a>':'';
   document.getElementById('itemModalError').style.display='none';
   document.getElementById('itemModalProgress').style.display='none';

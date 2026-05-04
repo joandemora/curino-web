@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/catalog-helpers.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#1F1E1C;--mid:#8C8A82;--light:#c0c0c0;--border:#E8E6DE;--bg:#FAF9F5;--bg-deep:#F0EEE6;--white:#fff;--accent:#007354;--coral:#CC785C;--font:'Inter',-apple-system,sans-serif;--serif:'Fraunces',Georgia,serif;--line-soft:#F0EEE6}
@@ -5150,12 +5151,16 @@ function _catalogUnitToMm(u){
   return null;
 }
 async function handleCatalogDrop(item,worldX,worldY){
-  if(!item||!item.dxf_url){showToast('DXF no disponible','error');return;}
+  // Multi-view aware: prefer views.top, then first available view, then
+  // legacy item.dxf_url. Resolution lives in CurinoCatalog so /admin/ and
+  // /marca/ pick the same default.
+  var dxfUrl=window.CurinoCatalog?CurinoCatalog.getDefaultDxfUrl(item):(item&&item.dxf_url);
+  if(!item||!dxfUrl){showToast('DXF no disponible','error');return;}
   var prevCursor=document.body.style.cursor;
   document.body.style.cursor='wait';
   showToast('Cargando '+item.name+'…');
   try{
-    var resp=await fetch(item.dxf_url);
+    var resp=await fetch(dxfUrl);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     var text=await resp.text();
     document.body.style.cursor=prevCursor;
