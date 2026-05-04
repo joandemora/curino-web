@@ -1799,9 +1799,9 @@ function renderModules(){
     var dims=(m.type==='shape_line'||m.type==='shape_arc')?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.type==='group'?(m.w+'&times;'+m.h):m.w+'&times;'+m.h;
     if(m.type==='group'){
       // Group children already appended via appendChild — don't overwrite with innerHTML
-      if(_sel.has(i)){var lbl=document.createElement('div');lbl.className='c2d-module-label';lbl.innerHTML=dims+'<br>'+moduleTitle(m);div.appendChild(lbl);}
+      if(_sel.has(i)){var lbl=document.createElement('div');lbl.className='c2d-module-label';lbl.innerHTML=dims+'<br>'+moduleTitle(m,{short:true});div.appendChild(lbl);}
     }else{
-      div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+moduleTitle(m)+'</div>':'');
+      div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+moduleTitle(m,{short:true})+'</div>':'');
     }
     div.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}if(_eraserMode){e.stopPropagation();e.preventDefault();eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
@@ -1914,15 +1914,20 @@ function renderModules(){
   }
 }
 
-// Returns the user-facing title for a module \u2014 used both in the canvas
-// overlay label and in the Propiedades "Tipo" row. Catalog-backed groups
-// and images surface "<name> de <brand>" using the snapshot cached at
-// drop time (Phase C / commit 5f9cb1c). Plain modules fall back to the
-// generic typeLabel(t) entry.
-function moduleTitle(m){
+// Returns the user-facing title for a module. Two consumers:
+//   - Propiedades (default)            \u2192 "<name> de <brand>"
+//   - Canvas selection-overlay label   \u2192 moduleTitle(m, {short:true})
+//                                        returns just "<name>" (the
+//                                        floating label is short on
+//                                        space; brand already implicit).
+// Catalog-backed groups and images surface the catalog snapshot cached
+// at drop time (Phase C / commit 5f9cb1c). Plain modules fall back to
+// the generic typeLabel(t) entry regardless of the short flag.
+function moduleTitle(m,opts){
   if(!m) return '';
+  var short=!!(opts&&opts.short);
   if((m.type==='group'||m.type==='image')&&m.catalogName&&m.catalogBrand){
-    return m.catalogName+' de '+m.catalogBrand;
+    return short?m.catalogName:(m.catalogName+' de '+m.catalogBrand);
   }
   if(m.type==='image') return 'Imagen';
   return typeLabel(m.type);
