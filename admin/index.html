@@ -350,7 +350,7 @@ function statusFor(s){return s==='pending'?'Pendiente':s==='approved'?'Aprobada'
 async function approveApp(id){
   var app=_apps.find(function(x){return x.id===id;});
   if(!app) return;
-  if(!confirm('Aprobar la marca "'+app.brand_name+'"?\n\nEsto:\n  - Marcará la solicitud como aprobada.\n  - Concederá rol "brand" al usuario con ese nombre comercial.')) return;
+  // No confirm — click executes inmediately. Errors still surface via alert.
   // 1) actualizar la fila de la solicitud
   var u1=await _supabase.from('brand_applications').update({
     status:'approved',
@@ -373,13 +373,13 @@ async function approveApp(id){
 async function rejectApp(id){
   var app=_apps.find(function(x){return x.id===id;});
   if(!app) return;
-  var notes=prompt('Motivo del rechazo (visible para el usuario):','');
-  if(notes===null) return; // cancelado
+  // No prompt — click executes inmediately, admin_notes queda NULL.
+  // El usuario rechazado verá solo "Solicitud rechazada" sin motivo.
   var u=await _supabase.from('brand_applications').update({
     status:'rejected',
     reviewed_at:new Date().toISOString(),
     reviewed_by:_currentUser.id,
-    admin_notes:notes||null
+    admin_notes:null
   }).eq('id',app.id);
   if(u.error){alert('Error: '+u.error.message);return;}
   await loadApps();
