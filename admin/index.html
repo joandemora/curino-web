@@ -11,6 +11,12 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--font:'Open Sans',system-ui,sans-serif}
 body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh}
+/* Hide entire page until the admin role check completes — without this,
+   non-admin users briefly see the header / tabs / "Cargando…" placeholder
+   before the access-denied alert and redirect fire (the role check is
+   async; the DOM is ready first). visibility:hidden keeps layout stable
+   so revealing later doesn't reflow. */
+body.hidden-until-auth{visibility:hidden}
 .admin-header{background:#111;color:#fff;padding:.85rem 1.5rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
 .admin-header h1{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
 .admin-header h1 span{opacity:.55;margin-left:.4rem;font-weight:300}
@@ -85,7 +91,7 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:
 }
 </style>
 </head>
-<body>
+<body class="hidden-until-auth">
 
 <header class="admin-header">
   <h1>Curino <span>Admin</span></h1>
@@ -271,6 +277,8 @@ var _supabase=null,_currentUser=null,_apps=[],_items=[];
 })();
 
 function initAdmin(){
+  // Reveal the page only after the admin role has been confirmed.
+  document.body.classList.remove('hidden-until-auth');
   populateCategorySelects();
   loadApps();
   loadCatalog();

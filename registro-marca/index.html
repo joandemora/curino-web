@@ -12,6 +12,9 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--font:'Open Sans',system-ui,sans-serif}
 body{font-family:var(--font);color:var(--black);background:var(--white);min-height:100vh;display:flex;flex-direction:column;padding:2rem 1.5rem}
+/* Hide page until the auth check completes — otherwise the header logo
+   + title flash for users who get redirected to /login/. */
+body.hidden-until-auth{visibility:hidden}
 .brand-header{max-width:560px;width:100%;margin:0 auto 1.5rem;text-align:center}
 .brand-logo{display:block;height:28px;margin:0 auto 2rem}
 .brand-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem}
@@ -45,7 +48,7 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 }
 </style>
 </head>
-<body>
+<body class="hidden-until-auth">
 
 <div class="brand-header">
   <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino" class="brand-logo"></a>
@@ -128,6 +131,7 @@ var _supabase=null,_currentUser=null,_existingApp=null,_logoFile=null,_existingL
     _currentUser=s.data.session.user;
     await loadExistingApplication();
     document.getElementById('brandForm').style.display='block';
+    document.body.classList.remove('hidden-until-auth');
   }catch(e){
     console.error(e);
     window.location.href='/login/?redirect=/registro-marca/';
