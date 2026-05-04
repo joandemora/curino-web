@@ -58,6 +58,19 @@
     }
     return null;
   }
+  // Returns the URL the catalog grid should display as a card image.
+  // Priority order (Phase D spec):
+  //   1. variants[0].photo_url — first variant's realistic photo, if any.
+  //   2. product_photo_url     — single realistic product photo.
+  //   3. thumbnail_url         — legacy small icon fallback.
+  //   4. null                  — show empty placeholder.
+  function getDisplayPhotoUrl(item){
+    if(!item) return null;
+    if(Array.isArray(item.variants)&&item.variants.length>0&&item.variants[0]&&item.variants[0].photo_url) return item.variants[0].photo_url;
+    if(item.product_photo_url) return item.product_photo_url;
+    if(item.thumbnail_url) return item.thumbnail_url;
+    return null;
+  }
   // Returns the list of view keys with a non-null dxf_url, in VIEW_ORDER
   // order with any extra keys appended at the end. [] for legacy items.
   function getAvailableViewKeys(item){
@@ -76,6 +89,7 @@
     VIEW_LABELS:VIEW_LABELS,
     getDefaultDxfUrl:getDefaultDxfUrl,
     getDefaultViewKey:getDefaultViewKey,
-    getAvailableViewKeys:getAvailableViewKeys
+    getAvailableViewKeys:getAvailableViewKeys,
+    getDisplayPhotoUrl:getDisplayPhotoUrl
   };
 })(window);

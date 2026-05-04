@@ -5118,7 +5118,10 @@ function renderCatalog(){
         html+='<div class="c2d-saved-msg">Sin piezas</div>';
       }else{
         items.forEach(function(it){
-          var thumb=it.thumbnail_url?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(it.thumbnail_url)+'"/>':'<div class="c2d-saved-thumb"></div>';
+          // Card photo priority (Phase D): variants[0].photo_url →
+          // product_photo_url → thumbnail_url → empty placeholder.
+          var photoUrl=window.CurinoCatalog?CurinoCatalog.getDisplayPhotoUrl(it):it.thumbnail_url;
+          var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
           html+='<div class="c2d-saved-card c2d-cat-card" draggable="true" data-id="'+_escHtml(it.id)+'" data-brand="'+_escHtml(it.brand)+'">'+
             thumb+
             '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong><span class="c2d-cat-brand">'+_escHtml(it.brand)+'</span></div>'+

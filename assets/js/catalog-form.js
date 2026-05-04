@@ -70,7 +70,23 @@
       '.cf-cluster-meta{font-size:10px;color:#888;text-align:center}',
       '.cf-cluster-select{width:100%;font-size:12px;padding:.3rem .4rem;border:1px solid #ddd;border-radius:4px;background:#fff;font-family:inherit}',
       '.cf-existing-views{font-size:12px;color:#555;background:#f4f4f0;padding:.6rem .75rem;border-radius:6px;margin-bottom:.6rem}',
-      '.cf-existing-views strong{color:#1a1a1a}'
+      '.cf-existing-views strong{color:#1a1a1a}',
+      '.cf-photo-row{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.5rem}',
+      '.cf-photo-thumb{width:64px;height:64px;flex-shrink:0;border:1px solid #e5e5e5;border-radius:6px;background:#fafaf7;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:9px;color:#888}',
+      '.cf-photo-thumb img{max-width:100%;max-height:100%;object-fit:contain}',
+      '.cf-photo-actions{flex:1;display:flex;flex-direction:column;gap:.3rem}',
+      '.cf-variants-list{display:flex;flex-direction:column;gap:.6rem;margin-top:.6rem}',
+      '.cf-variant{border:1px solid #e5e5e5;border-radius:8px;padding:.6rem;background:#fafaf7;display:grid;grid-template-columns:64px 1fr auto;gap:.6rem;align-items:start}',
+      '.cf-variant input[type=text]{padding:.35rem .5rem;font-size:12px;border:1px solid #ddd;border-radius:4px;width:100%;font-family:inherit}',
+      '.cf-variant input[type=color]{width:40px;height:28px;padding:0;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff}',
+      '.cf-variant input[type=file]{font-size:11px}',
+      '.cf-var-fields{display:flex;flex-direction:column;gap:.35rem}',
+      '.cf-var-row-inline{display:flex;gap:.35rem;align-items:center}',
+      '.cf-var-row-inline input[type=text]{flex:1}',
+      '.cf-var-remove{background:transparent;border:none;color:#a83232;cursor:pointer;font-size:18px;padding:0;width:24px;height:24px;line-height:1}',
+      '.cf-var-remove:hover{color:#7a1f1f}',
+      '.cf-add-variant{margin-top:.5rem;padding:.45rem .8rem;background:#fff;border:1px dashed #999;border-radius:4px;cursor:pointer;font-size:12px;color:#444;width:100%}',
+      '.cf-add-variant:hover{border-color:#1a1a1a;color:#1a1a1a}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -233,6 +249,20 @@
           '<div class="cf-cluster-grid" id="cfClusterGrid"></div>'+
         '</div>'+
       '</div>'+
+      '<div class="cf-section">'+
+        '<div class="cf-section-title">Imagen del producto</div>'+
+        '<div class="cf-photo-row">'+
+          '<div class="cf-photo-thumb" id="cfMainThumb">foto</div>'+
+          '<div class="cf-photo-actions">'+
+            '<label class="cf-label" style="margin-top:0">Foto principal (JPG/PNG/WebP)</label>'+
+            '<input type="file" class="cf-input" id="cfMainPhoto" accept="image/jpeg,image/png,image/webp">'+
+            '<button type="button" class="cf-btn cf-btn-small" id="cfMainPhotoRemove" style="display:none;align-self:flex-start;padding:.25rem .6rem;font-size:11px">Quitar foto</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="cf-section-title" style="margin-top:1rem">Variantes</div>'+
+        '<div class="cf-variants-list" id="cfVariantsList"></div>'+
+        '<button type="button" class="cf-add-variant" id="cfAddVariant">+ Añadir variante</button>'+
+      '</div>'+
       '<div class="cf-error" id="cfError"></div>'+
       '<div class="cf-progress" id="cfProgress"></div>'+
       '<div class="cf-actions">'+
@@ -273,6 +303,121 @@
     var parsedW=0, parsedH=0;
     var clusters=null;         // array of arrays of indices
     var labels=[];             // string per cluster: 'top'|'side'|'front'|'back'|'ignore'
+
+    // ── Product photo + variants state (Fase D) ────────────────────────
+    // mainPhoto: {existingUrl, newFile, removed} — `removed` only meaningful
+    //            on edit, marks the existing photo for deletion on save.
+    // variants:  array of {id,name,color_hex,size,existingPhotoUrl,newFile}.
+    //            id is stable per variant so the storage path
+    //            <prefix><uuid>_var_<id>.<ext> survives reorder/edit.
+    // removedPhotoPaths: best-effort cleanup queue for variants the user
+    //            removed during this session (and the main photo if dropped).
+    var mainPhoto={existingUrl:item&&item.product_photo_url||null, newFile:null, removed:false};
+    var variants=[];
+    var removedPhotoPaths=[];
+    if(item&&Array.isArray(item.variants)){
+      item.variants.forEach(function(v){
+        // Re-derive a synthetic id from the existing photo URL when present
+        // so the upload path stays the same on edit and we don't accumulate
+        // stale files. New variants get a fresh uuid.
+        var stableId=null;
+        if(v.photo_url){
+          var m=String(v.photo_url).match(/_var_([a-zA-Z0-9-]+)\./);
+          if(m) stableId=m[1];
+        }
+        variants.push({
+          id:stableId||uuid(),
+          name:v.name||'',
+          color_hex:v.color_hex||'',
+          size:v.size||'',
+          existingPhotoUrl:v.photo_url||null,
+          newFile:null
+        });
+      });
+    }
+    function refreshMainPhotoPreview(){
+      var box=$('cfMainThumb');
+      var rmBtn=$('cfMainPhotoRemove');
+      var url=null;
+      if(mainPhoto.newFile) url=URL.createObjectURL(mainPhoto.newFile);
+      else if(mainPhoto.existingUrl&&!mainPhoto.removed) url=mainPhoto.existingUrl;
+      if(url){
+        box.innerHTML='<img src="'+escHtml(url)+'" alt="">';
+        rmBtn.style.display='inline-block';
+      }else{
+        box.innerHTML='foto';
+        rmBtn.style.display='none';
+      }
+    }
+    function renderVariants(){
+      var list=$('cfVariantsList');
+      list.innerHTML='';
+      variants.forEach(function(v,idx){
+        var thumbUrl=null;
+        if(v.newFile) thumbUrl=URL.createObjectURL(v.newFile);
+        else if(v.existingPhotoUrl) thumbUrl=v.existingPhotoUrl;
+        var thumb=thumbUrl?'<img src="'+escHtml(thumbUrl)+'" alt="">':'foto';
+        var div=document.createElement('div');
+        div.className='cf-variant';
+        div.innerHTML=
+          '<div class="cf-photo-thumb" style="width:64px;height:64px">'+thumb+'</div>'+
+          '<div class="cf-var-fields">'+
+            '<input type="text" placeholder="Nombre (ej. Roble natural)" value="'+escHtml(v.name)+'" data-field="name">'+
+            '<input type="file" accept="image/jpeg,image/png,image/webp" data-field="file">'+
+            '<div class="cf-var-row-inline">'+
+              '<input type="color" value="'+(v.color_hex||'#cccccc')+'" data-field="color" title="Color hex">'+
+              '<input type="text" placeholder="Tamaño (ej. 120 cm)" value="'+escHtml(v.size||'')+'" data-field="size">'+
+            '</div>'+
+          '</div>'+
+          '<button type="button" class="cf-var-remove" title="Eliminar variante">×</button>';
+        var inputs=div.querySelectorAll('[data-field]');
+        inputs.forEach(function(inp){
+          inp.addEventListener('change',function(){
+            if(inp.dataset.field==='name') v.name=inp.value;
+            else if(inp.dataset.field==='color') v.color_hex=inp.value;
+            else if(inp.dataset.field==='size') v.size=inp.value;
+            else if(inp.dataset.field==='file'&&inp.files&&inp.files[0]){
+              if(inp.files[0].size>5*1024*1024){alert('Foto de variante demasiado grande (>5 MB).');inp.value='';return;}
+              v.newFile=inp.files[0];
+              renderVariants();
+            }
+          });
+        });
+        div.querySelector('.cf-var-remove').addEventListener('click',function(){
+          if(v.existingPhotoUrl){
+            var p=storagePathFromUrl(v.existingPhotoUrl,'catalog-photos');
+            if(p) removedPhotoPaths.push(p);
+          }
+          variants.splice(idx,1);
+          renderVariants();
+        });
+        list.appendChild(div);
+      });
+    }
+    $('cfMainPhoto').addEventListener('change',function(){
+      var f=this.files&&this.files[0];
+      if(!f) return;
+      if(f.size>5*1024*1024){alert('Foto principal demasiado grande (>5 MB).');this.value='';return;}
+      mainPhoto.newFile=f;
+      mainPhoto.removed=false;
+      refreshMainPhotoPreview();
+    });
+    $('cfMainPhotoRemove').addEventListener('click',function(){
+      mainPhoto.newFile=null;
+      mainPhoto.removed=!!mainPhoto.existingUrl;
+      $('cfMainPhoto').value='';
+      refreshMainPhotoPreview();
+    });
+    $('cfAddVariant').addEventListener('click',function(){
+      variants.push({id:uuid(),name:'',color_hex:'',size:'',existingPhotoUrl:null,newFile:null});
+      renderVariants();
+    });
+    function storagePathFromUrl(url,bucket){
+      var m=String(url||'').match(new RegExp('/storage/v1/object/public/'+bucket+'/([^?]+)'));
+      return m?decodeURIComponent(m[1]):null;
+    }
+    refreshMainPhotoPreview();
+    renderVariants();
 
     $('cfDxf').addEventListener('change',function(){onDxfPicked(this.files[0]);});
     $('cfK').addEventListener('change',function(){
@@ -424,6 +569,60 @@
         }
       }catch(err){fail(err.message||'Error subiendo archivos.');return;}
 
+      // Validate variants before doing any photo I/O so we fail fast.
+      for(var vi=0;vi<variants.length;vi++){
+        var vv=variants[vi];
+        if(!vv.name||!vv.name.trim()){fail('Cada variante necesita un nombre.');return;}
+        if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante "'+vv.name+'" necesita una foto.');return;}
+      }
+
+      // Photos: main product photo + per-variant photos. Skipped on errors
+      // — falls back to keeping whatever URL was already there.
+      prog.textContent='Subiendo fotos…';
+      var product_photo_url=item&&item.product_photo_url||null;
+      try{
+        if(mainPhoto.newFile){
+          var mext=(mainPhoto.newFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+          if(!mext) mext='jpg';
+          // One main photo per piece — drop alternate extensions for the same id.
+          ['jpg','jpeg','png','webp'].forEach(function(e){if(e!==mext) supabase.storage.from('catalog-photos').remove([prefix+id+'_main.'+e]);});
+          var mpath=prefix+id+'_main.'+mext;
+          var mup=await supabase.storage.from('catalog-photos').upload(mpath,mainPhoto.newFile,{upsert:true,contentType:mainPhoto.newFile.type});
+          if(mup.error) throw new Error('Foto principal: '+mup.error.message);
+          product_photo_url=supabase.storage.from('catalog-photos').getPublicUrl(mpath).data.publicUrl;
+        }else if(mainPhoto.removed&&mainPhoto.existingUrl){
+          var mp=storagePathFromUrl(mainPhoto.existingUrl,'catalog-photos');
+          if(mp) await supabase.storage.from('catalog-photos').remove([mp]);
+          product_photo_url=null;
+        }
+        // Per-variant uploads. Path is stable on `variant.id` so re-saves
+        // overwrite the same key. Cleanup of removedPhotoPaths runs after.
+        var finalVariants=[];
+        for(var vj=0;vj<variants.length;vj++){
+          var vrec=variants[vj];
+          var photoUrl=vrec.existingPhotoUrl;
+          if(vrec.newFile){
+            var vext=(vrec.newFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+            if(!vext) vext='jpg';
+            ['jpg','jpeg','png','webp'].forEach(function(e){if(e!==vext) supabase.storage.from('catalog-photos').remove([prefix+id+'_var_'+vrec.id+'.'+e]);});
+            var vpath=prefix+id+'_var_'+vrec.id+'.'+vext;
+            var vup=await supabase.storage.from('catalog-photos').upload(vpath,vrec.newFile,{upsert:true,contentType:vrec.newFile.type});
+            if(vup.error) throw new Error('Variante "'+vrec.name+'": '+vup.error.message);
+            photoUrl=supabase.storage.from('catalog-photos').getPublicUrl(vpath).data.publicUrl;
+          }
+          finalVariants.push({
+            name:vrec.name.trim(),
+            color_hex:vrec.color_hex||null,
+            size:vrec.size||null,
+            photo_url:photoUrl
+          });
+        }
+        // Remove orphan files from variants the user deleted in this session.
+        for(var rp=0;rp<removedPhotoPaths.length;rp++){
+          await supabase.storage.from('catalog-photos').remove([removedPhotoPaths[rp]]);
+        }
+      }catch(err){fail(err.message||'Error subiendo fotos.');return;}
+
       // Build payload. When keeping existing views (edit without new DXF),
       // leave views and dxf_url untouched.
       prog.textContent='Guardando…';
@@ -433,7 +632,9 @@
         category:category, subcategory:subcategory,
         designer:designer, year:year,
         width_mm:width_mm, height_mm:height_mm, depth_mm:depth_mm,
-        default_unit:default_unit, active:active
+        default_unit:default_unit, active:active,
+        product_photo_url:product_photo_url,
+        variants:finalVariants.length>0?finalVariants:null
       };
       if(role==='brand') payload.brand_user_id=brandUserId;
       if(hasNewDxf){
