@@ -1968,7 +1968,11 @@ function renderProps(){
   }
   // Image properties
   if(m.type==='image'){
-    var imgHtml='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+_escHtml(moduleTitle(m))+'</div></div>';
+    // Catalog-backed images get the "Referencia" label (the value is the
+    // <name> de <brand> from moduleTitle); user-pasted images keep "Tipo"
+    // with the generic "Imagen" value.
+    var imgFieldLabel=m.catalogItemId?'Referencia':'Tipo';
+    var imgHtml='<div class="c2d-prop"><label>'+imgFieldLabel+'</label><div style="font-size:13px;padding:6px 0">'+_escHtml(moduleTitle(m))+'</div></div>';
     // Phase D-2: variant picker — only on catalog-backed image modules
     // with at least one snapshotted variant. User-pasted/dragged images
     // (no catalogItemId) skip this.
