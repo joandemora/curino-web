@@ -266,7 +266,9 @@ var _supabase=null,_currentUser=null,_apps=[],_items=[];
     // Verify admin role before showing anything.
     var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
     if(!rr.data||rr.data.role!=='admin'){
-      alert('Acceso denegado: esta página es solo para administradores.');
+      // Silent redirect — the modal felt heavy for a routine "wrong page"
+      // event. Combined with hidden-until-auth, the user just sees a brief
+      // blank flash before landing back on /mi-cuenta/.
       window.location.href='/mi-cuenta/';return;
     }
     initAdmin();
