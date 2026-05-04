@@ -229,7 +229,11 @@ function renderItems(){
     return;
   }
   list.innerHTML=rows.map(function(it){
-    var thumb=it.thumbnail_url?'<img src="'+escHtml(it.thumbnail_url)+'" alt="">':'thumb';
+    // Phase D: prefer the realistic display photo (variants[0].photo_url →
+    // product_photo_url → thumbnail_url → null). Falls back to "thumb"
+    // text placeholder when nothing is set.
+    var photoUrl=window.CurinoCatalog?CurinoCatalog.getDisplayPhotoUrl(it):it.thumbnail_url;
+    var thumb=photoUrl?'<img src="'+escHtml(photoUrl)+'" alt="">':'thumb';
     return ''+
       '<div class="cat-row '+(it.active?'':'inactive')+'">'+
         '<div class="cat-thumb">'+thumb+'</div>'+
