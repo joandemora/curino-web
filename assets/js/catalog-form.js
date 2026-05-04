@@ -28,6 +28,16 @@
     {key:'back',  label:'Detrás'}
   ];
   var DEFAULT_LABEL_ORDER=['top','side','front','back']; // applied to clusters[0..N-1]
+  // Phase D-1: variant types are a closed list. The variant.name field
+  // stores the type; variant.value (renamed from variant.size) holds the
+  // actual choice. Adding a new type means appending here only.
+  var VARIANT_TYPES=['Material','Color','Talla'];
+  // Placeholder text for the value input depends on the chosen type.
+  var VARIANT_VALUE_HINT={
+    Material:'Material (ej. Roble natural)',
+    Color:'Color (ej. Negro)',
+    Talla:'Talla (ej. 120 cm)'
+  };
 
   function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function uuid(){
@@ -325,11 +335,19 @@
           var m=String(v.photo_url).match(/_var_([a-zA-Z0-9-]+)\./);
           if(m) stableId=m[1];
         }
+        // Phase D-1: variant.name is now a fixed dropdown of types and the
+        // old `size` field becomes `value`. Backwards-compat at read:
+        //   - value: v.value (new) → v.size (legacy) → ''.
+        //   - name : keep v.name only if it matches a known type, else
+        //            default to 'Material'. Legacy free-text names like
+        //            "Roble natural" lose their label here; the user has
+        //            to re-pick the type on next edit.
+        var typeName=(VARIANT_TYPES.indexOf(v.name)>=0)?v.name:VARIANT_TYPES[0];
         variants.push({
           id:stableId||uuid(),
-          name:v.name||'',
+          name:typeName,
           color_hex:v.color_hex||'',
-          size:v.size||'',
+          value:(v.value!=null?v.value:(v.size||''))||'',
           existingPhotoUrl:v.photo_url||null,
           newFile:null
         });
@@ -359,23 +377,34 @@
         var thumb=thumbUrl?'<img src="'+escHtml(thumbUrl)+'" alt="">':'foto';
         var div=document.createElement('div');
         div.className='cf-variant';
+        var typeOpts=VARIANT_TYPES.map(function(t){return '<option value="'+t+'"'+(v.name===t?' selected':'')+'>'+t+'</option>';}).join('');
+        var valuePh=VARIANT_VALUE_HINT[v.name]||'Valor';
         div.innerHTML=
           '<div class="cf-photo-thumb" style="width:64px;height:64px">'+thumb+'</div>'+
           '<div class="cf-var-fields">'+
-            '<input type="text" placeholder="Nombre (ej. Roble natural)" value="'+escHtml(v.name)+'" data-field="name">'+
+            '<select data-field="name" class="cf-cluster-select">'+typeOpts+'</select>'+
+            '<input type="text" placeholder="'+escHtml(valuePh)+'" value="'+escHtml(v.value||'')+'" data-field="value">'+
             '<input type="file" accept="image/jpeg,image/png,image/webp" data-field="file">'+
             '<div class="cf-var-row-inline">'+
               '<input type="color" value="'+(v.color_hex||'#cccccc')+'" data-field="color" title="Color hex">'+
-              '<input type="text" placeholder="Tamaño (ej. 120 cm)" value="'+escHtml(v.size||'')+'" data-field="size">'+
             '</div>'+
           '</div>'+
           '<button type="button" class="cf-var-remove" title="Eliminar variante">×</button>';
         var inputs=div.querySelectorAll('[data-field]');
+        var valueInp=div.querySelector('input[data-field="value"]');
         inputs.forEach(function(inp){
-          inp.addEventListener('change',function(){
-            if(inp.dataset.field==='name') v.name=inp.value;
+          var evt=(inp.tagName==='SELECT')?'change':'change';
+          inp.addEventListener(evt,function(){
+            if(inp.dataset.field==='name'){
+              v.name=inp.value;
+              // Update the value input's placeholder live so the label
+              // hint reflects the chosen type without a full re-render
+              // (which would lose focus on whatever input the user is
+              // about to fill next).
+              if(valueInp) valueInp.placeholder=VARIANT_VALUE_HINT[v.name]||'Valor';
+            }
             else if(inp.dataset.field==='color') v.color_hex=inp.value;
-            else if(inp.dataset.field==='size') v.size=inp.value;
+            else if(inp.dataset.field==='value') v.value=inp.value;
             else if(inp.dataset.field==='file'&&inp.files&&inp.files[0]){
               if(inp.files[0].size>5*1024*1024){alert('Foto de variante demasiado grande (>5 MB).');inp.value='';return;}
               v.newFile=inp.files[0];
@@ -570,10 +599,12 @@
       }catch(err){fail(err.message||'Error subiendo archivos.');return;}
 
       // Validate variants before doing any photo I/O so we fail fast.
+      // name is the type (Material/Color/Talla); value is the actual choice.
       for(var vi=0;vi<variants.length;vi++){
         var vv=variants[vi];
-        if(!vv.name||!vv.name.trim()){fail('Cada variante necesita un nombre.');return;}
-        if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante "'+vv.name+'" necesita una foto.');return;}
+        if(VARIANT_TYPES.indexOf(vv.name)<0){fail('Cada variante necesita un tipo válido.');return;}
+        if(!vv.value||!String(vv.value).trim()){fail('La variante de tipo "'+vv.name+'" necesita un valor.');return;}
+        if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante "'+vv.name+': '+vv.value+'" necesita una foto.');return;}
       }
 
       // Photos: main product photo + per-variant photos. Skipped on errors
@@ -611,9 +642,9 @@
             photoUrl=supabase.storage.from('catalog-photos').getPublicUrl(vpath).data.publicUrl;
           }
           finalVariants.push({
-            name:vrec.name.trim(),
+            name:vrec.name,                      // Material | Color | Talla
+            value:String(vrec.value||'').trim(), // free text value
             color_hex:vrec.color_hex||null,
-            size:vrec.size||null,
             photo_url:photoUrl
           });
         }
