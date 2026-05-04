@@ -1841,7 +1841,13 @@ function renderModules(){
           div.appendChild(rh);
         }
       }else{
-      var handles=(m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:['tl','t','tr','l','r','bl','b','br'];
+      // Catalog-backed groups: only admins may resize. Non-admins still get
+      // the rotation handle (added below) and can drag/move/delete the
+      // piece — only the size is protected. Rendering an empty array makes
+      // the resize handles disappear; the rotation handle code path is
+      // unaffected because it lives outside this loop.
+      var sizeProtected=(m.type==='group'&&!!m.catalogName&&_userRole!=='admin');
+      var handles=sizeProtected?[]:((m.type==='barra'||m.type==='zapatero')?['l','r']:m.type==='divisor'?['t','b']:['tl','t','tr','l','r','bl','b','br']);
       handles.forEach(function(pos){
         var h=document.createElement('div');
         h.className='c2d-handle c2d-handle-'+pos;
@@ -2041,9 +2047,17 @@ function renderProps(){
       }).join('');
       groupHTML+='<div class="c2d-prop"><label>Vista</label><select onchange="onCatalogViewChange(this.value)">'+viewOpts+'</select></div>';
     }
+    // Size-protection: catalog-backed groups can't be resized except by
+    // admin. The lock toggles are also hidden in that case (lock is a
+    // user-managed flag and would be confusing alongside the protection).
+    var grpSizeProtected=(!!m.catalogName&&_userRole!=='admin');
+    var grpLockHide=grpSizeProtected?';display:none':'';
+    var grpDisableW=(grpSizeProtected||m.lockW)?'disabled ':'';
+    var grpDisableH=(grpSizeProtected||m.lockH)?'disabled ':'';
     groupHTML+=
-      '<div class="c2d-prop"><label>Ancho (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" '+(m.lockW?'disabled ':'')+'onchange="updateProp(\'w\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockW?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockW\')">'+(m.lockW?gLockClosed:gLockOpen)+'</button></div></div>'+
-      '<div class="c2d-prop"><label>Alto (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" '+(m.lockH?'disabled ':'')+'onchange="updateProp(\'h\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockH?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockH\')">'+(m.lockH?gLockClosed:gLockOpen)+'</button></div></div>'+
+      '<div class="c2d-prop"><label>Ancho (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" '+grpDisableW+'onchange="updateProp(\'w\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockW?'var(--black)':'var(--light)')+grpLockHide+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockW\')">'+(m.lockW?gLockClosed:gLockOpen)+'</button></div></div>'+
+      '<div class="c2d-prop"><label>Alto (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" '+grpDisableH+'onchange="updateProp(\'h\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockH?'var(--black)':'var(--light)')+grpLockHide+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockH\')">'+(m.lockH?gLockClosed:gLockOpen)+'</button></div></div>'+
+      (grpSizeProtected?'<div style="font-size:11px;color:#888;margin:-.4rem 0 .6rem;font-style:italic">Tama\u00F1o protegido por marca</div>':'')+
       '<div class="c2d-prop"><label>Rotaci\u00F3n (\u00B0)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value))"></div>';
     if(m.children&&m.children.length>=2){
       groupHTML+='<button type="button" onclick="onSeparateGroupClick()" style="width:100%;padding:6px;border:1px solid var(--border);background:var(--white);border-radius:4px;cursor:pointer;font-size:12px;margin-bottom:6px">Separar en dibujos</button>';
@@ -4886,7 +4900,9 @@ function showCtx(x,y,onModule){
     items+='<div class="c2d-ctx-item" onclick="ctxAction(\'back\')">Mover al fondo</div>';
     if(_sel.size>=2) items+='<div class="c2d-ctx-sep"></div><div class="c2d-ctx-item" onclick="ctxAction(\'createGroup\')">Crear Dibujo</div>';
     var selMod=_sel.size===1?_modules[_sel.values().next().value]:null;
-    if(selMod&&selMod.type==='group') items+='<div class="c2d-ctx-item" onclick="ctxAction(\'ungroupDibujo\')">Desagrupar Dibujo</div>';
+    // Catalog-backed groups can only be ungrouped by admins; for everyone
+    // else the option is hidden so the piece stays intact.
+    if(selMod&&selMod.type==='group'&&(_userRole==='admin'||!selMod.catalogName)) items+='<div class="c2d-ctx-item" onclick="ctxAction(\'ungroupDibujo\')">Desagrupar Dibujo</div>';
     if(selMod&&selMod.type==='group') items+='<div class="c2d-ctx-item" onclick="ctxAction(\'saveDrawing\')">Guardar Dibujo</div>';
   }else{
     if(_clipboard&&_clipboard.length) items+='<div class="c2d-ctx-item" onclick="ctxAction(\'paste\')">Pegar<span>Ctrl+V</span></div>';
@@ -4989,6 +5005,10 @@ function ungroupDibujo(){
   var idx=_sel.values().next().value;
   var g=_modules[idx];
   if(g.type!=='group') return;
+  // Defense in depth: even if some other code path invoked this on a
+  // catalog-backed group, only admins may break it apart. Pure UX gate
+  // (a determined user could bypass via DevTools); the spec accepts this.
+  if(g.catalogName&&_userRole!=='admin') return;
   saveHistory();
   var gRot=(g.rotation||0)*Math.PI/180;
   var hasRot=g.rotation&&g.rotation%360!==0;
