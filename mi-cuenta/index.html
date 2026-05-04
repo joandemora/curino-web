@@ -706,7 +706,7 @@ function renderBrandCard(){
   if(_brandRole==='admin'){
     el.innerHTML=
       '<div class="brand-state-approved"><strong>Cuenta admin</strong><br>Acceso completo al catálogo y gestión de marcas.</div>'+
-      '<button class="btn btn-outline btn-small" disabled style="opacity:.5;cursor:not-allowed">Panel admin (próximamente)</button>';
+      '<a href="/admin/" class="btn btn-primary btn-small">Abrir panel admin</a>';
     return;
   }
   // Brand role → already approved.
