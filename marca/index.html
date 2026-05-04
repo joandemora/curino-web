@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi marca — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh}
+/* See /admin/ — same hide-until-auth pattern (commit 0bedad8). */
+body.hidden-until-auth{visibility:hidden}
+.brand-header{background:#111;color:#fff;padding:.85rem 1.5rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.brand-header h1{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.brand-header h1 .sub{opacity:.55;margin-left:.4rem;font-weight:300}
+.brand-header h1 .name{margin-left:.6rem;color:var(--coral);font-weight:600}
+.brand-header nav{display:flex;gap:.5rem;align-items:center}
+.brand-header a{color:#bbb;font-size:12px;text-decoration:none;padding:.4rem .7rem;border-radius:4px;transition:background .15s,color .15s}
+.brand-header a:hover{color:#fff;background:rgba(255,255,255,.1)}
+.brand-header button{background:transparent;color:#bbb;border:1px solid #444;font-size:11px;padding:.35rem .7rem;border-radius:4px;cursor:pointer;font-family:var(--font);letter-spacing:.05em;text-transform:uppercase}
+.brand-header button:hover{color:#fff;border-color:#666}
+.brand-section{padding:1.5rem;max-width:1280px;margin:0 auto}
+.brand-section-title{font-family:'Open Sans',serif;font-size:18px;font-weight:400;margin-bottom:1rem}
+.brand-toolbar{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem}
+.brand-toolbar select{padding:.45rem .6rem;font-size:13px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--font);color:var(--ink)}
+.brand-toolbar label{display:inline-flex;align-items:center;gap:.4rem;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.brand-btn{padding:.5rem .85rem;font-size:12px;font-weight:600;border:1px solid var(--border);background:#fff;border-radius:4px;cursor:pointer;font-family:var(--font);letter-spacing:.04em;color:var(--ink)}
+.brand-btn:hover{border-color:var(--ink)}
+.brand-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.brand-btn-primary:hover{background:#333;border-color:#333}
+.brand-btn-danger{background:#a83232;color:#fff;border-color:#a83232}
+.brand-btn-danger:hover{background:#8a2828;border-color:#8a2828}
+.brand-btn-small{padding:.35rem .65rem;font-size:11px}
+.brand-empty{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+.cat-row{background:#fff;border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem;display:grid;grid-template-columns:48px 1fr auto;gap:.85rem;align-items:center}
+.cat-row.inactive{opacity:.5}
+.cat-thumb{width:48px;height:48px;background:var(--bg);border:1px solid var(--border);border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--mid)}
+.cat-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.cat-info h4{font-size:13px;font-weight:600;margin-bottom:.2rem}
+.cat-info-meta{font-size:11px;color:var(--mid);display:flex;gap:.6rem;flex-wrap:wrap}
+.cat-actions{display:flex;gap:.4rem;align-items:center}
+.cat-toggle{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;color:var(--ink-soft);cursor:pointer}
+.cat-toggle input{cursor:pointer}
+/* Modal — duplicated from /admin/ with the brand field omitted.
+   TODO: extraer modal + save flow a assets/js/catalog-form.js compartido
+   con /admin/ cuando aparezca un tercer consumidor. */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.modal-overlay.visible{display:flex}
+.modal{background:#fff;border-radius:10px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem 1.75rem}
+.modal h2{font-size:16px;font-weight:600;margin-bottom:1rem}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1rem}
+.modal label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.06em;margin:.85rem 0 .25rem}
+.modal input[type=text],.modal input[type=number],.modal select,.modal textarea{width:100%;padding:.55rem .6rem;font-size:13px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--font);color:var(--ink)}
+.modal input[type=file]{font-size:12px;width:100%;margin-top:.2rem}
+.modal-row-actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+.modal-error{display:none;background:#f8d7da;color:#721c24;padding:.5rem .7rem;font-size:12px;border-radius:4px;margin-top:.6rem}
+.modal-existing{font-size:11px;color:var(--mid);margin-top:.2rem}
+.modal-existing a{color:var(--coral);text-decoration:none}
+.modal-existing a:hover{text-decoration:underline}
+.modal-progress{display:none;background:#fff8e1;color:#8a6d1c;padding:.5rem .7rem;font-size:12px;border-radius:4px;margin-top:.6rem}
+@media(max-width:600px){
+  .brand-section{padding:1rem}
+  .modal-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<header class="brand-header">
+  <h1>Curino <span class="sub">Marca</span><span class="name" id="brandHeaderName"></span></h1>
+  <nav>
+    <a href="/mi-cuenta/">Mi cuenta</a>
+    <button onclick="brandSignOut()">Cerrar sesión</button>
+  </nav>
+</header>
+
+<section class="brand-section">
+  <h2 class="brand-section-title">Mis piezas</h2>
+  <div class="brand-toolbar">
+    <label>Categoría <select id="catFilterCategory" onchange="onCatFilterCategoryChange()"><option value="">Todas</option></select></label>
+    <label>Subcategoría <select id="catFilterSub"><option value="">Todas</option></select></label>
+    <label><input type="checkbox" id="catFilterInactive"> Mostrar inactivas</label>
+    <button class="brand-btn brand-btn-small" onclick="loadMyItems()">Recargar</button>
+    <button class="brand-btn brand-btn-primary brand-btn-small" onclick="openItemModal()" style="margin-left:auto">+ Añadir pieza</button>
+  </div>
+  <div id="catList"><div class="brand-empty">Cargando…</div></div>
+</section>
+
+<!-- Modal: añadir/editar pieza (sin campo `brand` — se rellena automáticamente). -->
+<div class="modal-overlay" id="itemModalOverlay">
+  <div class="modal">
+    <h2 id="itemModalTitle">Añadir pieza</h2>
+    <form id="itemForm" onsubmit="saveItem(event)">
+      <input type="hidden" id="itemId">
+      <label>Nombre *</label>
+      <input type="text" id="itemName" required maxlength="120">
+      <div class="modal-row">
+        <div>
+          <label>Categoría *</label>
+          <select id="itemCategory" required onchange="onItemCategoryChange()">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div>
+          <label>Subcategoría *</label>
+          <select id="itemSubcategory" required>
+            <option value="">—</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div>
+          <label>Diseñador</label>
+          <input type="text" id="itemDesigner" maxlength="80">
+        </div>
+        <div>
+          <label>Año</label>
+          <input type="number" id="itemYear" min="1800" max="2100">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div>
+          <label>Ancho (mm)</label>
+          <input type="number" id="itemW" min="0">
+        </div>
+        <div>
+          <label>Alto (mm)</label>
+          <input type="number" id="itemH" min="0">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div>
+          <label>Profundidad (mm)</label>
+          <input type="number" id="itemD" min="0">
+        </div>
+        <div>
+          <label>Unidad por defecto del DXF</label>
+          <select id="itemUnit">
+            <option value="mm">mm</option>
+            <option value="cm">cm</option>
+            <option value="m">m</option>
+            <option value="in">pulgadas</option>
+            <option value="ft">pies</option>
+          </select>
+        </div>
+      </div>
+      <label>DXF *</label>
+      <input type="file" id="itemDxf" accept=".dxf">
+      <div class="modal-existing" id="itemDxfExisting"></div>
+      <label>Thumbnail (PNG/JPG, opcional)</label>
+      <input type="file" id="itemThumb" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+      <div class="modal-existing" id="itemThumbExisting"></div>
+      <label style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">
+        <input type="checkbox" id="itemActive" checked> Activa (visible en el catálogo público)
+      </label>
+      <div class="modal-error" id="itemModalError"></div>
+      <div class="modal-progress" id="itemModalProgress"></div>
+      <div class="modal-row-actions">
+        <button type="button" class="brand-btn" onclick="closeItemModal()">Cancelar</button>
+        <button type="submit" class="brand-btn brand-btn-primary" id="itemSaveBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// TODO: extraer CATEGORIES + el modal/save a assets/js/catalog-form.js
+// compartido con /admin/index.html cuando aparezca un tercer consumidor.
+// Por ahora se replican aquí — al cambiar categorías hay que tocar tres
+// sitios: configurador-2d (CATALOG_CATEGORIES), /admin/ y /marca/.
+var CATEGORIES=[
+  {key:'asientos',label:'Asientos',subs:[
+    {key:'sillas',label:'Sillas'},{key:'butacas',label:'Butacas'},
+    {key:'sofas',label:'Sofás'},{key:'taburetes',label:'Taburetes'}
+  ]},
+  {key:'mesas',label:'Mesas',subs:[
+    {key:'comedor',label:'Comedor'},{key:'centro',label:'Centro'},
+    {key:'auxiliares',label:'Auxiliares'},{key:'despacho',label:'Despacho'}
+  ]},
+  {key:'almacenamiento',label:'Almacenamiento',subs:[
+    {key:'estanterias',label:'Estanterías'},{key:'aparadores',label:'Aparadores'},
+    {key:'comodas',label:'Cómodas'},{key:'vestidores',label:'Vestidores'}
+  ]},
+  {key:'iluminacion',label:'Iluminación',subs:[
+    {key:'sobremesa',label:'Sobremesa'},{key:'pie',label:'Pie'},
+    {key:'suspension',label:'Suspensión'},{key:'aplique',label:'Aplique'}
+  ]},
+  {key:'camas',label:'Camas',subs:[
+    {key:'individuales',label:'Individuales'},{key:'matrimonio',label:'Matrimonio'},
+    {key:'cabeceros',label:'Cabeceros'}
+  ]},
+  {key:'exterior',label:'Exterior',subs:[
+    {key:'sillas',label:'Sillas'},{key:'mesas',label:'Mesas'},{key:'sombrillas',label:'Sombrillas'}
+  ]},
+  {key:'decoracion',label:'Decoración',subs:[
+    {key:'alfombras',label:'Alfombras'},{key:'espejos',label:'Espejos'},{key:'plantas',label:'Plantas'}
+  ]}
+];
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ─── BOOTSTRAP ─────────────────────────────────────────────────────────────
+var _supabase=null,_currentUser=null,_brandName=null,_items=[];
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/marca/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/marca/';return;
+    }
+    _currentUser=s.data.session.user;
+    var rr=await _supabase.from('user_roles').select('role,brand_name').eq('user_id',_currentUser.id).maybeSingle();
+    if(!rr.data||rr.data.role!=='brand'){
+      // Silent redirect — same pattern as /admin/ for non-admin (commit 17e3266).
+      window.location.href='/mi-cuenta/';return;
+    }
+    _brandName=rr.data.brand_name||'';
+    document.getElementById('brandHeaderName').textContent=_brandName?'· '+_brandName:'';
+    initBrand();
+  }catch(e){
+    console.error('marca bootstrap',e);
+    window.location.href='/login/?redirect=/marca/';
+  }
+})();
+
+function initBrand(){
+  document.body.classList.remove('hidden-until-auth');
+  populateCategorySelects();
+  loadMyItems();
+}
+async function brandSignOut(){
+  if(_supabase) await _supabase.auth.signOut();
+  window.location.href='/login/';
+}
+
+// ─── CATALOG (own pieces only) ─────────────────────────────────────────────
+function populateCategorySelects(){
+  ['catFilterCategory','itemCategory'].forEach(function(id){
+    var sel=document.getElementById(id);
+    if(!sel) return;
+    var keep=sel.children[0].outerHTML;
+    sel.innerHTML=keep+CATEGORIES.map(function(c){return '<option value="'+c.key+'">'+escHtml(c.label)+'</option>';}).join('');
+  });
+}
+function onCatFilterCategoryChange(){
+  var cat=document.getElementById('catFilterCategory').value;
+  var sub=document.getElementById('catFilterSub');
+  sub.innerHTML='<option value="">Todas</option>';
+  if(cat){
+    var c=CATEGORIES.find(function(x){return x.key===cat;});
+    if(c){sub.innerHTML+=c.subs.map(function(s){return '<option value="'+s.key+'">'+escHtml(s.label)+'</option>';}).join('');}
+  }
+  renderItems();
+}
+function onItemCategoryChange(){
+  var cat=document.getElementById('itemCategory').value;
+  var sub=document.getElementById('itemSubcategory');
+  sub.innerHTML='<option value="">—</option>';
+  if(cat){
+    var c=CATEGORIES.find(function(x){return x.key===cat;});
+    if(c){sub.innerHTML+=c.subs.map(function(s){return '<option value="'+s.key+'">'+escHtml(s.label)+'</option>';}).join('');}
+  }
+}
+async function loadMyItems(){
+  var list=document.getElementById('catList');
+  list.innerHTML='<div class="brand-empty">Cargando…</div>';
+  // Filter by brand_user_id; the RLS would also limit it, but the explicit
+  // .eq matches the index and avoids surprises if we ever flatten roles.
+  var r=await _supabase.from('catalog_items').select('*').eq('brand_user_id',_currentUser.id).order('name');
+  if(r.error){list.innerHTML='<div class="brand-empty">Error: '+escHtml(r.error.message)+'</div>';return;}
+  _items=r.data||[];
+  document.getElementById('catFilterInactive').onchange=renderItems;
+  renderItems();
+}
+function renderItems(){
+  var list=document.getElementById('catList');
+  var cat=document.getElementById('catFilterCategory').value;
+  var sub=document.getElementById('catFilterSub').value;
+  var showInactive=document.getElementById('catFilterInactive').checked;
+  var rows=_items.filter(function(it){
+    if(cat && (it.category||'').toLowerCase()!==cat) return false;
+    if(sub && (it.subcategory||'').toLowerCase()!==sub) return false;
+    if(!showInactive && !it.active) return false;
+    return true;
+  });
+  if(rows.length===0){
+    list.innerHTML=_items.length===0
+      ? '<div class="brand-empty">Aún no tienes piezas. Pulsa "Añadir pieza" para subir tu primer DXF.</div>'
+      : '<div class="brand-empty">Sin piezas que coincidan con el filtro.</div>';
+    return;
+  }
+  list.innerHTML=rows.map(function(it){
+    var thumb=it.thumbnail_url?'<img src="'+escHtml(it.thumbnail_url)+'" alt="">':'thumb';
+    return ''+
+      '<div class="cat-row '+(it.active?'':'inactive')+'">'+
+        '<div class="cat-thumb">'+thumb+'</div>'+
+        '<div class="cat-info">'+
+          '<h4>'+escHtml(it.name)+'</h4>'+
+          '<div class="cat-info-meta">'+
+            '<span>'+escHtml(it.category||'')+(it.subcategory?' / '+escHtml(it.subcategory):'')+'</span>'+
+            (it.year?'<span>'+it.year+'</span>':'')+
+            (it.width_mm?'<span>'+it.width_mm+'×'+(it.height_mm||0)+(it.depth_mm?'×'+it.depth_mm:'')+' mm</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<div class="cat-actions">'+
+          '<label class="cat-toggle"><input type="checkbox" '+(it.active?'checked':'')+' onchange="toggleItemActive(\''+it.id+'\',this.checked)"> Activa</label>'+
+          '<button class="brand-btn brand-btn-small" onclick="openItemModal(\''+it.id+'\')">Editar</button>'+
+          '<button class="brand-btn brand-btn-danger brand-btn-small" onclick="deleteItem(\''+it.id+'\')">Borrar</button>'+
+        '</div>'+
+      '</div>';
+  }).join('');
+}
+async function toggleItemActive(id,active){
+  var u=await _supabase.from('catalog_items').update({active:active}).eq('id',id);
+  if(u.error){alert('Error: '+u.error.message);loadMyItems();return;}
+  var it=_items.find(function(x){return x.id===id;});
+  if(it) it.active=active;
+}
+async function deleteItem(id){
+  var it=_items.find(function(x){return x.id===id;});
+  if(!it) return;
+  if(!confirm('Borrar la pieza "'+it.name+'" definitivamente?\n\nTambién se eliminarán el DXF y el thumbnail del Storage.')) return;
+  if(it.dxf_url){
+    var dxfPath=storagePathFromUrl(it.dxf_url,'catalog-dxfs');
+    if(dxfPath) await _supabase.storage.from('catalog-dxfs').remove([dxfPath]);
+  }
+  if(it.thumbnail_url){
+    var thumbPath=storagePathFromUrl(it.thumbnail_url,'catalog-thumbnails');
+    if(thumbPath) await _supabase.storage.from('catalog-thumbnails').remove([thumbPath]);
+  }
+  var d=await _supabase.from('catalog_items').delete().eq('id',id);
+  if(d.error){alert('Error borrando la pieza: '+d.error.message);return;}
+  await loadMyItems();
+}
+function storagePathFromUrl(url,bucket){
+  var m=String(url||'').match(new RegExp('/storage/v1/object/public/'+bucket+'/([^?]+)'));
+  return m?decodeURIComponent(m[1]):null;
+}
+
+// ─── ITEM MODAL ────────────────────────────────────────────────────────────
+// Save flow mostly mirrors /admin/. Two key differences:
+//   1. brand_user_id and brand are filled automatically — never read from
+//      the form. Storage path lives under <user_id>/<uuid>.<ext> so the
+//      Brands-* policies in supabase-brand-storage.sql allow the write.
+//   2. No `itemBrand` input: the brand text comes from user_roles.brand_name.
+var _editingItem=null;
+function openItemModal(id){
+  _editingItem=id?_items.find(function(x){return x.id===id;}):null;
+  document.getElementById('itemModalTitle').textContent=_editingItem?'Editar pieza':'Añadir pieza';
+  document.getElementById('itemId').value=_editingItem?_editingItem.id:'';
+  document.getElementById('itemName').value=_editingItem?_editingItem.name||'':'';
+  document.getElementById('itemCategory').value=_editingItem?(_editingItem.category||'').toLowerCase():'';
+  onItemCategoryChange();
+  document.getElementById('itemSubcategory').value=_editingItem?(_editingItem.subcategory||'').toLowerCase():'';
+  document.getElementById('itemDesigner').value=_editingItem?_editingItem.designer||'':'';
+  document.getElementById('itemYear').value=_editingItem&&_editingItem.year?_editingItem.year:'';
+  document.getElementById('itemW').value=_editingItem&&_editingItem.width_mm?_editingItem.width_mm:'';
+  document.getElementById('itemH').value=_editingItem&&_editingItem.height_mm?_editingItem.height_mm:'';
+  document.getElementById('itemD').value=_editingItem&&_editingItem.depth_mm?_editingItem.depth_mm:'';
+  document.getElementById('itemUnit').value=_editingItem&&_editingItem.default_unit?_editingItem.default_unit:'mm';
+  document.getElementById('itemActive').checked=_editingItem?!!_editingItem.active:true;
+  document.getElementById('itemDxf').value='';
+  document.getElementById('itemThumb').value='';
+  document.getElementById('itemDxfExisting').innerHTML=(_editingItem&&_editingItem.dxf_url)?'Actual: <a href="'+escHtml(_editingItem.dxf_url)+'" target="_blank">'+escHtml(_editingItem.dxf_url.split('/').pop())+'</a> (déjalo vacío para mantenerlo)':'';
+  document.getElementById('itemThumbExisting').innerHTML=(_editingItem&&_editingItem.thumbnail_url)?'Actual: <a href="'+escHtml(_editingItem.thumbnail_url)+'" target="_blank">ver</a>':'';
+  document.getElementById('itemModalError').style.display='none';
+  document.getElementById('itemModalProgress').style.display='none';
+  document.getElementById('itemModalOverlay').classList.add('visible');
+}
+function closeItemModal(){
+  document.getElementById('itemModalOverlay').classList.remove('visible');
+  _editingItem=null;
+}
+async function saveItem(e){
+  e.preventDefault();
+  var err=document.getElementById('itemModalError');
+  var prog=document.getElementById('itemModalProgress');
+  err.style.display='none';
+  var btn=document.getElementById('itemSaveBtn');
+  btn.disabled=true;
+  var name=document.getElementById('itemName').value.trim();
+  var category=document.getElementById('itemCategory').value;
+  var subcategory=document.getElementById('itemSubcategory').value;
+  var designer=document.getElementById('itemDesigner').value.trim();
+  var year=parseInt(document.getElementById('itemYear').value,10)||null;
+  var width_mm=parseInt(document.getElementById('itemW').value,10)||null;
+  var height_mm=parseInt(document.getElementById('itemH').value,10)||null;
+  var depth_mm=parseInt(document.getElementById('itemD').value,10)||null;
+  var default_unit=document.getElementById('itemUnit').value||'mm';
+  var active=document.getElementById('itemActive').checked;
+  var dxfFile=document.getElementById('itemDxf').files[0];
+  var thumbFile=document.getElementById('itemThumb').files[0];
+
+  function fail(msg){err.textContent=msg;err.style.display='block';prog.style.display='none';btn.disabled=false;}
+
+  if(!name||!category||!subcategory){fail('Faltan campos obligatorios.');return;}
+  if(!_editingItem&&!dxfFile){fail('El DXF es obligatorio al crear una pieza.');return;}
+  if(dxfFile&&!/\.dxf$/i.test(dxfFile.name)){fail('El archivo DXF debe tener extensión .dxf.');return;}
+  if(dxfFile&&dxfFile.size>10*1024*1024){fail('DXF demasiado grande (>10 MB).');return;}
+  if(thumbFile&&thumbFile.size>2*1024*1024){fail('Thumbnail demasiado grande (>2 MB).');return;}
+
+  var id=_editingItem?_editingItem.id:(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():('xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);})));
+  var dxf_url=_editingItem?_editingItem.dxf_url:null;
+  var thumbnail_url=_editingItem?_editingItem.thumbnail_url:null;
+
+  prog.style.display='block';prog.textContent='Subiendo archivos…';
+
+  // Brand path convention: <user_id>/<uuid>.<ext>. Required by the brand
+  // RLS policies on storage.objects.
+  var folder=_currentUser.id+'/';
+
+  if(dxfFile){
+    var dxfPath=folder+id+'.dxf';
+    var up1=await _supabase.storage.from('catalog-dxfs').upload(dxfPath,dxfFile,{upsert:true,contentType:'application/dxf'});
+    if(up1.error){fail('Error subiendo DXF: '+up1.error.message);return;}
+    dxf_url=_supabase.storage.from('catalog-dxfs').getPublicUrl(dxfPath).data.publicUrl;
+  }
+  if(thumbFile){
+    var ext=(thumbFile.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(!ext) ext='png';
+    // Single-thumbnail-per-id convention: drop alternate extensions.
+    ['png','jpg','jpeg','webp','svg'].forEach(function(e){if(e!==ext) _supabase.storage.from('catalog-thumbnails').remove([folder+id+'.'+e]);});
+    var thumbPath=folder+id+'.'+ext;
+    var up2=await _supabase.storage.from('catalog-thumbnails').upload(thumbPath,thumbFile,{upsert:true,contentType:thumbFile.type});
+    if(up2.error){fail('Error subiendo thumbnail: '+up2.error.message);return;}
+    thumbnail_url=_supabase.storage.from('catalog-thumbnails').getPublicUrl(thumbPath).data.publicUrl;
+  }
+
+  prog.textContent='Guardando…';
+  var payload={
+    id:id,
+    name:name,
+    brand:_brandName||'(sin marca)',
+    brand_user_id:_currentUser.id,
+    category:category, subcategory:subcategory,
+    designer:designer||null, year:year,
+    width_mm:width_mm, height_mm:height_mm, depth_mm:depth_mm,
+    dxf_url:dxf_url||'', thumbnail_url:thumbnail_url,
+    default_unit:default_unit, active:active
+  };
+  var op=_editingItem
+    ?_supabase.from('catalog_items').update(payload).eq('id',id)
+    :_supabase.from('catalog_items').insert(payload);
+  var res=await op;
+  if(res.error){fail('Error guardando la pieza: '+res.error.message);return;}
+  prog.style.display='none';
+  btn.disabled=false;
+  closeItemModal();
+  await loadMyItems();
+}
+</script>
+
+</body>
+</html>
