@@ -175,6 +175,25 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-saved-del{width:18px;height:18px;background:none;border:none;color:var(--mid);font-size:14px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%;transition:color .15s}
 .c2d-saved-card:hover .c2d-saved-del{display:flex}
 .c2d-saved-del:hover{color:#dc2626}
+/* Saved-drawing folders (flat, single level) */
+.c2d-folder-new{width:100%;padding:6px;border:1px dashed var(--mid);background:transparent;border-radius:4px;cursor:pointer;font-size:11px;color:var(--mid);margin-bottom:.6rem}
+.c2d-folder-new:hover{border-color:var(--black);color:var(--black)}
+.c2d-folder{margin-bottom:.5rem;border:1px solid var(--border);border-radius:6px;background:#fafaf7}
+.c2d-folder.drag-over{border-color:var(--accent);background:#eef4ff}
+.c2d-folder-head{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;font-size:11px;font-weight:600;color:var(--black);user-select:none}
+.c2d-folder-head .arrow{font-size:9px;color:var(--mid);width:10px;text-align:center;transition:transform .15s}
+.c2d-folder.open .c2d-folder-head .arrow{transform:rotate(90deg)}
+.c2d-folder-head .c2d-folder-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c2d-folder-head .c2d-folder-act{width:18px;height:18px;background:none;border:none;color:var(--mid);font-size:13px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%}
+.c2d-folder-head:hover .c2d-folder-act{display:inline-flex}
+.c2d-folder-head .c2d-folder-act:hover{color:var(--black)}
+.c2d-folder-head .c2d-folder-act.del:hover{color:#dc2626}
+.c2d-folder-body{display:none;padding:0 6px 6px}
+.c2d-folder.open .c2d-folder-body{display:block}
+.c2d-folder-empty{padding:6px 4px;font-size:10px;color:var(--mid);font-style:italic}
+.c2d-root-drop{margin-top:.4rem;border-top:1px dashed var(--border);padding-top:.4rem}
+.c2d-root-drop.drag-over{border-top-color:var(--accent);background:#eef4ff;border-radius:4px}
+.c2d-root-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--mid);padding:0 4px 4px}
 .c2d-cat-name{font-size:11px;flex:1;overflow:hidden;line-height:1.3}
 .c2d-cat-name strong{display:block;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
 .c2d-cat-name .c2d-cat-brand{display:block;font-size:10px;color:var(--mid);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
@@ -5536,6 +5555,10 @@ async function saveDrawingToLib(){
   if(!sec.classList.contains('open')) sec.classList.add('open');
 }
 
+// In-memory snapshot used by render + drag handlers. Repopulated each
+// time loadSavedDrawings runs.
+var _savedFolders=[];
+var _savedDrawingsList=[];
 async function loadSavedDrawings(){
   var body=document.getElementById('savedDrawingsBody');
   if(!_supabase||!_currentUser){
@@ -5543,25 +5566,201 @@ async function loadSavedDrawings(){
     return;
   }
   body.innerHTML='<div class="c2d-saved-msg">Cargando...</div>';
-  var result=await _supabase.from('saved_drawings').select('*').eq('user_id',_currentUser.id).order('created_at',{ascending:false});
-  if(result.error){body.innerHTML='<div class="c2d-saved-msg">Error al cargar</div>';return;}
-  var rows=result.data||[];
-  if(rows.length===0){body.innerHTML='<div class="c2d-saved-msg">A\u00FAn no tienes dibujos guardados</div>';return;}
-  body.innerHTML='';
-  rows.forEach(function(row){
-    var card=document.createElement('div');card.className='c2d-saved-card';
-    card.draggable=true;
-    var img=row.thumbnail?'<img class="c2d-saved-thumb" draggable="false" src="'+row.thumbnail+'"/>':'<div class="c2d-saved-thumb"></div>';
-    card.innerHTML=img+'<span class="c2d-saved-name">'+row.name+'</span><button class="c2d-saved-del" title="Eliminar">&times;</button>';
-    card.querySelector('.c2d-saved-del').onclick=function(e){e.stopPropagation();};
-    card.querySelector('.c2d-saved-del').onmousedown=function(e){e.stopPropagation();deleteSavedDrawing(row.id);};
-    card.addEventListener('dragstart',function(e){
-      _dragData={type:'saved_drawing',savedGroup:row.data,savedId:row.id,savedName:row.name,w:row.data.w||100,h:row.data.h||100};
-      e.dataTransfer.setData('text','module');
-    });
-    body.appendChild(card);
-  });
+  // Two queries in parallel \u2014 folders are cheap, no need to serialize.
+  var foldersP=_supabase.from('saved_drawing_folders').select('*').eq('user_id',_currentUser.id).order('name');
+  var drawingsP=_supabase.from('saved_drawings').select('*').eq('user_id',_currentUser.id).order('created_at',{ascending:false});
+  var resF=await foldersP, resD=await drawingsP;
+  if(resD.error){body.innerHTML='<div class="c2d-saved-msg">Error al cargar</div>';return;}
+  // Folders error is non-fatal (e.g. SQL not yet executed) \u2014 fall back to flat.
+  _savedFolders=(resF&&!resF.error&&resF.data)?resF.data:[];
+  _savedDrawingsList=resD.data||[];
+  renderSavedDrawingsPanel();
   _savedDrawingsLoaded=true;
+}
+// Build a saved-drawing card. Same DOM as before plus a folder-target
+// dragstart payload (consumed by the canvas drop handler AND by the
+// per-folder drop handlers \u2014 same _dragData object, different listeners).
+function buildSavedCard(row){
+  var card=document.createElement('div');card.className='c2d-saved-card';
+  card.draggable=true;
+  card.dataset.savedId=row.id;
+  var img=row.thumbnail?'<img class="c2d-saved-thumb" draggable="false" src="'+row.thumbnail+'"/>':'<div class="c2d-saved-thumb"></div>';
+  card.innerHTML=img+'<span class="c2d-saved-name">'+_escHtml(row.name||'')+'</span><button class="c2d-saved-del" title="Eliminar">&times;</button>';
+  card.querySelector('.c2d-saved-del').onclick=function(e){e.stopPropagation();};
+  card.querySelector('.c2d-saved-del').onmousedown=function(e){e.stopPropagation();deleteSavedDrawing(row.id);};
+  card.addEventListener('dragstart',function(e){
+    _dragData={type:'saved_drawing',savedGroup:row.data,savedId:row.id,savedName:row.name,w:row.data.w||100,h:row.data.h||100};
+    e.dataTransfer.setData('text','module');
+    e.dataTransfer.effectAllowed='copyMove';
+  });
+  return card;
+}
+function renderSavedDrawingsPanel(){
+  var body=document.getElementById('savedDrawingsBody');
+  body.innerHTML='';
+  // "+ Carpeta nueva" button always visible at the top of the panel.
+  var newBtn=document.createElement('button');
+  newBtn.type='button';
+  newBtn.className='c2d-folder-new';
+  newBtn.textContent='+ Carpeta nueva';
+  newBtn.onclick=createSavedFolder;
+  body.appendChild(newBtn);
+
+  if(_savedFolders.length===0&&_savedDrawingsList.length===0){
+    var msg=document.createElement('div');
+    msg.className='c2d-saved-msg';
+    msg.textContent='A\u00FAn no tienes dibujos guardados';
+    body.appendChild(msg);
+    return;
+  }
+
+  // Bucket drawings by folder_id (null = root). Iteration order matches
+  // the original drawings list (created_at desc).
+  var byFolder={};
+  var rootDrawings=[];
+  _savedDrawingsList.forEach(function(row){
+    if(row.folder_id){
+      if(!byFolder[row.folder_id]) byFolder[row.folder_id]=[];
+      byFolder[row.folder_id].push(row);
+    }else{
+      rootDrawings.push(row);
+    }
+  });
+
+  // One block per folder. Expansion state persisted per-folder in
+  // localStorage; default = expanded.
+  _savedFolders.forEach(function(f){
+    var open=localStorage.getItem('c2d_folder_'+f.id+'_open')!=='0';
+    var fEl=document.createElement('div');
+    fEl.className='c2d-folder'+(open?' open':'');
+    fEl.dataset.folderId=f.id;
+    fEl.innerHTML=
+      '<div class="c2d-folder-head">'+
+        '<span class="arrow">\u25B6</span>'+
+        '<span class="c2d-folder-name">'+_escHtml(f.name)+'</span>'+
+        '<button type="button" class="c2d-folder-act ren" title="Renombrar">\u270E</button>'+
+        '<button type="button" class="c2d-folder-act del" title="Eliminar">\u00D7</button>'+
+      '</div>'+
+      '<div class="c2d-folder-body"></div>';
+    var head=fEl.querySelector('.c2d-folder-head');
+    head.onclick=function(e){
+      // Don't toggle when clicking the action buttons.
+      if(e.target.closest('.c2d-folder-act')) return;
+      fEl.classList.toggle('open');
+      localStorage.setItem('c2d_folder_'+f.id+'_open',fEl.classList.contains('open')?'1':'0');
+    };
+    head.querySelector('.ren').onclick=function(e){e.stopPropagation();renameSavedFolder(f.id,f.name);};
+    head.querySelector('.del').onclick=function(e){e.stopPropagation();deleteSavedFolder(f.id,f.name);};
+    var bodyEl=fEl.querySelector('.c2d-folder-body');
+    var items=byFolder[f.id]||[];
+    if(items.length===0){
+      var em=document.createElement('div');
+      em.className='c2d-folder-empty';
+      em.textContent='Vac\u00EDa \u2014 arrastra dibujos aqu\u00ED';
+      bodyEl.appendChild(em);
+    }else{
+      items.forEach(function(row){bodyEl.appendChild(buildSavedCard(row));});
+    }
+    // Drop zone \u2014 accepts saved-drawing drops to move them into f.id.
+    fEl.addEventListener('dragover',function(e){
+      if(!_dragData||_dragData.type!=='saved_drawing') return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      fEl.classList.add('drag-over');
+    });
+    fEl.addEventListener('dragleave',function(e){
+      // dragleave fires when entering child elements too \u2014 only clear
+      // when actually leaving the folder block.
+      if(!fEl.contains(e.relatedTarget)) fEl.classList.remove('drag-over');
+    });
+    fEl.addEventListener('drop',function(e){
+      fEl.classList.remove('drag-over');
+      if(!_dragData||_dragData.type!=='saved_drawing') return;
+      e.preventDefault();e.stopPropagation();
+      moveSavedDrawingToFolder(_dragData.savedId,f.id);
+      _dragData=null;
+    });
+    body.appendChild(fEl);
+  });
+
+  // Root section \u2014 drawings without folder. Acts as a drop zone to
+  // move drawings back to the root (folder_id=null).
+  var rootWrap=document.createElement('div');
+  rootWrap.className='c2d-root-drop';
+  var lbl=document.createElement('div');
+  lbl.className='c2d-root-label';
+  lbl.textContent='Sin carpeta';
+  rootWrap.appendChild(lbl);
+  if(rootDrawings.length===0){
+    var em2=document.createElement('div');
+    em2.className='c2d-folder-empty';
+    em2.textContent='Vac\u00EDo';
+    rootWrap.appendChild(em2);
+  }else{
+    rootDrawings.forEach(function(row){rootWrap.appendChild(buildSavedCard(row));});
+  }
+  rootWrap.addEventListener('dragover',function(e){
+    if(!_dragData||_dragData.type!=='saved_drawing') return;
+    // Skip if the cursor is over a folder element (the folder handler
+    // catches it instead \u2014 folders sit above the root section in DOM
+    // order so this branch only fires when the user explicitly drops
+    // outside any folder block).
+    if(e.target.closest('.c2d-folder')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect='move';
+    rootWrap.classList.add('drag-over');
+  });
+  rootWrap.addEventListener('dragleave',function(e){
+    if(!rootWrap.contains(e.relatedTarget)) rootWrap.classList.remove('drag-over');
+  });
+  rootWrap.addEventListener('drop',function(e){
+    rootWrap.classList.remove('drag-over');
+    if(!_dragData||_dragData.type!=='saved_drawing') return;
+    if(e.target.closest('.c2d-folder')) return;
+    e.preventDefault();e.stopPropagation();
+    moveSavedDrawingToFolder(_dragData.savedId,null);
+    _dragData=null;
+  });
+  body.appendChild(rootWrap);
+}
+
+async function createSavedFolder(){
+  var name=prompt('Nombre de la carpeta:','Nueva carpeta');
+  if(!name||!name.trim()) return;
+  var ins=await _supabase.from('saved_drawing_folders').insert({user_id:_currentUser.id,name:name.trim()});
+  if(ins.error){alert('Error creando la carpeta: '+ins.error.message);return;}
+  loadSavedDrawings();
+}
+async function renameSavedFolder(id,oldName){
+  var name=prompt('Renombrar carpeta:',oldName||'');
+  if(name==null) return;
+  name=name.trim();
+  if(!name||name===oldName) return;
+  var u=await _supabase.from('saved_drawing_folders').update({name:name}).eq('id',id);
+  if(u.error){alert('Error al renombrar: '+u.error.message);return;}
+  loadSavedDrawings();
+}
+async function deleteSavedFolder(id,name){
+  if(!confirm('\u00BFEliminar la carpeta "'+(name||'sin nombre')+'"?\n\nLos dibujos dentro vuelven al ra\u00EDz, no se borran.')) return;
+  var d=await _supabase.from('saved_drawing_folders').delete().eq('id',id);
+  if(d.error){alert('Error al eliminar la carpeta: '+d.error.message);return;}
+  loadSavedDrawings();
+}
+async function moveSavedDrawingToFolder(drawingId,folderId){
+  // Optimistic update: tweak the local snapshot first so the panel
+  // re-renders without waiting for the round-trip.
+  var row=_savedDrawingsList.find(function(r){return r.id===drawingId;});
+  if(row){
+    if(row.folder_id===folderId) return; // same folder, no-op
+    row.folder_id=folderId;
+    renderSavedDrawingsPanel();
+  }
+  var u=await _supabase.from('saved_drawings').update({folder_id:folderId}).eq('id',drawingId);
+  if(u.error){
+    alert('Error al mover el dibujo: '+u.error.message);
+    // Roll back the optimistic change by re-loading authoritative state.
+    loadSavedDrawings();
+  }
 }
 
 async function renameSavedDrawing(inp){
