@@ -1955,15 +1955,28 @@ function renderProps(){
   }
   // Image properties
   if(m.type==='image'){
-    panel.innerHTML=
-      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Imagen</div></div>'+
-      '<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="10" min="1" onchange="updateProp(\'w\',this.value)"></div>'+
+    var imgHtml='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Imagen</div></div>';
+    // Phase D-2: variant picker — only on catalog-backed image modules
+    // with at least one snapshotted variant. User-pasted/dragged images
+    // (no catalogItemId) skip this.
+    if(m.catalogItemId&&Array.isArray(m.catalogVariants)&&m.catalogVariants.length>0){
+      var sel=(m.selectedVariantIdx==null||m.selectedVariantIdx<0)?-1:m.selectedVariantIdx;
+      imgHtml+='<div class="c2d-prop"><label>Variante</label><select onchange="onCatalogVariantChange(this.value)">'+
+        '<option value="-1"'+(sel===-1?' selected':'')+'>Foto principal</option>';
+      m.catalogVariants.forEach(function(v,i){
+        var lbl=(v.name||'?')+' · '+(v.value||v.size||'?');
+        imgHtml+='<option value="'+i+'"'+(sel===i?' selected':'')+'>'+_escHtml(lbl)+'</option>';
+      });
+      imgHtml+='</select></div>';
+    }
+    imgHtml+='<div class="c2d-prop"><label>Ancho (mm)</label><input type="number" value="'+m.w+'" step="10" min="1" onchange="updateProp(\'w\',this.value)"></div>'+
       '<div class="c2d-prop"><label>Alto (mm)</label><input type="number" value="'+m.h+'" step="10" min="1" onchange="updateProp(\'h\',this.value)"></div>'+
       '<div class="c2d-prop"><label>X (mm)</label><input type="number" value="'+m.x+'" step="10" onchange="updateProp(\'x\',parseInt(this.value)||0)"></div>'+
       '<div class="c2d-prop"><label>Y (mm)</label><input type="number" value="'+m.y+'" step="10" onchange="updateProp(\'y\',parseInt(this.value)||0)"></div>'+
       '<div class="c2d-prop"><label>Rotación (°)</label><input type="number" value="'+(m.rotation||0)+'" min="0" max="359" step="1" onchange="updateProp(\'rotation\',parseInt(this.value)||0)"></div>'+
       '<div class="c2d-prop"><input type="file" id="imgReplaceFile" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="display:none" onchange="if(this.files[0])replaceProjectImage('+idx+',this.files[0])"><button type="button" onclick="document.getElementById(\'imgReplaceFile\').click()" style="width:100%;padding:6px;border:1px solid var(--border);background:var(--white);border-radius:4px;cursor:pointer;font-size:12px">Reemplazar imagen</button></div>'+
       '<button class="c2d-btn-del" onclick="deleteSelected()">Eliminar</button>';
+    panel.innerHTML=imgHtml;
     return;
   }
   // Dimension properties
@@ -5233,11 +5246,112 @@ function importShapesAsGroup(data,worldX,worldY,catalogItem,viewKey){
       group.catalogViewUrls=urls;
     }
   }
+  var groupIdx=_modules.length;
   _modules.push(group);
-  _sel.clear();_sel.add(_modules.length-1);
+  // Companion image module — Phase D-2. Independent from the group: deleting
+  // either doesn't touch the other. Skipped silently for legacy pieces with
+  // no product_photo_url, so existing rows that haven't been migrated keep
+  // dropping just the DXF.
+  if(catalogItem&&catalogItem.product_photo_url){
+    insertCatalogImageBeside(catalogItem,group);
+  }
+  // Keep the group selected (the DXF is the "main" entity for the user
+  // who just dragged the piece). The image is added but not selected.
+  _sel.clear();_sel.add(groupIdx);
   draw();renderModules();renderProps();
   var label=catalogItem&&catalogItem.name?catalogItem.name:'Pieza';
   showToast(label+' importada: '+data.shapes.length+' elementos','success');
+}
+// Drop a type:'image' module to the left of `group` using the catalog
+// item's main product photo. Sized so its height matches the group's,
+// width derived from the image's natural aspect ratio. When the image
+// hasn't loaded yet, the module starts square (h × h) and re-fits once
+// the cache reports natural dims, anchored by the right edge so the
+// gap with the DXF stays at 50 mm. catalogVariants is snapshotted so
+// the per-image variant selector keeps working offline-from-the-catalog,
+// same principle as Phase C (no auto-refresh on catalog edits).
+function insertCatalogImageBeside(catalogItem,group){
+  var url=catalogItem.product_photo_url;
+  if(!url||!group) return;
+  var rec=getImageCacheEntry(url);
+  var nw=rec.naturalW||500, nh=rec.naturalH||500;
+  var imgH=Math.max(1,Math.round(group.h));
+  var imgW=(nw>0&&nh>0)?Math.max(1,Math.round(imgH*nw/nh)):imgH;
+  var imgX=Math.round((group.x||0)-imgW-50);
+  var imgY=Math.round(group.y||0);
+  var imgModule={
+    type:'image',
+    url:url,
+    mainPhotoUrl:url,
+    catalogItemId:catalogItem.id||null,
+    catalogName:catalogItem.name||'',
+    catalogVariants:Array.isArray(catalogItem.variants)?JSON.parse(JSON.stringify(catalogItem.variants)):[],
+    selectedVariantIdx:-1,
+    x:imgX, y:imgY,
+    w:imgW, h:imgH,
+    rotation:0,
+    naturalW:nw, naturalH:nh
+  };
+  _modules.push(imgModule);
+  if(rec.state!=='loaded'&&rec.state!=='error'){
+    var prevLoad=rec.img.onload;
+    rec.img.onload=function(e){
+      if(prevLoad) prevLoad.call(this,e);
+      if(_modules.indexOf(imgModule)<0) return;
+      var realNw=rec.img.naturalWidth||nw;
+      var realNh=rec.img.naturalHeight||nh;
+      imgModule.naturalW=realNw; imgModule.naturalH=realNh;
+      var newW=Math.max(1,Math.round(imgModule.h*realNw/realNh));
+      var rightEdge=imgModule.x+imgModule.w;
+      imgModule.w=newW;
+      imgModule.x=Math.round(rightEdge-newW);
+      renderModules();draw();
+    };
+  }
+}
+// Variant picker on Propiedades of a catalog-backed image module.
+// idx === -1 → revert to the cached main photo URL.
+// idx >= 0  → use the corresponding variant's photo_url.
+// In both cases the module's height is preserved and its width
+// recalculates from the new image's aspect ratio (anchored on the right
+// edge so the visual position relative to the DXF stays constant).
+function onCatalogVariantChange(rawIdx){
+  if(_sel.size!==1) return;
+  var modIdx=_sel.values().next().value;
+  var m=_modules[modIdx];
+  if(!m||m.type!=='image') return;
+  var n=parseInt(rawIdx,10); if(isNaN(n)) return;
+  var newUrl=null;
+  if(n===-1) newUrl=m.mainPhotoUrl||null;
+  else if(m.catalogVariants&&m.catalogVariants[n]) newUrl=m.catalogVariants[n].photo_url||null;
+  if(!newUrl){showToast('Variante sin foto disponible','error');return;}
+  if(m.url===newUrl&&m.selectedVariantIdx===n) return;
+  saveHistory();
+  m.url=newUrl;
+  m.selectedVariantIdx=n;
+  var rec=getImageCacheEntry(newUrl);
+  function applyDims(realNw,realNh){
+    if(realNw>0&&realNh>0){
+      var newW=Math.max(1,Math.round(m.h*realNw/realNh));
+      var rightEdge=m.x+m.w;
+      m.w=newW;
+      m.x=Math.round(rightEdge-newW);
+      m.naturalW=realNw; m.naturalH=realNh;
+    }
+  }
+  if(rec.state==='loaded'){
+    applyDims(rec.naturalW,rec.naturalH);
+  }else if(rec.state!=='error'){
+    var prevLoad=rec.img.onload;
+    rec.img.onload=function(e){
+      if(prevLoad) prevLoad.call(this,e);
+      if(_modules.indexOf(m)<0) return;
+      if(m.url!==newUrl) return; // user switched again before this fired
+      applyDims(rec.img.naturalWidth,rec.img.naturalHeight);
+      renderModules();draw();renderProps();
+    };
+  }
+  draw();renderModules();renderProps();
 }
 // Switches a catalog-backed group's children to a different stored view.
 // Keeps the group's CENTER fixed (so the visual swap doesn't slide the
