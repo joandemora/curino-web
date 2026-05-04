@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/js/catalog-helpers.js"></script>
+<script src="/assets/js/dxf-tools.js"></script>
+<script src="/assets/js/catalog-form.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--font:'Open Sans',system-ui,sans-serif}
@@ -90,82 +92,10 @@ body.hidden-until-auth{visibility:hidden}
   <div id="catList"><div class="brand-empty">Cargando…</div></div>
 </section>
 
-<!-- Modal: añadir/editar pieza (sin campo `brand` — se rellena automáticamente). -->
-<div class="modal-overlay" id="itemModalOverlay">
-  <div class="modal">
-    <h2 id="itemModalTitle">Añadir pieza</h2>
-    <form id="itemForm" onsubmit="saveItem(event)">
-      <input type="hidden" id="itemId">
-      <label>Nombre *</label>
-      <input type="text" id="itemName" required maxlength="120">
-      <div class="modal-row">
-        <div>
-          <label>Categoría *</label>
-          <select id="itemCategory" required onchange="onItemCategoryChange()">
-            <option value="">—</option>
-          </select>
-        </div>
-        <div>
-          <label>Subcategoría *</label>
-          <select id="itemSubcategory" required>
-            <option value="">—</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-row">
-        <div>
-          <label>Diseñador</label>
-          <input type="text" id="itemDesigner" maxlength="80">
-        </div>
-        <div>
-          <label>Año</label>
-          <input type="number" id="itemYear" min="1800" max="2100">
-        </div>
-      </div>
-      <div class="modal-row">
-        <div>
-          <label>Ancho (mm)</label>
-          <input type="number" id="itemW" min="0">
-        </div>
-        <div>
-          <label>Alto (mm)</label>
-          <input type="number" id="itemH" min="0">
-        </div>
-      </div>
-      <div class="modal-row">
-        <div>
-          <label>Profundidad (mm)</label>
-          <input type="number" id="itemD" min="0">
-        </div>
-        <div>
-          <label>Unidad por defecto del DXF</label>
-          <select id="itemUnit">
-            <option value="mm">mm</option>
-            <option value="cm">cm</option>
-            <option value="m">m</option>
-            <option value="in">pulgadas</option>
-            <option value="ft">pies</option>
-          </select>
-        </div>
-      </div>
-      <label>DXF *</label>
-      <input type="file" id="itemDxf" accept=".dxf">
-      <div class="modal-existing" id="itemDxfExisting"></div>
-      <label>Thumbnail (PNG/JPG, opcional)</label>
-      <input type="file" id="itemThumb" accept="image/png,image/jpeg,image/webp,image/svg+xml">
-      <div class="modal-existing" id="itemThumbExisting"></div>
-      <label style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">
-        <input type="checkbox" id="itemActive" checked> Activa (visible en el catálogo público)
-      </label>
-      <div class="modal-error" id="itemModalError"></div>
-      <div class="modal-progress" id="itemModalProgress"></div>
-      <div class="modal-row-actions">
-        <button type="button" class="brand-btn" onclick="closeItemModal()">Cancelar</button>
-        <button type="submit" class="brand-btn brand-btn-primary" id="itemSaveBtn">Guardar</button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Modal multi-vista lo construye dinámicamente CurinoCatalogForm desde
+     /assets/js/catalog-form.js. El campo `brand` no aparece — se auto-rellena
+     con _brandName. Storage prefix = `<user_id>/`. -->
+
 
 <script>
 // TODO: extraer CATEGORIES + el modal/save a assets/js/catalog-form.js
@@ -347,119 +277,21 @@ function storagePathFromUrl(url,bucket){
 }
 
 // ─── ITEM MODAL ────────────────────────────────────────────────────────────
-// Save flow mostly mirrors /admin/. Two key differences:
-//   1. brand_user_id and brand are filled automatically — never read from
-//      the form. Storage path lives under <user_id>/<uuid>.<ext> so the
-//      Brands-* policies in supabase-brand-storage.sql allow the write.
-//   2. No `itemBrand` input: the brand text comes from user_roles.brand_name.
-var _editingItem=null;
+// El modal multi-vista vive en /assets/js/catalog-form.js. Aquí solo lanzamos
+// la apertura con la config de marca (brand auto desde _brandName, prefijo
+// de Storage = <user_id>/, brand_user_id auto-rellenado en el payload).
 function openItemModal(id){
-  _editingItem=id?_items.find(function(x){return x.id===id;}):null;
-  document.getElementById('itemModalTitle').textContent=_editingItem?'Editar pieza':'Añadir pieza';
-  document.getElementById('itemId').value=_editingItem?_editingItem.id:'';
-  document.getElementById('itemName').value=_editingItem?_editingItem.name||'':'';
-  document.getElementById('itemCategory').value=_editingItem?(_editingItem.category||'').toLowerCase():'';
-  onItemCategoryChange();
-  document.getElementById('itemSubcategory').value=_editingItem?(_editingItem.subcategory||'').toLowerCase():'';
-  document.getElementById('itemDesigner').value=_editingItem?_editingItem.designer||'':'';
-  document.getElementById('itemYear').value=_editingItem&&_editingItem.year?_editingItem.year:'';
-  document.getElementById('itemW').value=_editingItem&&_editingItem.width_mm?_editingItem.width_mm:'';
-  document.getElementById('itemH').value=_editingItem&&_editingItem.height_mm?_editingItem.height_mm:'';
-  document.getElementById('itemD').value=_editingItem&&_editingItem.depth_mm?_editingItem.depth_mm:'';
-  document.getElementById('itemUnit').value=_editingItem&&_editingItem.default_unit?_editingItem.default_unit:'mm';
-  document.getElementById('itemActive').checked=_editingItem?!!_editingItem.active:true;
-  document.getElementById('itemDxf').value='';
-  document.getElementById('itemThumb').value='';
-  // Default-view aware: show whatever DXF the configurador would pick on
-  // drop (views.top → other views → legacy dxf_url). Save flow still writes
-  // to the legacy column for now — Fase B will add per-view editing.
-  var _defaultDxfUrl=_editingItem?CurinoCatalog.getDefaultDxfUrl(_editingItem):null;
-  document.getElementById('itemDxfExisting').innerHTML=_defaultDxfUrl?'Actual: <a href="'+escHtml(_defaultDxfUrl)+'" target="_blank">'+escHtml(_defaultDxfUrl.split('/').pop())+'</a> (déjalo vacío para mantenerlo)':'';
-  document.getElementById('itemThumbExisting').innerHTML=(_editingItem&&_editingItem.thumbnail_url)?'Actual: <a href="'+escHtml(_editingItem.thumbnail_url)+'" target="_blank">ver</a>':'';
-  document.getElementById('itemModalError').style.display='none';
-  document.getElementById('itemModalProgress').style.display='none';
-  document.getElementById('itemModalOverlay').classList.add('visible');
-}
-function closeItemModal(){
-  document.getElementById('itemModalOverlay').classList.remove('visible');
-  _editingItem=null;
-}
-async function saveItem(e){
-  e.preventDefault();
-  var err=document.getElementById('itemModalError');
-  var prog=document.getElementById('itemModalProgress');
-  err.style.display='none';
-  var btn=document.getElementById('itemSaveBtn');
-  btn.disabled=true;
-  var name=document.getElementById('itemName').value.trim();
-  var category=document.getElementById('itemCategory').value;
-  var subcategory=document.getElementById('itemSubcategory').value;
-  var designer=document.getElementById('itemDesigner').value.trim();
-  var year=parseInt(document.getElementById('itemYear').value,10)||null;
-  var width_mm=parseInt(document.getElementById('itemW').value,10)||null;
-  var height_mm=parseInt(document.getElementById('itemH').value,10)||null;
-  var depth_mm=parseInt(document.getElementById('itemD').value,10)||null;
-  var default_unit=document.getElementById('itemUnit').value||'mm';
-  var active=document.getElementById('itemActive').checked;
-  var dxfFile=document.getElementById('itemDxf').files[0];
-  var thumbFile=document.getElementById('itemThumb').files[0];
-
-  function fail(msg){err.textContent=msg;err.style.display='block';prog.style.display='none';btn.disabled=false;}
-
-  if(!name||!category||!subcategory){fail('Faltan campos obligatorios.');return;}
-  if(!_editingItem&&!dxfFile){fail('El DXF es obligatorio al crear una pieza.');return;}
-  if(dxfFile&&!/\.dxf$/i.test(dxfFile.name)){fail('El archivo DXF debe tener extensión .dxf.');return;}
-  if(dxfFile&&dxfFile.size>10*1024*1024){fail('DXF demasiado grande (>10 MB).');return;}
-  if(thumbFile&&thumbFile.size>2*1024*1024){fail('Thumbnail demasiado grande (>2 MB).');return;}
-
-  var id=_editingItem?_editingItem.id:(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():('xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);})));
-  var dxf_url=_editingItem?_editingItem.dxf_url:null;
-  var thumbnail_url=_editingItem?_editingItem.thumbnail_url:null;
-
-  prog.style.display='block';prog.textContent='Subiendo archivos…';
-
-  // Brand path convention: <user_id>/<uuid>.<ext>. Required by the brand
-  // RLS policies on storage.objects.
-  var folder=_currentUser.id+'/';
-
-  if(dxfFile){
-    var dxfPath=folder+id+'.dxf';
-    var up1=await _supabase.storage.from('catalog-dxfs').upload(dxfPath,dxfFile,{upsert:true,contentType:'application/dxf'});
-    if(up1.error){fail('Error subiendo DXF: '+up1.error.message);return;}
-    dxf_url=_supabase.storage.from('catalog-dxfs').getPublicUrl(dxfPath).data.publicUrl;
-  }
-  if(thumbFile){
-    var ext=(thumbFile.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'');
-    if(!ext) ext='png';
-    // Single-thumbnail-per-id convention: drop alternate extensions.
-    ['png','jpg','jpeg','webp','svg'].forEach(function(e){if(e!==ext) _supabase.storage.from('catalog-thumbnails').remove([folder+id+'.'+e]);});
-    var thumbPath=folder+id+'.'+ext;
-    var up2=await _supabase.storage.from('catalog-thumbnails').upload(thumbPath,thumbFile,{upsert:true,contentType:thumbFile.type});
-    if(up2.error){fail('Error subiendo thumbnail: '+up2.error.message);return;}
-    thumbnail_url=_supabase.storage.from('catalog-thumbnails').getPublicUrl(thumbPath).data.publicUrl;
-  }
-
-  prog.textContent='Guardando…';
-  var payload={
-    id:id,
-    name:name,
-    brand:_brandName||'(sin marca)',
-    brand_user_id:_currentUser.id,
-    category:category, subcategory:subcategory,
-    designer:designer||null, year:year,
-    width_mm:width_mm, height_mm:height_mm, depth_mm:depth_mm,
-    dxf_url:dxf_url||'', thumbnail_url:thumbnail_url,
-    default_unit:default_unit, active:active
-  };
-  var op=_editingItem
-    ?_supabase.from('catalog_items').update(payload).eq('id',id)
-    :_supabase.from('catalog_items').insert(payload);
-  var res=await op;
-  if(res.error){fail('Error guardando la pieza: '+res.error.message);return;}
-  prog.style.display='none';
-  btn.disabled=false;
-  closeItemModal();
-  await loadMyItems();
+  var item=id?_items.find(function(x){return x.id===id;}):null;
+  CurinoCatalogForm.open({
+    supabase:_supabase,
+    user:_currentUser,
+    role:'brand',
+    brand:_brandName||'',
+    brandUserId:_currentUser.id,
+    item:item,
+    categories:CATEGORIES,
+    onSaved:function(){loadMyItems();}
+  });
 }
 </script>
 
