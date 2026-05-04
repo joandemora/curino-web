@@ -1799,9 +1799,9 @@ function renderModules(){
     var dims=(m.type==='shape_line'||m.type==='shape_arc')?Math.round(Math.sqrt(Math.pow(m.x2-m.x1,2)+Math.pow(m.y2-m.y1,2)))+'mm':isShape?(m.type==='shape_circle'?'\u2300'+m.w:m.w+'&times;'+m.h):m.type==='group'?(m.w+'&times;'+m.h):m.w+'&times;'+m.h;
     if(m.type==='group'){
       // Group children already appended via appendChild — don't overwrite with innerHTML
-      if(_sel.has(i)){var lbl=document.createElement('div');lbl.className='c2d-module-label';lbl.innerHTML=dims+'<br>'+typeLabel(m.type);div.appendChild(lbl);}
+      if(_sel.has(i)){var lbl=document.createElement('div');lbl.className='c2d-module-label';lbl.innerHTML=dims+'<br>'+moduleTitle(m);div.appendChild(lbl);}
     }else{
-      div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+typeLabel(m.type)+'</div>':'');
+      div.innerHTML=inner+(_sel.has(i)?'<div class="c2d-module-label">'+dims+'<br>'+moduleTitle(m)+'</div>':'');
     }
     div.onmousedown=function(e){if(_dimMode){e.stopPropagation();e.preventDefault();dimClick(e);return;}if(_textMode){e.stopPropagation();e.preventDefault();textClick(e);return;}if(_eraserMode){e.stopPropagation();e.preventDefault();eraserClick(e);return;}if(!e.target.classList.contains('c2d-handle')) startDragModule(e,i);};
     div.onclick=function(e){if(_textMode||_dimMode||_eraserMode){e.stopPropagation();return;}e.stopPropagation();selectModule(i,e.shiftKey);};
@@ -1908,6 +1908,19 @@ function renderModules(){
   }
 }
 
+// Returns the user-facing title for a module \u2014 used both in the canvas
+// overlay label and in the Propiedades "Tipo" row. Catalog-backed groups
+// and images surface "<name> de <brand>" using the snapshot cached at
+// drop time (Phase C / commit 5f9cb1c). Plain modules fall back to the
+// generic typeLabel(t) entry.
+function moduleTitle(m){
+  if(!m) return '';
+  if((m.type==='group'||m.type==='image')&&m.catalogName&&m.catalogBrand){
+    return m.catalogName+' de '+m.catalogBrand;
+  }
+  if(m.type==='image') return 'Imagen';
+  return typeLabel(m.type);
+}
 function typeLabel(t){
   var labels={modulo:'M\u00F3dulo',barra:'Barra',estante:'Estante',cajon:'Caj\u00F3n',zapatero:'Zapatero',balda_extraible:'Balda ext.',divisor:'Divisor',puerta_batiente:'P. Batiente',tapeta:'Tapeta',costado:'Costado',zocalo:'Z\u00F3calo',modulo_bajo:'M. Bajo',modulo_alto:'M. Alto',modulo_columna:'M. Columna',cajon_cocina:'Caj\u00F3n',lavavajillas:'Lavavajillas',frigorifico:'Frigor\u00EDfico',horno:'Horno',shape_line:'L\u00EDnea',shape_curve:'B\u00E9zier',shape_rect:'Rect\u00E1ngulo',shape_circle:'C\u00EDrculo',shape_arc:'Curva',group:'Dibujo'};
   return labels[t]||t;
@@ -1955,7 +1968,7 @@ function renderProps(){
   }
   // Image properties
   if(m.type==='image'){
-    var imgHtml='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Imagen</div></div>';
+    var imgHtml='<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+_escHtml(moduleTitle(m))+'</div></div>';
     // Phase D-2: variant picker — only on catalog-backed image modules
     // with at least one snapshotted variant. User-pasted/dragged images
     // (no catalogItemId) skip this.
@@ -2006,7 +2019,7 @@ function renderProps(){
     var gLockClosed='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
     var gLockOpen='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>';
     var groupHTML=
-      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">Dibujo ('+m.children.length+' elementos)</div></div>';
+      '<div class="c2d-prop"><label>Tipo</label><div style="font-size:13px;padding:6px 0">'+_escHtml(moduleTitle(m))+' ('+m.children.length+' elementos)</div></div>';
     if(m.savedDrawingId){
       groupHTML+='<div class="c2d-prop"><label>Nombre</label><input id="savedDrawingNameInput" type="text" value="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'" data-id="'+m.savedDrawingId+'" data-prev="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'"></div>';
     }
@@ -5285,6 +5298,7 @@ function insertCatalogImageBeside(catalogItem,group){
     mainPhotoUrl:url,
     catalogItemId:catalogItem.id||null,
     catalogName:catalogItem.name||'',
+    catalogBrand:catalogItem.brand||'',
     catalogVariants:Array.isArray(catalogItem.variants)?JSON.parse(JSON.stringify(catalogItem.variants)):[],
     selectedVariantIdx:-1,
     x:imgX, y:imgY,
