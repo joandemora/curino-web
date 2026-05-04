@@ -203,13 +203,6 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-confirm-yes{background:#dc2626;color:#fff;border-color:#dc2626}
 .c2d-confirm-yes:hover{background:#b91c1c;border-color:#b91c1c}
 .c2d-confirm-no:hover{border-color:var(--black)}
-/* Marcas trigger button (replaces the old accordion section) */
-.c2d-section-flat{padding:.5rem .25rem .25rem}
-.c2d-marcas-trigger{display:flex;align-items:center;justify-content:space-between;width:100%;padding:.55rem .65rem;border:1px solid var(--border);background:var(--white);border-radius:6px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--black);transition:border-color .15s,background .15s}
-.c2d-marcas-trigger:hover{border-color:var(--black);background:#fafafa}
-.c2d-marcas-trigger .label{display:inline-flex;align-items:center;gap:.5rem}
-.c2d-marcas-trigger .icon{font-size:13px;color:var(--coral,#cc785c)}
-.c2d-marcas-trigger .arrow{font-size:13px;color:var(--mid)}
 /* Marcas modal */
 .c2d-marcas-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:none;align-items:center;justify-content:center;padding:5vh 5vw;font-family:var(--font)}
 .c2d-marcas-overlay.visible{display:flex}
@@ -390,15 +383,13 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
           </div>
         </div>
       </div>
-      <!-- MARCAS — modal trigger (replaces the old accordion). The full
-           catalog UI lives in #marcasOverlay below; this button just opens
-           it. Same slot in the column order: Dibujar / Biblioteca / Marcas
-           / Mis dibujos. -->
-      <div class="c2d-section c2d-section-flat">
-        <button type="button" class="c2d-marcas-trigger" onclick="openMarcasModal()">
-          <span class="label"><span class="icon" aria-hidden="true">▤</span>Marcas</span>
-          <span class="arrow" aria-hidden="true">↗</span>
-        </button>
+      <!-- MARCAS — modal trigger. Visually identical to the other section
+           headers (Dibujar / Biblioteca / Mis dibujos): same .c2d-section
+           wrapper + .c2d-section-title head, including the ::after "+"
+           glyph. Click opens the modal in #marcasOverlay instead of
+           expanding inline content. -->
+      <div class="c2d-section">
+        <div class="c2d-section-title" onclick="openMarcasModal()">Marcas</div>
       </div>
       <!-- MIS DIBUJOS -->
       <div class="c2d-section" id="savedDrawingsSection">
