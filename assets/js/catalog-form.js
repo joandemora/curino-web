@@ -598,8 +598,18 @@
         }
       }catch(err){fail(err.message||'Error subiendo archivos.');return;}
 
+      // Main product photo is mandatory — covers both new pieces and edits
+      // of legacy pieces (which arrive with no product_photo_url at all).
+      // Editing a legacy piece therefore forces the migration: the user
+      // can't save until they upload a hero shot. The check looks at three
+      // states: (a) a fresh file picked in this session, (b) the existing
+      // URL preserved from the loaded item, (c) explicit removal flagged.
+      var hasMainPhoto=mainPhoto.newFile||(mainPhoto.existingUrl&&!mainPhoto.removed);
+      if(!hasMainPhoto){fail('Sube una foto del producto antes de guardar.');return;}
+
       // Validate variants before doing any photo I/O so we fail fast.
       // name is the type (Material/Color/Talla); value is the actual choice.
+      // Variants stay optional — only the main photo is mandatory.
       for(var vi=0;vi<variants.length;vi++){
         var vv=variants[vi];
         if(VARIANT_TYPES.indexOf(vv.name)<0){fail('Cada variante necesita un tipo válido.');return;}

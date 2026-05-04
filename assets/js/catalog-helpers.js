@@ -59,15 +59,18 @@
     return null;
   }
   // Returns the URL the catalog grid should display as a card image.
-  // Priority order (Phase D spec):
-  //   1. variants[0].photo_url — first variant's realistic photo, if any.
-  //   2. product_photo_url     — single realistic product photo.
+  // Priority order (Phase D spec, revised):
+  //   1. product_photo_url     — main product photo always wins.
+  //   2. variants[0].photo_url — first variant's photo, only when no main.
   //   3. thumbnail_url         — legacy small icon fallback.
   //   4. null                  — show empty placeholder.
+  // The main photo wins so a piece with several variants but a curated
+  // hero shot still displays the hero, not whichever variant happens to
+  // be first in the array.
   function getDisplayPhotoUrl(item){
     if(!item) return null;
-    if(Array.isArray(item.variants)&&item.variants.length>0&&item.variants[0]&&item.variants[0].photo_url) return item.variants[0].photo_url;
     if(item.product_photo_url) return item.product_photo_url;
+    if(Array.isArray(item.variants)&&item.variants.length>0&&item.variants[0]&&item.variants[0].photo_url) return item.variants[0].photo_url;
     if(item.thumbnail_url) return item.thumbnail_url;
     return null;
   }
