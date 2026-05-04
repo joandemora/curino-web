@@ -188,6 +188,19 @@
     var user=config.user;
     var role=config.role;             // 'admin' | 'brand'
     var brandFixed=config.brand||'';  // brand name for brand role
+    // mode='library' switches the form to the Curino in-house catalog:
+    //   - target table: library_items
+    //   - storage buckets: library-dxfs, library-thumbnails (no photos bucket)
+    //   - hides "Imagen del producto" + Variantes section entirely
+    //   - skips main-photo-required validation
+    //   - omits brand input + brand_user_id from the payload
+    // Default 'catalog' keeps the original Marcas behaviour exactly.
+    var mode=config.mode||'catalog';
+    var libraryMode=(mode==='library');
+    var DXF_BUCKET=libraryMode?'library-dxfs':'catalog-dxfs';
+    var THUMB_BUCKET=libraryMode?'library-thumbnails':'catalog-thumbnails';
+    var PHOTO_BUCKET=libraryMode?null:'catalog-photos';
+    var TABLE_NAME=libraryMode?'library_items':'catalog_items';
     var brandUserId=config.brandUserId||null;
     var item=config.item||null;
     var categories=config.categories||[];
@@ -202,7 +215,9 @@
     var hasViews=isEdit&&item.views&&typeof item.views==='object'&&Object.keys(item.views).filter(function(k){return item.views[k]&&item.views[k].dxf_url;}).length>0;
     var hasLegacyDxf=isEdit&&!hasViews&&item.dxf_url;
 
-    var brandFieldHtml=role==='admin'
+    // Brand input only appears for catalog admin. Library mode (Curino's
+    // own catalog) has no concept of brand — Curino is implicit.
+    var brandFieldHtml=(role==='admin'&&!libraryMode)
       ?'<label class="cf-label">Marca *</label><input type="text" class="cf-input" id="cfBrand" required maxlength="80">'
       :'';
 
@@ -256,6 +271,10 @@
           '<div class="cf-cluster-grid" id="cfClusterGrid"></div>'+
         '</div>'+
       '</div>'+
+      // "Imagen del producto" + variantes only apply to the brand catalog.
+      // Library (Curino in-house) skips it — Curino's pieces don't have
+      // a hero shot or color/size choices.
+      (libraryMode?'':
       '<div class="cf-section">'+
         '<div class="cf-section-title">Imagen del producto</div>'+
         '<div class="cf-photo-row">'+
@@ -269,7 +288,7 @@
         '<div class="cf-section-title" style="margin-top:1rem">Variantes</div>'+
         '<div class="cf-variants-list" id="cfVariantsList"></div>'+
         '<button type="button" class="cf-add-variant" id="cfAddVariant">+ Añadir variante</button>'+
-      '</div>'+
+      '</div>')+
       '<div class="cf-error" id="cfError"></div>'+
       '<div class="cf-progress" id="cfProgress"></div>'+
       '<div class="cf-actions">'+
@@ -417,7 +436,7 @@
         list.appendChild(div);
       });
     }
-    $('cfMainPhoto').addEventListener('change',function(){
+    if($('cfMainPhoto')) $('cfMainPhoto').addEventListener('change',function(){
       var f=this.files&&this.files[0];
       if(!f) return;
       if(f.size>5*1024*1024){alert('Foto principal demasiado grande (>5 MB).');this.value='';return;}
@@ -425,13 +444,13 @@
       mainPhoto.removed=false;
       refreshMainPhotoPreview();
     });
-    $('cfMainPhotoRemove').addEventListener('click',function(){
+    if($('cfMainPhotoRemove')) $('cfMainPhotoRemove').addEventListener('click',function(){
       mainPhoto.newFile=null;
       mainPhoto.removed=!!mainPhoto.existingUrl;
       $('cfMainPhoto').value='';
       refreshMainPhotoPreview();
     });
-    $('cfAddVariant').addEventListener('click',function(){
+    if($('cfAddVariant')) $('cfAddVariant').addEventListener('click',function(){
       // Default new variants to the first type so the dropdown has a
       // valid selection from the start. Empty `name` would render the
       // placeholder option `—` which doesn't match any VARIANT_TYPES
@@ -443,8 +462,8 @@
       var m=String(url||'').match(new RegExp('/storage/v1/object/public/'+bucket+'/([^?]+)'));
       return m?decodeURIComponent(m[1]):null;
     }
-    refreshMainPhotoPreview();
-    renderVariants();
+    // Photo + variants UI is absent in library mode — skip the initial paint.
+    if(!libraryMode){refreshMainPhotoPreview();renderVariants();}
 
     $('cfDxf').addEventListener('change',function(){onDxfPicked(this.files[0]);});
     $('cfK').addEventListener('change',function(){
@@ -541,7 +560,9 @@
       var brand=role==='admin'?($('cfBrand')?$('cfBrand').value.trim():''):brandFixed;
       var category=$('cfCategory').value;
       var subcategory=$('cfSub').value;
-      if(!name||!brand||!category||!subcategory){fail('Faltan campos obligatorios.');return;}
+      // brand is required in catalog mode; in library mode the field
+      // doesn't exist (Curino is implicit) so we skip that check.
+      if(!name||(!libraryMode&&!brand)||!category||!subcategory){fail('Faltan campos obligatorios.');return;}
       var designer=$('cfDesigner').value.trim()||null;
       var year=parseInt($('cfYear').value,10)||null;
       var width_mm=parseInt($('cfW').value,10)||null;
@@ -580,9 +601,9 @@
             var payload={w:cluster.w,h:cluster.h,shapes:cluster.shapes};
             var blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
             var path=prefix+id+'_'+label+'.json';
-            var up=await supabase.storage.from('catalog-dxfs').upload(path,blob,{upsert:true,contentType:'application/json'});
+            var up=await supabase.storage.from(DXF_BUCKET).upload(path,blob,{upsert:true,contentType:'application/json'});
             if(up.error) throw new Error('Subida '+label+': '+up.error.message);
-            var url=supabase.storage.from('catalog-dxfs').getPublicUrl(path).data.publicUrl;
+            var url=supabase.storage.from(DXF_BUCKET).getPublicUrl(path).data.publicUrl;
             newViews[label]={dxf_url:url};
             if(label==='top') topUrl=url;
           }
@@ -596,103 +617,95 @@
         }
       }catch(err){fail(err.message||'Error subiendo archivos.');return;}
 
-      // Main product photo is mandatory — covers both new pieces and edits
-      // of legacy pieces (which arrive with no product_photo_url at all).
-      // Editing a legacy piece therefore forces the migration: the user
-      // can't save until they upload a hero shot. The check looks at three
-      // states: (a) a fresh file picked in this session, (b) the existing
-      // URL preserved from the loaded item, (c) explicit removal flagged.
-      var hasMainPhoto=mainPhoto.newFile||(mainPhoto.existingUrl&&!mainPhoto.removed);
-      if(!hasMainPhoto){fail('Sube una foto del producto antes de guardar.');return;}
-
-      // Validate variants before doing any photo I/O so we fail fast.
-      // name is the type (Material/Color/Talla); value is the actual choice.
-      // The list itself is optional — only the main photo is mandatory.
-      // For each variant present, name + value + photo are all required;
-      // photo bullies covers both the new-and-not-uploaded case and the
-      // edited-and-cleared case (existingPhotoUrl gets nulled when the
-      // user removes the variant entirely; the X button handler also
-      // queues the orphan path for cleanup).
-      for(var vi=0;vi<variants.length;vi++){
-        var vv=variants[vi];
-        var vlabel='#'+(vi+1)+(vv.value?(' "'+vv.value+'"'):'');
-        if(VARIANT_TYPES.indexOf(vv.name)<0){fail('La variante '+vlabel+' necesita un tipo válido.');return;}
-        if(!vv.value||!String(vv.value).trim()){fail('La variante '+vlabel+' (tipo '+vv.name+') necesita un valor.');return;}
-        if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante '+vlabel+' debe tener foto.');return;}
+      // Main photo + variants checks only apply to the brand catalog.
+      // Library mode skips them entirely — no photo, no variants on
+      // Curino's in-house pieces.
+      var product_photo_url=null;
+      var finalVariants=[];
+      if(!libraryMode){
+        // Main product photo is mandatory — covers both new pieces and edits
+        // of legacy pieces (which arrive with no product_photo_url at all).
+        var hasMainPhoto=mainPhoto.newFile||(mainPhoto.existingUrl&&!mainPhoto.removed);
+        if(!hasMainPhoto){fail('Sube una foto del producto antes de guardar.');return;}
+        // Validate variants before doing any photo I/O so we fail fast.
+        for(var vi=0;vi<variants.length;vi++){
+          var vv=variants[vi];
+          var vlabel='#'+(vi+1)+(vv.value?(' "'+vv.value+'"'):'');
+          if(VARIANT_TYPES.indexOf(vv.name)<0){fail('La variante '+vlabel+' necesita un tipo válido.');return;}
+          if(!vv.value||!String(vv.value).trim()){fail('La variante '+vlabel+' (tipo '+vv.name+') necesita un valor.');return;}
+          if(!vv.newFile&&!vv.existingPhotoUrl){fail('La variante '+vlabel+' debe tener foto.');return;}
+        }
+        prog.textContent='Subiendo fotos…';
+        product_photo_url=item&&item.product_photo_url||null;
+        try{
+          if(mainPhoto.newFile){
+            var mext=(mainPhoto.newFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+            if(!mext) mext='jpg';
+            // One main photo per piece — drop alternate extensions for the same id.
+            ['jpg','jpeg','png','webp'].forEach(function(e){if(e!==mext) supabase.storage.from(PHOTO_BUCKET).remove([prefix+id+'_main.'+e]);});
+            var mpath=prefix+id+'_main.'+mext;
+            var mup=await supabase.storage.from(PHOTO_BUCKET).upload(mpath,mainPhoto.newFile,{upsert:true,contentType:mainPhoto.newFile.type});
+            if(mup.error) throw new Error('Foto principal: '+mup.error.message);
+            product_photo_url=supabase.storage.from(PHOTO_BUCKET).getPublicUrl(mpath).data.publicUrl;
+          }else if(mainPhoto.removed&&mainPhoto.existingUrl){
+            var mp=storagePathFromUrl(mainPhoto.existingUrl,PHOTO_BUCKET);
+            if(mp) await supabase.storage.from(PHOTO_BUCKET).remove([mp]);
+            product_photo_url=null;
+          }
+          // Per-variant uploads. Path is stable on `variant.id` so re-saves
+          // overwrite the same key. Cleanup of removedPhotoPaths runs after.
+          for(var vj=0;vj<variants.length;vj++){
+            var vrec=variants[vj];
+            var photoUrl=vrec.existingPhotoUrl;
+            if(vrec.newFile){
+              var vext=(vrec.newFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+              if(!vext) vext='jpg';
+              ['jpg','jpeg','png','webp'].forEach(function(e){if(e!==vext) supabase.storage.from(PHOTO_BUCKET).remove([prefix+id+'_var_'+vrec.id+'.'+e]);});
+              var vpath=prefix+id+'_var_'+vrec.id+'.'+vext;
+              var vup=await supabase.storage.from(PHOTO_BUCKET).upload(vpath,vrec.newFile,{upsert:true,contentType:vrec.newFile.type});
+              if(vup.error) throw new Error('Variante "'+vrec.name+'": '+vup.error.message);
+              photoUrl=supabase.storage.from(PHOTO_BUCKET).getPublicUrl(vpath).data.publicUrl;
+            }
+            finalVariants.push({
+              name:vrec.name,                      // Material | Color | Talla
+              value:String(vrec.value||'').trim(), // free text value
+              photo_url:photoUrl
+            });
+          }
+          // Remove orphan files from variants the user deleted in this session.
+          for(var rp=0;rp<removedPhotoPaths.length;rp++){
+            await supabase.storage.from(PHOTO_BUCKET).remove([removedPhotoPaths[rp]]);
+          }
+        }catch(err){fail(err.message||'Error subiendo fotos.');return;}
       }
 
-      // Photos: main product photo + per-variant photos. Skipped on errors
-      // — falls back to keeping whatever URL was already there.
-      prog.textContent='Subiendo fotos…';
-      var product_photo_url=item&&item.product_photo_url||null;
-      try{
-        if(mainPhoto.newFile){
-          var mext=(mainPhoto.newFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
-          if(!mext) mext='jpg';
-          // One main photo per piece — drop alternate extensions for the same id.
-          ['jpg','jpeg','png','webp'].forEach(function(e){if(e!==mext) supabase.storage.from('catalog-photos').remove([prefix+id+'_main.'+e]);});
-          var mpath=prefix+id+'_main.'+mext;
-          var mup=await supabase.storage.from('catalog-photos').upload(mpath,mainPhoto.newFile,{upsert:true,contentType:mainPhoto.newFile.type});
-          if(mup.error) throw new Error('Foto principal: '+mup.error.message);
-          product_photo_url=supabase.storage.from('catalog-photos').getPublicUrl(mpath).data.publicUrl;
-        }else if(mainPhoto.removed&&mainPhoto.existingUrl){
-          var mp=storagePathFromUrl(mainPhoto.existingUrl,'catalog-photos');
-          if(mp) await supabase.storage.from('catalog-photos').remove([mp]);
-          product_photo_url=null;
-        }
-        // Per-variant uploads. Path is stable on `variant.id` so re-saves
-        // overwrite the same key. Cleanup of removedPhotoPaths runs after.
-        var finalVariants=[];
-        for(var vj=0;vj<variants.length;vj++){
-          var vrec=variants[vj];
-          var photoUrl=vrec.existingPhotoUrl;
-          if(vrec.newFile){
-            var vext=(vrec.newFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
-            if(!vext) vext='jpg';
-            ['jpg','jpeg','png','webp'].forEach(function(e){if(e!==vext) supabase.storage.from('catalog-photos').remove([prefix+id+'_var_'+vrec.id+'.'+e]);});
-            var vpath=prefix+id+'_var_'+vrec.id+'.'+vext;
-            var vup=await supabase.storage.from('catalog-photos').upload(vpath,vrec.newFile,{upsert:true,contentType:vrec.newFile.type});
-            if(vup.error) throw new Error('Variante "'+vrec.name+'": '+vup.error.message);
-            photoUrl=supabase.storage.from('catalog-photos').getPublicUrl(vpath).data.publicUrl;
-          }
-          finalVariants.push({
-            name:vrec.name,                      // Material | Color | Talla
-            value:String(vrec.value||'').trim(), // free text value
-            // color_hex intentionally omitted — the picker was retired in
-            // the post-Phase-D cleanup. Existing rows in the DB that still
-            // have color_hex keep it as fossil data until next edit, when
-            // their `variants` JSONB gets rewritten without the field.
-            photo_url:photoUrl
-          });
-        }
-        // Remove orphan files from variants the user deleted in this session.
-        for(var rp=0;rp<removedPhotoPaths.length;rp++){
-          await supabase.storage.from('catalog-photos').remove([removedPhotoPaths[rp]]);
-        }
-      }catch(err){fail(err.message||'Error subiendo fotos.');return;}
-
       // Build payload. When keeping existing views (edit without new DXF),
-      // leave views and dxf_url untouched.
+      // leave views and dxf_url untouched. library_items is a smaller
+      // schema (no brand, no brand_user_id, no product_photo_url, no
+      // variants) so those fields drop out of the payload there.
       prog.textContent='Guardando…';
       var payload={
         id:id,
-        name:name, brand:brand,
+        name:name,
         category:category, subcategory:subcategory,
         designer:designer, year:year,
         width_mm:width_mm, height_mm:height_mm, depth_mm:depth_mm,
-        default_unit:default_unit, active:active,
-        product_photo_url:product_photo_url,
-        variants:finalVariants.length>0?finalVariants:null
+        default_unit:default_unit, active:active
       };
-      if(role==='brand') payload.brand_user_id=brandUserId;
+      if(!libraryMode){
+        payload.brand=brand;
+        payload.product_photo_url=product_photo_url;
+        payload.variants=finalVariants.length>0?finalVariants:null;
+        if(role==='brand') payload.brand_user_id=brandUserId;
+      }
       if(hasNewDxf){
         payload.views=newViews;
         payload.dxf_url=topUrl||'';
         payload.thumbnail_url=item&&item.thumbnail_url||null;
       }
       var op=isEdit
-        ?supabase.from('catalog_items').update(payload).eq('id',id)
-        :supabase.from('catalog_items').insert(payload);
+        ?supabase.from(TABLE_NAME).update(payload).eq('id',id)
+        :supabase.from(TABLE_NAME).insert(payload);
       var res=await op;
       if(res.error){fail('Error guardando la pieza: '+res.error.message);return;}
       prog.style.display='none';

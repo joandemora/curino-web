@@ -350,50 +350,15 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
           <div class="c2d-mod" draggable="true" data-type="shape_curve" data-w="500" data-h="300"><div class="c2d-mod-icon" style="font-size:14px">⌓</div>B&eacute;zier<span class="c2d-mod-size">500×300</span></div>
         </div>
       </div>
-      <!-- BIBLIOTECA -->
-      <div class="c2d-section">
-        <div class="c2d-section-title" onclick="accordionToggle(this,'c2d-section')">Biblioteca</div>
-        <div class="c2d-section-body">
-          <!-- ARMARIO -->
-          <div class="c2d-sub open">
-            <div class="c2d-sub-title" onclick="accordionToggle(this,'c2d-sub')">Armario</div>
-            <div class="c2d-sub-body">
-              <div class="c2d-sub open">
-                <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Interior</div>
-                <div class="c2d-sub-body">
-                  <div class="c2d-mod" draggable="true" data-type="modulo" data-w="600" data-h="2000"><div class="c2d-mod-icon">MD</div>M&oacute;dulo<span class="c2d-mod-size">600&times;2000</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="barra" data-w="600" data-h="40"><div class="c2d-mod-icon">BR</div>Barra<span class="c2d-mod-size">600&times;40</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="estante" data-w="600" data-h="30"><div class="c2d-mod-icon">ES</div>Estante<span class="c2d-mod-size">600&times;30</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="cajon" data-w="600" data-h="200"><div class="c2d-mod-icon">CJ</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="zapatero" data-w="600" data-h="200"><div class="c2d-mod-icon">ZP</div>Zapatero<span class="c2d-mod-size">600&times;200</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="divisor" data-w="19" data-h="2000"><div class="c2d-mod-icon">DV</div>Divisor<span class="c2d-mod-size">19&times;2000</span></div>
-                </div>
-              </div>
-              <div class="c2d-sub open">
-                <div class="c2d-sub-title" onclick="this.parentElement.classList.toggle('open')">Exterior</div>
-                <div class="c2d-sub-body">
-                  <div class="c2d-mod" draggable="true" data-type="puerta_batiente" data-w="600" data-h="2000"><div class="c2d-mod-icon">PB</div>Puerta batiente<span class="c2d-mod-size">600&times;2000</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="tapeta" data-w="50" data-h="2000"><div class="c2d-mod-icon">TP</div>Tapeta<span class="c2d-mod-size">50&times;2000</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="costado" data-w="50" data-h="2000"><div class="c2d-mod-icon">CT</div>Costado<span class="c2d-mod-size">50&times;2000</span></div>
-                  <div class="c2d-mod" draggable="true" data-type="zocalo" data-w="600" data-h="100"><div class="c2d-mod-icon">ZC</div>Z&oacute;calo<span class="c2d-mod-size">600&times;100</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- COCINA -->
-          <div class="c2d-sub">
-            <div class="c2d-sub-title" onclick="accordionToggle(this,'c2d-sub')">Cocina</div>
-            <div class="c2d-sub-body">
-              <div class="c2d-mod" draggable="true" data-type="modulo_bajo" data-w="600" data-h="850"><div class="c2d-mod-icon">MB</div>M&oacute;dulo bajo<span class="c2d-mod-size">600&times;850</span></div>
-              <div class="c2d-mod" draggable="true" data-type="modulo_alto" data-w="600" data-h="700"><div class="c2d-mod-icon">MA</div>M&oacute;dulo alto<span class="c2d-mod-size">600&times;700</span></div>
-              <div class="c2d-mod" draggable="true" data-type="modulo_columna" data-w="600" data-h="2200"><div class="c2d-mod-icon">MC</div>M&oacute;dulo columna<span class="c2d-mod-size">600&times;2200</span></div>
-              <div class="c2d-mod" draggable="true" data-type="cajon_cocina" data-w="600" data-h="200"><div class="c2d-mod-icon">CC</div>Caj&oacute;n<span class="c2d-mod-size">600&times;200</span></div>
-              <div class="c2d-mod" draggable="true" data-type="lavavajillas" data-w="600" data-h="850"><div class="c2d-mod-icon">LV</div>Lavavajillas<span class="c2d-mod-size">600&times;850</span></div>
-              <div class="c2d-mod" draggable="true" data-type="frigorifico" data-w="600" data-h="1800"><div class="c2d-mod-icon">FR</div>Frigor&iacute;fico<span class="c2d-mod-size">600&times;1800</span></div>
-              <div class="c2d-mod" draggable="true" data-type="horno" data-w="600" data-h="600"><div class="c2d-mod-icon">HO</div>Horno<span class="c2d-mod-size">600&times;600</span></div>
-            </div>
-          </div>
-        </div>
+      <!-- BIBLIOTECA — catálogo propio Curino, alimentado dinámicamente
+           desde library_items via Supabase. Contenido lo pinta
+           renderLibraryPanel() al expandir el acordeón por primera vez.
+           Las piezas hardcodeadas previas (Armario / Cocina palette items)
+           fueron retiradas — la library nace vacía hasta que el admin
+           publique piezas desde /admin/. -->
+      <div class="c2d-section" id="librarySection">
+        <div class="c2d-section-title" onclick="if(accordionToggle(this,'c2d-section'))loadLibraryPanel()">Biblioteca</div>
+        <div class="c2d-section-body" id="libraryBody"></div>
       </div>
       <!-- MARCAS — modal trigger. Visually identical to the other section
            headers (Dibujar / Biblioteca / Mis dibujos): same .c2d-section
@@ -2036,8 +2001,13 @@ function renderModules(){
 function moduleTitle(m,opts){
   if(!m) return '';
   var short=!!(opts&&opts.short);
-  if((m.type==='group'||m.type==='image')&&m.catalogName&&m.catalogBrand){
-    return short?m.catalogName:(m.catalogName+' de '+m.catalogBrand);
+  if((m.type==='group'||m.type==='image')&&m.catalogName){
+    if(m.catalogBrand){
+      return short?m.catalogName:(m.catalogName+' de '+m.catalogBrand);
+    }
+    // Library pieces (Curino in-house) carry catalogName but no brand —
+    // the title shows just the name in both forms.
+    return m.catalogName;
   }
   if(m.type==='image') return 'Imagen';
   return typeLabel(m.type);
@@ -5229,6 +5199,12 @@ var CATALOG_CATEGORIES=[
 ];
 var _catalogItems=null;        // null = not loaded yet, [] = loaded empty, [...] = loaded
 var _catalogLoading=false;
+// Biblioteca: in-house Curino catalog. Same shape as _catalogItems but
+// pulled from library_items (separate table, separate buckets). Cached
+// across panel collapses for the page session — re-fetched only on a
+// hard reload.
+var _libraryItems=null;
+var _libraryLoading=false;
 function _normCat(s){
   if(!s) return '';
   return String(s).toLowerCase()
@@ -5262,6 +5238,87 @@ async function loadCatalog(){
   }
   _catalogLoading=false;
   return _catalogItems;
+}
+// Biblioteca panel: load on first expand (lazy). Renders the same
+// category → subcategory → cards accordion the old Marcas section had,
+// but sourced from library_items (Curino's in-house catalog). Library
+// pieces use the same _dragData type ('catalog_dxf') as Marcas — the
+// drop pipeline (handleCatalogDrop / importShapesAsGroup) is shape-
+// compatible because library_items shares views + dxf_url with
+// catalog_items. Pieces without product_photo_url skip the companion
+// image insertion automatically.
+async function loadLibraryPanel(){
+  var body=document.getElementById('libraryBody');
+  if(!body) return;
+  if(_libraryItems){renderLibraryPanel();return;}
+  if(_libraryLoading) return;
+  _libraryLoading=true;
+  body.innerHTML='<div class="c2d-saved-msg">Cargando biblioteca…</div>';
+  if(!_supabase){
+    body.innerHTML='<div class="c2d-saved-msg">Biblioteca no disponible</div>';
+    _libraryLoading=false;return;
+  }
+  try{
+    var r=await _supabase.from('library_items').select('*').eq('active',true);
+    if(r.error) throw r.error;
+    _libraryItems=(r.data||[]).slice().sort(function(a,b){
+      return String(a.name||'').localeCompare(String(b.name||''));
+    });
+    renderLibraryPanel();
+  }catch(e){
+    console.error('library load',e);
+    body.innerHTML='<div class="c2d-saved-msg">No se pudo cargar la biblioteca<br><button class="c2d-cat-retry" onclick="loadLibraryPanel()">Reintentar</button></div>';
+    _libraryItems=null;
+  }
+  _libraryLoading=false;
+}
+function renderLibraryPanel(){
+  var body=document.getElementById('libraryBody');
+  if(!body) return;
+  if(!_libraryItems||_libraryItems.length===0){
+    body.innerHTML='<div class="c2d-saved-msg">Sin piezas — el admin las publica desde /admin/.</div>';
+    return;
+  }
+  body.innerHTML='';
+  CATALOG_CATEGORIES.forEach(function(cat){
+    var catItems=_libraryItems.filter(function(it){return _normCat(it.category)===cat.key;});
+    if(catItems.length===0) return; // skip empty top-level categories
+    var catDiv=document.createElement('div');
+    catDiv.className='c2d-sub';
+    var html='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(cat.label)+'</div>';
+    html+='<div class="c2d-sub-body">';
+    cat.subs.forEach(function(sub){
+      var items=catItems.filter(function(it){return _normCat(it.subcategory)===sub.key;});
+      if(items.length===0) return; // skip empty subcategories
+      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="'+sub.key+'">';
+      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(sub.label)+'</div>';
+      html+='<div class="c2d-sub-body">';
+      items.forEach(function(it){
+        var photoUrl=it.thumbnail_url||null;
+        var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
+        html+='<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'">'+
+          thumb+
+          '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong></div>'+
+        '</div>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+    catDiv.innerHTML=html;
+    body.appendChild(catDiv);
+  });
+  body.querySelectorAll('.c2d-lib-card').forEach(function(card){
+    card.addEventListener('dragstart',function(e){
+      var id=card.dataset.id;
+      var item=(_libraryItems||[]).find(function(it){return it.id===id;});
+      if(!item) return;
+      // Same _dragData type as Marcas — the drop handler treats library
+      // and catalog items uniformly. Library items have no
+      // product_photo_url, so the companion-image step skips itself.
+      _dragData={type:'catalog_dxf',catalogItem:item,w:item.width_mm||500,h:item.height_mm||500};
+      e.dataTransfer.setData('text','library');
+    });
+  });
 }
 // Transient state for the open modal — never persisted. clearMarcasFilters
 // resets it; openMarcasModal also resets it on every open per spec.

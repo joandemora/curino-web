@@ -107,6 +107,7 @@ body.hidden-until-auth{visibility:hidden}
 <div class="admin-tabs">
   <button class="admin-tab active" data-pane="apps" onclick="switchPane('apps')">Solicitudes <span id="appCount" style="opacity:.5;margin-left:.3rem"></span></button>
   <button class="admin-tab" data-pane="catalog" onclick="switchPane('catalog')">Catálogo <span id="catCount" style="opacity:.5;margin-left:.3rem"></span></button>
+  <button class="admin-tab" data-pane="library" onclick="switchPane('library')">Biblioteca <span id="libCount" style="opacity:.5;margin-left:.3rem"></span></button>
 </div>
 
 <!-- Solicitudes -->
@@ -134,6 +135,19 @@ body.hidden-until-auth{visibility:hidden}
     <button class="admin-btn admin-btn-primary admin-btn-small" onclick="openItemModal()" style="margin-left:auto">+ Añadir pieza</button>
   </div>
   <div id="catList"><div class="admin-empty">Cargando…</div></div>
+</div>
+
+<!-- Biblioteca — catálogo propio Curino. Mismo shape que Catálogo pero
+     sin filtro de marca y sin foto/variantes en el modal de subida. -->
+<div class="admin-pane" id="library-pane">
+  <div class="admin-toolbar">
+    <label>Categoría <select id="libFilterCategory" onchange="onLibFilterCategoryChange()"><option value="">Todas</option></select></label>
+    <label>Subcategoría <select id="libFilterSub"><option value="">Todas</option></select></label>
+    <label><input type="checkbox" id="libFilterInactive"> Mostrar inactivas</label>
+    <button class="admin-btn admin-btn-small" onclick="loadLibrary()">Recargar</button>
+    <button class="admin-btn admin-btn-primary admin-btn-small" onclick="openLibraryItemModal()" style="margin-left:auto">+ Añadir pieza</button>
+  </div>
+  <div id="libList"><div class="admin-empty">Cargando…</div></div>
 </div>
 
 <!-- Modal multi-vista lo construye dinámicamente CurinoCatalogForm desde
@@ -210,8 +224,10 @@ function initAdmin(){
   // Reveal the page only after the admin role has been confirmed.
   document.body.classList.remove('hidden-until-auth');
   populateCategorySelects();
+  populateLibraryCategorySelects();
   loadApps();
   loadCatalog();
+  loadLibrary();
 }
 async function adminSignOut(){
   if(_supabase) await _supabase.auth.signOut();
@@ -475,6 +491,121 @@ function openItemModal(id){
     item:item,
     categories:CATEGORIES,
     onSaved:function(){loadCatalog();}
+  });
+}
+
+// ─── BIBLIOTECA (Curino in-house catalog) ─────────────────────────────────
+// Mirror of the Catálogo functions above, but pointing at library_items +
+// the library-* buckets. The form opens with mode:'library' so the photo
+// + variants + brand sections get hidden.
+var _libItems=[];
+function populateLibraryCategorySelects(){
+  ['libFilterCategory'].forEach(function(id){
+    var sel=document.getElementById(id);
+    if(!sel) return;
+    var keep=sel.children[0].outerHTML;
+    sel.innerHTML=keep+CATEGORIES.map(function(c){return '<option value="'+c.key+'">'+escHtml(c.label)+'</option>';}).join('');
+  });
+}
+function onLibFilterCategoryChange(){
+  var cat=document.getElementById('libFilterCategory').value;
+  var sub=document.getElementById('libFilterSub');
+  sub.innerHTML='<option value="">Todas</option>';
+  if(cat){
+    var c=CATEGORIES.find(function(x){return x.key===cat;});
+    if(c){sub.innerHTML+=c.subs.map(function(s){return '<option value="'+s.key+'">'+escHtml(s.label)+'</option>';}).join('');}
+  }
+  renderLibrary();
+}
+async function loadLibrary(){
+  var list=document.getElementById('libList');
+  list.innerHTML='<div class="admin-empty">Cargando…</div>';
+  var r=await _supabase.from('library_items').select('*').order('name');
+  if(r.error){list.innerHTML='<div class="admin-empty">Error: '+escHtml(r.error.message)+'</div>';return;}
+  _libItems=r.data||[];
+  document.getElementById('libCount').textContent=_libItems.length?'('+_libItems.length+')':'';
+  document.getElementById('libFilterInactive').onchange=renderLibrary;
+  document.getElementById('libFilterSub').onchange=renderLibrary;
+  renderLibrary();
+}
+function renderLibrary(){
+  var list=document.getElementById('libList');
+  var cat=document.getElementById('libFilterCategory').value;
+  var sub=document.getElementById('libFilterSub').value;
+  var showInactive=document.getElementById('libFilterInactive').checked;
+  var rows=_libItems.filter(function(it){
+    if(cat&&(it.category||'').toLowerCase()!==cat) return false;
+    if(sub&&(it.subcategory||'').toLowerCase()!==sub) return false;
+    if(!showInactive&&!it.active) return false;
+    return true;
+  });
+  if(rows.length===0){list.innerHTML='<div class="admin-empty">Sin piezas que coincidan con el filtro.</div>';return;}
+  list.innerHTML=rows.map(function(it){
+    var thumb=it.thumbnail_url?'<img src="'+escHtml(it.thumbnail_url)+'" alt="">':'thumb';
+    return ''+
+      '<div class="cat-row '+(it.active?'':'inactive')+'">'+
+        '<div class="cat-thumb">'+thumb+'</div>'+
+        '<div class="cat-info">'+
+          '<h4>'+escHtml(it.name)+'</h4>'+
+          '<div class="cat-info-meta">'+
+            '<span>'+escHtml(it.category||'')+(it.subcategory?' / '+escHtml(it.subcategory):'')+'</span>'+
+            (it.year?'<span>'+it.year+'</span>':'')+
+            (it.width_mm?'<span>'+it.width_mm+'×'+(it.height_mm||0)+(it.depth_mm?'×'+it.depth_mm:'')+' mm</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<div class="cat-actions">'+
+          '<label class="cat-toggle"><input type="checkbox" '+(it.active?'checked':'')+' onchange="toggleLibraryItemActive(\''+it.id+'\',this.checked)"> Activa</label>'+
+          '<button class="admin-btn admin-btn-small" onclick="openLibraryItemModal(\''+it.id+'\')">Editar</button>'+
+          '<button class="admin-btn admin-btn-danger admin-btn-small" onclick="deleteLibraryItem(\''+it.id+'\')">Borrar</button>'+
+        '</div>'+
+      '</div>';
+  }).join('');
+}
+async function toggleLibraryItemActive(id,active){
+  var u=await _supabase.from('library_items').update({active:active}).eq('id',id);
+  if(u.error){alert('Error: '+u.error.message);loadLibrary();return;}
+  var it=_libItems.find(function(x){return x.id===id;});
+  if(it) it.active=active;
+}
+async function deleteLibraryItem(id){
+  var it=_libItems.find(function(x){return x.id===id;});
+  if(!it) return;
+  if(!confirm('Borrar la pieza "'+it.name+'" definitivamente?\n\nTambién se eliminarán los DXFs/JSONs y el thumbnail del Storage.')) return;
+  // Best-effort cleanup: legacy dxf_url, every view URL in views, and
+  // the thumbnail. Each remove() failure is swallowed so the row delete
+  // still happens — Storage orphans are tolerable, missing rows aren't.
+  var bucketDxf='library-dxfs', bucketThumb='library-thumbnails';
+  if(it.dxf_url){
+    var p=storagePathFromUrl(it.dxf_url,bucketDxf);
+    if(p) await _supabase.storage.from(bucketDxf).remove([p]);
+  }
+  if(it.views&&typeof it.views==='object'){
+    var paths=[];
+    Object.keys(it.views).forEach(function(k){
+      var u=it.views[k]&&it.views[k].dxf_url;
+      var p=u?storagePathFromUrl(u,bucketDxf):null;
+      if(p) paths.push(p);
+    });
+    if(paths.length) await _supabase.storage.from(bucketDxf).remove(paths);
+  }
+  if(it.thumbnail_url){
+    var tp=storagePathFromUrl(it.thumbnail_url,bucketThumb);
+    if(tp) await _supabase.storage.from(bucketThumb).remove([tp]);
+  }
+  var d=await _supabase.from('library_items').delete().eq('id',id);
+  if(d.error){alert('Error borrando la pieza: '+d.error.message);return;}
+  await loadLibrary();
+}
+function openLibraryItemModal(id){
+  var item=id?_libItems.find(function(x){return x.id===id;}):null;
+  CurinoCatalogForm.open({
+    supabase:_supabase,
+    user:_currentUser,
+    role:'admin',
+    mode:'library',
+    item:item,
+    categories:CATEGORIES,
+    onSaved:function(){loadLibrary();}
   });
 }
 </script>
