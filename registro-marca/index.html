@@ -104,7 +104,12 @@ body{font-family:var(--font);color:var(--black);background:var(--white);min-heig
 </form>
 
 <script>
-var supabase=null,_currentUser=null,_existingApp=null,_logoFile=null,_existingLogoUrl=null;
+// IMPORTANT: do NOT name this `supabase` at script scope — top-level
+// `var supabase = ...` writes through to window.supabase and overwrites
+// the SDK module loaded by the CDN tag, breaking createClient() with a
+// TypeError that only surfaces here as a redirect to /login/. The
+// underscore prefix dodges the collision (same trick as /mi-cuenta/).
+var _supabase=null,_currentUser=null,_existingApp=null,_logoFile=null,_existingLogoUrl=null;
 
 (async function(){
   try{
@@ -114,8 +119,8 @@ var supabase=null,_currentUser=null,_existingApp=null,_logoFile=null,_existingLo
       window.location.href='/login/?redirect=/registro-marca/';
       return;
     }
-    supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-    var s=await supabase.auth.getSession();
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
     if(!s.data.session){
       window.location.href='/login/?redirect=/registro-marca/';
       return;
@@ -130,7 +135,7 @@ var supabase=null,_currentUser=null,_existingApp=null,_logoFile=null,_existingLo
 })();
 
 async function loadExistingApplication(){
-  var r=await supabase.from('brand_applications').select('*').eq('user_id',_currentUser.id).maybeSingle();
+  var r=await _supabase.from('brand_applications').select('*').eq('user_id',_currentUser.id).maybeSingle();
   if(r.error||!r.data) return;
   _existingApp=r.data;
   // Pre-fill the form so the user can edit and resubmit.
@@ -196,11 +201,11 @@ async function uploadLogoIfNeeded(){
   var path=_currentUser.id+'/logo.'+ext;
   // Clean up any previous logo files for this user (single-logo convention).
   ['svg','png','jpg','jpeg'].forEach(function(e){
-    if(e!==ext) supabase.storage.from('brand-logos').remove([_currentUser.id+'/logo.'+e]);
+    if(e!==ext) _supabase.storage.from('brand-logos').remove([_currentUser.id+'/logo.'+e]);
   });
-  var up=await supabase.storage.from('brand-logos').upload(path,_logoFile,{upsert:true,cacheControl:'3600',contentType:_logoFile.type});
+  var up=await _supabase.storage.from('brand-logos').upload(path,_logoFile,{upsert:true,cacheControl:'3600',contentType:_logoFile.type});
   if(up.error) throw new Error('Error subiendo logo: '+up.error.message);
-  return supabase.storage.from('brand-logos').getPublicUrl(path).data.publicUrl;
+  return _supabase.storage.from('brand-logos').getPublicUrl(path).data.publicUrl;
 }
 
 async function submitBrand(e){
@@ -255,7 +260,7 @@ async function submitBrand(e){
     payload.reviewed_by=null;
     payload.reviewed_at=null;
   }
-  var res=await supabase.from('brand_applications').upsert(payload,{onConflict:'user_id'});
+  var res=await _supabase.from('brand_applications').upsert(payload,{onConflict:'user_id'});
   if(res.error){
     err.textContent='Error guardando la solicitud: '+res.error.message;err.style.display='block';
     btn.disabled=false;btn.textContent=_existingApp?'Guardar cambios':'Enviar solicitud';
