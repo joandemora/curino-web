@@ -385,6 +385,13 @@ var _dragData=null;
 var _resizing=null;
 // Supabase
 var _supabase=null,_currentUser=null,_projectId=null;
+// Role of the current authenticated user. Resolved after sign-in by
+// loadUserRole(). Phase 1 only populates the value — no UI consumer yet
+// (the admin and brand panels arrive in Phase 3). Defaults to 'user' for
+// signed-in accounts without a row in user_roles, and stays null when no
+// session is active.
+var _userRole=null;
+var _userBrandName=null;
 var _cajetinSelected=false;
 var _exportMode=false;
 
@@ -4629,6 +4636,33 @@ async function replaceProjectImage(idx,file){
   draw();renderModules();renderProps();
 }
 
+// ── USER ROLE (Supabase: user_roles table — Phase 1 plumbing only) ──
+// Resolves the role + brand_name for the current authenticated user. Stored
+// in _userRole / _userBrandName for later phases (admin panel, brand panel,
+// approval workflow). Phase 1 has no UI consumer; the call exists so the
+// data is in memory by the time later phases ship. Falls back to 'user'
+// when the row is absent — signed-in accounts without an explicit role
+// are regular users.
+async function loadUserRole(){
+  if(!_supabase||!_currentUser){_userRole=null;_userBrandName=null;return;}
+  try{
+    var r=await _supabase.from('user_roles').select('role,brand_name').eq('user_id',_currentUser.id).maybeSingle();
+    if(r.data&&r.data.role){
+      _userRole=r.data.role;
+      _userBrandName=r.data.brand_name||null;
+    }else{
+      _userRole='user';
+      _userBrandName=null;
+    }
+  }catch(e){
+    // Network / RLS hiccup → treat as a regular signed-in user. Don't
+    // surface to the UI — Phase 1 has no role-gated affordances.
+    _userRole='user';
+    _userBrandName=null;
+    console.warn('loadUserRole failed',e);
+  }
+  console.log('[curino] user role:',_userRole,_userBrandName?('('+_userBrandName+')'):'');
+}
 // ── USER LOGO (Supabase: user_logos table + user-logos bucket) ──
 async function loadUserLogo(){
   if(!_supabase||!_currentUser){_userLogoUrl=null;return;}
@@ -4764,7 +4798,7 @@ function finishInit(){
       _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
       var s=await _supabase.auth.getSession();
       if(s.data.session) _currentUser=s.data.session.user;
-      if(_currentUser) await loadUserLogo();
+      if(_currentUser){await loadUserLogo();await loadUserRole();}
     }
   }catch(e){}
 
