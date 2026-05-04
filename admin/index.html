@@ -223,15 +223,25 @@ function switchPane(name){
 }
 
 // ─── APPLICATIONS ──────────────────────────────────────────────────────────
+// Map from user_id → promoted bool, populated in parallel with loadApps.
+// Used by renderApps to decide which approved rows show the toggle and
+// what its current value is.
+var _promotedByUid={};
 async function loadApps(){
   var list=document.getElementById('appList');
   list.innerHTML='<div class="admin-empty">Cargando…</div>';
-  var r=await _supabase.rpc('admin_brand_applications_with_email');
+  // Fire both queries in parallel — neither depends on the other and
+  // user_roles is tiny.
+  var appsP=_supabase.rpc('admin_brand_applications_with_email');
+  var rolesP=_supabase.from('user_roles').select('user_id,promoted').eq('role','brand');
+  var r=await appsP, rr=await rolesP;
   if(r.error){
     list.innerHTML='<div class="admin-empty">Error: '+escHtml(r.error.message)+'</div>';
     console.error(r.error);return;
   }
   _apps=r.data||[];
+  _promotedByUid={};
+  if(rr&&rr.data) rr.data.forEach(function(row){_promotedByUid[row.user_id]=!!row.promoted;});
   document.getElementById('appCount').textContent=_apps.length?'('+_apps.length+')':'';
   renderApps();
 }
@@ -248,6 +258,14 @@ function renderApps(){
       actions=
         '<button class="admin-btn admin-btn-success admin-btn-small" onclick="approveApp(\''+a.id+'\')">Aprobar</button>'+
         '<button class="admin-btn admin-btn-danger admin-btn-small" onclick="rejectApp(\''+a.id+'\')">Rechazar</button>';
+    }else if(a.status==='approved'){
+      // Promocionada toggle only on approved rows — those are the brand
+      // accounts that exist in user_roles. Click flips user_roles.promoted
+      // and re-renders the row's checked state from _promotedByUid.
+      var promoted=!!_promotedByUid[a.user_id];
+      actions=
+        '<label class="cat-toggle"><input type="checkbox" '+(promoted?'checked':'')+
+        ' onchange="togglePromoted(\''+a.user_id+'\',this.checked)"> Promocionada</label>';
     }else{
       actions='<span style="font-size:11px;color:var(--mid)">Revisada</span>';
     }
@@ -274,6 +292,21 @@ function renderApps(){
   }).join('');
 }
 function statusFor(s){return s==='pending'?'Pendiente':s==='approved'?'Aprobada':'Rechazada';}
+async function togglePromoted(userId,promoted){
+  // Optimistic local update — re-render not needed because the checkbox
+  // already reflects the new state. The RLS lets only admins update
+  // user_roles, and the configurador's loadPromotedBrands cache stays
+  // valid for that page session (user has to refresh to see changes
+  // on the modal carousel — acceptable for an admin-only action).
+  var u=await _supabase.from('user_roles').update({promoted:!!promoted}).eq('user_id',userId);
+  if(u.error){
+    alert('Error actualizando promoción: '+u.error.message);
+    _promotedByUid[userId]=!promoted; // keep local cache in sync
+    renderApps();
+    return;
+  }
+  _promotedByUid[userId]=!!promoted;
+}
 
 async function approveApp(id){
   var app=_apps.find(function(x){return x.id===id;});

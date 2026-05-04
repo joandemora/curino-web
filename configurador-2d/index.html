@@ -234,6 +234,18 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-marcas-card-info .brand{font-size:11px;color:var(--coral,#cc785c);display:block;margin-bottom:.2rem;font-weight:600}
 .c2d-marcas-card-info .cat{font-size:10px;color:var(--mid);text-transform:capitalize}
 .c2d-marcas-grid-empty{grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--mid);font-size:13px}
+/* Promoted brands carousel */
+.c2d-marcas-promo{display:flex;gap:14px;overflow-x:auto;padding:12px 18px;border-bottom:1px solid var(--border);scrollbar-width:thin;flex-shrink:0;background:#fafafa}
+.c2d-marcas-promo:empty{display:none}
+.c2d-marcas-promo::-webkit-scrollbar{height:6px}
+.c2d-marcas-promo::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+.c2d-marcas-promo-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;width:88px;padding:6px;border:1px solid transparent;border-radius:6px;transition:border-color .15s,background .15s}
+.c2d-marcas-promo-item:hover{border-color:var(--border);background:#fff}
+.c2d-marcas-promo-item.active{border-color:var(--black);background:#fff}
+.c2d-marcas-promo-logo{width:72px;height:72px;background:#fff;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.c2d-marcas-promo-logo img{max-width:100%;max-height:100%;object-fit:contain}
+.c2d-marcas-promo-logo .placeholder{font-size:28px;color:var(--mid);font-weight:600;line-height:1}
+.c2d-marcas-promo-name{font-size:10px;color:#444;text-align:center;line-height:1.2;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 /* Inline "Guardar Dibujo" widget (replaces the prompt() that used to ask
    for the drawing's name when the context menu fires saveDrawing). */
 .c2d-save-inline{display:flex;gap:.3rem;margin-bottom:.6rem;align-items:center}
@@ -418,12 +430,9 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
       <input type="text" id="marcasSearch" placeholder="Buscar pieza, marca, categoría…">
       <button type="button" class="c2d-marcas-close" onclick="closeMarcasModal()" title="Cerrar">×</button>
     </div>
+    <div class="c2d-marcas-promo" id="marcasPromo"></div>
     <div class="c2d-marcas-body">
       <aside class="c2d-marcas-sidebar">
-        <div class="c2d-marcas-filter-section">
-          <h3>Marca</h3>
-          <div id="marcasFilterBrands"></div>
-        </div>
         <div class="c2d-marcas-filter-section">
           <h3>Categoría</h3>
           <div id="marcasFilterCategories"></div>
@@ -5256,13 +5265,18 @@ async function loadCatalog(){
 }
 // Transient state for the open modal — never persisted. clearMarcasFilters
 // resets it; openMarcasModal also resets it on every open per spec.
-var _marcasState={search:'',brands:new Set(),categories:new Set(),subs:new Set()};
+// activeBrand is exclusive (only one marca can be active at a time, set
+// from the promoted-brands carousel) and combines AND with category/sub.
+var _marcasState={search:'',activeBrand:null,categories:new Set(),subs:new Set()};
+// Promoted-brands snapshot for the carousel. Cached for the page session
+// once the modal opens for the first time; cleared on a hard reload only.
+var _promotedBrandsCache=null;
 
 async function openMarcasModal(){
   var ov=document.getElementById('marcasOverlay');
   if(!ov) return;
   // Reset state on every open — filters and search don't persist.
-  _marcasState={search:'',brands:new Set(),categories:new Set(),subs:new Set()};
+  _marcasState={search:'',activeBrand:null,categories:new Set(),subs:new Set()};
   document.getElementById('marcasSearch').value='';
   ov.classList.add('visible');
   // Wire one-shot input listener (re-bind each open is cheap and avoids
@@ -5287,7 +5301,51 @@ async function openMarcasModal(){
     grid.innerHTML='<div class="c2d-marcas-grid-empty">No se pudo cargar el catálogo. <button class="c2d-marcas-clear-filters" style="display:inline-block;width:auto;margin-left:8px" onclick="loadCatalog().then(renderMarcasModal)">Reintentar</button></div>';
     return;
   }
+  // Kick off the promoted-brands fetch in the background — it doesn't
+  // block the grid render. The carousel updates as soon as the result
+  // arrives.
+  loadPromotedBrands().then(renderMarcasPromo);
   renderMarcasModal();
+}
+// Fetches the promoted brands (brand_name + logo_url) once per page load.
+// Uses a SECURITY DEFINER RPC so anon callers can read the joined data
+// without the brand_applications RLS getting in the way.
+async function loadPromotedBrands(){
+  if(_promotedBrandsCache) return _promotedBrandsCache;
+  if(!_supabase){_promotedBrandsCache=[];return _promotedBrandsCache;}
+  try{
+    var r=await _supabase.rpc('public_promoted_brands');
+    if(r.error){console.warn('promoted brands',r.error);_promotedBrandsCache=[];return _promotedBrandsCache;}
+    _promotedBrandsCache=r.data||[];
+  }catch(e){console.warn('promoted brands',e);_promotedBrandsCache=[];}
+  return _promotedBrandsCache;
+}
+function renderMarcasPromo(){
+  var holder=document.getElementById('marcasPromo');
+  if(!holder) return;
+  var brands=_promotedBrandsCache||[];
+  if(brands.length===0){holder.innerHTML='';return;}
+  holder.innerHTML=brands.map(function(b){
+    var name=b.brand_name||'';
+    var logo=b.logo_url
+      ? '<img src="'+_escHtml(b.logo_url)+'" alt="'+_escHtml(name)+'">'
+      : '<span class="placeholder">'+_escHtml((name.charAt(0)||'?').toUpperCase())+'</span>';
+    var active=_marcasState.activeBrand===name?' active':'';
+    return '<div class="c2d-marcas-promo-item'+active+'" data-brand="'+_escHtml(name)+'">'+
+      '<div class="c2d-marcas-promo-logo">'+logo+'</div>'+
+      '<div class="c2d-marcas-promo-name">'+_escHtml(name)+'</div>'+
+    '</div>';
+  }).join('');
+  holder.querySelectorAll('.c2d-marcas-promo-item').forEach(function(el){
+    el.onclick=function(){
+      var name=el.dataset.brand;
+      // Same brand again → toggle off (clear the exclusive filter).
+      if(_marcasState.activeBrand===name){_marcasState.activeBrand=null;}
+      else{_marcasState.activeBrand=name;}
+      renderMarcasPromo();
+      renderMarcasGrid();
+    };
+  });
 }
 function closeMarcasModal(){
   var ov=document.getElementById('marcasOverlay');
@@ -5308,18 +5366,9 @@ document.addEventListener('keydown',function(e){
 
 function renderMarcasModal(){
   // Build the sidebar filters from the current dataset, then render the
-  // grid with whatever filter+search state is active.
-  var items=_catalogItems||[];
-  // Unique brands across the entire catalog. The user spec says "marcas
-  // únicas detectadas en catalog_items" — we use the full set, not the
-  // post-filter set, so deselecting one brand doesn't make the brand
-  // checkbox itself disappear.
-  var brands=Array.from(new Set(items.map(function(i){return i.brand;}))).filter(Boolean).sort();
-  var brandsHtml=brands.map(function(b){
-    var checked=_marcasState.brands.has(b)?' checked':'';
-    return '<label class="c2d-marcas-filter-option"><input type="checkbox" data-filter="brand" value="'+_escHtml(b)+'"'+checked+'>'+_escHtml(b)+'</label>';
-  }).join('')||'<div class="c2d-marcas-filter-empty">Sin marcas</div>';
-  document.getElementById('marcasFilterBrands').innerHTML=brandsHtml;
+  // grid with whatever filter+search state is active. Brand filtering
+  // moved to the promoted-brands carousel above the body — the sidebar
+  // only carries Categoría + Subcategoría now.
   var catsHtml=CATALOG_CATEGORIES.map(function(c){
     var checked=_marcasState.categories.has(c.key)?' checked':'';
     return '<label class="c2d-marcas-filter-option"><input type="checkbox" data-filter="cat" value="'+c.key+'"'+checked+'>'+_escHtml(c.label)+'</label>';
@@ -5345,12 +5394,10 @@ function renderMarcasModal(){
   }).join('')||'<div class="c2d-marcas-filter-empty">—</div>';
   document.getElementById('marcasFilterSubs').innerHTML=subsHtml;
   // Wire change handlers on every checkbox.
-  ['marcasFilterBrands','marcasFilterCategories','marcasFilterSubs'].forEach(function(id){
+  ['marcasFilterCategories','marcasFilterSubs'].forEach(function(id){
     document.getElementById(id).querySelectorAll('input[type=checkbox]').forEach(function(cb){
       cb.onchange=function(){
-        var set=cb.dataset.filter==='brand'?_marcasState.brands
-              :cb.dataset.filter==='cat'?_marcasState.categories
-              :_marcasState.subs;
+        var set=cb.dataset.filter==='cat'?_marcasState.categories:_marcasState.subs;
         if(cb.checked) set.add(cb.value); else set.delete(cb.value);
         if(cb.dataset.filter==='cat'){
           // Subs depend on selected categories — re-render the whole sidebar.
@@ -5364,8 +5411,9 @@ function renderMarcasModal(){
   renderMarcasGrid();
 }
 function clearMarcasFilters(){
-  _marcasState={search:'',brands:new Set(),categories:new Set(),subs:new Set()};
+  _marcasState={search:'',activeBrand:null,categories:new Set(),subs:new Set()};
   document.getElementById('marcasSearch').value='';
+  renderMarcasPromo();
   renderMarcasModal();
 }
 function renderMarcasGrid(){
@@ -5374,7 +5422,7 @@ function renderMarcasGrid(){
   var items=_catalogItems||[];
   var q=_normCat(_marcasState.search||'');
   var filtered=items.filter(function(it){
-    if(_marcasState.brands.size>0&&!_marcasState.brands.has(it.brand)) return false;
+    if(_marcasState.activeBrand&&it.brand!==_marcasState.activeBrand) return false;
     if(_marcasState.categories.size>0&&!_marcasState.categories.has(_normCat(it.category))) return false;
     if(_marcasState.subs.size>0&&!_marcasState.subs.has(_normCat(it.subcategory))) return false;
     if(q){
