@@ -1997,6 +1997,16 @@ function renderProps(){
     if(m.savedDrawingId){
       groupHTML+='<div class="c2d-prop"><label>Nombre</label><input id="savedDrawingNameInput" type="text" value="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'" data-id="'+m.savedDrawingId+'" data-prev="'+((m.savedDrawingName||'').replace(/"/g,'&quot;'))+'"></div>';
     }
+    // Catalog view picker — only when the group came from a multi-view
+    // catalog piece with ≥2 views. Legacy and single-view pieces don't
+    // surface the selector (nothing to switch to).
+    if(m.catalogItemId&&m.catalogViewsAvailable&&m.catalogViewsAvailable.length>1){
+      var vLabels=(window.CurinoCatalog&&CurinoCatalog.VIEW_LABELS)||{top:'Arriba',side:'Lado',front:'Delante',back:'Detrás'};
+      var viewOpts=m.catalogViewsAvailable.map(function(k){
+        return '<option value="'+k+'"'+(k===m.catalogView?' selected':'')+'>'+(vLabels[k]||k)+'</option>';
+      }).join('');
+      groupHTML+='<div class="c2d-prop"><label>Vista</label><select onchange="onCatalogViewChange(this.value)">'+viewOpts+'</select></div>';
+    }
     groupHTML+=
       '<div class="c2d-prop"><label>Ancho (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.w+'" step="50" '+(m.lockW?'disabled ':'')+'onchange="updateProp(\'w\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockW?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockW\')">'+(m.lockW?gLockClosed:gLockOpen)+'</button></div></div>'+
       '<div class="c2d-prop"><label>Alto (mm)</label><div style="display:flex;gap:4px;align-items:center"><input type="number" value="'+m.h+'" step="50" '+(m.lockH?'disabled ':'')+'onchange="updateProp(\'h\',this.value)" style="flex:1"><button type="button" class="c2d-lock-toggle" style="color:'+(m.lockH?'var(--black)':'var(--light)')+'" onclick="event.preventDefault();event.stopPropagation();toggleLock(\'lockH\')">'+(m.lockH?gLockClosed:gLockOpen)+'</button></div></div>'+
@@ -5156,6 +5166,7 @@ async function handleCatalogDrop(item,worldX,worldY){
   //   .json → Phase B file with {w,h,shapes:[…]} → build group directly.
   //   .dxf  → legacy file → parse + scale + build group via importDxfText.
   var url=window.CurinoCatalog?CurinoCatalog.getDefaultDxfUrl(item):(item&&item.dxf_url);
+  var viewKey=window.CurinoCatalog?CurinoCatalog.getDefaultViewKey(item):null;
   if(!item||!url){showToast('DXF no disponible','error');return;}
   var prevCursor=document.body.style.cursor;
   document.body.style.cursor='wait';
@@ -5166,7 +5177,7 @@ async function handleCatalogDrop(item,worldX,worldY){
     document.body.style.cursor=prevCursor;
     if(/\.json(\?|$)/i.test(url)){
       var data=await resp.json();
-      importShapesAsGroup(data,worldX,worldY,item);
+      importShapesAsGroup(data,worldX,worldY,item,viewKey);
     }else{
       var text=await resp.text();
       await importDxfText(text,worldX,worldY,_catalogUnitToMm(item.default_unit),item);
@@ -5180,7 +5191,15 @@ async function handleCatalogDrop(item,worldX,worldY){
 // Builds a group module directly from the shapes array of a Phase B catalog
 // JSON. Coords are already in mm and bbox-relative; w/h come from the JSON
 // payload. Skips the DXF parse/scale path entirely.
-function importShapesAsGroup(data,worldX,worldY,catalogItem){
+//
+// When the source row has views populated we snapshot the per-view URLs
+// onto the group module (catalogViewUrls) so changeGroupView() can switch
+// vistas later without re-querying the catalog. The snapshot is intentional:
+// if the brand/admin alters the row after insertion, the user's project
+// keeps the version they originally inserted (per Phase C decision — "no
+// refrescar automáticamente"). Re-arrastrar la pieza trae el snapshot
+// actualizado.
+function importShapesAsGroup(data,worldX,worldY,catalogItem,viewKey){
   if(!data||!Array.isArray(data.shapes)||data.shapes.length===0){
     showToast('La vista no tiene contenido','error');return;
   }
@@ -5199,12 +5218,63 @@ function importShapesAsGroup(data,worldX,worldY,catalogItem){
     if(catalogItem.id) group.catalogItemId=catalogItem.id;
     if(catalogItem.name) group.catalogName=catalogItem.name;
     if(catalogItem.brand) group.catalogBrand=catalogItem.brand;
+    // Multi-view metadata (skipped for legacy pieces with no views object).
+    if(viewKey&&catalogItem.views&&typeof catalogItem.views==='object'){
+      var available=window.CurinoCatalog?CurinoCatalog.getAvailableViewKeys(catalogItem):[viewKey];
+      group.catalogView=viewKey;
+      group.catalogViewsAvailable=available;
+      var urls={};
+      available.forEach(function(k){
+        if(catalogItem.views[k]&&catalogItem.views[k].dxf_url) urls[k]=catalogItem.views[k].dxf_url;
+      });
+      group.catalogViewUrls=urls;
+    }
   }
   _modules.push(group);
   _sel.clear();_sel.add(_modules.length-1);
   draw();renderModules();renderProps();
   var label=catalogItem&&catalogItem.name?catalogItem.name:'Pieza';
   showToast(label+' importada: '+data.shapes.length+' elementos','success');
+}
+// Switches a catalog-backed group's children to a different stored view.
+// Keeps the group's CENTER fixed (so the visual swap doesn't slide the
+// piece across the canvas), preserves rotation / locks / position, and
+// invalidates the bitmap cache (commit 05b9823) so the next render
+// regenerates from the new shapes. saveHistory makes the swap undoable.
+async function changeGroupView(idx,newViewKey){
+  var m=_modules[idx];
+  if(!m||m.type!=='group') return;
+  if(!m.catalogViewUrls||!m.catalogViewUrls[newViewKey]){
+    showToast('Vista no disponible','error');return;
+  }
+  if(m.catalogView===newViewKey) return;
+  showToast('Cargando vista…');
+  try{
+    var resp=await fetch(m.catalogViewUrls[newViewKey]);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    var data=await resp.json();
+    if(!data||!Array.isArray(data.shapes)) throw new Error('Vista vacía');
+    saveHistory();
+    var oldCx=(m.x||0)+(m.w||0)/2, oldCy=(m.y||0)+(m.h||0)/2;
+    var nw=Math.max(1,Math.round(data.w||100));
+    var nh=Math.max(1,Math.round(data.h||100));
+    m.children=data.shapes;
+    m.w=nw; m.h=nh;
+    m.x=Math.round(oldCx-nw/2);
+    m.y=Math.round(oldCy-nh/2);
+    m.catalogView=newViewKey;
+    // Invalidate bitmap cache — children changed, _cacheId must regenerate.
+    delete m._cacheId;
+    draw();renderModules();renderProps();
+  }catch(e){
+    console.error('change view',e);
+    showToast('Vista no disponible','error');
+  }
+}
+function onCatalogViewChange(newViewKey){
+  if(_sel.size!==1) return;
+  var idx=_sel.values().next().value;
+  changeGroupView(idx,newViewKey);
 }
 
 // ── SAVED DRAWINGS (Mis dibujos) ──
