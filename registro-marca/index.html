@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de marca — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--white);min-height:100vh;display:flex;flex-direction:column;padding:2rem 1.5rem}
+.brand-header{max-width:560px;width:100%;margin:0 auto 1.5rem;text-align:center}
+.brand-logo{display:block;height:28px;margin:0 auto 2rem}
+.brand-title{font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem}
+.brand-sub{font-size:13px;color:var(--ink-soft);margin-bottom:0;max-width:42ch;margin-left:auto;margin-right:auto;line-height:1.55}
+.brand-form{max-width:560px;width:100%;margin:0 auto}
+.brand-row{display:grid;grid-template-columns:1fr 1fr;gap:0 1.25rem}
+.brand-input,.brand-textarea{width:100%;padding:.7rem 0;font-family:var(--font);font-size:14px;border:none;border-bottom:1px solid var(--border);outline:none;background:transparent;margin-bottom:1rem;transition:border-color .2s;color:var(--ink)}
+.brand-input:focus,.brand-textarea:focus{border-color:var(--black)}
+.brand-input::placeholder,.brand-textarea::placeholder{color:var(--mid)}
+.brand-textarea{resize:vertical;min-height:80px;padding:.7rem 0}
+.brand-label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 .35rem}
+.brand-logo-row{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.brand-logo-preview{width:64px;height:64px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.brand-logo-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.brand-logo-preview.empty::after{content:'sin logo';font-size:10px;color:var(--mid);text-align:center;line-height:1.2}
+.brand-logo-actions{display:flex;flex-direction:column;gap:.4rem}
+.brand-btn-file{padding:.5rem .9rem;font-size:12px;border:1px solid var(--border);background:var(--white);border-radius:4px;cursor:pointer;font-family:var(--font)}
+.brand-btn-file:hover{border-color:var(--black)}
+.brand-btn{width:100%;padding:.85rem;font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;background:var(--black);color:var(--white);transition:background .2s;margin-top:1.5rem}
+.brand-btn:hover{background:#333}
+.brand-btn:disabled{background:var(--mid);cursor:not-allowed}
+.brand-error{background:#fef2f2;color:#dc2626;padding:.75rem;font-size:13px;margin-bottom:1rem;display:none}
+.brand-success{background:#f0fdf4;color:#16a34a;padding:.75rem;font-size:13px;margin-bottom:1rem;display:none}
+.brand-state{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem;margin-bottom:1.5rem;font-size:13px;color:var(--ink-soft)}
+.brand-state strong{color:var(--ink)}
+.brand-back{display:inline-block;margin-top:1rem;font-size:12px;color:var(--mid);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:1px}
+.brand-back:hover{color:var(--ink);border-color:var(--ink)}
+.brand-foot{text-align:center;margin-top:2rem}
+@media(max-width:600px){
+  .brand-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="brand-header">
+  <a href="/"><img src="/assets/imagenes/logo-curino.svg" alt="Curino" class="brand-logo"></a>
+  <h1 class="brand-title">Registro de marca</h1>
+  <p class="brand-sub">Solicita una cuenta de marca para subir tus piezas al catálogo de Curino. Joan revisará la solicitud antes de activarla.</p>
+</div>
+
+<form class="brand-form" id="brandForm" onsubmit="submitBrand(event)" style="display:none">
+  <div class="brand-error" id="brandError"></div>
+  <div class="brand-success" id="brandSuccess"></div>
+  <div class="brand-state" id="brandState" style="display:none"></div>
+
+  <span class="brand-label">Nombre comercial *</span>
+  <input type="text" class="brand-input" id="brandName" placeholder="HAY, Vitra, IKEA…" required maxlength="120">
+
+  <span class="brand-label">Razón social *</span>
+  <input type="text" class="brand-input" id="legalName" placeholder="Razón social registrada" required maxlength="160">
+
+  <div class="brand-row">
+    <div>
+      <span class="brand-label">CIF / NIF / VAT *</span>
+      <input type="text" class="brand-input" id="cifNif" placeholder="B12345678" required minlength="6" maxlength="32">
+    </div>
+    <div>
+      <span class="brand-label">Persona de contacto *</span>
+      <input type="text" class="brand-input" id="contactName" placeholder="Nombre y apellidos" required maxlength="120">
+    </div>
+  </div>
+
+  <div class="brand-row">
+    <div>
+      <span class="brand-label">Teléfono *</span>
+      <input type="tel" class="brand-input" id="phone" placeholder="+34 600 000 000" required minlength="6" maxlength="32">
+    </div>
+    <div>
+      <span class="brand-label">Web (opcional)</span>
+      <input type="url" class="brand-input" id="website" placeholder="https://tu-marca.com" maxlength="200">
+    </div>
+  </div>
+
+  <span class="brand-label">Logo (opcional)</span>
+  <div class="brand-logo-row">
+    <div class="brand-logo-preview empty" id="logoPreview"></div>
+    <div class="brand-logo-actions">
+      <input type="file" id="logoFile" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" style="display:none" onchange="handleLogoSelect(this)">
+      <button type="button" class="brand-btn-file" onclick="document.getElementById('logoFile').click()">Seleccionar logo</button>
+      <button type="button" class="brand-btn-file" id="logoClearBtn" style="display:none" onclick="clearLogo()">Quitar</button>
+    </div>
+  </div>
+
+  <span class="brand-label">Mensaje al admin (opcional)</span>
+  <textarea class="brand-textarea" id="message" placeholder="Notas o información adicional" maxlength="600"></textarea>
+
+  <button type="submit" class="brand-btn" id="submitBtn">Enviar solicitud</button>
+  <div class="brand-foot"><a href="/mi-cuenta/" class="brand-back">← Volver a Mi cuenta</a></div>
+</form>
+
+<script>
+var supabase=null,_currentUser=null,_existingApp=null,_logoFile=null,_existingLogoUrl=null;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/registro-marca/';
+      return;
+    }
+    supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/registro-marca/';
+      return;
+    }
+    _currentUser=s.data.session.user;
+    await loadExistingApplication();
+    document.getElementById('brandForm').style.display='block';
+  }catch(e){
+    console.error(e);
+    window.location.href='/login/?redirect=/registro-marca/';
+  }
+})();
+
+async function loadExistingApplication(){
+  var r=await supabase.from('brand_applications').select('*').eq('user_id',_currentUser.id).maybeSingle();
+  if(r.error||!r.data) return;
+  _existingApp=r.data;
+  // Pre-fill the form so the user can edit and resubmit.
+  document.getElementById('brandName').value=r.data.brand_name||'';
+  document.getElementById('legalName').value=r.data.legal_name||'';
+  document.getElementById('cifNif').value=r.data.cif_nif||'';
+  document.getElementById('contactName').value=r.data.contact_name||'';
+  document.getElementById('phone').value=r.data.phone||'';
+  document.getElementById('website').value=r.data.website||'';
+  document.getElementById('message').value=r.data.message||'';
+  if(r.data.logo_url){
+    _existingLogoUrl=r.data.logo_url;
+    var prev=document.getElementById('logoPreview');
+    prev.classList.remove('empty');
+    prev.innerHTML='<img src="'+r.data.logo_url+'" alt="Logo">';
+    document.getElementById('logoClearBtn').style.display='block';
+  }
+  // State banner
+  var state=document.getElementById('brandState');
+  if(r.data.status==='pending'){
+    state.innerHTML='<strong>Solicitud pendiente de revisión.</strong> Puedes editarla mientras siga pendiente — al guardar se sobrescriben los datos previos.';
+    state.style.display='block';
+    document.getElementById('submitBtn').textContent='Guardar cambios';
+  }else if(r.data.status==='rejected'){
+    state.innerHTML='<strong>Solicitud rechazada.</strong>'+(r.data.admin_notes?' Notas del admin: '+escHtml(r.data.admin_notes):'')+' Puedes corregir los datos y volver a enviarla.';
+    state.style.display='block';
+    document.getElementById('submitBtn').textContent='Volver a solicitar';
+  }else if(r.data.status==='approved'){
+    // Approved → user is already a brand. Send them home.
+    state.innerHTML='<strong>Tu marca ya está activa.</strong> Vuelve a Mi cuenta para gestionarla.';
+    state.style.display='block';
+    document.getElementById('submitBtn').style.display='none';
+  }
+}
+
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function handleLogoSelect(inp){
+  if(!inp.files||!inp.files[0]) return;
+  var f=inp.files[0];
+  if(!/^image\/(svg\+xml|png|jpe?g)$/.test(f.type)){alert('Tipo de archivo no soportado. Usa SVG, PNG o JPG.');return;}
+  if(f.size>2*1024*1024){alert('Logo demasiado grande (máximo 2 MB).');return;}
+  _logoFile=f;
+  var prev=document.getElementById('logoPreview');
+  prev.classList.remove('empty');
+  var url=URL.createObjectURL(f);
+  prev.innerHTML='<img src="'+url+'" alt="Logo">';
+  document.getElementById('logoClearBtn').style.display='block';
+}
+function clearLogo(){
+  _logoFile=null;_existingLogoUrl=null;
+  var prev=document.getElementById('logoPreview');
+  prev.classList.add('empty');
+  prev.innerHTML='';
+  document.getElementById('logoClearBtn').style.display='none';
+  document.getElementById('logoFile').value='';
+}
+
+async function uploadLogoIfNeeded(){
+  if(!_logoFile) return _existingLogoUrl||null;
+  var ext=(_logoFile.name.split('.').pop()||'png').toLowerCase();
+  if(['svg','png','jpg','jpeg'].indexOf(ext)<0) ext='png';
+  var path=_currentUser.id+'/logo.'+ext;
+  // Clean up any previous logo files for this user (single-logo convention).
+  ['svg','png','jpg','jpeg'].forEach(function(e){
+    if(e!==ext) supabase.storage.from('brand-logos').remove([_currentUser.id+'/logo.'+e]);
+  });
+  var up=await supabase.storage.from('brand-logos').upload(path,_logoFile,{upsert:true,cacheControl:'3600',contentType:_logoFile.type});
+  if(up.error) throw new Error('Error subiendo logo: '+up.error.message);
+  return supabase.storage.from('brand-logos').getPublicUrl(path).data.publicUrl;
+}
+
+async function submitBrand(e){
+  e.preventDefault();
+  var btn=document.getElementById('submitBtn');
+  var err=document.getElementById('brandError');
+  var suc=document.getElementById('brandSuccess');
+  err.style.display='none';suc.style.display='none';
+
+  var brand_name=document.getElementById('brandName').value.trim();
+  var legal_name=document.getElementById('legalName').value.trim();
+  var cif_nif=document.getElementById('cifNif').value.trim();
+  var contact_name=document.getElementById('contactName').value.trim();
+  var phone=document.getElementById('phone').value.trim();
+  var website=document.getElementById('website').value.trim();
+  var message=document.getElementById('message').value.trim();
+
+  if(!brand_name||!legal_name||!cif_nif||!contact_name||!phone){
+    err.textContent='Rellena todos los campos obligatorios.';err.style.display='block';return;
+  }
+  if(cif_nif.length<6){err.textContent='CIF/NIF demasiado corto.';err.style.display='block';return;}
+  if(phone.length<6){err.textContent='Teléfono demasiado corto.';err.style.display='block';return;}
+
+  btn.disabled=true;btn.textContent='Enviando…';
+  var logo_url=null;
+  try{
+    logo_url=await uploadLogoIfNeeded();
+  }catch(e2){
+    err.textContent=e2.message||'Error subiendo logo.';err.style.display='block';
+    btn.disabled=false;btn.textContent=_existingApp?'Guardar cambios':'Enviar solicitud';
+    return;
+  }
+  // Upsert: insert if first time, update if existing row (re-apply or edit
+  // pending). The unique(user_id) constraint keeps it to one row per user.
+  // status is forced back to 'pending' in case the row was 'rejected' before.
+  var payload={
+    user_id:_currentUser.id,
+    brand_name:brand_name,
+    legal_name:legal_name,
+    cif_nif:cif_nif,
+    contact_name:contact_name,
+    phone:phone,
+    website:website||null,
+    logo_url:logo_url,
+    message:message||null,
+    status:'pending'
+  };
+  // On a re-application after 'rejected', clear the prior review fields so
+  // the admin sees a clean pending row.
+  if(_existingApp&&_existingApp.status==='rejected'){
+    payload.admin_notes=null;
+    payload.reviewed_by=null;
+    payload.reviewed_at=null;
+  }
+  var res=await supabase.from('brand_applications').upsert(payload,{onConflict:'user_id'});
+  if(res.error){
+    err.textContent='Error guardando la solicitud: '+res.error.message;err.style.display='block';
+    btn.disabled=false;btn.textContent=_existingApp?'Guardar cambios':'Enviar solicitud';
+    return;
+  }
+  suc.textContent='Solicitud enviada. Te avisaremos por email cuando se revise.';suc.style.display='block';
+  btn.disabled=false;
+  setTimeout(function(){window.location.href='/mi-cuenta/?brand=submitted';},1200);
+}
+</script>
+
+</body>
+</html>

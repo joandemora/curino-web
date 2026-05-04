@@ -149,6 +149,12 @@ nav{
 .card-body{flex:1;overflow-y:auto}
 .card-footer{margin-top:auto;padding-top:1rem}
 .card-empty{color:var(--ink-mute);font-size:13px;padding:2rem 0;text-align:center}
+/* Brand card */
+.brand-state-pending{background:#fff8e1;color:#8a6d1c;border:1px solid #f0d97c;padding:.75rem .9rem;border-radius:8px;font-size:13px;margin-bottom:.75rem;line-height:1.4}
+.brand-state-rejected{background:#fef2f2;color:#a83232;border:1px solid #f5c2c2;padding:.75rem .9rem;border-radius:8px;font-size:13px;margin-bottom:.75rem;line-height:1.4}
+.brand-state-approved{background:#f0fdf4;color:#1d6f3d;border:1px solid #bce5cb;padding:.75rem .9rem;border-radius:8px;font-size:13px;margin-bottom:.75rem;line-height:1.4}
+.brand-state-empty{color:var(--ink-soft);font-size:13px;line-height:1.5;margin-bottom:1rem}
+.brand-applied-info{font-size:12px;color:var(--mid);margin-top:.5rem}
 
 /* CTA cards */
 .card-cta{text-decoration:none;color:var(--ink);position:relative;justify-content:center;align-items:center;text-align:center;transition:border-color .2s,box-shadow .2s;cursor:pointer}
@@ -409,7 +415,18 @@ footer{
       </div>
     </div>
 
-    <!-- Card 3: Configura tu armario -->
+    <!-- Card 3: Cuenta de marca (Marcas Fase 2) -->
+    <div class="account-card card-brand">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 21V11"/></svg>
+        <h2>Cuenta de marca</h2>
+      </div>
+      <div class="card-body" id="brandCard">
+        <div class="card-empty">Cargando…</div>
+      </div>
+    </div>
+
+    <!-- Card 4: Configura tu armario -->
     <a href="https://www.casacurino.com/configurador-armarios-vestidores/" class="account-card card-cta card-configurator">
       <div class="card-cta-icon">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -650,6 +667,84 @@ function initAccount(){
   loadProjects();
   loadAddresses();
   loadUserLogo();
+  loadBrandStatus();
+}
+
+// ── BRAND STATUS (Marcas Fase 2) ──
+// Reads user_roles + brand_applications and renders the right card content.
+// Phase 2 has no admin/brand panel yet — once approved, the link to the
+// future panel is shown disabled. The "submitted" toast triggers when the
+// user comes back from /registro-marca/?brand=submitted so they get
+// feedback even though the card was empty when they left.
+var _brandRole=null,_brandApp=null;
+function escHtmlMC(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function loadBrandStatus(){
+  if(!_supabase||!_currentUser){return;}
+  try{
+    var rr=await _supabase.from('user_roles').select('role,brand_name').eq('user_id',_currentUser.id).maybeSingle();
+    _brandRole=rr.data&&rr.data.role?rr.data.role:'user';
+    if(rr.data&&rr.data.brand_name) _brandApp={brandRoleName:rr.data.brand_name};
+  }catch(e){_brandRole='user';}
+  try{
+    var ra=await _supabase.from('brand_applications').select('*').eq('user_id',_currentUser.id).maybeSingle();
+    if(ra.data){_brandApp=Object.assign(_brandApp||{},ra.data);}
+  }catch(e){}
+  renderBrandCard();
+  // Surface a soft confirmation when redirected back from the form.
+  var qs=new URLSearchParams(window.location.search);
+  if(qs.get('brand')==='submitted'){
+    var card=document.getElementById('brandCard');
+    if(card){var msg=document.createElement('div');msg.className='brand-state-pending';msg.textContent='Solicitud enviada — pendiente de revisión.';card.insertBefore(msg,card.firstChild);}
+    // Clean the URL so a refresh doesn't replay the message.
+    history.replaceState(null,'','/mi-cuenta/');
+  }
+}
+function renderBrandCard(){
+  var el=document.getElementById('brandCard');
+  if(!el) return;
+  // Admin → short status, link disabled until Phase 3 ships the panel.
+  if(_brandRole==='admin'){
+    el.innerHTML=
+      '<div class="brand-state-approved"><strong>Cuenta admin</strong><br>Acceso completo al catálogo y gestión de marcas.</div>'+
+      '<button class="btn btn-outline btn-small" disabled style="opacity:.5;cursor:not-allowed">Panel admin (próximamente)</button>';
+    return;
+  }
+  // Brand role → already approved.
+  if(_brandRole==='brand'){
+    var bn=(_brandApp&&(_brandApp.brand_name||_brandApp.brandRoleName))||'tu marca';
+    el.innerHTML=
+      '<div class="brand-state-approved"><strong>Cuenta de marca activa: '+escHtmlMC(bn)+'</strong><br>Tus piezas están publicadas en el catálogo de Curino.</div>'+
+      '<button class="btn btn-outline btn-small" disabled style="opacity:.5;cursor:not-allowed">Panel marca (próximamente)</button>';
+    return;
+  }
+  // No application yet.
+  if(!_brandApp||(!_brandApp.status)){
+    el.innerHTML=
+      '<div class="brand-state-empty">¿Eres una marca de mobiliario o iluminación? Solicita una cuenta de marca para subir tus piezas al catálogo.</div>'+
+      '<a href="/registro-marca/" class="btn btn-primary btn-small">Registrarse como marca</a>';
+    return;
+  }
+  // Has application — branch on status.
+  if(_brandApp.status==='pending'){
+    var date=_brandApp.created_at?new Date(_brandApp.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
+    el.innerHTML=
+      '<div class="brand-state-pending"><strong>Solicitud pendiente</strong><br>Estamos revisando tu solicitud. Te avisaremos por email cuando esté lista.</div>'+
+      '<a href="/registro-marca/" class="btn btn-outline btn-small">Editar solicitud</a>'+
+      (date?'<div class="brand-applied-info">Enviada el '+date+'</div>':'');
+    return;
+  }
+  if(_brandApp.status==='rejected'){
+    el.innerHTML=
+      '<div class="brand-state-rejected"><strong>Solicitud rechazada</strong>'+(_brandApp.admin_notes?'<br>Notas: '+escHtmlMC(_brandApp.admin_notes):'')+'</div>'+
+      '<a href="/registro-marca/" class="btn btn-primary btn-small">Volver a solicitar</a>';
+    return;
+  }
+  if(_brandApp.status==='approved'){
+    // Approved in brand_applications but role not yet flipped. Fall back to a friendly message.
+    el.innerHTML=
+      '<div class="brand-state-approved"><strong>Solicitud aprobada</strong><br>Refresca la página para acceder al panel de marca.</div>';
+    return;
+  }
 }
 
 // ── USER LOGO (Supabase: user_logos table + user-logos bucket) ──
