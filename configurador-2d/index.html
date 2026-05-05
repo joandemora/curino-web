@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/js/catalog-helpers.js"></script>
+<script src="/assets/js/library-dxf.js"></script>
 <script src="/assets/js/dxf-tools.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -4684,6 +4685,9 @@ async function importDxfText(text,worldX,worldY,unitMmOverride,catalogItem){
     if(catalogItem.id) group.catalogItemId=catalogItem.id;
     if(catalogItem.name) group.catalogName=catalogItem.name;
     if(catalogItem.brand) group.catalogBrand=catalogItem.brand;
+    // Source tag persisted on the group so changeGroupView() knows whether
+    // to fetch a fresh signed URL (library) or use the snapshot (catalog).
+    if(catalogItem._source) group._source=catalogItem._source;
   }
   _modules.push(group);
   _sel.clear();_sel.add(_modules.length-1);
@@ -4944,6 +4948,7 @@ function finishInit(){
     var c=await r.json();
     if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
       _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+      window.SUPABASE_URL=c.supabaseUrl;
       var s=await _supabase.auth.getSession();
       if(s.data.session) _currentUser=s.data.session.user;
       if(_currentUser){await loadUserLogo();await loadUserRole();}
@@ -5232,6 +5237,11 @@ async function loadCatalog(){
       if(ab) return ab;
       return String(a.name||'').localeCompare(String(b.name||''));
     });
+    // Tag source so handleCatalogDrop / changeGroupView can route library
+    // items via the Edge Function (private bucket) and catalog items via
+    // direct fetch (public bucket). Mutating in place is fine — these
+    // objects are page-session-scoped and never re-saved to the DB.
+    _catalogItems.forEach(function(it){it._source='catalog';});
   }catch(e){
     console.error('catalog load',e);
     _catalogItems=null;
@@ -5264,6 +5274,8 @@ async function loadLibraryPanel(){
     _libraryItems=(r.data||[]).slice().sort(function(a,b){
       return String(a.name||'').localeCompare(String(b.name||''));
     });
+    // Tag source — see _catalogItems comment above.
+    _libraryItems.forEach(function(it){it._source='library';});
     renderLibraryPanel();
   }catch(e){
     console.error('library load',e);
@@ -5549,7 +5561,21 @@ async function handleCatalogDrop(item,worldX,worldY){
   document.body.style.cursor='wait';
   showToast('Cargando '+item.name+'…');
   try{
-    var resp=await fetch(url);
+    // Library: bucket privado → signed URL vía Edge Function.
+    // Catalog (Marcas): bucket público → fetch directo a la URL guardada.
+    var resp;
+    if(item._source==='library'){
+      // Auto-claim para items gratis: inserta una row en `purchases` para
+      // que can_download() devuelva true. La policy RLS valida en BD que
+      // el item esté published + price_cents=0. Items de pago saltan este
+      // paso y caerán en 403 — Fase D los manejará vía Stripe Checkout.
+      if(item.price_cents===0){
+        await LibraryDxf.ensureFreeLibraryClaim(item.id);
+      }
+      resp=await LibraryDxf.fetchLibraryItem(item.id,viewKey);
+    }else{
+      resp=await fetch(url);
+    }
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     document.body.style.cursor=prevCursor;
     if(/\.json(\?|$)/i.test(url)){
@@ -5595,6 +5621,9 @@ function importShapesAsGroup(data,worldX,worldY,catalogItem,viewKey){
     if(catalogItem.id) group.catalogItemId=catalogItem.id;
     if(catalogItem.name) group.catalogName=catalogItem.name;
     if(catalogItem.brand) group.catalogBrand=catalogItem.brand;
+    // Source tag persisted on the group so changeGroupView() knows whether
+    // to fetch a fresh signed URL (library) or use the snapshot (catalog).
+    if(catalogItem._source) group._source=catalogItem._source;
     // Multi-view metadata (skipped for legacy pieces with no views object).
     if(viewKey&&catalogItem.views&&typeof catalogItem.views==='object'){
       var available=window.CurinoCatalog?CurinoCatalog.getAvailableViewKeys(catalogItem):[viewKey];
@@ -5729,7 +5758,14 @@ async function changeGroupView(idx,newViewKey){
   if(m.catalogView===newViewKey) return;
   showToast('Cargando vista…');
   try{
-    var resp=await fetch(m.catalogViewUrls[newViewKey]);
+    // Library: snapshot URLs are stale (private bucket) → request a fresh
+    // signed URL each time. Catalog (Marcas): public bucket, snapshot is
+    // fine. Old groups saved before the _source tag landed have undefined
+    // source and fall through the catalog path — fine for catalog pieces,
+    // and library pieces in old saved projects can be re-inserted.
+    var resp=(m._source==='library')
+      ? await LibraryDxf.fetchLibraryItem(m.catalogItemId,newViewKey)
+      : await fetch(m.catalogViewUrls[newViewKey]);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     var data=await resp.json();
     if(!data||!Array.isArray(data.shapes)) throw new Error('Vista vacía');
