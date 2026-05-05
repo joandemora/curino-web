@@ -159,6 +159,94 @@
   // Slice raw shapes into a per-cluster shapes array with coords made
   // relative to that cluster's own bbox (so the resulting JSON can be
   // dropped at any world position). Returns {shapes,w,h}.
+  // Renders an array of shapes (in mm coords with bbox at the origin and
+  // size w×h) onto an offscreen <canvas> and returns a PNG Blob via
+  // canvas.toBlob. Used by the library-mode save flow to auto-generate a
+  // technical thumbnail of the "top" view. Renders only the line / arc /
+  // circle shapes the DXF parser produces — no fills, no text, no
+  // dimensions, no cotas. Black strokes (#222) on a solid white
+  // background, scaled to ~80% of the canvas with the shape centred.
+  // The configurador's own canvas renderer isn't reused here because it
+  // depends on the live world-coord transform + DPR / zoom plumbing of
+  // the active session — pulling that across modules would be a bigger
+  // surgery than this self-contained mini-renderer (~50 lines) and the
+  // shape repertoire emitted by the DXF parser is narrow (line / arc /
+  // circle only — splines are converted to polylines upstream).
+  function renderShapesToPngBlob(shapes,w,h,size){
+    return new Promise(function(resolve,reject){
+      try{
+        var canvas=document.createElement('canvas');
+        canvas.width=size; canvas.height=size;
+        var ctx=canvas.getContext('2d');
+        ctx.fillStyle='#fff';
+        ctx.fillRect(0,0,size,size);
+        if(!shapes||!shapes.length||!w||!h){
+          // Empty view: still emit a valid blank PNG so the upload path
+          // doesn't have to special-case missing thumbnails.
+          canvas.toBlob(function(b){b?resolve(b):reject(new Error('toBlob null'));},'image/png');
+          return;
+        }
+        var pad=size*0.1;
+        var inner=size-pad*2;
+        var scale=Math.min(inner/w, inner/h);
+        var offX=(size - w*scale)/2;
+        var offY=(size - h*scale)/2;
+        // World y-up → canvas y-down: flip the y axis.
+        function tx(x){return offX + x*scale;}
+        function ty(y){return size - (offY + y*scale);}
+        ctx.strokeStyle='#222';
+        ctx.lineWidth=1;
+        ctx.lineCap='round';
+        ctx.lineJoin='round';
+        shapes.forEach(function(s){
+          if(s.type==='shape_line'){
+            ctx.beginPath();
+            ctx.moveTo(tx(s.x1),ty(s.y1));
+            ctx.lineTo(tx(s.x2),ty(s.y2));
+            ctx.stroke();
+          }else if(s.type==='shape_circle'){
+            var cxw=s.x+s.w/2, cyw=s.y+s.h/2;
+            ctx.beginPath();
+            ctx.ellipse(tx(cxw),ty(cyw),(s.w/2)*scale,(s.h/2)*scale,0,0,2*Math.PI);
+            ctx.stroke();
+          }else if(s.type==='shape_arc'){
+            var dx=s.x2-s.x1, dy=s.y2-s.y1;
+            var chord=Math.sqrt(dx*dx+dy*dy)||1;
+            var halfC=chord/2;
+            var sag=Math.min(Math.abs(s.sagitta||0),halfC);
+            if(sag<0.5){
+              ctx.beginPath();
+              ctx.moveTo(tx(s.x1),ty(s.y1));
+              ctx.lineTo(tx(s.x2),ty(s.y2));
+              ctx.stroke();
+              return;
+            }
+            var arcR=(halfC*halfC)/(2*sag)+sag/2;
+            var midX=(s.x1+s.x2)/2, midY=(s.y1+s.y2)/2;
+            var nx=-dy/chord, ny=dx/chord;
+            var sign=(s.sagitta||1)>0?1:-1;
+            var dist=arcR-sag;
+            var ccx=midX-nx*sign*dist, ccy=midY-ny*sign*dist;
+            var a1=Math.atan2(s.y1-ccy,s.x1-ccx);
+            var a2=Math.atan2(s.y2-ccy,s.x2-ccx);
+            var span=a2-a1;
+            while(span<-Math.PI) span+=2*Math.PI;
+            while(span>Math.PI) span-=2*Math.PI;
+            ctx.beginPath();
+            for(var i=0;i<=30;i++){
+              var t=i/30, ang=a1+span*t;
+              var px=ccx+arcR*Math.cos(ang);
+              var py=ccy+arcR*Math.sin(ang);
+              if(i===0) ctx.moveTo(tx(px),ty(py));
+              else ctx.lineTo(tx(px),ty(py));
+            }
+            ctx.stroke();
+          }
+        });
+        canvas.toBlob(function(b){b?resolve(b):reject(new Error('toBlob null'));},'image/png');
+      }catch(e){reject(e);}
+    });
+  }
   function shapesFromCluster(allShapes,indices){
     if(indices.length===0) return null;
     var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -702,7 +790,39 @@
         payload.views=newViews;
         payload.dxf_url=topUrl||'';
         payload.thumbnail_url=item&&item.thumbnail_url||null;
+        // Library mode auto-generates a technical thumbnail from the
+        // "top" view shapes (or the first labelled view if no top).
+        // Best-effort: any failure (canvas, blob, upload) is logged and
+        // the save proceeds with whatever thumbnail_url was already
+        // assigned above. Catalog mode keeps using the optional
+        // thumbnail uploaded by the user — no auto-generation there.
+        if(libraryMode){
+          var thumbIdx=-1;
+          for(var ti=0;ti<labels.length;ti++){if(labels[ti]==='top'){thumbIdx=ti;break;}}
+          if(thumbIdx<0){
+            for(var tj=0;tj<labels.length;tj++){if(labels[tj]!=='ignore'){thumbIdx=tj;break;}}
+          }
+          if(thumbIdx>=0){
+            var thumbCluster=shapesFromCluster(parsedShapes,clusters[thumbIdx]);
+            if(thumbCluster){
+              try{
+                prog.textContent='Generando thumbnail…';
+                var thumbBlob=await renderShapesToPngBlob(thumbCluster.shapes,thumbCluster.w,thumbCluster.h,256);
+                var thumbPath=prefix+id+'_thumb.png';
+                var tup=await supabase.storage.from(THUMB_BUCKET).upload(thumbPath,thumbBlob,{upsert:true,contentType:'image/png'});
+                if(!tup.error){
+                  payload.thumbnail_url=supabase.storage.from(THUMB_BUCKET).getPublicUrl(thumbPath).data.publicUrl;
+                }else{
+                  console.warn('thumbnail upload',tup.error);
+                }
+              }catch(e){
+                console.warn('thumbnail generation',e);
+              }
+            }
+          }
+        }
       }
+      prog.textContent='Guardando…';
       var op=isEdit
         ?supabase.from(TABLE_NAME).update(payload).eq('id',id)
         :supabase.from(TABLE_NAME).insert(payload);
