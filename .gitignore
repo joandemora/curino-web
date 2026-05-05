@@ -6,3 +6,12 @@ Thumbs.db
 assets/video/Designers Curino.mp4
 assets/video/Luxury boiserie and bespoke doors.mp4
 assets/video/LANDING CURINO.mp4
+
+# Supabase CLI cache (project ref, refresh tokens, snapshots locales)
+supabase/.temp/
+
+# IDE settings (cada dev usa el suyo)
+.vscode/
+
+# npm registry config autogenerado
+**/.npmrc
