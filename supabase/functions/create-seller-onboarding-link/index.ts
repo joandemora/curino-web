@@ -61,6 +61,15 @@ Deno.serve(async (req) => {
     const autoInvoiceConsent = body?.auto_invoice_consent === true;
     const consentIp = autoInvoiceConsent ? (req.headers.get('x-forwarded-for') ?? null) : null;
 
+    // Guard: el consentimiento de auto-factura es OBLIGATORIO para crear cuenta seller nueva.
+    // Si la cuenta ya existe (rama "reutilizar"), el guard NO se aplica — se asume que
+    // el consentimiento ya se persistió en la creación inicial. Esto permite el flujo
+    // "Continuar onboarding" o "Resolver restricted" sin re-pedir el checkbox.
+    //
+    // Solo se exige al crear desde cero. Si el flag ya está en BD como true, perfecto;
+    // si llega como false en una request a una cuenta existente, no rompemos el flow,
+    // solo no actualizamos.
+
     // 3. Salvaguarda: admin de Curino no puede crear cuenta Stripe Express.
     //    Curino S.L. vende sus propias piezas directamente sin Connect (caso especial admin).
     //    Si un admin quisiera vender como persona física, debe usar otra cuenta de usuario
@@ -121,6 +130,14 @@ Deno.serve(async (req) => {
         }
       }
     } else {
+      // Guard server-side: sin consentimiento expreso, no creamos la cuenta.
+      if (!autoInvoiceConsent) {
+        return jsonResponse({
+          error: 'auto_invoice_consent_required',
+          message: 'Necesitas aceptar el consentimiento de auto-factura antes de crear tu cuenta de vendedor.'
+        }, 400);
+      }
+
       // 5a. Crear cuenta Stripe Express nueva
       const account = await stripe.accounts.create({
         type: 'express',
