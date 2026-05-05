@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuenta de vendedor — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh;font-size:14px;line-height:1.6}
+body.hidden-until-auth{visibility:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header (mismo patrón que /marca/) */
+.v-header{background:#111;color:#fff;padding:.85rem 1.5rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.v-header h1{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.v-header h1 .sub{opacity:.55;margin-left:.4rem;font-weight:300}
+.v-header nav{display:flex;gap:.5rem;align-items:center}
+.v-header nav a{color:#bbb;font-size:12px;padding:.4rem .7rem;border-radius:4px;transition:background .15s,color .15s}
+.v-header nav a:hover{color:#fff;background:rgba(255,255,255,.1);text-decoration:none}
+.v-header button{background:transparent;color:#bbb;border:1px solid #444;font-size:11px;padding:.35rem .7rem;border-radius:4px;cursor:pointer;font-family:var(--font);letter-spacing:.05em;text-transform:uppercase}
+.v-header button:hover{color:#fff;border-color:#666}
+
+.v-section{padding:2rem 1.5rem 4rem;max-width:780px;margin:0 auto}
+.v-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+
+/* Title */
+.v-title{font-size:26px;font-weight:300;margin-bottom:.4rem;letter-spacing:-.01em}
+.v-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:1.5rem}
+
+/* Cards / panels */
+.v-panel{background:#fff;border:1px solid var(--border);border-radius:8px;padding:1.5rem 1.75rem;margin-bottom:1.25rem}
+.v-panel h2{font-size:16px;font-weight:600;margin-bottom:.75rem}
+.v-panel p{margin-bottom:.85rem;color:var(--ink-soft)}
+.v-panel p:last-child{margin-bottom:0}
+
+/* Status badge */
+.v-badge{display:inline-block;padding:.25rem .65rem;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;margin-left:.5rem;vertical-align:middle}
+.v-badge.ok{background:#e8f5e9;color:#2e7d32}
+.v-badge.pending{background:#fff8e1;color:#8a6d1c}
+.v-badge.warn{background:#fde8e8;color:#a83232}
+
+/* Status detail rows (estado activo) */
+.v-info-rows{display:grid;grid-template-columns:auto 1fr;gap:.5rem 1.2rem;margin-top:.5rem}
+.v-info-rows .label{color:var(--mid);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.v-info-rows .value{color:var(--ink);font-size:14px}
+
+/* Notice (admin / restricted) */
+.v-notice{padding:1rem 1.25rem;border-radius:6px;margin-bottom:1rem;font-size:14px;line-height:1.5}
+.v-notice.info{background:#eef4ff;border-left:4px solid #4a7bd6;color:#1e3a6f}
+.v-notice.warn{background:#fff8e1;border-left:4px solid #ffa726;color:#8a5d00}
+
+/* Steps (estado nuevo) */
+.v-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin:1.25rem 0}
+.v-step{background:#fff;border:1px solid var(--border);border-radius:6px;padding:1rem .9rem;text-align:center}
+.v-step-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;margin-bottom:.6rem}
+.v-step-text{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
+@media(max-width:640px){
+  .v-steps{grid-template-columns:1fr}
+}
+
+/* Consent block */
+.v-consent{background:#fff;border:1px solid var(--border);border-radius:8px;padding:1.1rem 1.25rem;margin-bottom:1.25rem}
+.v-consent label{display:flex;gap:.7rem;cursor:pointer;font-size:13.5px;color:var(--ink);line-height:1.55}
+.v-consent input[type=checkbox]{flex-shrink:0;margin-top:3px;cursor:pointer;width:16px;height:16px;accent-color:var(--accent)}
+
+/* Buttons */
+.v-btn{display:inline-block;padding:.7rem 1.4rem;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;font-family:var(--font);letter-spacing:.03em;border:1px solid transparent;transition:opacity .15s,background .15s,border-color .15s;text-decoration:none}
+.v-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.v-btn-primary:hover{background:#333;border-color:#333;text-decoration:none}
+.v-btn-primary:disabled{background:#ccc;border-color:#ccc;color:#fff;cursor:not-allowed;opacity:.7}
+.v-btn-secondary{background:#fff;color:var(--ink);border-color:var(--border)}
+.v-btn-secondary:hover{border-color:var(--ink);text-decoration:none}
+.v-btn-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
+
+.v-error{background:#fde8e8;border-left:4px solid #a83232;color:#7a2424;padding:.75rem 1rem;border-radius:4px;margin-top:1rem;font-size:13px;display:none}
+.v-error.visible{display:block}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<header class="v-header">
+  <h1>Curino <span class="sub">Vendedor</span></h1>
+  <nav>
+    <a href="/mi-cuenta/">Mi cuenta</a>
+    <button onclick="vendorSignOut()">Cerrar sesión</button>
+  </nav>
+</header>
+
+<section class="v-section">
+  <div id="vRoot"><div class="v-loading">Cargando…</div></div>
+</section>
+
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var _supabase=null,_currentUser=null,_role=null,_status=null;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/cuenta/vendedor/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/cuenta/vendedor/';return;
+    }
+    _currentUser=s.data.session.user;
+
+    // Rol del usuario (saber si es admin → estado especial)
+    var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
+    _role=rr.data?rr.data.role:null;
+
+    // Estado de seller_account vía RPC (devuelve has_account, onboarding_status,
+    // charges_enabled, payouts_enabled, details_submitted, legal_name,
+    // business_type, country, auto_invoice_consent — añadidos en Bloque 1).
+    var sr=await _supabase.rpc('my_seller_status');
+    if(sr.error){
+      console.error('my_seller_status',sr.error);
+      _status=null;
+    }else{
+      // El RPC puede devolver una row directa o un array de 1; normalizamos.
+      _status=Array.isArray(sr.data)?(sr.data[0]||null):(sr.data||null);
+    }
+
+    document.body.classList.remove('hidden-until-auth');
+    render();
+  }catch(e){
+    console.error('vendedor bootstrap',e);
+    window.location.href='/login/?redirect=/cuenta/vendedor/';
+  }
+})();
+
+async function vendorSignOut(){
+  if(_supabase) await _supabase.auth.signOut();
+  window.location.href='/login/';
+}
+
+function render(){
+  var root=document.getElementById('vRoot');
+
+  // ESTADO 1: admin
+  if(_role==='admin'){
+    root.innerHTML=
+      '<h1 class="v-title">Cuenta de vendedor</h1>'+
+      '<div class="v-notice info">'+
+        '<strong>Modo administrador.</strong> Como administrador de Curino, vendes directamente sin necesidad de Stripe Express. Las piezas que subes desde el panel admin se procesan como ventas directas de Curino S.L.'+
+      '</div>'+
+      '<div class="v-panel">'+
+        '<p>No necesitas configurar nada aquí. Si quieres vender como persona física en el marketplace, debes usar una cuenta de usuario separada (otro email).</p>'+
+        '<div class="v-btn-row">'+
+          '<a class="v-btn v-btn-secondary" href="/admin/">Ir al panel admin</a>'+
+        '</div>'+
+      '</div>';
+    return;
+  }
+
+  var hasAccount=!!(_status&&_status.has_account);
+  var onboardingStatus=_status?_status.onboarding_status:null;
+  var chargesEnabled=!!(_status&&_status.charges_enabled);
+  var payoutsEnabled=!!(_status&&_status.payouts_enabled);
+  var detailsSubmitted=!!(_status&&_status.details_submitted);
+  var legalName=_status?_status.legal_name:null;
+  var businessType=_status?_status.business_type:null;
+  var country=_status?_status.country:null;
+
+  // ESTADO 5: cuenta restringida (revisión Stripe pendiente del usuario)
+  if(hasAccount&&onboardingStatus==='restricted'){
+    root.innerHTML=
+      '<h1 class="v-title">Cuenta de vendedor</h1>'+
+      '<div class="v-notice warn">'+
+        '<strong>Hay un problema con tu cuenta de Stripe que requiere atención.</strong> Stripe necesita información adicional para mantener tu cuenta activa.'+
+      '</div>'+
+      '<div class="v-panel">'+
+        '<p>Continúa en Stripe para resolver el problema. Mientras tanto tus piezas no podrán recibir pagos.</p>'+
+        '<div class="v-btn-row">'+
+          '<button class="v-btn v-btn-primary" onclick="continueOnboarding(this)">Resolver</button>'+
+        '</div>'+
+        '<div class="v-error" id="vErr"></div>'+
+      '</div>';
+    return;
+  }
+
+  // ESTADO 4: activo (charges_enabled = true)
+  if(hasAccount&&chargesEnabled){
+    root.innerHTML=
+      '<h1 class="v-title">Cuenta de vendedor <span class="v-badge ok">Activa</span></h1>'+
+      '<p class="v-subtitle">Ya puedes vender en el marketplace de Curino.</p>'+
+      '<div class="v-panel">'+
+        '<h2>Estado de la cuenta</h2>'+
+        '<div class="v-info-rows">'+
+          (legalName?'<div class="label">Nombre legal</div><div class="value">'+escHtml(legalName)+'</div>':'')+
+          (country?'<div class="label">País</div><div class="value">'+escHtml(country.toUpperCase())+'</div>':'')+
+          (businessType?'<div class="label">Tipo</div><div class="value">'+escHtml(businessType==='individual'?'Persona física':businessType==='company'?'Empresa':businessType)+'</div>':'')+
+          '<div class="label">Pagos</div><div class="value">'+(chargesEnabled?'Habilitados ✓':'No habilitados')+'</div>'+
+          '<div class="label">Transferencias</div><div class="value">'+(payoutsEnabled?'Habilitadas ✓':'No habilitadas')+'</div>'+
+        '</div>'+
+        '<div class="v-btn-row">'+
+          '<button class="v-btn v-btn-secondary" onclick="manageStripe()" title="Próximamente">Gestionar mi cuenta en Stripe</button>'+
+          '<a class="v-btn v-btn-primary" href="/cuenta/dibujos/">Subir dibujo nuevo</a>'+
+        '</div>'+
+      '</div>';
+    return;
+  }
+
+  // ESTADO 3: cuenta creada pero onboarding incompleto
+  if(hasAccount&&!detailsSubmitted){
+    root.innerHTML=
+      '<h1 class="v-title">Cuenta de vendedor <span class="v-badge pending">Pendiente</span></h1>'+
+      '<p class="v-subtitle">Tu cuenta de vendedor está pendiente de completar verificación con Stripe.</p>'+
+      '<div class="v-panel">'+
+        '<p>Stripe necesita verificar tu identidad y obtener tus datos fiscales/bancarios antes de poder activarte. Solo te llevará unos minutos.</p>'+
+        '<div class="v-btn-row">'+
+          '<button class="v-btn v-btn-primary" onclick="continueOnboarding(this)">Continuar verificación</button>'+
+        '</div>'+
+        '<div class="v-error" id="vErr"></div>'+
+      '</div>';
+    return;
+  }
+
+  // ESTADO 2: usuario regular sin cuenta seller — flujo de alta + consentimiento
+  root.innerHTML=
+    '<h1 class="v-title">Vende tus dibujos en Curino</h1>'+
+    '<p class="v-subtitle">Sube tus archivos DXF y véndelos a otros usuarios. Curino retiene el 30% como comisión y tú recibes el resto directamente en tu cuenta bancaria.</p>'+
+    '<div class="v-steps">'+
+      '<div class="v-step"><div class="v-step-num">1</div><div class="v-step-text">Verifica tu identidad con Stripe (DNI, IBAN, datos fiscales)</div></div>'+
+      '<div class="v-step"><div class="v-step-num">2</div><div class="v-step-text">Sube tus dibujos con precio (entre 1,50 € y 3,00 €)</div></div>'+
+      '<div class="v-step"><div class="v-step-num">3</div><div class="v-step-text">Recibe pagos automáticos al vender</div></div>'+
+    '</div>'+
+    '<div class="v-consent">'+
+      '<label><input type="checkbox" id="vConsent" onchange="onConsentChange()">'+
+        '<span>Acepto que <strong>Curino S.L.</strong> emita auto-facturas en mi nombre por las ventas que realice en el marketplace. Las facturas se emitirán a mi nombre con los datos que proporciono a Stripe. Esto me ahorra el trámite de emitir facturas manualmente por cada venta. Puedo revocar este consentimiento en cualquier momento contactando con <a href="mailto:info@casacurino.com">info@casacurino.com</a>.</span>'+
+      '</label>'+
+    '</div>'+
+    '<button class="v-btn v-btn-primary" id="vCta" onclick="startOnboarding(this)" disabled>Empezar a vender</button>'+
+    '<div class="v-error" id="vErr"></div>'+
+    '<p class="v-subtitle" style="margin-top:1.5rem;font-size:12px">Al continuar aceptas los <a href="/terminos-marketplace/" target="_blank">términos del marketplace</a>.</p>';
+}
+
+function onConsentChange(){
+  var cb=document.getElementById('vConsent');
+  var cta=document.getElementById('vCta');
+  if(cta) cta.disabled=!cb.checked;
+}
+
+function showError(msg){
+  var box=document.getElementById('vErr');
+  if(!box) return;
+  box.textContent=msg;
+  box.classList.add('visible');
+}
+
+async function startOnboarding(btn){
+  var cb=document.getElementById('vConsent');
+  if(!cb||!cb.checked){
+    showError('Marca el consentimiento de auto-factura para continuar.');
+    return;
+  }
+  await callOnboardingFunction(btn,{auto_invoice_consent:true});
+}
+
+async function continueOnboarding(btn){
+  // Reutiliza la cuenta existente; el flag de consentimiento solo se persiste
+  // si llega ahora y antes era false. Mandar true es seguro (el backend no
+  // sobreescribe a false si ya estaba a true).
+  await callOnboardingFunction(btn,{auto_invoice_consent:true});
+}
+
+async function callOnboardingFunction(btn,bodyObj){
+  if(btn) btn.disabled=true;
+  var prevText=btn?btn.textContent:'';
+  if(btn) btn.textContent='Conectando con Stripe…';
+
+  try{
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/cuenta/vendedor/';return;
+    }
+    var resp=await fetch(_supabase.supabaseUrl+'/functions/v1/create-seller-onboarding-link',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+s.data.session.access_token
+      },
+      body:JSON.stringify(bodyObj||{})
+    });
+    var data=await resp.json().catch(function(){return null;});
+    if(!resp.ok||!data||!data.url){
+      var msg=(data&&data.error)?data.error:('Error '+resp.status);
+      showError(msg);
+      if(btn){btn.disabled=false;btn.textContent=prevText;}
+      return;
+    }
+    window.location.href=data.url;
+  }catch(e){
+    console.error('onboarding',e);
+    showError('No se pudo conectar con Stripe. Inténtalo de nuevo en unos segundos.');
+    if(btn){btn.disabled=false;btn.textContent=prevText;}
+  }
+}
+
+function manageStripe(){
+  // Próximamente — Edge Function create-stripe-login-link en una fase posterior.
+  alert('Función de gestión en Stripe disponible próximamente. Mientras tanto, si necesitas modificar tu cuenta contacta con info@casacurino.com.');
+}
+</script>
+</body>
+</html>
