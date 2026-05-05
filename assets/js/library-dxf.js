@@ -78,9 +78,55 @@
     return fetch(signedUrl);
   }
 
+  /**
+   * Si el usuario logueado aún no ha "reclamado" este library_item gratis,
+   * inserta una row en purchases (user_id, library_item_id, order_id=null).
+   * Idempotente: la tabla tiene UNIQUE(user_id, library_item_id), así que
+   * inserts duplicados fallan silenciosamente con error 23505 que ignoramos.
+   *
+   * IMPORTANTE: solo llamar para items con price_cents === 0. La policy RLS
+   * "Users claim free library_items" valida en BD que el item esté published
+   * y sea gratis; este check en cliente es solo para no hacer round-trip
+   * inútil cuando el item es de pago.
+   *
+   * @param {string} itemId
+   * @returns {Promise<void>}
+   */
+  async function ensureFreeLibraryClaim(itemId) {
+    if (!itemId) {
+      throw new Error('library-dxf.ensureFreeLibraryClaim: itemId is required');
+    }
+    if (typeof _supabase === 'undefined' || !_supabase) {
+      throw new Error('library-dxf: _supabase client is not initialized');
+    }
+
+    const { data: { user }, error: userError } = await _supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('library-dxf: user is not authenticated');
+    }
+
+    const { error: insertError } = await _supabase
+      .from('purchases')
+      .insert({
+        user_id: user.id,
+        library_item_id: itemId,
+        order_id: null
+      });
+
+    if (insertError) {
+      // 23505 = unique violation = ya existía la row, todo OK
+      if (insertError.code === '23505') {
+        return;
+      }
+      // Cualquier otro error sí es problema
+      throw new Error('library-dxf.ensureFreeLibraryClaim failed: ' + (insertError.message || insertError.code));
+    }
+  }
+
   global.LibraryDxf = {
     getSignedUrl: getSignedUrl,
-    fetchLibraryItem: fetchLibraryItem
+    fetchLibraryItem: fetchLibraryItem,
+    ensureFreeLibraryClaim: ensureFreeLibraryClaim
   };
 
 })(typeof window !== 'undefined' ? window : globalThis);

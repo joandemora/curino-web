@@ -5563,9 +5563,19 @@ async function handleCatalogDrop(item,worldX,worldY){
   try{
     // Library: bucket privado → signed URL vía Edge Function.
     // Catalog (Marcas): bucket público → fetch directo a la URL guardada.
-    var resp=(item._source==='library')
-      ? await LibraryDxf.fetchLibraryItem(item.id,viewKey)
-      : await fetch(url);
+    var resp;
+    if(item._source==='library'){
+      // Auto-claim para items gratis: inserta una row en `purchases` para
+      // que can_download() devuelva true. La policy RLS valida en BD que
+      // el item esté published + price_cents=0. Items de pago saltan este
+      // paso y caerán en 403 — Fase D los manejará vía Stripe Checkout.
+      if(item.price_cents===0){
+        await LibraryDxf.ensureFreeLibraryClaim(item.id);
+      }
+      resp=await LibraryDxf.fetchLibraryItem(item.id,viewKey);
+    }else{
+      resp=await fetch(url);
+    }
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     document.body.style.cursor=prevCursor;
     if(/\.json(\?|$)/i.test(url)){
