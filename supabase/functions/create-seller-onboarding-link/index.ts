@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
           curino_user_id: user.id
         },
         tos_acceptance: {
-          service_agreement: 'recipient'
+          service_agreement: 'full'
         },
         settings: {
           payouts: {
