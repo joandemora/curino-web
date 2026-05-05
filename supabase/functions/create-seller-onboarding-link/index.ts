@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     //    el usuario marca el checkbox de auto-factura antes del CTA.
     const body = await req.json().catch(() => ({}));
     const autoInvoiceConsent = body?.auto_invoice_consent === true;
-    const consentIp = autoInvoiceConsent ? (req.headers.get('x-forwarded-for') ?? null) : null;
+    const consentIp = autoInvoiceConsent ? getClientIp(req) : null;
 
     // Guard: el consentimiento de auto-factura es OBLIGATORIO para crear cuenta seller nueva.
     // Si la cuenta ya existe (rama "reutilizar"), el guard NO se aplica — se asume que
@@ -216,4 +216,14 @@ function jsonResponse(body: unknown, status: number = 200): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   });
+}
+
+// Extraer solo la primera IP del header x-forwarded-for (puede venir con múltiples
+// IPs separadas por coma cuando hay proxies en cadena: "client, proxy1, proxy2").
+// Para auditoría legal del consentimiento queremos solo el cliente real.
+function getClientIp(req: Request): string | null {
+  const xff = req.headers.get('x-forwarded-for');
+  if (!xff) return null;
+  const firstIp = xff.split(',')[0]?.trim();
+  return firstIp || null;
 }
