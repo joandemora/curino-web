@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis dibujos en el marketplace — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh;font-size:14px;line-height:1.6}
+body.hidden-until-auth{visibility:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header (mismo patrón que /cuenta/vendedor/) */
+.v-header{background:#111;color:#fff;padding:.85rem 1.5rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.v-header h1{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.v-header h1 .sub{opacity:.55;margin-left:.4rem;font-weight:300}
+.v-header nav{display:flex;gap:.5rem;align-items:center}
+.v-header nav a{color:#bbb;font-size:12px;padding:.4rem .7rem;border-radius:4px;transition:background .15s,color .15s}
+.v-header nav a:hover{color:#fff;background:rgba(255,255,255,.1);text-decoration:none}
+.v-header button{background:transparent;color:#bbb;border:1px solid #444;font-size:11px;padding:.35rem .7rem;border-radius:4px;cursor:pointer;font-family:var(--font);letter-spacing:.05em;text-transform:uppercase}
+.v-header button:hover{color:#fff;border-color:#666}
+
+.v-section{padding:2rem 1.5rem 4rem;max-width:1100px;margin:0 auto}
+.v-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+
+.v-title{font-size:26px;font-weight:300;margin-bottom:.4rem;letter-spacing:-.01em}
+.v-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:1.5rem}
+
+.v-toprow{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem}
+.v-toprow .left{flex:1 1 auto;min-width:0}
+.v-toprow .left .v-title,.v-toprow .left .v-subtitle{margin-bottom:.2rem}
+
+/* Notice (estado seller no activo) */
+.v-notice{padding:1rem 1.25rem;border-radius:6px;margin-bottom:1rem;font-size:14px;line-height:1.5}
+.v-notice.warn{background:#fff8e1;border-left:4px solid #ffa726;color:#8a5d00}
+.v-notice.info{background:#eef4ff;border-left:4px solid #4a7bd6;color:#1e3a6f}
+
+.v-panel{background:#fff;border:1px solid var(--border);border-radius:8px;padding:1.5rem 1.75rem;margin-bottom:1.25rem}
+
+/* Buttons */
+.v-btn{display:inline-block;padding:.7rem 1.4rem;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;font-family:var(--font);letter-spacing:.03em;border:1px solid transparent;transition:opacity .15s,background .15s,border-color .15s;text-decoration:none}
+.v-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.v-btn-primary:hover{background:#333;border-color:#333;text-decoration:none}
+.v-btn-primary:disabled{background:#ccc;border-color:#ccc;color:#fff;cursor:not-allowed;opacity:.7}
+.v-btn-secondary{background:#fff;color:var(--ink);border-color:var(--border)}
+.v-btn-secondary:hover{border-color:var(--ink);text-decoration:none}
+.v-btn-danger{background:#fff;color:#a83232;border-color:#f4d3d3}
+.v-btn-danger:hover{background:#fde8e8;border-color:#e6a3a3;text-decoration:none}
+.v-btn-small{padding:.45rem .85rem;font-size:12px}
+
+/* Card grid */
+.v-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:900px){.v-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.v-cards{grid-template-columns:1fr}}
+
+.v-card{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.v-card-thumb{aspect-ratio:4/3;background:var(--bg);display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border)}
+.v-card-thumb svg{width:60%;max-width:140px;height:auto}
+.v-card-body{padding:.85rem 1rem 1rem;display:flex;flex-direction:column;flex:1}
+.v-card-name{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-card-desc{font-size:12.5px;color:var(--ink-soft);margin-bottom:.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
+.v-card-meta{display:flex;justify-content:space-between;align-items:center;margin:.4rem 0 .85rem}
+.v-card-price{font-size:13px;font-weight:600;color:var(--ink)}
+.v-card-actions{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:auto}
+.v-card-takedown-msg{font-size:12px;color:#a83232;background:#fde8e8;padding:.4rem .55rem;border-radius:4px;margin-top:.4rem}
+
+.v-badge{display:inline-block;padding:.2rem .55rem;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:3px}
+.v-badge.ok{background:#e8f5e9;color:#2e7d32}
+.v-badge.draft{background:#eceff1;color:#546e7a}
+.v-badge.warn{background:#fde8e8;color:#a83232}
+
+.v-empty{text-align:center;padding:3rem 1rem;color:var(--mid);font-size:13.5px}
+
+/* Modal */
+.v-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto}
+.v-overlay.open{display:flex}
+.v-modal{background:#fff;border-radius:10px;max-width:540px;width:100%;padding:1.5rem 1.75rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.v-modal h2{font-size:18px;font-weight:600;margin-bottom:1.1rem}
+.v-modal-row{margin-bottom:1.1rem}
+.v-modal-label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;font-weight:600}
+.v-modal input[type=text],.v-modal textarea{width:100%;padding:.6rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink);resize:none}
+.v-modal input[type=text]:focus,.v-modal textarea:focus{outline:none;border-color:var(--ink)}
+.v-modal textarea{min-height:80px}
+.v-counter{font-size:11px;color:var(--mid);text-align:right;margin-top:.2rem}
+
+/* File drop area */
+.v-drop{border:2px dashed var(--border);border-radius:8px;padding:1.5rem 1rem;text-align:center;background:var(--bg);cursor:pointer;transition:border-color .15s,background .15s}
+.v-drop:hover{border-color:var(--ink-soft)}
+.v-drop.dragover{border-color:var(--accent);background:#eef7ec}
+.v-drop-text{font-size:13px;color:var(--ink-soft)}
+.v-drop-text strong{color:var(--ink);font-weight:600}
+.v-drop-hint{font-size:11px;color:var(--mid);margin-top:.3rem}
+.v-drop-file{display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:#fff;border:1px solid var(--border);border-radius:6px;padding:.6rem .8rem;margin-top:.6rem;font-size:12.5px}
+.v-drop-file .name{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.v-drop-file .size{color:var(--mid);font-size:11px;flex-shrink:0}
+.v-drop-file .clear{background:none;border:none;color:var(--mid);font-size:18px;cursor:pointer;line-height:1;padding:0 .2rem}
+.v-drop-file .clear:hover{color:#a83232}
+
+/* Price radios */
+.v-prices{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem}
+.v-prices label{display:flex;align-items:center;justify-content:center;padding:.55rem .25rem;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:12.5px;font-weight:600;background:#fff;transition:border-color .15s,background .15s,color .15s;text-align:center}
+.v-prices label.checked{border-color:var(--ink);background:var(--ink);color:#fff}
+.v-prices input{display:none}
+@media(max-width:520px){.v-prices{grid-template-columns:repeat(3,1fr)}}
+
+.v-modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+
+.v-error{background:#fde8e8;border-left:4px solid #a83232;color:#7a2424;padding:.7rem 1rem;border-radius:4px;margin-top:.85rem;font-size:13px;display:none}
+.v-error.visible{display:block}
+
+/* Toast */
+.v-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:6px;font-size:13px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .25s}
+.v-toast.visible{opacity:1}
+.v-toast.success{background:var(--accent)}
+.v-toast.error{background:#a83232}
+
+/* Sub-section header */
+.v-sub-h{font-size:13px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin:1.5rem 0 .85rem}
+.v-sub-h:first-child{margin-top:0}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<header class="v-header">
+  <h1>Curino <span class="sub">Mis dibujos</span></h1>
+  <nav>
+    <a href="/cuenta/vendedor/">Cuenta vendedor</a>
+    <a href="/mi-cuenta/">Mi cuenta</a>
+    <button onclick="vendorSignOut()">Cerrar sesión</button>
+  </nav>
+</header>
+
+<section class="v-section">
+  <div id="vRoot"><div class="v-loading">Cargando…</div></div>
+</section>
+
+<!-- Modal subir / editar precio (mismo overlay reutilizado) -->
+<div class="v-overlay" id="vOverlay" onmousedown="onOverlayMouseDown(event)">
+  <div class="v-modal" id="vModal" onmousedown="event.stopPropagation()"></div>
+</div>
+
+<!-- Toast -->
+<div class="v-toast" id="vToast"></div>
+
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var _supabase=null,_currentUser=null,_role=null,_status=null,_items=[];
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/cuenta/vendedor/dibujos/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/cuenta/vendedor/dibujos/';return;
+    }
+    _currentUser=s.data.session.user;
+
+    var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
+    _role=rr.data?rr.data.role:null;
+
+    var sr=await _supabase.rpc('my_seller_status');
+    if(sr.error){
+      console.error('my_seller_status',sr.error);
+      _status=null;
+    }else{
+      _status=Array.isArray(sr.data)?(sr.data[0]||null):(sr.data||null);
+    }
+
+    document.body.classList.remove('hidden-until-auth');
+    await render();
+  }catch(e){
+    console.error('dibujos bootstrap',e);
+    window.location.href='/login/?redirect=/cuenta/vendedor/dibujos/';
+  }
+})();
+
+async function vendorSignOut(){
+  if(_supabase) await _supabase.auth.signOut();
+  window.location.href='/login/';
+}
+
+function isAdmin(){return _role==='admin';}
+function isSellerActive(){return !!(_status&&_status.charges_enabled);}
+
+// Placeholder SVG genérico para piezas DXF (no se generan previews PNG en C1)
+function dxfPlaceholderSvg(){
+  return '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
+    '<rect x="6" y="6" width="52" height="52" rx="3" fill="#fafaf7" stroke="#888" stroke-width="1.5"/>'+
+    '<line x1="14" y1="20" x2="50" y2="20" stroke="#cfcfcf" stroke-width="1"/>'+
+    '<line x1="14" y1="28" x2="38" y2="28" stroke="#cfcfcf" stroke-width="1"/>'+
+    '<line x1="14" y1="50" x2="50" y2="50" stroke="#cfcfcf" stroke-width="1"/>'+
+    '<text x="32" y="42" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#555">DXF</text>'+
+  '</svg>';
+}
+
+function fmtPrice(c){
+  if(c==null||c===0) return 'Gratis';
+  var euros=(c/100).toFixed(2).replace('.',',');
+  return euros+'€';
+}
+
+async function render(){
+  var root=document.getElementById('vRoot');
+
+  // ESTADO 1: no admin Y sin seller activo
+  if(!isAdmin()&&!isSellerActive()){
+    root.innerHTML=
+      '<h1 class="v-title">Mis dibujos en el marketplace</h1>'+
+      '<div class="v-notice warn">'+
+        'Para subir dibujos al marketplace primero tienes que completar tu cuenta de vendedor.'+
+      '</div>'+
+      '<div class="v-panel">'+
+        '<div class="v-btn-row" style="display:flex;gap:.6rem">'+
+          '<a class="v-btn v-btn-primary" href="/cuenta/vendedor/">Ir a mi cuenta de vendedor</a>'+
+        '</div>'+
+      '</div>';
+    return;
+  }
+
+  // ESTADO 2: admin O seller activo → listado
+  root.innerHTML=
+    '<div class="v-toprow">'+
+      '<div class="left">'+
+        '<h1 class="v-title">Mis dibujos en el marketplace</h1>'+
+        '<p class="v-subtitle">'+(isAdmin()?'Subes y vendes como Curino S.L.':'Sube tus DXF y véndelos a otros usuarios.')+'</p>'+
+      '</div>'+
+      '<button class="v-btn v-btn-primary" onclick="openUploadModal()">Subir nuevo dibujo</button>'+
+    '</div>'+
+    '<div id="vList"><div class="v-loading">Cargando piezas…</div></div>';
+
+  await loadItems();
+}
+
+async function loadItems(){
+  var list=document.getElementById('vList');
+  if(!list) return;
+
+  var r=await _supabase
+    .from('library_items')
+    .select('id,name,description,price_cents,status,taken_down_reason,created_at')
+    .eq('seller_id',_currentUser.id)
+    .neq('status','deleted')
+    .order('created_at',{ascending:false});
+
+  if(r.error){
+    list.innerHTML='<div class="v-notice warn">Error cargando piezas: '+escHtml(r.error.message)+'</div>';
+    return;
+  }
+  _items=r.data||[];
+
+  if(_items.length===0){
+    list.innerHTML='<div class="v-empty">Aún no has subido ningún dibujo. Pulsa "Subir nuevo dibujo" para empezar.</div>';
+    return;
+  }
+
+  // Agrupar por estado: published primero, draft, taken_down
+  var pub=_items.filter(function(it){return it.status==='published';});
+  var drafts=_items.filter(function(it){return it.status==='draft';});
+  var down=_items.filter(function(it){return it.status==='taken_down';});
+
+  var html='';
+  if(pub.length){
+    html+='<div class="v-sub-h">Publicados ('+pub.length+')</div>'+'<div class="v-cards">'+pub.map(renderCard).join('')+'</div>';
+  }
+  if(drafts.length){
+    html+='<div class="v-sub-h">Borradores ('+drafts.length+')</div>'+'<div class="v-cards">'+drafts.map(renderCard).join('')+'</div>';
+  }
+  if(down.length){
+    html+='<div class="v-sub-h">Retirados ('+down.length+')</div>'+'<div class="v-cards">'+down.map(renderCard).join('')+'</div>';
+  }
+  list.innerHTML=html;
+}
+
+function renderCard(it){
+  var badge='';
+  if(it.status==='published') badge='<span class="v-badge ok">Publicado</span>';
+  else if(it.status==='draft') badge='<span class="v-badge draft">Borrador</span>';
+  else if(it.status==='taken_down') badge='<span class="v-badge warn">Retirado</span>';
+
+  var actions='';
+  if(it.status==='published'){
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="onUnpublish(\''+it.id+'\')">Despublicar</button>';
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditPriceModal(\''+it.id+'\')">Editar precio</button>';
+    actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
+  }else if(it.status==='draft'){
+    actions+='<button class="v-btn v-btn-primary v-btn-small" onclick="onPublish(\''+it.id+'\')">Publicar</button>';
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditPriceModal(\''+it.id+'\')">Editar precio</button>';
+    actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
+  }else if(it.status==='taken_down'){
+    if(isAdmin()){
+      actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="onPublish(\''+it.id+'\')">Republicar</button>';
+      actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
+    }
+  }
+
+  var takedownMsg='';
+  if(it.status==='taken_down'&&it.taken_down_reason){
+    takedownMsg='<div class="v-card-takedown-msg">Esta pieza fue retirada: '+escHtml(it.taken_down_reason)+'</div>';
+  }
+
+  return ''+
+    '<div class="v-card">'+
+      '<div class="v-card-thumb">'+dxfPlaceholderSvg()+'</div>'+
+      '<div class="v-card-body">'+
+        '<div class="v-card-name" title="'+escHtml(it.name)+'">'+escHtml(it.name)+'</div>'+
+        '<div class="v-card-desc">'+escHtml(it.description||'Sin descripción')+'</div>'+
+        '<div class="v-card-meta">'+
+          '<span class="v-card-price">'+fmtPrice(it.price_cents)+'</span>'+
+          badge+
+        '</div>'+
+        takedownMsg+
+        (actions?'<div class="v-card-actions">'+actions+'</div>':'')+
+      '</div>'+
+    '</div>';
+}
+
+// ─── Modal infrastructure ────────────────────────────────────────────────────
+function showOverlay(){document.getElementById('vOverlay').classList.add('open');}
+function hideOverlay(){document.getElementById('vOverlay').classList.remove('open');}
+function onOverlayMouseDown(e){if(e.target.id==='vOverlay')hideOverlay();}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')hideOverlay();});
+
+function showToast(msg,kind){
+  var t=document.getElementById('vToast');
+  t.textContent=msg;
+  t.className='v-toast '+(kind||'')+' visible';
+  setTimeout(function(){t.classList.remove('visible');},3500);
+}
+
+// Mapping centralizado de error codes → mensajes en español
+function errorMessage(errorCode,fallback){
+  var map={
+    'auth_required':'Sesión expirada. Recarga la página e inicia sesión de nuevo.',
+    'invalid_uuid':'Datos no válidos. Revisa el formulario.',
+    'invalid_name':'El título no es válido (máximo 100 caracteres, no puede estar vacío).',
+    'invalid_description':'La descripción es demasiado larga (máximo 500 caracteres).',
+    'invalid_price':'El precio no es válido.',
+    'invalid_dxf_path':'Ruta de archivo no válida.',
+    'invalid_dxf_path_prefix':'Ruta de archivo no autorizada.',
+    'file_not_found':'Error al verificar el archivo. Inténtalo de nuevo.',
+    'seller_not_active':'Tu cuenta de vendedor no está activa para vender piezas de pago.',
+    'max_items_reached':'Ya tienes 5 piezas publicadas. Despublica una para subir otra.',
+    'insert_failed':'No se pudo registrar la pieza. Inténtalo de nuevo.',
+    'internal_error':'Error inesperado. Inténtalo de nuevo en unos segundos.',
+    'method_not_allowed':'Petición no válida.'
+  };
+  return map[errorCode]||fallback||'Error inesperado. Inténtalo de nuevo.';
+}
+
+// Mapping para errores de RPCs (vienen como error.message de PostgREST)
+function rpcErrorMessage(msg){
+  msg=String(msg||'').toLowerCase();
+  if(msg.includes('not_owner')) return 'No puedes modificar esta pieza.';
+  if(msg.includes('item_not_found')) return 'La pieza ya no existe.';
+  if(msg.includes('item_deleted')) return 'Esta pieza ya está eliminada.';
+  if(msg.includes('taken_down_cannot_republish')) return 'Esta pieza fue retirada por un administrador y solo un admin puede republicarla.';
+  if(msg.includes('invalid_status_transition')) return 'No se puede cambiar el estado de la pieza desde aquí.';
+  if(msg.includes('invalid_price')) return 'El precio no es válido (gratis o entre 1,50 € y 3,00 €).';
+  if(msg.includes('seller_not_active')) return 'Tu cuenta de vendedor no está activa para vender piezas de pago.';
+  if(msg.includes('has_purchases_cannot_delete')) return 'Esta pieza tiene compras registradas y no se puede eliminar. Solo se puede despublicar.';
+  if(msg.includes('maximum')||msg.includes('max_items')) return 'Ya tienes 5 piezas publicadas. Despublica una para publicar otra.';
+  if(msg.includes('active stripe connect')||msg.includes('paid_item')) return 'Tu cuenta de vendedor no está activa para vender piezas de pago.';
+  return 'Error: '+msg;
+}
+
+// ─── Upload modal ────────────────────────────────────────────────────────────
+var _uploadState={file:null,price:0};
+
+function openUploadModal(){
+  _uploadState={file:null,price:0};
+  var modal=document.getElementById('vModal');
+  modal.innerHTML=''+
+    '<h2>Subir nuevo dibujo</h2>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label">Archivo DXF</label>'+
+      '<div class="v-drop" id="uDrop" onclick="document.getElementById(\'uFile\').click()">'+
+        '<div class="v-drop-text"><strong>Arrastra tu .dxf</strong> o haz clic para seleccionar</div>'+
+        '<div class="v-drop-hint">Máximo 5 MB · solo formato .dxf</div>'+
+      '</div>'+
+      '<input type="file" id="uFile" accept=".dxf" style="display:none">'+
+      '<div id="uFileInfo"></div>'+
+    '</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="uName">Título</label>'+
+      '<input type="text" id="uName" maxlength="100" placeholder="Ej. Mesa de comedor extensible" oninput="onUploadInput()">'+
+      '<div class="v-counter"><span id="uNameCount">0</span>/100</div>'+
+    '</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="uDesc">Descripción (opcional)</label>'+
+      '<textarea id="uDesc" maxlength="500" placeholder="Describe brevemente tu pieza" oninput="onUploadInput()"></textarea>'+
+      '<div class="v-counter"><span id="uDescCount">0</span>/500</div>'+
+    '</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label">Precio</label>'+
+      buildPriceRadios('u',0)+
+    '</div>'+
+    '<div class="v-error" id="uErr"></div>'+
+    '<div class="v-modal-actions">'+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cancelar</button>'+
+      '<button class="v-btn v-btn-primary" id="uPublish" onclick="onPublishSubmit(this)" disabled>Publicar</button>'+
+    '</div>';
+
+  // Wire drop area
+  var drop=document.getElementById('uDrop');
+  var input=document.getElementById('uFile');
+  drop.ondragover=function(e){e.preventDefault();drop.classList.add('dragover');};
+  drop.ondragleave=function(){drop.classList.remove('dragover');};
+  drop.ondrop=function(e){
+    e.preventDefault();drop.classList.remove('dragover');
+    var f=e.dataTransfer.files&&e.dataTransfer.files[0];
+    if(f) handleFilePicked(f);
+  };
+  input.onchange=function(){
+    var f=input.files&&input.files[0];
+    if(f) handleFilePicked(f);
+  };
+
+  // Wire price radios
+  document.querySelectorAll('input[name=uPrice]').forEach(function(r){
+    r.onchange=function(){
+      _uploadState.price=parseInt(r.value,10);
+      document.querySelectorAll('.v-prices label').forEach(function(l){l.classList.remove('checked');});
+      r.parentElement.classList.add('checked');
+      onUploadInput();
+    };
+  });
+
+  showOverlay();
+}
+
+function buildPriceRadios(prefix,defaultCents){
+  var prices=[
+    {c:0,label:'Gratis'},
+    {c:150,label:'1,50€'},
+    {c:200,label:'2,00€'},
+    {c:250,label:'2,50€'},
+    {c:300,label:'3,00€'}
+  ];
+  return '<div class="v-prices">'+prices.map(function(p,i){
+    var checked=(p.c===defaultCents);
+    return '<label class="'+(checked?'checked':'')+'">'+
+      '<input type="radio" name="'+prefix+'Price" value="'+p.c+'" '+(checked?'checked':'')+'>'+
+      p.label+
+    '</label>';
+  }).join('')+'</div>';
+}
+
+function handleFilePicked(f){
+  var lower=f.name.toLowerCase();
+  if(!lower.endsWith('.dxf')){
+    showUploadError('Solo se aceptan archivos .dxf');
+    return;
+  }
+  if(f.size>5*1024*1024){
+    showUploadError('El archivo es demasiado grande (máximo 5 MB).');
+    return;
+  }
+  _uploadState.file=f;
+  hideUploadError();
+  var info=document.getElementById('uFileInfo');
+  if(info){
+    var sizeKb=(f.size/1024).toFixed(0);
+    info.innerHTML='<div class="v-drop-file">'+
+      '<span class="name">'+escHtml(f.name)+'</span>'+
+      '<span class="size">'+sizeKb+' KB</span>'+
+      '<button class="clear" onclick="clearFile()" title="Quitar archivo">&times;</button>'+
+    '</div>';
+  }
+  onUploadInput();
+}
+
+function clearFile(){
+  _uploadState.file=null;
+  var input=document.getElementById('uFile');if(input) input.value='';
+  var info=document.getElementById('uFileInfo');if(info) info.innerHTML='';
+  onUploadInput();
+}
+
+function onUploadInput(){
+  var name=(document.getElementById('uName')||{}).value||'';
+  var desc=(document.getElementById('uDesc')||{}).value||'';
+  var nc=document.getElementById('uNameCount');if(nc) nc.textContent=name.length;
+  var dc=document.getElementById('uDescCount');if(dc) dc.textContent=desc.length;
+  var btn=document.getElementById('uPublish');
+  if(btn){
+    var ok=!!_uploadState.file&&name.trim().length>=3;
+    btn.disabled=!ok;
+  }
+}
+
+function showUploadError(msg){
+  var box=document.getElementById('uErr');
+  if(!box) return;
+  box.textContent=msg;
+  box.classList.add('visible');
+}
+function hideUploadError(){
+  var box=document.getElementById('uErr');
+  if(!box) return;
+  box.classList.remove('visible');
+  box.textContent='';
+}
+
+async function onPublishSubmit(btn){
+  hideUploadError();
+  var name=document.getElementById('uName').value.trim();
+  var desc=document.getElementById('uDesc').value.trim();
+  var file=_uploadState.file;
+  var priceCents=_uploadState.price;
+  if(!file||name.length<3){showUploadError('Completa los campos obligatorios.');return;}
+
+  btn.disabled=true;
+  var prevText=btn.textContent;
+  btn.textContent='Subiendo…';
+
+  var uuid=(crypto.randomUUID?crypto.randomUUID():('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);})));
+  var dxfPath=_currentUser.id+'/'+uuid+'.dxf';
+
+  try{
+    // 1. Subir archivo a Storage
+    var up=await _supabase.storage.from('library-dxfs').upload(dxfPath,file,{contentType:'application/dxf',upsert:false});
+    if(up.error){
+      showUploadError('Error al subir el archivo: '+up.error.message);
+      btn.disabled=false;btn.textContent=prevText;
+      return;
+    }
+
+    // 2. Llamar Edge Function publish-library-item
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/cuenta/vendedor/dibujos/';return;
+    }
+    var resp=await fetch(_supabase.supabaseUrl+'/functions/v1/publish-library-item',{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+s.data.session.access_token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({uuid:uuid,name:name,description:desc||null,price_cents:priceCents,dxf_path:dxfPath})
+    });
+    var data=await resp.json().catch(function(){return null;});
+
+    if(!resp.ok||!data||data.error){
+      // La Edge Function ya hace cleanup del archivo si falla a partir del paso de file_not_found.
+      // Para errores anteriores (file_not_found, invalid_*) hacemos cleanup nosotros también
+      // para asegurar idempotencia; storage.remove() es seguro si el archivo no existe.
+      try{await _supabase.storage.from('library-dxfs').remove([dxfPath]);}catch(_){}
+      var code=data&&data.error?data.error:('http_'+resp.status);
+      showUploadError(errorMessage(code));
+      btn.disabled=false;btn.textContent=prevText;
+      return;
+    }
+
+    // 3. Éxito
+    hideOverlay();
+    showToast('Dibujo publicado correctamente.','success');
+    await loadItems();
+  }catch(e){
+    console.error('publish',e);
+    try{await _supabase.storage.from('library-dxfs').remove([dxfPath]);}catch(_){}
+    showUploadError('Error inesperado: '+(e?.message||'desconocido'));
+    btn.disabled=false;btn.textContent=prevText;
+  }
+}
+
+// ─── Edit price modal ────────────────────────────────────────────────────────
+function openEditPriceModal(itemId){
+  var it=_items.find(function(x){return x.id===itemId;});
+  if(!it) return;
+  var defaultPrice=it.price_cents||0;
+  var modal=document.getElementById('vModal');
+  modal.innerHTML=''+
+    '<h2>Editar precio · '+escHtml(it.name)+'</h2>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label">Precio</label>'+
+      buildPriceRadios('e',defaultPrice)+
+    '</div>'+
+    '<div class="v-error" id="eErr"></div>'+
+    '<div class="v-modal-actions">'+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cancelar</button>'+
+      '<button class="v-btn v-btn-primary" id="eSubmit" onclick="onEditPriceSubmit(\''+itemId+'\',this)">Guardar</button>'+
+    '</div>';
+  document.querySelectorAll('input[name=ePrice]').forEach(function(r){
+    r.onchange=function(){
+      document.querySelectorAll('.v-prices label').forEach(function(l){l.classList.remove('checked');});
+      r.parentElement.classList.add('checked');
+    };
+  });
+  showOverlay();
+}
+
+async function onEditPriceSubmit(itemId,btn){
+  var sel=document.querySelector('input[name=ePrice]:checked');
+  if(!sel) return;
+  var newPrice=parseInt(sel.value,10);
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Guardando…';
+  var r=await _supabase.rpc('update_library_item_price',{p_item_id:itemId,p_new_price_cents:newPrice});
+  if(r.error){
+    var box=document.getElementById('eErr');
+    if(box){box.textContent=rpcErrorMessage(r.error.message);box.classList.add('visible');}
+    btn.disabled=false;btn.textContent=prev;
+    return;
+  }
+  hideOverlay();
+  showToast('Precio actualizado.','success');
+  await loadItems();
+}
+
+// ─── Acciones de card ────────────────────────────────────────────────────────
+async function onPublish(itemId){
+  var r=await _supabase.rpc('publish_library_item',{p_item_id:itemId});
+  if(r.error){
+    showToast(rpcErrorMessage(r.error.message),'error');
+    return;
+  }
+  showToast('Pieza publicada.','success');
+  await loadItems();
+}
+
+async function onUnpublish(itemId){
+  if(!confirm('¿Seguro que quieres despublicar esta pieza? Dejará de aparecer en la biblioteca.')) return;
+  var r=await _supabase.rpc('unpublish_library_item',{p_item_id:itemId});
+  if(r.error){
+    showToast(rpcErrorMessage(r.error.message),'error');
+    return;
+  }
+  showToast('Pieza despublicada.','success');
+  await loadItems();
+}
+
+async function onDelete(itemId){
+  if(!confirm('¿Eliminar esta pieza definitivamente? Si tiene compras registradas, no se podrá eliminar.')) return;
+  var r=await _supabase.rpc('delete_library_item',{p_item_id:itemId});
+  if(r.error){
+    var msg=rpcErrorMessage(r.error.message);
+    // Si es por compras, mostrar alert (más visible que toast)
+    if(String(r.error.message||'').toLowerCase().includes('has_purchases')){
+      alert(msg);
+    }else{
+      showToast(msg,'error');
+    }
+    return;
+  }
+  showToast('Pieza eliminada.','success');
+  await loadItems();
+}
+</script>
+</body>
+</html>
