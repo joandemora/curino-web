@@ -5270,7 +5270,7 @@ async function loadLibraryPanel(){
     _libraryLoading=false;return;
   }
   try{
-    var r=await _supabase.from('library_items').select('*').eq('active',true);
+    var r=await _supabase.from('library_items').select('*').eq('status','published');
     if(r.error) throw r.error;
     _libraryItems=(r.data||[]).slice().sort(function(a,b){
       return String(a.name||'').localeCompare(String(b.name||''));
