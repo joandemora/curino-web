@@ -4988,6 +4988,24 @@ function finishInit(){
   var params=new URLSearchParams(window.location.search);
   var pid=params.get('project');
 
+  // Fase D: detectar retorno desde Stripe Checkout. La success_url
+  // adjunta ?purchase_completed=<item_id>; la cancel_url adjunta
+  // ?purchase_cancelled=<item_id>. Mostrar toast e invalidar la cache
+  // de Biblioteca para que la pieza recién comprada aparezca al expandir.
+  var purchaseCompleted=params.get('purchase_completed');
+  var purchaseCancelled=params.get('purchase_cancelled');
+  if(purchaseCompleted){
+    showToast('Compra completada. La pieza ya está disponible en tu biblioteca.','success');
+    _libraryItems=null;
+    // Limpiar el query param para que un refresh no repita el toast.
+    var cleanUrl=window.location.pathname+(pid?('?project='+encodeURIComponent(pid)):'');
+    window.history.replaceState({},'',cleanUrl);
+  }else if(purchaseCancelled){
+    showToast('Compra cancelada','error');
+    var cleanUrl2=window.location.pathname+(pid?('?project='+encodeURIComponent(pid)):'');
+    window.history.replaceState({},'',cleanUrl2);
+  }
+
   if(pid&&_supabase&&_currentUser){
     // Load project from Supabase
     var result=await _supabase.from('projects').select('*').eq('id',pid).single();
@@ -5591,16 +5609,26 @@ function insertCatalogItemAtViewportCenter(item){
   handleCatalogDrop(item,wx,wy);
 }
 // Modal de gate de compra para piezas de pago del marketplace. Inyectado
-// dinámicamente porque es un caso aislado y queremos que sea fácil evolucionar
-// en Fase D (cuando los botones cambien a "Comprar" + "Cancelar"). Coherente
-// con la paleta del configurador (var(--ink), var(--bg), var(--border)).
+// dinámicamente. Coherente con la paleta del configurador.
+//
+// Fase D: el caso 'purchase_required' tiene botón "Comprar por X €" que
+// llama a la Edge Function create-checkout-session y redirige a Stripe.
 function showPurchaseGateMessage(opts){
   var type=opts.type;
+  var itemId=opts.itemId||null;
   var itemName=opts.itemName||'Esta pieza';
   var priceCents=opts.priceCents||0;
   var priceFmt=(priceCents/100).toFixed(2).replace('.',',')+' €';
 
-  var title, msg, primary='Entendido', secondaryHref=null, secondaryLabel=null;
+  var title, msg;
+  // primary: botón principal (oscuro, derecha). secondary: botón izquierdo
+  // (claro). En 'purchase_required' invertimos: "Comprar" es primary y
+  // "Cancelar" es secondary.
+  var primaryLabel='Entendido';
+  var primaryAction='close'; // 'close' | 'login' | 'checkout'
+  var secondaryLabel=null;
+  var secondaryHref=null;
+
   if(type==='login_required'){
     title='Inicia sesión';
     msg='Inicia sesión para acceder a las piezas del marketplace.';
@@ -5609,24 +5637,29 @@ function showPurchaseGateMessage(opts){
   }else if(type==='check_failed'){
     title='No se pudo verificar';
     msg='No se ha podido verificar el acceso a esta pieza. Inténtalo de nuevo en un momento.';
-  }else{ // 'purchase_required' (default)
-    title='Compra no disponible aún';
-    msg=_escHtml(itemName)+' estará disponible para compra próximamente. Pronto podrás comprarla por '+priceFmt+'.';
+  }else{ // 'purchase_required'
+    title='Comprar pieza';
+    msg='Adquiere <strong>'+_escHtml(itemName)+'</strong> por '+priceFmt+' (IVA incluido). Tras pagar, la pieza queda disponible en tu biblioteca.';
+    primaryLabel='Comprar por '+priceFmt;
+    primaryAction='checkout';
+    secondaryLabel='Cancelar';
   }
 
   // Build overlay
   var ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:1rem';
   var modal=document.createElement('div');
-  modal.style.cssText='background:#fff;border-radius:8px;max-width:420px;width:100%;padding:1.5rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:var(--font)';
+  modal.style.cssText='background:#fff;border-radius:8px;max-width:440px;width:100%;padding:1.5rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:var(--font)';
   modal.innerHTML=
     '<h3 style="font-size:18px;font-weight:600;margin:0 0 .6rem;color:var(--ink,#1a1a1a)">'+_escHtml(title)+'</h3>'+
     '<p style="font-size:14px;line-height:1.5;color:#555;margin:0 0 1.25rem">'+msg+'</p>'+
     '<div style="display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap">'+
       (secondaryHref
         ? '<a href="'+secondaryHref+'" style="display:inline-block;padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #e5e5e5;background:#fff;color:#1a1a1a;text-decoration:none">'+_escHtml(secondaryLabel)+'</a>'
-        : '')+
-      '<button id="_pgClose" style="padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:var(--font)">'+_escHtml(primary)+'</button>'+
+        : (secondaryLabel
+            ? '<button id="_pgCancel" style="padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #e5e5e5;background:#fff;color:#1a1a1a;cursor:pointer;font-family:var(--font)">'+_escHtml(secondaryLabel)+'</button>'
+            : ''))+
+      '<button id="_pgPrimary" style="padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:var(--font)">'+_escHtml(primaryLabel)+'</button>'+
     '</div>';
   ov.appendChild(modal);
   document.body.appendChild(ov);
@@ -5636,9 +5669,73 @@ function showPurchaseGateMessage(opts){
     document.removeEventListener('keydown',onKey,true);
   }
   function onKey(e){if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}}
-  modal.querySelector('#_pgClose').onclick=close;
+
+  var primaryBtn=modal.querySelector('#_pgPrimary');
+  primaryBtn.onclick=async function(){
+    if(primaryAction==='checkout'){
+      if(!itemId){close();showToast('Item no identificado','error');return;}
+      primaryBtn.disabled=true;
+      primaryBtn.textContent='Conectando con Stripe…';
+      try{
+        await startMarketplaceCheckout(itemId);
+        // startMarketplaceCheckout redirige; si vuelve es que falló.
+      }catch(e){
+        primaryBtn.disabled=false;
+        primaryBtn.textContent=primaryLabel;
+      }
+    }else{
+      close();
+    }
+  };
+  var cancelBtn=modal.querySelector('#_pgCancel');
+  if(cancelBtn) cancelBtn.onclick=close;
   ov.addEventListener('mousedown',function(e){if(e.target===ov) close();});
   document.addEventListener('keydown',onKey,true);
+}
+
+// Llama a la Edge Function create-checkout-session y, si OK, redirige a
+// Stripe Checkout. El comprador vuelve a /configurador-2d/ con
+// ?purchase_completed=<item_id> tras pagar (success_url) o
+// ?purchase_cancelled=<item_id> si abandona (cancel_url).
+async function startMarketplaceCheckout(itemId){
+  if(!_supabase||!_currentUser){
+    showToast('Inicia sesión para comprar','error');return;
+  }
+  var s=await _supabase.auth.getSession();
+  if(!s.data.session){showToast('Sesión expirada','error');return;}
+  var fnUrl=(window.SUPABASE_URL||_supabase.supabaseUrl)+'/functions/v1/create-checkout-session';
+  var resp=await fetch(fnUrl,{
+    method:'POST',
+    headers:{
+      'Authorization':'Bearer '+s.data.session.access_token,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({item_id:itemId})
+  });
+  var data=await resp.json().catch(function(){return null;});
+  if(!resp.ok||!data||!data.url){
+    var code=data&&data.error?data.error:('http_'+resp.status);
+    var msg=_checkoutErrorMessage(code);
+    showToast(msg,'error');
+    throw new Error(msg);
+  }
+  window.location.href=data.url;
+}
+
+function _checkoutErrorMessage(code){
+  var map={
+    'auth_required':'Sesión expirada. Recarga la página.',
+    'invalid_item_id':'Pieza no identificada.',
+    'item_not_found':'La pieza ya no existe.',
+    'item_not_available':'Esta pieza no está disponible.',
+    'item_is_free':'Esta pieza es gratuita; no necesitas comprarla.',
+    'cannot_buy_own_item':'No puedes comprar tu propia pieza.',
+    'already_purchased':'Ya has comprado esta pieza.',
+    'seller_cannot_receive_payments':'El vendedor no puede recibir pagos en este momento.',
+    'method_not_allowed':'Petición no válida.',
+    'internal_error':'Error inesperado. Inténtalo de nuevo en unos segundos.'
+  };
+  return map[code]||'Error inesperado: '+(code||'desconocido');
 }
 
 // Maps the catalog row's default_unit string ('mm', 'cm', 'm', 'in', 'ft')
@@ -5681,7 +5778,7 @@ async function handleCatalogDrop(item,worldX,worldY){
         return;
       }
       if(!hp.data){
-        showPurchaseGateMessage({type:'purchase_required',itemName:item.name,priceCents:item.price_cents});
+        showPurchaseGateMessage({type:'purchase_required',itemId:item.id,itemName:item.name,priceCents:item.price_cents});
         return;
       }
     }
