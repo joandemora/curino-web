@@ -177,6 +177,34 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-saved-del{width:18px;height:18px;background:none;border:none;color:var(--mid);font-size:14px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%;transition:color .15s}
 .c2d-saved-card:hover .c2d-saved-del{display:flex}
 .c2d-saved-del:hover{color:#dc2626}
+.c2d-saved-publish{width:20px;height:20px;background:none;border:none;color:var(--mid);font-size:13px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%;transition:color .15s,background .15s}
+.c2d-saved-card:hover .c2d-saved-publish{display:flex}
+.c2d-saved-publish:hover{color:#2e7d32;background:#e8f5e9}
+/* Marketplace publish modal */
+.c2d-mp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:none;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto;font-family:var(--font)}
+.c2d-mp-overlay.open{display:flex}
+.c2d-mp-modal{background:#fff;border-radius:8px;max-width:520px;width:100%;padding:1.5rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.c2d-mp-modal h2{font-size:18px;font-weight:600;margin:0 0 1.1rem;color:#1a1a1a}
+.c2d-mp-row{margin-bottom:1.1rem}
+.c2d-mp-label{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;font-weight:600}
+.c2d-mp-modal input[type=text],.c2d-mp-modal textarea,.c2d-mp-modal select{width:100%;padding:.6rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:#1a1a1a;resize:none}
+.c2d-mp-modal input[type=text]:focus,.c2d-mp-modal textarea:focus,.c2d-mp-modal select:focus{outline:none;border-color:#1a1a1a}
+.c2d-mp-modal textarea{min-height:70px}
+.c2d-mp-counter{font-size:11px;color:#888;text-align:right;margin-top:.2rem}
+.c2d-mp-prices{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem}
+.c2d-mp-prices label{display:flex;align-items:center;justify-content:center;padding:.55rem .25rem;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:12.5px;font-weight:600;background:#fff;text-align:center;transition:border-color .15s,background .15s,color .15s}
+.c2d-mp-prices label.checked{border-color:#1a1a1a;background:#1a1a1a;color:#fff}
+.c2d-mp-prices input{display:none}
+@media(max-width:520px){.c2d-mp-prices{grid-template-columns:repeat(3,1fr)}}
+.c2d-mp-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+.c2d-mp-btn{padding:.6rem 1.2rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;transition:opacity .15s,background .15s,border-color .15s}
+.c2d-mp-btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.c2d-mp-btn-primary:hover{background:#333;border-color:#333}
+.c2d-mp-btn-primary:disabled{background:#ccc;border-color:#ccc;cursor:not-allowed;opacity:.7}
+.c2d-mp-btn-secondary{background:#fff;color:#1a1a1a;border-color:var(--border)}
+.c2d-mp-btn-secondary:hover{border-color:#1a1a1a}
+.c2d-mp-error{background:#fde8e8;border-left:4px solid #a83232;color:#7a2424;padding:.7rem 1rem;border-radius:4px;margin-top:.85rem;font-size:13px;display:none}
+.c2d-mp-error.visible{display:block}
 /* Saved-drawing folders (flat, single level) */
 .c2d-folder-new{width:100%;padding:6px;border:1px dashed var(--mid);background:transparent;border-radius:4px;cursor:pointer;font-size:11px;color:var(--mid);margin-bottom:.6rem}
 .c2d-folder-new:hover{border-color:var(--black);color:var(--black)}
@@ -6062,6 +6090,9 @@ function startSaveDrawingInline(groupSnapshot,thumb){
 // time loadSavedDrawings runs.
 var _savedFolders=[];
 var _savedDrawingsList=[];
+// Cache: \u00BFel user actual puede publicar piezas al marketplace?
+// Calculado al cargar el panel; admin pasa siempre, otros v\u00EDa RPC is_seller_active.
+var _canPublishToMarketplace=false;
 async function loadSavedDrawings(){
   var body=document.getElementById('savedDrawingsBody');
   if(!_supabase||!_currentUser){
@@ -6069,14 +6100,19 @@ async function loadSavedDrawings(){
     return;
   }
   body.innerHTML='<div class="c2d-saved-msg">Cargando...</div>';
-  // Two queries in parallel \u2014 folders are cheap, no need to serialize.
+  // Three queries in parallel \u2014 folders, drawings, and marketplace eligibility.
   var foldersP=_supabase.from('saved_drawing_folders').select('*').eq('user_id',_currentUser.id).order('name');
   var drawingsP=_supabase.from('saved_drawings').select('*').eq('user_id',_currentUser.id).order('created_at',{ascending:false});
-  var resF=await foldersP, resD=await drawingsP;
+  // Admin pasa siempre; el resto necesita seller activo (Stripe Connect onboarding done).
+  var canPublishP=(_userRole==='admin')
+    ? Promise.resolve({data:true,error:null})
+    : _supabase.rpc('is_seller_active',{uid:_currentUser.id});
+  var resF=await foldersP, resD=await drawingsP, resP=await canPublishP;
   if(resD.error){body.innerHTML='<div class="c2d-saved-msg">Error al cargar</div>';return;}
   // Folders error is non-fatal (e.g. SQL not yet executed) \u2014 fall back to flat.
   _savedFolders=(resF&&!resF.error&&resF.data)?resF.data:[];
   _savedDrawingsList=resD.data||[];
+  _canPublishToMarketplace=!!(resP&&!resP.error&&resP.data===true);
   renderSavedDrawingsPanel();
   _savedDrawingsLoaded=true;
 }
@@ -6088,13 +6124,26 @@ function buildSavedCard(row){
   card.draggable=true;
   card.dataset.savedId=row.id;
   var img=row.thumbnail?'<img class="c2d-saved-thumb" draggable="false" src="'+row.thumbnail+'"/>':'<div class="c2d-saved-thumb"></div>';
-  card.innerHTML=img+'<span class="c2d-saved-name">'+_escHtml(row.name||'')+'</span><button class="c2d-saved-del" title="Eliminar">&times;</button>';
+  // Botón "Publicar al marketplace" solo si el user es admin o seller activo.
+  var publishBtn=_canPublishToMarketplace
+    ? '<button class="c2d-saved-publish" title="Publicar al marketplace">↑</button>'
+    : '';
+  card.innerHTML=img+'<span class="c2d-saved-name">'+_escHtml(row.name||'')+'</span>'+publishBtn+'<button class="c2d-saved-del" title="Eliminar">&times;</button>';
   // Inline-confirm wiring. Stop the card's own mousedown propagation so
   // the dragstart / panel handlers don't get triggered when the user
   // aims at the X button instead of the card body.
   var delBtn=card.querySelector('.c2d-saved-del');
   delBtn.addEventListener('mousedown',function(e){e.stopPropagation();});
   attachInlineDeleteConfirm(delBtn,function(){deleteSavedDrawing(row.id);});
+  // Wire publish button (solo si está renderizado).
+  var pubBtn=card.querySelector('.c2d-saved-publish');
+  if(pubBtn){
+    pubBtn.addEventListener('mousedown',function(e){e.stopPropagation();});
+    pubBtn.addEventListener('click',function(e){
+      e.stopPropagation();e.preventDefault();
+      openMarketplacePublishModal(row);
+    });
+  }
   card.addEventListener('dragstart',function(e){
     _dragData={type:'saved_drawing',savedGroup:row.data,savedId:row.id,savedName:row.name,w:row.data.w||100,h:row.data.h||100};
     e.dataTransfer.setData('text','module');
@@ -6373,6 +6422,257 @@ async function deleteSavedDrawing(id){
   // DELETE.
   await _supabase.from('saved_drawings').delete().eq('id',id);
   loadSavedDrawings();
+}
+
+// \u2500\u2500\u2500 PUBLICAR AL MARKETPLACE (Fase C2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// El user puede subir una pieza de "Mis dibujos" al marketplace p\u00FAblico.
+// El saved_drawing.data ya tiene el formato {type:'group', children:[shapes]},
+// que es compatible (tras quitar metadata local y position/transform) con
+// importShapesAsGroup({w, h, shapes}). Subimos como .json a library-dxfs.
+
+// Limpia un saved_drawings.data (group module snapshot) al formato que
+// importShapesAsGroup espera. Quita position/transform y metadata local.
+function _savedDrawingToLibraryFormat(snapshot){
+  if(!snapshot||!Array.isArray(snapshot.children)){
+    throw new Error('Snapshot del dibujo inv\u00E1lido');
+  }
+  return {
+    w: Math.max(1,Math.round(snapshot.w||100)),
+    h: Math.max(1,Math.round(snapshot.h||100)),
+    shapes: snapshot.children.slice()
+  };
+}
+
+// Mapea c\u00F3digos de error de la Edge Function publish-library-item a mensajes
+// en espa\u00F1ol. Reusa el mismo mapping que /cuenta/vendedor/dibujos/.
+function _marketplaceErrorMessage(code){
+  var map={
+    'auth_required':'Sesi\u00F3n expirada. Recarga la p\u00E1gina e inicia sesi\u00F3n de nuevo.',
+    'invalid_uuid':'Datos no v\u00E1lidos. Int\u00E9ntalo de nuevo.',
+    'invalid_name':'El t\u00EDtulo no es v\u00E1lido (m\u00E1ximo 100 caracteres, no puede estar vac\u00EDo).',
+    'invalid_description':'La descripci\u00F3n es demasiado larga (m\u00E1ximo 500 caracteres).',
+    'invalid_price':'El precio no es v\u00E1lido.',
+    'invalid_dxf_path':'Ruta de archivo no v\u00E1lida.',
+    'invalid_dxf_path_prefix':'Ruta de archivo no autorizada.',
+    'invalid_category':'Selecciona una categor\u00EDa v\u00E1lida.',
+    'invalid_subcategory':'Selecciona una subcategor\u00EDa v\u00E1lida.',
+    'invalid_subcategory_for_category':'La subcategor\u00EDa no corresponde a la categor\u00EDa seleccionada.',
+    'subcategory_required':'La subcategor\u00EDa es obligatoria.',
+    'file_not_found':'Error al verificar el archivo. Int\u00E9ntalo de nuevo.',
+    'seller_not_active':'Tu cuenta de vendedor no est\u00E1 activa para vender piezas de pago.',
+    'max_items_reached':'Ya tienes 5 piezas publicadas. Despublica una para subir otra.',
+    'insert_failed':'No se pudo registrar la pieza. Int\u00E9ntalo de nuevo.',
+    'internal_error':'Error inesperado. Int\u00E9ntalo de nuevo en unos segundos.',
+    'method_not_allowed':'Petici\u00F3n no v\u00E1lida.'
+  };
+  return map[code]||'Error inesperado: '+(code||'desconocido');
+}
+
+// Estado del modal de publicaci\u00F3n.
+var _mpModal={row:null,price:0,category:'',subcategory:''};
+
+function openMarketplacePublishModal(row){
+  if(!_canPublishToMarketplace){
+    showToast('No est\u00E1s autorizado a publicar.','error');return;
+  }
+  _mpModal={row:row,price:0,category:'',subcategory:''};
+  // Inyectar overlay en el body. El CSS est\u00E1 en el <style> principal.
+  var ov=document.getElementById('mpPublishOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='mpPublishOverlay';
+    ov.className='c2d-mp-overlay';
+    ov.addEventListener('mousedown',function(e){if(e.target===ov) closeMarketplacePublishModal();});
+    document.body.appendChild(ov);
+  }
+  var defaultName=String(row.name||'').slice(0,100);
+  var pricesHtml=[
+    {c:0,label:'Gratis'},{c:150,label:'1,50\u20AC'},{c:200,label:'2,00\u20AC'},
+    {c:250,label:'2,50\u20AC'},{c:300,label:'3,00\u20AC'}
+  ].map(function(p,i){
+    var checked=(i===0);
+    return '<label class="'+(checked?'checked':'')+'">'+
+      '<input type="radio" name="mpPrice" value="'+p.c+'" '+(checked?'checked':'')+'>'+p.label+
+    '</label>';
+  }).join('');
+  var LC=window.LibraryCategories;
+  var catOptions=LC?('<option value="">Selecciona una categor\u00EDa\u2026</option>'+
+    LC.CATEGORIES.map(function(c){return '<option value="'+c.key+'">'+_escHtml(c.label)+'</option>';}).join('')):'';
+  ov.innerHTML='<div class="c2d-mp-modal" id="mpPublishModal">'+
+    '<h2>Publicar al marketplace</h2>'+
+    '<div class="c2d-mp-row">'+
+      '<label class="c2d-mp-label" for="mpName">T\u00EDtulo</label>'+
+      '<input type="text" id="mpName" maxlength="100" value="'+_escHtml(defaultName)+'" oninput="onMpInput()">'+
+      '<div class="c2d-mp-counter"><span id="mpNameCount">'+defaultName.length+'</span>/100</div>'+
+    '</div>'+
+    '<div class="c2d-mp-row">'+
+      '<label class="c2d-mp-label" for="mpDesc">Descripci\u00F3n (opcional)</label>'+
+      '<textarea id="mpDesc" maxlength="500" placeholder="Describe brevemente tu pieza" oninput="onMpInput()"></textarea>'+
+      '<div class="c2d-mp-counter"><span id="mpDescCount">0</span>/500</div>'+
+    '</div>'+
+    '<div class="c2d-mp-row">'+
+      '<label class="c2d-mp-label" for="mpCategory">Categor\u00EDa</label>'+
+      '<select id="mpCategory" onchange="onMpCategoryChange()">'+catOptions+'</select>'+
+    '</div>'+
+    '<div class="c2d-mp-row">'+
+      '<label class="c2d-mp-label" for="mpSubcategory">Subcategor\u00EDa</label>'+
+      '<select id="mpSubcategory" onchange="onMpInput()" disabled>'+
+        '<option value="">Primero selecciona una categor\u00EDa\u2026</option>'+
+      '</select>'+
+    '</div>'+
+    '<div class="c2d-mp-row">'+
+      '<label class="c2d-mp-label">Precio</label>'+
+      '<div class="c2d-mp-prices" id="mpPrices">'+pricesHtml+'</div>'+
+    '</div>'+
+    '<div class="c2d-mp-error" id="mpErr"></div>'+
+    '<div class="c2d-mp-actions">'+
+      '<button class="c2d-mp-btn c2d-mp-btn-secondary" onclick="closeMarketplacePublishModal()">Cancelar</button>'+
+      '<button class="c2d-mp-btn c2d-mp-btn-primary" id="mpSubmit" onclick="submitMarketplacePublish(this)" disabled>Publicar</button>'+
+    '</div>'+
+  '</div>';
+  // Wire price radios (estilo "pill" con check visual).
+  ov.querySelectorAll('input[name=mpPrice]').forEach(function(r){
+    r.onchange=function(){
+      _mpModal.price=parseInt(r.value,10);
+      ov.querySelectorAll('.c2d-mp-prices label').forEach(function(l){l.classList.remove('checked');});
+      r.parentElement.classList.add('checked');
+      onMpInput();
+    };
+  });
+  ov.classList.add('open');
+  setTimeout(function(){var inp=document.getElementById('mpName');if(inp) inp.focus();},0);
+  onMpInput();
+}
+
+function closeMarketplacePublishModal(){
+  var ov=document.getElementById('mpPublishOverlay');
+  if(ov) ov.classList.remove('open');
+}
+
+function onMpCategoryChange(){
+  var cat=(document.getElementById('mpCategory')||{}).value||'';
+  _mpModal.category=cat;
+  _mpModal.subcategory='';
+  var sub=document.getElementById('mpSubcategory');
+  if(sub){
+    var LC=window.LibraryCategories;
+    var subs=(LC&&cat)?LC.SUBCATEGORIES_BY_CATEGORY[cat]:null;
+    if(subs){
+      sub.innerHTML='<option value="">Selecciona una subcategor\u00EDa\u2026</option>'+
+        subs.map(function(s){return '<option value="'+s+'">'+_escHtml(LC.subcategoryLabel(s))+'</option>';}).join('');
+      sub.disabled=false;
+    }else{
+      sub.innerHTML='<option value="">Primero selecciona una categor\u00EDa\u2026</option>';
+      sub.disabled=true;
+    }
+  }
+  onMpInput();
+}
+
+function onMpInput(){
+  var name=(document.getElementById('mpName')||{}).value||'';
+  var desc=(document.getElementById('mpDesc')||{}).value||'';
+  var cat=(document.getElementById('mpCategory')||{}).value||'';
+  var sub=(document.getElementById('mpSubcategory')||{}).value||'';
+  _mpModal.category=cat;
+  _mpModal.subcategory=sub;
+  var nc=document.getElementById('mpNameCount');if(nc) nc.textContent=name.length;
+  var dc=document.getElementById('mpDescCount');if(dc) dc.textContent=desc.length;
+  var btn=document.getElementById('mpSubmit');
+  if(btn){
+    var ok=name.trim().length>=3 && !!cat && !!sub;
+    btn.disabled=!ok;
+  }
+}
+
+async function submitMarketplacePublish(btn){
+  var errBox=document.getElementById('mpErr');
+  function showErr(msg){if(errBox){errBox.textContent=msg;errBox.classList.add('visible');}}
+  function hideErr(){if(errBox){errBox.classList.remove('visible');errBox.textContent='';}}
+  hideErr();
+
+  var row=_mpModal.row;
+  if(!row){showErr('Estado del modal corrupto. Cierra y vuelve a abrir.');return;}
+  var name=(document.getElementById('mpName')||{}).value.trim();
+  var desc=(document.getElementById('mpDesc')||{}).value.trim();
+  var category=(document.getElementById('mpCategory')||{}).value||'';
+  var subcategory=(document.getElementById('mpSubcategory')||{}).value||'';
+  var priceCents=_mpModal.price;
+  if(name.length<3||!category||!subcategory){
+    showErr('Completa los campos obligatorios.');return;
+  }
+
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Publicando\u2026';
+
+  // 1. Generar UUID
+  var uuid=(crypto.randomUUID?crypto.randomUUID():('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);})));
+
+  // 2. Transformar a formato library
+  var libraryFormat;
+  try{
+    libraryFormat=_savedDrawingToLibraryFormat(row.data);
+  }catch(e){
+    showErr('El dibujo guardado no se pudo procesar: '+(e&&e.message?e.message:'desconocido'));
+    btn.disabled=false;btn.textContent=prev;return;
+  }
+  var jsonBlob=new Blob([JSON.stringify(libraryFormat)],{type:'application/json'});
+
+  // 3. Subir a Storage
+  var dxfPath=_currentUser.id+'/'+uuid+'.json';
+  try{
+    var up=await _supabase.storage.from('library-dxfs').upload(dxfPath,jsonBlob,{contentType:'application/json',upsert:false});
+    if(up.error){
+      showErr('Error al subir el archivo: '+up.error.message);
+      btn.disabled=false;btn.textContent=prev;return;
+    }
+
+    // 4. Llamar Edge Function publish-library-item
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      showErr('Sesi\u00F3n expirada. Recarga la p\u00E1gina e inicia sesi\u00F3n de nuevo.');
+      btn.disabled=false;btn.textContent=prev;
+      try{await _supabase.storage.from('library-dxfs').remove([dxfPath]);}catch(_){}
+      return;
+    }
+    var fnUrl=(window.SUPABASE_URL||_supabase.supabaseUrl)+'/functions/v1/publish-library-item';
+    var resp=await fetch(fnUrl,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+s.data.session.access_token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        uuid:uuid,
+        name:name,
+        description:desc||null,
+        price_cents:priceCents,
+        dxf_path:dxfPath,
+        category:category,
+        subcategory:subcategory
+      })
+    });
+    var data=await resp.json().catch(function(){return null;});
+
+    if(!resp.ok||!data||data.error){
+      // Cleanup defensivo del archivo hu\u00E9rfano (idempotente).
+      try{await _supabase.storage.from('library-dxfs').remove([dxfPath]);}catch(_){}
+      var code=data&&data.error?data.error:('http_'+resp.status);
+      showErr(_marketplaceErrorMessage(code));
+      btn.disabled=false;btn.textContent=prev;return;
+    }
+
+    // 5. \u00C9xito
+    closeMarketplacePublishModal();
+    showToast('Publicado en marketplace','success');
+    // Invalidar la cache de Biblioteca para que la pieza nueva aparezca
+    // al expandir el panel (si _libraryItems estaba ya cargado).
+    _libraryItems=null;
+  }catch(e){
+    console.error('marketplace publish',e);
+    try{await _supabase.storage.from('library-dxfs').remove([dxfPath]);}catch(_){}
+    showErr('Error inesperado: '+(e&&e.message?e.message:'desconocido'));
+    btn.disabled=false;btn.textContent=prev;
+  }
 }
 
 // Inline delete-confirm helper used by both saved drawings and folders.
