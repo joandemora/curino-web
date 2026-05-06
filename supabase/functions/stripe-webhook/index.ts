@@ -19,6 +19,15 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
+import {
+  generateBuyerInvoicePdf,
+  generateSellerInvoicePdf,
+  uploadInvoicePdf,
+  sendInvoiceEmail,
+  buyerEmailHtml,
+  sellerEmailHtml,
+  OrderData
+} from '../_shared/invoices.ts'
 
 Deno.serve(async (req) => {
   // Stripe siempre manda POST
@@ -333,4 +342,107 @@ async function handleCheckoutCompleted(
   }
 
   console.log(`Order completed: ${orderData.id}, item ${itemId}, buyer ${buyerId}`);
+
+  // === FASE E: Generar PDFs de facturas + enviar emails ===
+  // Si falla la generación o envío, NO revertimos el order — solo logueamos.
+  // El order ya está persistido y la pieza disponible para el comprador.
+  try {
+    const orderForInvoice: OrderData = {
+      id: orderData.id,
+      amount_cents: totalCents,
+      base_cents: baseCents,
+      tax_amount_cents: taxCents,
+      tax_rate_pct: taxRatePct,
+      commission_cents: commissionCents,
+      invoice_simplified_number: simplifiedNum,
+      auto_invoice_number: autoNum,
+      invoice_year: currentYear,
+      buyer_email_snapshot: buyerEmail || '',
+      item_name_snapshot: item.name,
+      item_description_snapshot: item.description,
+      created_at: new Date().toISOString(),
+      buyer_id: buyerId,
+      seller_id: sellerId,
+      library_item_id: itemId
+    };
+
+    // Datos del seller para la auto-factura. Para sellers externos vienen
+    // de seller_accounts (populado por handleAccountUpdated tras Stripe
+    // onboarding) + email vía auth admin API. Para admin sellers (Curino
+    // vendiendo directo) usamos los defaults del ISSUER constant.
+    let sellerEmail: string | null = null;
+    let sellerLegalName: string | null = null;
+    let sellerTaxId: string | null = null;
+    let sellerAddress: string | null = null;
+
+    if (!sellerIsAdmin) {
+      const { data: sellerAccount } = await supabase
+        .from('seller_accounts')
+        .select('legal_name, tax_id, address_line1, address_line2, address_city, address_postal_code')
+        .eq('user_id', sellerId)
+        .maybeSingle();
+
+      if (sellerAccount) {
+        sellerLegalName = sellerAccount.legal_name;
+        sellerTaxId = sellerAccount.tax_id;
+        const addrParts = [
+          sellerAccount.address_line1,
+          sellerAccount.address_line2,
+          sellerAccount.address_postal_code,
+          sellerAccount.address_city
+        ].filter(Boolean);
+        sellerAddress = addrParts.length > 0 ? addrParts.join(', ') : null;
+      }
+
+      // Email vía auth admin API (auth.users no es accesible vía .from()).
+      try {
+        const { data: authUser } = await (supabase.auth as any).admin.getUserById(sellerId);
+        sellerEmail = authUser?.user?.email || null;
+      } catch (err) {
+        console.error('Error fetching seller email:', err);
+      }
+    }
+
+    // Generar PDFs
+    const buyerPdf = await generateBuyerInvoicePdf(orderForInvoice);
+    const sellerPdf = await generateSellerInvoicePdf(orderForInvoice, {
+      email: sellerEmail || '',
+      legal_name: sellerLegalName,
+      tax_id: sellerTaxId,
+      address: sellerAddress
+    });
+
+    // Subir a Storage
+    await uploadInvoicePdf(supabase, orderData.id, 'buyer', buyerPdf);
+    await uploadInvoicePdf(supabase, orderData.id, 'seller', sellerPdf);
+
+    // Enviar emails
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
+    const configuradorUrl = `${siteUrl}/configurador-2d/`;
+
+    if (buyerEmail) {
+      await sendInvoiceEmail(
+        buyerEmail,
+        `Tu compra en Curino — ${item.name}`,
+        buyerEmailHtml(orderForInvoice, configuradorUrl),
+        buyerPdf,
+        `factura-${simplifiedNum}.pdf`
+      );
+    }
+
+    // Email al seller solo si no es Curino mismo (admin) y tenemos su email.
+    if (!sellerIsAdmin && sellerEmail) {
+      await sendInvoiceEmail(
+        sellerEmail,
+        `Has vendido una pieza en Curino — ${item.name}`,
+        sellerEmailHtml(orderForInvoice),
+        sellerPdf,
+        `auto-factura-${autoNum}.pdf`
+      );
+    }
+
+    console.log(`Invoices generated and emails sent for order ${orderData.id}`);
+  } catch (invoiceError) {
+    console.error(`Invoice generation failed for order ${orderData.id}:`, invoiceError);
+  }
 }
