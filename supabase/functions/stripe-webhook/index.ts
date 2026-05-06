@@ -263,16 +263,27 @@ async function handleCheckoutCompleted(
   const buyerEmail = session.customer_details?.email || session.customer_email || null;
   const currentYear = new Date().getFullYear();
 
-  // Asignar números de factura
-  const { data: simplifiedNum } = await supabase.rpc('assign_invoice_number', {
-    type: 'simplified',
-    year: currentYear
+  // Asignar números de factura.
+  // La RPC assign_invoice_number usa parámetros nombrados p_type/p_year
+  // (no type/year). Valores válidos del tipo: 'simplified' (factura simplificada
+  // al comprador) y 'auto_invoice' (auto-factura en nombre del seller). NO 'auto'.
+  // Antes del fix: ambas llamadas fallaban silenciosamente y los invoice numbers
+  // quedaban NULL en marketplace_orders.
+  const { data: simplifiedNum, error: simplifiedError } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'simplified',
+    p_year: currentYear
   });
+  if (simplifiedError) {
+    console.error('Error assigning simplified invoice number:', simplifiedError);
+  }
 
-  const { data: autoNum } = await supabase.rpc('assign_invoice_number', {
-    type: 'auto',
-    year: currentYear
+  const { data: autoNum, error: autoError } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'auto_invoice',
+    p_year: currentYear
   });
+  if (autoError) {
+    console.error('Error assigning auto invoice number:', autoError);
+  }
 
   // INSERT marketplace_order
   const { data: orderData, error: orderError } = await supabase
