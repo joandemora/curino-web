@@ -28,10 +28,9 @@ Deno.serve(async (req) => {
 
   try {
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')!;
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
 
-    if (!stripeSecretKey || !webhookSecret) {
-      console.error('Missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET');
+    if (!stripeSecretKey) {
+      console.error('Missing STRIPE_SECRET_KEY');
       return new Response('Server configuration error', { status: 500 });
     }
 
@@ -52,19 +51,44 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.text();
-    let event: Stripe.Event;
+    let event: Stripe.Event | null = null;
 
-    try {
-      event = await stripe.webhooks.constructEventAsync(
-        body,
-        signature,
-        webhookSecret,
-        undefined,
-        Stripe.createSubtleCryptoProvider()
-      );
-    } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message);
-      return new Response('Invalid signature', { status: 400 });
+    // Stripe distingue webhooks de plataforma (Tu cuenta) de webhooks de Connect
+    // (cuentas conectadas Express). Cada uno tiene su propio signing secret.
+    // Probamos ambos en orden + un fallback al secret legacy de Fase B.
+    const platformSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET_PLATFORM');
+    const connectSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET_CONNECT');
+    const legacySecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+
+    const subtleProvider = Stripe.createSubtleCryptoProvider();
+
+    if (platformSecret) {
+      try {
+        event = await stripe.webhooks.constructEventAsync(
+          body, signature, platformSecret, undefined, subtleProvider
+        );
+      } catch (_err) { /* siguiente */ }
+    }
+
+    if (!event && connectSecret) {
+      try {
+        event = await stripe.webhooks.constructEventAsync(
+          body, signature, connectSecret, undefined, subtleProvider
+        );
+      } catch (_err) { /* siguiente */ }
+    }
+
+    if (!event && legacySecret) {
+      try {
+        event = await stripe.webhooks.constructEventAsync(
+          body, signature, legacySecret, undefined, subtleProvider
+        );
+      } catch (_err) { /* siguiente */ }
+    }
+
+    if (!event) {
+      console.error('Stripe webhook: signature did not match any configured secret');
+      return new Response('Invalid signature', { status: 401 });
     }
 
     console.log(`Received event: ${event.type} (id: ${event.id})`);
