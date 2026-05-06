@@ -5,6 +5,8 @@
 // Eventos manejados:
 //   - account.updated: sincroniza seller_accounts con datos de Stripe
 //   - account.application.deauthorized: marca cuenta como disabled
+//   - checkout.session.completed: persiste marketplace_orders + purchases
+//     con números de factura, tras compra exitosa de pieza marketplace
 //   - resto: log y 200 (ignorados pero no fallan)
 //
 // Seguridad:
@@ -78,6 +80,12 @@ Deno.serve(async (req) => {
       case 'account.application.deauthorized': {
         const account = event.data.object as Stripe.Account;
         await handleAccountDeauthorized(supabase, account);
+        break;
+      }
+
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await handleCheckoutCompleted(supabase, stripe, session);
         break;
       }
 
@@ -180,4 +188,114 @@ async function handleAccountDeauthorized(
   }
 
   console.log(`Deauthorized seller_account ${account.id}`);
+}
+
+async function handleCheckoutCompleted(
+  supabase: ReturnType<typeof createClient>,
+  stripe: Stripe,
+  session: Stripe.Checkout.Session
+) {
+  const itemId = session.metadata?.curino_item_id;
+  const buyerId = session.metadata?.curino_buyer_id;
+  const sellerId = session.metadata?.curino_seller_id;
+  const sellerIsAdmin = session.metadata?.curino_seller_is_admin === 'true';
+  const commissionPct = parseInt(session.metadata?.curino_commission_pct || '30');
+
+  if (!itemId || !buyerId || !sellerId) {
+    console.error('checkout.session.completed missing metadata:', session.id);
+    return;
+  }
+
+  // Idempotencia: si ya existe un marketplace_order con este session_id, skip
+  const { data: existing } = await supabase
+    .from('marketplace_orders')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`Order already exists for session ${session.id}`);
+    return;
+  }
+
+  const { data: item } = await supabase
+    .from('library_items')
+    .select('id, name, description, price_cents')
+    .eq('id', itemId)
+    .maybeSingle();
+
+  if (!item) {
+    console.error(`Item ${itemId} not found for session ${session.id}`);
+    return;
+  }
+
+  const totalCents = session.amount_total ?? item.price_cents;
+  const taxRatePct = 21;
+  const baseCents = Math.round(totalCents / (1 + taxRatePct / 100));
+  const taxCents = totalCents - baseCents;
+  const commissionCents = sellerIsAdmin ? totalCents : Math.round(totalCents * commissionPct / 100);
+
+  const buyerCountry = session.customer_details?.address?.country || null;
+  const buyerEmail = session.customer_details?.email || session.customer_email || null;
+  const currentYear = new Date().getFullYear();
+
+  // Asignar números de factura
+  const { data: simplifiedNum } = await supabase.rpc('assign_invoice_number', {
+    type: 'simplified',
+    year: currentYear
+  });
+
+  const { data: autoNum } = await supabase.rpc('assign_invoice_number', {
+    type: 'auto',
+    year: currentYear
+  });
+
+  // INSERT marketplace_order
+  const { data: orderData, error: orderError } = await supabase
+    .from('marketplace_orders')
+    .insert({
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: session.payment_intent,
+      buyer_id: buyerId,
+      seller_id: sellerId,
+      library_item_id: itemId,
+      amount_cents: totalCents,
+      base_cents: baseCents,
+      tax_amount_cents: taxCents,
+      tax_rate_pct: taxRatePct,
+      tax_country: 'ES',
+      commission_cents: commissionCents,
+      currency: 'eur',
+      status: 'paid',
+      buyer_country: buyerCountry,
+      buyer_email_snapshot: buyerEmail,
+      item_name_snapshot: item.name,
+      item_description_snapshot: item.description,
+      invoice_simplified_number: simplifiedNum,
+      auto_invoice_number: autoNum,
+      invoice_year: currentYear
+    })
+    .select('id')
+    .single();
+
+  if (orderError) {
+    console.error('Error inserting marketplace_order:', orderError);
+    throw orderError;
+  }
+
+  // INSERT purchase (idempotente con UNIQUE constraint)
+  const { error: purchaseError } = await supabase
+    .from('purchases')
+    .insert({
+      user_id: buyerId,
+      library_item_id: itemId,
+      order_id: orderData.id
+    });
+
+  if (purchaseError && !purchaseError.message.includes('duplicate')) {
+    console.error('Error inserting purchase:', purchaseError);
+    throw purchaseError;
+  }
+
+  console.log(`Order completed: ${orderData.id}, item ${itemId}, buyer ${buyerId}`);
 }
