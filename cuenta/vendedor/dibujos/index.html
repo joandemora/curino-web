@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/library-categories.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
@@ -211,60 +212,32 @@ function fmtPrice(c){
   return euros+'€';
 }
 
-// Categorías permitidas (mismo set que VALID_CATEGORIES en la Edge Function
-// y el CHECK del SQL update_library_item_category).
-var CATEGORIES=[
-  {key:'asientos',label:'Asientos'},
-  {key:'mesas',label:'Mesas'},
-  {key:'almacenamiento',label:'Almacenamiento'},
-  {key:'iluminacion',label:'Iluminación'},
-  {key:'decoracion',label:'Decoración'},
-  {key:'exterior',label:'Exterior'},
-  {key:'otros',label:'Otros'}
-];
+// Set canónico vive en /assets/js/library-categories.js (window.LibraryCategories).
+// Aquí solo dejamos thin wrappers para no romper los call-sites existentes.
 function formatCategory(key){
-  var c=CATEGORIES.find(function(x){return x.key===key;});
-  return c?c.label:'—';
+  var v=window.LibraryCategories?window.LibraryCategories.categoryLabel(key):key;
+  return v||'—';
 }
 function buildCategoryOptions(selectedKey){
+  if(!window.LibraryCategories) return '<option value="">—</option>';
   return '<option value="">Selecciona una categoría…</option>'+
-    CATEGORIES.map(function(c){
+    window.LibraryCategories.CATEGORIES.map(function(c){
       var sel=c.key===selectedKey?' selected':'';
       return '<option value="'+c.key+'"'+sel+'>'+escHtml(c.label)+'</option>';
     }).join('');
 }
-
-// Subcategorías permitidas por categoría — mismo set que el de la Edge Function
-// publish-library-item y el CASE de las RPCs update_library_item_*.
-var SUBCATEGORIES_BY_CATEGORY={
-  asientos:['sofas','sillas','butacas','taburetes'],
-  mesas:['mesa-comedor','mesa-centro','escritorio','mesilla'],
-  almacenamiento:['estanteria','armario','cajonera','vitrina'],
-  iluminacion:['lampara-techo','lampara-mesa','lampara-pie'],
-  decoracion:['cuadros','jarrones','espejos','plantas'],
-  exterior:['silla-exterior','mesa-exterior','parasol','jardineras'],
-  otros:['otros']
-};
-// Mapping explícito slug → label visible (lleva tildes y "de" que no salen
-// de la transformación mecánica).
-var SUBCATEGORY_LABELS={
-  'sofas':'Sofás','sillas':'Sillas','butacas':'Butacas','taburetes':'Taburetes',
-  'mesa-comedor':'Mesa de comedor','mesa-centro':'Mesa de centro','escritorio':'Escritorio','mesilla':'Mesilla',
-  'estanteria':'Estantería','armario':'Armario','cajonera':'Cajonera','vitrina':'Vitrina',
-  'lampara-techo':'Lámpara de techo','lampara-mesa':'Lámpara de mesa','lampara-pie':'Lámpara de pie',
-  'cuadros':'Cuadros','jarrones':'Jarrones','espejos':'Espejos','plantas':'Plantas',
-  'silla-exterior':'Silla de exterior','mesa-exterior':'Mesa de exterior','parasol':'Parasol','jardineras':'Jardineras',
-  'otros':'Otros'
-};
 function formatSubcategory(key){
-  return SUBCATEGORY_LABELS[key]||(key||'—');
+  var v=window.LibraryCategories?window.LibraryCategories.subcategoryLabel(key):key;
+  return v||'—';
 }
 function buildSubcategoryOptions(category,selectedKey){
-  if(!category||!SUBCATEGORIES_BY_CATEGORY[category]){
+  if(!window.LibraryCategories) return '<option value="">—</option>';
+  var subs=window.LibraryCategories.SUBCATEGORIES_BY_CATEGORY[category];
+  if(!category||!subs){
     return '<option value="">Primero selecciona una categoría…</option>';
   }
   return '<option value="">Selecciona una subcategoría…</option>'+
-    SUBCATEGORIES_BY_CATEGORY[category].map(function(s){
+    subs.map(function(s){
       var sel=s===selectedKey?' selected':'';
       return '<option value="'+s+'"'+sel+'>'+escHtml(formatSubcategory(s))+'</option>';
     }).join('');

@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/js/catalog-helpers.js"></script>
+<script src="/assets/js/library-categories.js"></script>
 <script src="/assets/js/library-dxf.js"></script>
 <script src="/assets/js/dxf-tools.js"></script>
 <style>
@@ -5291,30 +5292,54 @@ function renderLibraryPanel(){
     body.innerHTML='<div class="c2d-saved-msg">Sin piezas — el admin las publica desde /admin/.</div>';
     return;
   }
+  // Render dinámico desde el set canónico del marketplace (LibraryCategories).
+  // Independiente de CATALOG_CATEGORIES, que sigue usándose para Marcas
+  // (catalog_items) — son catálogos distintos con slugs distintos.
+  var LC=window.LibraryCategories;
+  if(!LC){
+    body.innerHTML='<div class="c2d-saved-msg">Error: módulo de categorías no cargado.</div>';
+    return;
+  }
   body.innerHTML='';
-  CATALOG_CATEGORIES.forEach(function(cat){
-    var catItems=_libraryItems.filter(function(it){return _normCat(it.category)===cat.key;});
-    if(catItems.length===0) return; // skip empty top-level categories
+  function renderItemCard(it){
+    var photoUrl=it.thumbnail_url||null;
+    var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
+    return '<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'">'+
+      thumb+
+      '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong></div>'+
+    '</div>';
+  }
+  LC.CATEGORIES.forEach(function(cat){
+    var itemsInCat=_libraryItems.filter(function(it){return it.category===cat.key;});
+    if(itemsInCat.length===0) return;
     var catDiv=document.createElement('div');
     catDiv.className='c2d-sub';
     var html='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(cat.label)+'</div>';
     html+='<div class="c2d-sub-body">';
-    cat.subs.forEach(function(sub){
-      var items=catItems.filter(function(it){return _normCat(it.subcategory)===sub.key;});
-      if(items.length===0) return; // skip empty subcategories
-      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="'+sub.key+'">';
-      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(sub.label)+'</div>';
+    var subs=LC.SUBCATEGORIES_BY_CATEGORY[cat.key]||[];
+    subs.forEach(function(subKey){
+      var items=itemsInCat.filter(function(it){return it.subcategory===subKey;});
+      if(items.length===0) return;
+      var subLabel=LC.subcategoryLabel(subKey);
+      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="'+subKey+'">';
+      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(subLabel)+'</div>';
       html+='<div class="c2d-sub-body">';
-      items.forEach(function(it){
-        var photoUrl=it.thumbnail_url||null;
-        var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
-        html+='<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'">'+
-          thumb+
-          '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong></div>'+
-        '</div>';
-      });
+      items.forEach(function(it){html+=renderItemCard(it);});
       html+='</div></div>';
     });
+    // Defensive: piezas con subcategory desconocida para esta categoría
+    // (no debería pasar con triggers + RPCs validando, pero por si acaso).
+    var knownSubs={};subs.forEach(function(s){knownSubs[s]=true;});
+    var unknownItems=itemsInCat.filter(function(it){return !knownSubs[it.subcategory];});
+    if(unknownItems.length>0){
+      console.warn('[curino] library_items con subcategory desconocida en categoría '+cat.key+':',
+        unknownItems.map(function(i){return {id:i.id,name:i.name,subcategory:i.subcategory};}));
+      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="_unknown">';
+      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">Sin subcategoría</div>';
+      html+='<div class="c2d-sub-body">';
+      unknownItems.forEach(function(it){html+=renderItemCard(it);});
+      html+='</div></div>';
+    }
     html+='</div>';
     catDiv.innerHTML=html;
     body.appendChild(catDiv);
