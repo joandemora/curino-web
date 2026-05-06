@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/js/catalog-helpers.js"></script>
+<script src="/assets/js/library-categories.js"></script>
 <script src="/assets/js/library-dxf.js"></script>
 <script src="/assets/js/dxf-tools.js"></script>
 <style>
@@ -5269,7 +5270,7 @@ async function loadLibraryPanel(){
     _libraryLoading=false;return;
   }
   try{
-    var r=await _supabase.from('library_items').select('*').eq('active',true);
+    var r=await _supabase.from('library_items').select('*').eq('status','published');
     if(r.error) throw r.error;
     _libraryItems=(r.data||[]).slice().sort(function(a,b){
       return String(a.name||'').localeCompare(String(b.name||''));
@@ -5291,30 +5292,54 @@ function renderLibraryPanel(){
     body.innerHTML='<div class="c2d-saved-msg">Sin piezas — el admin las publica desde /admin/.</div>';
     return;
   }
+  // Render dinámico desde el set canónico del marketplace (LibraryCategories).
+  // Independiente de CATALOG_CATEGORIES, que sigue usándose para Marcas
+  // (catalog_items) — son catálogos distintos con slugs distintos.
+  var LC=window.LibraryCategories;
+  if(!LC){
+    body.innerHTML='<div class="c2d-saved-msg">Error: módulo de categorías no cargado.</div>';
+    return;
+  }
   body.innerHTML='';
-  CATALOG_CATEGORIES.forEach(function(cat){
-    var catItems=_libraryItems.filter(function(it){return _normCat(it.category)===cat.key;});
-    if(catItems.length===0) return; // skip empty top-level categories
+  function renderItemCard(it){
+    var photoUrl=it.thumbnail_url||null;
+    var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
+    return '<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'">'+
+      thumb+
+      '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong></div>'+
+    '</div>';
+  }
+  LC.CATEGORIES.forEach(function(cat){
+    var itemsInCat=_libraryItems.filter(function(it){return it.category===cat.key;});
+    if(itemsInCat.length===0) return;
     var catDiv=document.createElement('div');
     catDiv.className='c2d-sub';
     var html='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(cat.label)+'</div>';
     html+='<div class="c2d-sub-body">';
-    cat.subs.forEach(function(sub){
-      var items=catItems.filter(function(it){return _normCat(it.subcategory)===sub.key;});
-      if(items.length===0) return; // skip empty subcategories
-      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="'+sub.key+'">';
-      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(sub.label)+'</div>';
+    var subs=LC.SUBCATEGORIES_BY_CATEGORY[cat.key]||[];
+    subs.forEach(function(subKey){
+      var items=itemsInCat.filter(function(it){return it.subcategory===subKey;});
+      if(items.length===0) return;
+      var subLabel=LC.subcategoryLabel(subKey);
+      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="'+subKey+'">';
+      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">'+_escHtml(subLabel)+'</div>';
       html+='<div class="c2d-sub-body">';
-      items.forEach(function(it){
-        var photoUrl=it.thumbnail_url||null;
-        var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
-        html+='<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'">'+
-          thumb+
-          '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong></div>'+
-        '</div>';
-      });
+      items.forEach(function(it){html+=renderItemCard(it);});
       html+='</div></div>';
     });
+    // Defensive: piezas con subcategory desconocida para esta categoría
+    // (no debería pasar con triggers + RPCs validando, pero por si acaso).
+    var knownSubs={};subs.forEach(function(s){knownSubs[s]=true;});
+    var unknownItems=itemsInCat.filter(function(it){return !knownSubs[it.subcategory];});
+    if(unknownItems.length>0){
+      console.warn('[curino] library_items con subcategory desconocida en categoría '+cat.key+':',
+        unknownItems.map(function(i){return {id:i.id,name:i.name,subcategory:i.subcategory};}));
+      html+='<div class="c2d-sub" data-cat="'+cat.key+'" data-sub="_unknown">';
+      html+='<div class="c2d-sub-title" onclick="accordionToggle(this,\'c2d-sub\')">Sin subcategoría</div>';
+      html+='<div class="c2d-sub-body">';
+      unknownItems.forEach(function(it){html+=renderItemCard(it);});
+      html+='</div></div>';
+    }
     html+='</div>';
     catDiv.innerHTML=html;
     body.appendChild(catDiv);
@@ -5537,6 +5562,57 @@ function insertCatalogItemAtViewportCenter(item){
   var wy=-(rect.height/2-o.y)/sc;
   handleCatalogDrop(item,wx,wy);
 }
+// Modal de gate de compra para piezas de pago del marketplace. Inyectado
+// dinámicamente porque es un caso aislado y queremos que sea fácil evolucionar
+// en Fase D (cuando los botones cambien a "Comprar" + "Cancelar"). Coherente
+// con la paleta del configurador (var(--ink), var(--bg), var(--border)).
+function showPurchaseGateMessage(opts){
+  var type=opts.type;
+  var itemName=opts.itemName||'Esta pieza';
+  var priceCents=opts.priceCents||0;
+  var priceFmt=(priceCents/100).toFixed(2).replace('.',',')+' €';
+
+  var title, msg, primary='Entendido', secondaryHref=null, secondaryLabel=null;
+  if(type==='login_required'){
+    title='Inicia sesión';
+    msg='Inicia sesión para acceder a las piezas del marketplace.';
+    secondaryHref='/login/?redirect='+encodeURIComponent(window.location.pathname+window.location.search);
+    secondaryLabel='Iniciar sesión';
+  }else if(type==='check_failed'){
+    title='No se pudo verificar';
+    msg='No se ha podido verificar el acceso a esta pieza. Inténtalo de nuevo en un momento.';
+  }else{ // 'purchase_required' (default)
+    title='Compra no disponible aún';
+    msg=_escHtml(itemName)+' estará disponible para compra próximamente. Pronto podrás comprarla por '+priceFmt+'.';
+  }
+
+  // Build overlay
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:1rem';
+  var modal=document.createElement('div');
+  modal.style.cssText='background:#fff;border-radius:8px;max-width:420px;width:100%;padding:1.5rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:var(--font)';
+  modal.innerHTML=
+    '<h3 style="font-size:18px;font-weight:600;margin:0 0 .6rem;color:var(--ink,#1a1a1a)">'+_escHtml(title)+'</h3>'+
+    '<p style="font-size:14px;line-height:1.5;color:#555;margin:0 0 1.25rem">'+msg+'</p>'+
+    '<div style="display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap">'+
+      (secondaryHref
+        ? '<a href="'+secondaryHref+'" style="display:inline-block;padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #e5e5e5;background:#fff;color:#1a1a1a;text-decoration:none">'+_escHtml(secondaryLabel)+'</a>'
+        : '')+
+      '<button id="_pgClose" style="padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:var(--font)">'+_escHtml(primary)+'</button>'+
+    '</div>';
+  ov.appendChild(modal);
+  document.body.appendChild(ov);
+
+  function close(){
+    if(ov.parentNode) ov.parentNode.removeChild(ov);
+    document.removeEventListener('keydown',onKey,true);
+  }
+  function onKey(e){if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}}
+  modal.querySelector('#_pgClose').onclick=close;
+  ov.addEventListener('mousedown',function(e){if(e.target===ov) close();});
+  document.addEventListener('keydown',onKey,true);
+}
+
 // Maps the catalog row's default_unit string ('mm', 'cm', 'm', 'in', 'ft')
 // to a mm-per-unit factor. Returns null if unknown — the import flow then
 // falls back to the unit dialog so the user can pick.
@@ -5557,6 +5633,33 @@ async function handleCatalogDrop(item,worldX,worldY){
   var url=window.CurinoCatalog?CurinoCatalog.getDefaultDxfUrl(item):(item&&item.dxf_url);
   var viewKey=window.CurinoCatalog?CurinoCatalog.getDefaultViewKey(item):null;
   if(!item||!url){showToast('DXF no disponible','error');return;}
+
+  // Gate de compra: piezas de pago del marketplace requieren purchase previa
+  // (excepto admin de Curino y el seller del propio item). Para piezas
+  // gratis o de Marcas (catalog_items) el gate no aplica. Fase D evolucionará
+  // este modal a "Comprar / Cancelar" con flujo Stripe Checkout.
+  if(item._source==='library' && (item.price_cents||0) > 0){
+    if(!_currentUser){
+      showPurchaseGateMessage({type:'login_required',itemName:item.name,priceCents:item.price_cents});
+      return;
+    }
+    var isOwner=item.seller_id===_currentUser.id;
+    var isUserAdmin=_userRole==='admin';
+    if(!isOwner && !isUserAdmin){
+      var hp=await _supabase.rpc('has_purchased',{uid:_currentUser.id,item_id:item.id});
+      if(hp.error){
+        console.error('has_purchased RPC error:',hp.error);
+        showPurchaseGateMessage({type:'check_failed',itemName:item.name});
+        return;
+      }
+      if(!hp.data){
+        showPurchaseGateMessage({type:'purchase_required',itemName:item.name,priceCents:item.price_cents});
+        return;
+      }
+    }
+    // Si llega aquí: admin, seller del item, o ya comprado → continúa flujo normal
+  }
+
   var prevCursor=document.body.style.cursor;
   document.body.style.cursor='wait';
   showToast('Cargando '+item.name+'…');
