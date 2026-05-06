@@ -84,8 +84,8 @@ a:hover{text-decoration:underline}
 .v-modal h2{font-size:18px;font-weight:600;margin-bottom:1.1rem}
 .v-modal-row{margin-bottom:1.1rem}
 .v-modal-label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;font-weight:600}
-.v-modal input[type=text],.v-modal textarea{width:100%;padding:.6rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink);resize:none}
-.v-modal input[type=text]:focus,.v-modal textarea:focus{outline:none;border-color:var(--ink)}
+.v-modal input[type=text],.v-modal textarea,.v-modal select{width:100%;padding:.6rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink);resize:none}
+.v-modal input[type=text]:focus,.v-modal textarea:focus,.v-modal select:focus{outline:none;border-color:var(--ink)}
 .v-modal textarea{min-height:80px}
 .v-counter{font-size:11px;color:var(--mid);text-align:right;margin-top:.2rem}
 
@@ -211,6 +211,29 @@ function fmtPrice(c){
   return euros+'€';
 }
 
+// Categorías permitidas (mismo set que VALID_CATEGORIES en la Edge Function
+// y el CHECK del SQL update_library_item_category).
+var CATEGORIES=[
+  {key:'asientos',label:'Asientos'},
+  {key:'mesas',label:'Mesas'},
+  {key:'almacenamiento',label:'Almacenamiento'},
+  {key:'iluminacion',label:'Iluminación'},
+  {key:'decoracion',label:'Decoración'},
+  {key:'exterior',label:'Exterior'},
+  {key:'otros',label:'Otros'}
+];
+function formatCategory(key){
+  var c=CATEGORIES.find(function(x){return x.key===key;});
+  return c?c.label:'—';
+}
+function buildCategoryOptions(selectedKey){
+  return '<option value="">Selecciona una categoría…</option>'+
+    CATEGORIES.map(function(c){
+      var sel=c.key===selectedKey?' selected':'';
+      return '<option value="'+c.key+'"'+sel+'>'+escHtml(c.label)+'</option>';
+    }).join('');
+}
+
 async function render(){
   var root=document.getElementById('vRoot');
 
@@ -249,7 +272,7 @@ async function loadItems(){
 
   var r=await _supabase
     .from('library_items')
-    .select('id,name,description,price_cents,status,taken_down_reason,created_at')
+    .select('id,name,description,price_cents,status,taken_down_reason,created_at,category')
     .eq('seller_id',_currentUser.id)
     .neq('status','deleted')
     .order('created_at',{ascending:false});
@@ -293,10 +316,12 @@ function renderCard(it){
   if(it.status==='published'){
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="onUnpublish(\''+it.id+'\')">Despublicar</button>';
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditPriceModal(\''+it.id+'\')">Editar precio</button>';
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditCategoryModal(\''+it.id+'\')">Editar categoría</button>';
     actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
   }else if(it.status==='draft'){
     actions+='<button class="v-btn v-btn-primary v-btn-small" onclick="onPublish(\''+it.id+'\')">Publicar</button>';
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditPriceModal(\''+it.id+'\')">Editar precio</button>';
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditCategoryModal(\''+it.id+'\')">Editar categoría</button>';
     actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
   }else if(it.status==='taken_down'){
     if(isAdmin()){
@@ -320,6 +345,7 @@ function renderCard(it){
           '<span class="v-card-price">'+fmtPrice(it.price_cents)+'</span>'+
           badge+
         '</div>'+
+        '<div style="font-size:11.5px;color:var(--mid);margin-bottom:.25rem">Categoría: <strong style="color:var(--ink-soft);font-weight:600">'+escHtml(formatCategory(it.category))+'</strong></div>'+
         takedownMsg+
         (actions?'<div class="v-card-actions">'+actions+'</div>':'')+
       '</div>'+
@@ -349,6 +375,7 @@ function errorMessage(errorCode,fallback){
     'invalid_price':'El precio no es válido.',
     'invalid_dxf_path':'Ruta de archivo no válida.',
     'invalid_dxf_path_prefix':'Ruta de archivo no autorizada.',
+    'invalid_category':'Selecciona una categoría válida.',
     'file_not_found':'Error al verificar el archivo. Inténtalo de nuevo.',
     'seller_not_active':'Tu cuenta de vendedor no está activa para vender piezas de pago.',
     'max_items_reached':'Ya tienes 5 piezas publicadas. Despublica una para subir otra.',
@@ -368,6 +395,7 @@ function rpcErrorMessage(msg){
   if(msg.includes('taken_down_cannot_republish')) return 'Esta pieza fue retirada por un administrador y solo un admin puede republicarla.';
   if(msg.includes('invalid_status_transition')) return 'No se puede cambiar el estado de la pieza desde aquí.';
   if(msg.includes('invalid_price')) return 'El precio no es válido (gratis o entre 1,50 € y 3,00 €).';
+  if(msg.includes('invalid_category')) return 'La categoría no es válida.';
   if(msg.includes('seller_not_active')) return 'Tu cuenta de vendedor no está activa para vender piezas de pago.';
   if(msg.includes('has_purchases_cannot_delete')) return 'Esta pieza tiene compras registradas y no se puede eliminar. Solo se puede despublicar.';
   if(msg.includes('maximum')||msg.includes('max_items')) return 'Ya tienes 5 piezas publicadas. Despublica una para publicar otra.';
@@ -376,10 +404,10 @@ function rpcErrorMessage(msg){
 }
 
 // ─── Upload modal ────────────────────────────────────────────────────────────
-var _uploadState={file:null,price:0};
+var _uploadState={file:null,price:0,category:''};
 
 function openUploadModal(){
-  _uploadState={file:null,price:0};
+  _uploadState={file:null,price:0,category:''};
   var modal=document.getElementById('vModal');
   modal.innerHTML=''+
     '<h2>Subir nuevo dibujo</h2>'+
@@ -401,6 +429,10 @@ function openUploadModal(){
       '<label class="v-modal-label" for="uDesc">Descripción (opcional)</label>'+
       '<textarea id="uDesc" maxlength="500" placeholder="Describe brevemente tu pieza" oninput="onUploadInput()"></textarea>'+
       '<div class="v-counter"><span id="uDescCount">0</span>/500</div>'+
+    '</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="uCategory">Categoría</label>'+
+      '<select id="uCategory" onchange="onUploadInput()">'+buildCategoryOptions('')+'</select>'+
     '</div>'+
     '<div class="v-modal-row">'+
       '<label class="v-modal-label">Precio</label>'+
@@ -491,11 +523,13 @@ function clearFile(){
 function onUploadInput(){
   var name=(document.getElementById('uName')||{}).value||'';
   var desc=(document.getElementById('uDesc')||{}).value||'';
+  var cat=(document.getElementById('uCategory')||{}).value||'';
+  _uploadState.category=cat;
   var nc=document.getElementById('uNameCount');if(nc) nc.textContent=name.length;
   var dc=document.getElementById('uDescCount');if(dc) dc.textContent=desc.length;
   var btn=document.getElementById('uPublish');
   if(btn){
-    var ok=!!_uploadState.file&&name.trim().length>=3;
+    var ok=!!_uploadState.file&&name.trim().length>=3&&!!cat;
     btn.disabled=!ok;
   }
 }
@@ -517,9 +551,10 @@ async function onPublishSubmit(btn){
   hideUploadError();
   var name=document.getElementById('uName').value.trim();
   var desc=document.getElementById('uDesc').value.trim();
+  var category=(document.getElementById('uCategory')||{}).value||'';
   var file=_uploadState.file;
   var priceCents=_uploadState.price;
-  if(!file||name.length<3){showUploadError('Completa los campos obligatorios.');return;}
+  if(!file||name.length<3||!category){showUploadError('Completa los campos obligatorios.');return;}
 
   btn.disabled=true;
   var prevText=btn.textContent;
@@ -548,7 +583,7 @@ async function onPublishSubmit(btn){
         'Authorization':'Bearer '+s.data.session.access_token,
         'Content-Type':'application/json'
       },
-      body:JSON.stringify({uuid:uuid,name:name,description:desc||null,price_cents:priceCents,dxf_path:dxfPath})
+      body:JSON.stringify({uuid:uuid,name:name,description:desc||null,price_cents:priceCents,dxf_path:dxfPath,category:category})
     });
     var data=await resp.json().catch(function(){return null;});
 
@@ -615,6 +650,45 @@ async function onEditPriceSubmit(itemId,btn){
   }
   hideOverlay();
   showToast('Precio actualizado.','success');
+  await loadItems();
+}
+
+// ─── Edit category modal ─────────────────────────────────────────────────────
+function openEditCategoryModal(itemId){
+  var it=_items.find(function(x){return x.id===itemId;});
+  if(!it) return;
+  var modal=document.getElementById('vModal');
+  modal.innerHTML=''+
+    '<h2>Editar categoría · '+escHtml(it.name)+'</h2>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="cCategory">Categoría</label>'+
+      '<select id="cCategory">'+buildCategoryOptions(it.category||'')+'</select>'+
+    '</div>'+
+    '<div class="v-error" id="cErr"></div>'+
+    '<div class="v-modal-actions">'+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cancelar</button>'+
+      '<button class="v-btn v-btn-primary" id="cSubmit" onclick="onEditCategorySubmit(\''+itemId+'\',this)">Guardar</button>'+
+    '</div>';
+  showOverlay();
+}
+
+async function onEditCategorySubmit(itemId,btn){
+  var sel=document.getElementById('cCategory');
+  var newCategory=sel?sel.value:'';
+  var box=document.getElementById('cErr');
+  if(!newCategory){
+    if(box){box.textContent='Selecciona una categoría.';box.classList.add('visible');}
+    return;
+  }
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Guardando…';
+  var r=await _supabase.rpc('update_library_item_category',{p_item_id:itemId,p_new_category:newCategory});
+  if(r.error){
+    if(box){box.textContent=rpcErrorMessage(r.error.message);box.classList.add('visible');}
+    btn.disabled=false;btn.textContent=prev;
+    return;
+  }
+  hideOverlay();
+  showToast('Categoría actualizada.','success');
   await loadItems();
 }
 

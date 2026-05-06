@@ -4,12 +4,13 @@
 //
 // Flujo:
 //   1. Frontend sube DXF a library-dxfs/<user_id>/<uuid>.dxf vía Supabase Client.
-//   2. Frontend llama a esta function con { uuid, name, description, price_cents, dxf_path }.
+//   2. Frontend llama a esta function con { uuid, name, description, price_cents, dxf_path, category }.
 //   3. Esta function valida, verifica que el archivo existe, y crea la row.
 //
 // Validaciones:
 //   - JWT user válido.
-//   - Campos requeridos: uuid (formato UUID), name (max 100), price_cents (0 OR 150-300), dxf_path.
+//   - Campos requeridos: uuid (formato UUID), name (max 100), price_cents (0 OR 150-300),
+//     dxf_path, category (uno de VALID_CATEGORIES).
 //   - dxf_path debe empezar por <user_id>/ (defensa anti-path-traversal).
 //   - Archivo existe en Storage.
 //   - Si price>0 y user no es admin: is_seller_active(user.id) debe ser true.
@@ -36,6 +37,8 @@ function jsonResponse(body: unknown, status = 200): Response {
 function isValidUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
+
+const VALID_CATEGORIES = ['asientos', 'mesas', 'almacenamiento', 'iluminacion', 'decoracion', 'exterior', 'otros'];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -67,7 +70,7 @@ Deno.serve(async (req) => {
 
     // 2. Parsear body
     const body = await req.json().catch(() => ({}));
-    const { uuid, name, description, price_cents, dxf_path } = body;
+    const { uuid, name, description, price_cents, dxf_path, category } = body;
 
     // 3. Validar campos
     if (!uuid || !isValidUuid(uuid)) {
@@ -87,6 +90,9 @@ Deno.serve(async (req) => {
     }
     if (!dxf_path || typeof dxf_path !== 'string') {
       return jsonResponse({ error: 'invalid_dxf_path' }, 400);
+    }
+    if (!category || !VALID_CATEGORIES.includes(category)) {
+      return jsonResponse({ error: 'invalid_category' }, 400);
     }
 
     // 4. Anti path-traversal: dxf_path debe empezar por <user_id>/
@@ -145,7 +151,8 @@ Deno.serve(async (req) => {
         description: description?.trim() || null,
         price_cents,
         status: 'published',
-        dxf_url: dxfUrl
+        dxf_url: dxfUrl,
+        category
       })
       .select('id, status, dxf_url')
       .single();
