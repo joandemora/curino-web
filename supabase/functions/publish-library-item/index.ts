@@ -4,13 +4,13 @@
 //
 // Flujo:
 //   1. Frontend sube DXF a library-dxfs/<user_id>/<uuid>.dxf vía Supabase Client.
-//   2. Frontend llama a esta function con { uuid, name, description, price_cents, dxf_path, category }.
+//   2. Frontend llama a esta function con { uuid, name, description, price_cents, dxf_path, category, subcategory }.
 //   3. Esta function valida, verifica que el archivo existe, y crea la row.
 //
 // Validaciones:
 //   - JWT user válido.
 //   - Campos requeridos: uuid (formato UUID), name (max 100), price_cents (0 OR 150-300),
-//     dxf_path, category (uno de VALID_CATEGORIES).
+//     dxf_path, category (uno de VALID_CATEGORIES), subcategory (válida para esa category).
 //   - dxf_path debe empezar por <user_id>/ (defensa anti-path-traversal).
 //   - Archivo existe en Storage.
 //   - Si price>0 y user no es admin: is_seller_active(user.id) debe ser true.
@@ -39,6 +39,16 @@ function isValidUuid(s: string): boolean {
 }
 
 const VALID_CATEGORIES = ['asientos', 'mesas', 'almacenamiento', 'iluminacion', 'decoracion', 'exterior', 'otros'];
+
+const SUBCATEGORIES_BY_CATEGORY: Record<string, string[]> = {
+  asientos: ['sofas', 'sillas', 'butacas', 'taburetes'],
+  mesas: ['mesa-comedor', 'mesa-centro', 'escritorio', 'mesilla'],
+  almacenamiento: ['estanteria', 'armario', 'cajonera', 'vitrina'],
+  iluminacion: ['lampara-techo', 'lampara-mesa', 'lampara-pie'],
+  decoracion: ['cuadros', 'jarrones', 'espejos', 'plantas'],
+  exterior: ['silla-exterior', 'mesa-exterior', 'parasol', 'jardineras'],
+  otros: ['otros']
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -70,7 +80,7 @@ Deno.serve(async (req) => {
 
     // 2. Parsear body
     const body = await req.json().catch(() => ({}));
-    const { uuid, name, description, price_cents, dxf_path, category } = body;
+    const { uuid, name, description, price_cents, dxf_path, category, subcategory } = body;
 
     // 3. Validar campos
     if (!uuid || !isValidUuid(uuid)) {
@@ -93,6 +103,10 @@ Deno.serve(async (req) => {
     }
     if (!category || !VALID_CATEGORIES.includes(category)) {
       return jsonResponse({ error: 'invalid_category' }, 400);
+    }
+    const validSubcats = SUBCATEGORIES_BY_CATEGORY[category];
+    if (!subcategory || !validSubcats || !validSubcats.includes(subcategory)) {
+      return jsonResponse({ error: 'invalid_subcategory' }, 400);
     }
 
     // 4. Anti path-traversal: dxf_path debe empezar por <user_id>/
@@ -152,7 +166,8 @@ Deno.serve(async (req) => {
         price_cents,
         status: 'published',
         dxf_url: dxfUrl,
-        category
+        category,
+        subcategory
       })
       .select('id, status, dxf_url')
       .single();

@@ -234,6 +234,42 @@ function buildCategoryOptions(selectedKey){
     }).join('');
 }
 
+// Subcategorías permitidas por categoría — mismo set que el de la Edge Function
+// publish-library-item y el CASE de las RPCs update_library_item_*.
+var SUBCATEGORIES_BY_CATEGORY={
+  asientos:['sofas','sillas','butacas','taburetes'],
+  mesas:['mesa-comedor','mesa-centro','escritorio','mesilla'],
+  almacenamiento:['estanteria','armario','cajonera','vitrina'],
+  iluminacion:['lampara-techo','lampara-mesa','lampara-pie'],
+  decoracion:['cuadros','jarrones','espejos','plantas'],
+  exterior:['silla-exterior','mesa-exterior','parasol','jardineras'],
+  otros:['otros']
+};
+// Mapping explícito slug → label visible (lleva tildes y "de" que no salen
+// de la transformación mecánica).
+var SUBCATEGORY_LABELS={
+  'sofas':'Sofás','sillas':'Sillas','butacas':'Butacas','taburetes':'Taburetes',
+  'mesa-comedor':'Mesa de comedor','mesa-centro':'Mesa de centro','escritorio':'Escritorio','mesilla':'Mesilla',
+  'estanteria':'Estantería','armario':'Armario','cajonera':'Cajonera','vitrina':'Vitrina',
+  'lampara-techo':'Lámpara de techo','lampara-mesa':'Lámpara de mesa','lampara-pie':'Lámpara de pie',
+  'cuadros':'Cuadros','jarrones':'Jarrones','espejos':'Espejos','plantas':'Plantas',
+  'silla-exterior':'Silla de exterior','mesa-exterior':'Mesa de exterior','parasol':'Parasol','jardineras':'Jardineras',
+  'otros':'Otros'
+};
+function formatSubcategory(key){
+  return SUBCATEGORY_LABELS[key]||(key||'—');
+}
+function buildSubcategoryOptions(category,selectedKey){
+  if(!category||!SUBCATEGORIES_BY_CATEGORY[category]){
+    return '<option value="">Primero selecciona una categoría…</option>';
+  }
+  return '<option value="">Selecciona una subcategoría…</option>'+
+    SUBCATEGORIES_BY_CATEGORY[category].map(function(s){
+      var sel=s===selectedKey?' selected':'';
+      return '<option value="'+s+'"'+sel+'>'+escHtml(formatSubcategory(s))+'</option>';
+    }).join('');
+}
+
 async function render(){
   var root=document.getElementById('vRoot');
 
@@ -272,7 +308,7 @@ async function loadItems(){
 
   var r=await _supabase
     .from('library_items')
-    .select('id,name,description,price_cents,status,taken_down_reason,created_at,category')
+    .select('id,name,description,price_cents,status,taken_down_reason,created_at,category,subcategory')
     .eq('seller_id',_currentUser.id)
     .neq('status','deleted')
     .order('created_at',{ascending:false});
@@ -317,11 +353,13 @@ function renderCard(it){
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="onUnpublish(\''+it.id+'\')">Despublicar</button>';
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditPriceModal(\''+it.id+'\')">Editar precio</button>';
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditCategoryModal(\''+it.id+'\')">Editar categoría</button>';
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditSubcategoryModal(\''+it.id+'\')">Editar subcategoría</button>';
     actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
   }else if(it.status==='draft'){
     actions+='<button class="v-btn v-btn-primary v-btn-small" onclick="onPublish(\''+it.id+'\')">Publicar</button>';
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditPriceModal(\''+it.id+'\')">Editar precio</button>';
     actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditCategoryModal(\''+it.id+'\')">Editar categoría</button>';
+    actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="openEditSubcategoryModal(\''+it.id+'\')">Editar subcategoría</button>';
     actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
   }else if(it.status==='taken_down'){
     if(isAdmin()){
@@ -345,7 +383,8 @@ function renderCard(it){
           '<span class="v-card-price">'+fmtPrice(it.price_cents)+'</span>'+
           badge+
         '</div>'+
-        '<div style="font-size:11.5px;color:var(--mid);margin-bottom:.25rem">Categoría: <strong style="color:var(--ink-soft);font-weight:600">'+escHtml(formatCategory(it.category))+'</strong></div>'+
+        '<div style="font-size:11.5px;color:var(--mid);margin-bottom:.15rem">Categoría: <strong style="color:var(--ink-soft);font-weight:600">'+escHtml(formatCategory(it.category))+'</strong></div>'+
+        '<div style="font-size:11.5px;color:var(--mid);margin-bottom:.25rem">Subcategoría: <strong style="color:var(--ink-soft);font-weight:600">'+escHtml(formatSubcategory(it.subcategory))+'</strong></div>'+
         takedownMsg+
         (actions?'<div class="v-card-actions">'+actions+'</div>':'')+
       '</div>'+
@@ -376,6 +415,9 @@ function errorMessage(errorCode,fallback){
     'invalid_dxf_path':'Ruta de archivo no válida.',
     'invalid_dxf_path_prefix':'Ruta de archivo no autorizada.',
     'invalid_category':'Selecciona una categoría válida.',
+    'invalid_subcategory':'Selecciona una subcategoría válida.',
+    'invalid_subcategory_for_category':'La subcategoría no corresponde a la categoría seleccionada.',
+    'subcategory_required':'La subcategoría es obligatoria.',
     'file_not_found':'Error al verificar el archivo. Inténtalo de nuevo.',
     'seller_not_active':'Tu cuenta de vendedor no está activa para vender piezas de pago.',
     'max_items_reached':'Ya tienes 5 piezas publicadas. Despublica una para subir otra.',
@@ -395,6 +437,9 @@ function rpcErrorMessage(msg){
   if(msg.includes('taken_down_cannot_republish')) return 'Esta pieza fue retirada por un administrador y solo un admin puede republicarla.';
   if(msg.includes('invalid_status_transition')) return 'No se puede cambiar el estado de la pieza desde aquí.';
   if(msg.includes('invalid_price')) return 'El precio no es válido (gratis o entre 1,50 € y 3,00 €).';
+  if(msg.includes('invalid_subcategory_for_category')) return 'La subcategoría no corresponde a la categoría seleccionada.';
+  if(msg.includes('subcategory_required')) return 'La subcategoría es obligatoria.';
+  if(msg.includes('invalid_subcategory')) return 'La subcategoría no es válida.';
   if(msg.includes('invalid_category')) return 'La categoría no es válida.';
   if(msg.includes('seller_not_active')) return 'Tu cuenta de vendedor no está activa para vender piezas de pago.';
   if(msg.includes('has_purchases_cannot_delete')) return 'Esta pieza tiene compras registradas y no se puede eliminar. Solo se puede despublicar.';
@@ -404,10 +449,10 @@ function rpcErrorMessage(msg){
 }
 
 // ─── Upload modal ────────────────────────────────────────────────────────────
-var _uploadState={file:null,price:0,category:''};
+var _uploadState={file:null,price:0,category:'',subcategory:''};
 
 function openUploadModal(){
-  _uploadState={file:null,price:0,category:''};
+  _uploadState={file:null,price:0,category:'',subcategory:''};
   var modal=document.getElementById('vModal');
   modal.innerHTML=''+
     '<h2>Subir nuevo dibujo</h2>'+
@@ -432,7 +477,11 @@ function openUploadModal(){
     '</div>'+
     '<div class="v-modal-row">'+
       '<label class="v-modal-label" for="uCategory">Categoría</label>'+
-      '<select id="uCategory" onchange="onUploadInput()">'+buildCategoryOptions('')+'</select>'+
+      '<select id="uCategory" onchange="onUploadCategoryChange()">'+buildCategoryOptions('')+'</select>'+
+    '</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="uSubcategory">Subcategoría</label>'+
+      '<select id="uSubcategory" onchange="onUploadInput()" disabled>'+buildSubcategoryOptions('','')+'</select>'+
     '</div>'+
     '<div class="v-modal-row">'+
       '<label class="v-modal-label">Precio</label>'+
@@ -520,16 +569,30 @@ function clearFile(){
   onUploadInput();
 }
 
+function onUploadCategoryChange(){
+  var cat=(document.getElementById('uCategory')||{}).value||'';
+  _uploadState.category=cat;
+  _uploadState.subcategory='';
+  var subSel=document.getElementById('uSubcategory');
+  if(subSel){
+    subSel.innerHTML=buildSubcategoryOptions(cat,'');
+    subSel.disabled=!cat;
+  }
+  onUploadInput();
+}
+
 function onUploadInput(){
   var name=(document.getElementById('uName')||{}).value||'';
   var desc=(document.getElementById('uDesc')||{}).value||'';
   var cat=(document.getElementById('uCategory')||{}).value||'';
+  var sub=(document.getElementById('uSubcategory')||{}).value||'';
   _uploadState.category=cat;
+  _uploadState.subcategory=sub;
   var nc=document.getElementById('uNameCount');if(nc) nc.textContent=name.length;
   var dc=document.getElementById('uDescCount');if(dc) dc.textContent=desc.length;
   var btn=document.getElementById('uPublish');
   if(btn){
-    var ok=!!_uploadState.file&&name.trim().length>=3&&!!cat;
+    var ok=!!_uploadState.file&&name.trim().length>=3&&!!cat&&!!sub;
     btn.disabled=!ok;
   }
 }
@@ -552,9 +615,10 @@ async function onPublishSubmit(btn){
   var name=document.getElementById('uName').value.trim();
   var desc=document.getElementById('uDesc').value.trim();
   var category=(document.getElementById('uCategory')||{}).value||'';
+  var subcategory=(document.getElementById('uSubcategory')||{}).value||'';
   var file=_uploadState.file;
   var priceCents=_uploadState.price;
-  if(!file||name.length<3||!category){showUploadError('Completa los campos obligatorios.');return;}
+  if(!file||name.length<3||!category||!subcategory){showUploadError('Completa los campos obligatorios.');return;}
 
   btn.disabled=true;
   var prevText=btn.textContent;
@@ -583,7 +647,7 @@ async function onPublishSubmit(btn){
         'Authorization':'Bearer '+s.data.session.access_token,
         'Content-Type':'application/json'
       },
-      body:JSON.stringify({uuid:uuid,name:name,description:desc||null,price_cents:priceCents,dxf_path:dxfPath,category:category})
+      body:JSON.stringify({uuid:uuid,name:name,description:desc||null,price_cents:priceCents,dxf_path:dxfPath,category:category,subcategory:subcategory})
     });
     var data=await resp.json().catch(function(){return null;});
 
@@ -654,6 +718,9 @@ async function onEditPriceSubmit(itemId,btn){
 }
 
 // ─── Edit category modal ─────────────────────────────────────────────────────
+// Cambiar categoría implica también elegir subcategoría: la antigua puede no
+// ser válida para la categoría nueva (p.ej. asientos→mesas: 'sofas' no aplica).
+// La RPC update_library_item_category exige las dos en el mismo call.
 function openEditCategoryModal(itemId){
   var it=_items.find(function(x){return x.id===itemId;});
   if(!it) return;
@@ -662,7 +729,11 @@ function openEditCategoryModal(itemId){
     '<h2>Editar categoría · '+escHtml(it.name)+'</h2>'+
     '<div class="v-modal-row">'+
       '<label class="v-modal-label" for="cCategory">Categoría</label>'+
-      '<select id="cCategory">'+buildCategoryOptions(it.category||'')+'</select>'+
+      '<select id="cCategory" onchange="onEditCategoryChange()">'+buildCategoryOptions(it.category||'')+'</select>'+
+    '</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="cSubcategory">Subcategoría</label>'+
+      '<select id="cSubcategory">'+buildSubcategoryOptions(it.category||'',it.subcategory||'')+'</select>'+
     '</div>'+
     '<div class="v-error" id="cErr"></div>'+
     '<div class="v-modal-actions">'+
@@ -672,16 +743,29 @@ function openEditCategoryModal(itemId){
   showOverlay();
 }
 
+function onEditCategoryChange(){
+  var cat=(document.getElementById('cCategory')||{}).value||'';
+  var sub=document.getElementById('cSubcategory');
+  if(sub){
+    sub.innerHTML=buildSubcategoryOptions(cat,'');
+    sub.disabled=!cat;
+  }
+}
+
 async function onEditCategorySubmit(itemId,btn){
-  var sel=document.getElementById('cCategory');
-  var newCategory=sel?sel.value:'';
+  var newCategory=(document.getElementById('cCategory')||{}).value||'';
+  var newSubcategory=(document.getElementById('cSubcategory')||{}).value||'';
   var box=document.getElementById('cErr');
   if(!newCategory){
     if(box){box.textContent='Selecciona una categoría.';box.classList.add('visible');}
     return;
   }
+  if(!newSubcategory){
+    if(box){box.textContent='Selecciona una subcategoría.';box.classList.add('visible');}
+    return;
+  }
   btn.disabled=true;var prev=btn.textContent;btn.textContent='Guardando…';
-  var r=await _supabase.rpc('update_library_item_category',{p_item_id:itemId,p_new_category:newCategory});
+  var r=await _supabase.rpc('update_library_item_category',{p_item_id:itemId,p_new_category:newCategory,p_new_subcategory:newSubcategory});
   if(r.error){
     if(box){box.textContent=rpcErrorMessage(r.error.message);box.classList.add('visible');}
     btn.disabled=false;btn.textContent=prev;
@@ -689,6 +773,46 @@ async function onEditCategorySubmit(itemId,btn){
   }
   hideOverlay();
   showToast('Categoría actualizada.','success');
+  await loadItems();
+}
+
+// ─── Edit subcategory modal ──────────────────────────────────────────────────
+// Solo cambia subcategoría, dentro del set válido para la categoría actual.
+function openEditSubcategoryModal(itemId){
+  var it=_items.find(function(x){return x.id===itemId;});
+  if(!it) return;
+  var modal=document.getElementById('vModal');
+  modal.innerHTML=''+
+    '<h2>Editar subcategoría · '+escHtml(it.name)+'</h2>'+
+    '<div style="font-size:12px;color:var(--mid);margin-bottom:.85rem">Categoría actual: <strong style="color:var(--ink-soft)">'+escHtml(formatCategory(it.category))+'</strong>. Si quieres cambiarla también, usa "Editar categoría".</div>'+
+    '<div class="v-modal-row">'+
+      '<label class="v-modal-label" for="sSubcategory">Subcategoría</label>'+
+      '<select id="sSubcategory">'+buildSubcategoryOptions(it.category||'',it.subcategory||'')+'</select>'+
+    '</div>'+
+    '<div class="v-error" id="sErr"></div>'+
+    '<div class="v-modal-actions">'+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cancelar</button>'+
+      '<button class="v-btn v-btn-primary" id="sSubmit" onclick="onEditSubcategorySubmit(\''+itemId+'\',this)">Guardar</button>'+
+    '</div>';
+  showOverlay();
+}
+
+async function onEditSubcategorySubmit(itemId,btn){
+  var newSubcategory=(document.getElementById('sSubcategory')||{}).value||'';
+  var box=document.getElementById('sErr');
+  if(!newSubcategory){
+    if(box){box.textContent='Selecciona una subcategoría.';box.classList.add('visible');}
+    return;
+  }
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Guardando…';
+  var r=await _supabase.rpc('update_library_item_subcategory',{p_item_id:itemId,p_new_subcategory:newSubcategory});
+  if(r.error){
+    if(box){box.textContent=rpcErrorMessage(r.error.message);box.classList.add('visible');}
+    btn.disabled=false;btn.textContent=prev;
+    return;
+  }
+  hideOverlay();
+  showToast('Subcategoría actualizada.','success');
   await loadItems();
 }
 
