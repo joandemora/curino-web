@@ -80,20 +80,19 @@ export async function generateBuyerInvoicePdf(order: OrderData): Promise<Uint8Ar
   y -= 30;
 
   // Totales
-  page.drawText(`Base imponible:`, { x: 380, y, font, size: 10 });
-  page.drawText(`${(order.base_cents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`Base imponible:`, { x: 350, y, font, size: 10 });
+  page.drawText(`${(order.base_cents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
   y -= 15;
-  page.drawText(`IVA (${order.tax_rate_pct}%):`, { x: 380, y, font, size: 10 });
-  page.drawText(`${(order.tax_amount_cents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`IVA (${order.tax_rate_pct}%):`, { x: 350, y, font, size: 10 });
+  page.drawText(`${(order.tax_amount_cents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
   y -= 15;
-  page.drawLine({ start: { x: 380, y: y + 5 }, end: { x: 545, y: y + 5 }, thickness: 0.5 });
-  page.drawText(`TOTAL:`, { x: 380, y, font: fontBold, size: 12 });
-  page.drawText(`${(order.amount_cents / 100).toFixed(2)} €`, { x: 480, y, font: fontBold, size: 12 });
+  page.drawText(`TOTAL:`, { x: 350, y, font: fontBold, size: 12 });
+  page.drawText(`${(order.amount_cents / 100).toFixed(2)} €`, { x: 490, y, font: fontBold, size: 12 });
 
   // Footer
   page.drawText(`Pieza: ${order.item_name_snapshot}`, { x: 50, y: 100, font, size: 9, color: gray });
   page.drawText(`ID compra: ${order.id}`, { x: 50, y: 85, font, size: 9, color: gray });
-  page.drawText(`Curino S.L. — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
+  page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
 
   return await doc.save();
 }
@@ -154,22 +153,21 @@ export async function generateSellerInvoicePdf(order: OrderData, seller: SellerD
   y -= 30;
 
   // Totales
-  page.drawText(`Base imponible:`, { x: 380, y, font, size: 10 });
-  page.drawText(`${(sellerBaseCents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`Base imponible:`, { x: 350, y, font, size: 10 });
+  page.drawText(`${(sellerBaseCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
   y -= 15;
-  page.drawText(`IVA (${order.tax_rate_pct}%):`, { x: 380, y, font, size: 10 });
-  page.drawText(`${(sellerTaxCents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`IVA (${order.tax_rate_pct}%):`, { x: 350, y, font, size: 10 });
+  page.drawText(`${(sellerTaxCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
   y -= 15;
-  page.drawLine({ start: { x: 380, y: y + 5 }, end: { x: 545, y: y + 5 }, thickness: 0.5 });
-  page.drawText(`TOTAL A PAGAR:`, { x: 380, y, font: fontBold, size: 12 });
-  page.drawText(`${(sellerNetCents / 100).toFixed(2)} €`, { x: 480, y, font: fontBold, size: 12 });
+  page.drawText(`TOTAL A PAGAR:`, { x: 350, y, font: fontBold, size: 12 });
+  page.drawText(`${(sellerNetCents / 100).toFixed(2)} €`, { x: 490, y, font: fontBold, size: 12 });
   y -= 30;
 
   page.drawText(`Comisión Curino: ${(order.commission_cents / 100).toFixed(2)} €`, { x: 50, y, font, size: 9, color: gray });
 
   // Footer
   page.drawText(`ID compra: ${order.id}`, { x: 50, y: 85, font, size: 9, color: gray });
-  page.drawText(`Curino S.L. — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
+  page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
 
   return await doc.save();
 }
@@ -247,7 +245,7 @@ export function buyerEmailHtml(order: OrderData, configuradorUrl: string): strin
   <p>La pieza ya está disponible en tu biblioteca del configurador. Puedes acceder aquí:</p>
   <p><a href="${configuradorUrl}" style="display: inline-block; background: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Ir al configurador</a></p>
   <p>Adjuntamos la factura simplificada (Nº ${order.invoice_simplified_number}).</p>
-  <p style="font-size: 12px; color: #888; margin-top: 30px;">Curino S.L. — Este email es automático, no responder.</p>
+  <p style="font-size: 12px; color: #888; margin-top: 30px;">SISTEMA & CURINO SLU — Este email es automático, no responder.</p>
 </body>
 </html>`;
 }
@@ -264,7 +262,7 @@ export function sellerEmailHtml(order: OrderData): string {
   <p>Has vendido <strong>${order.item_name_snapshot}</strong>. Tu importe neto: ${(sellerNetCents / 100).toFixed(2)} € (comisión Curino: ${(order.commission_cents / 100).toFixed(2)} €).</p>
   <p>Stripe transferirá el importe a tu cuenta bancaria en los próximos 7 días.</p>
   <p>Adjuntamos la auto-factura (Nº ${order.auto_invoice_number}) emitida en tu nombre.</p>
-  <p style="font-size: 12px; color: #888; margin-top: 30px;">Curino S.L. — Este email es automático, no responder.</p>
+  <p style="font-size: 12px; color: #888; margin-top: 30px;">SISTEMA & CURINO SLU — Este email es automático, no responder.</p>
 </body>
 </html>`;
 }
