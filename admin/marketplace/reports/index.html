@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh;font-size:14px;line-height:1.6}
+body.hidden-until-auth{visibility:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.v-header{background:#111;color:#fff;padding:.85rem 1.5rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.v-header h1{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.v-header h1 .sub{opacity:.55;margin-left:.4rem;font-weight:300}
+.v-header nav{display:flex;gap:.5rem;align-items:center}
+.v-header nav a{color:#bbb;font-size:12px;padding:.4rem .7rem;border-radius:4px;transition:background .15s,color .15s}
+.v-header nav a:hover{color:#fff;background:rgba(255,255,255,.1);text-decoration:none}
+.v-header button{background:transparent;color:#bbb;border:1px solid #444;font-size:11px;padding:.35rem .7rem;border-radius:4px;cursor:pointer;font-family:var(--font);letter-spacing:.05em;text-transform:uppercase}
+.v-header button:hover{color:#fff;border-color:#666}
+
+.v-section{padding:2rem 1.5rem 4rem;max-width:1200px;margin:0 auto}
+.v-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+
+.v-title{font-size:26px;font-weight:300;margin-bottom:.4rem;letter-spacing:-.01em}
+.v-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:1.5rem}
+
+.v-toolbar{display:flex;gap:1rem;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap}
+.v-toolbar label{font-size:12px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em}
+.v-toolbar select{padding:.5rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink)}
+.v-toolbar select:focus{outline:none;border-color:var(--ink)}
+
+.v-table{width:100%;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;border-collapse:collapse}
+.v-table th{text-align:left;padding:.85rem 1rem;font-size:11px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.v-table td{padding:.85rem 1rem;font-size:13px;border-top:1px solid var(--border);vertical-align:top}
+.v-table tr:hover td{background:#fdfcf6;cursor:pointer}
+.v-table .col-date{white-space:nowrap;color:var(--mid);font-size:12px}
+.v-table .col-item{font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-table .col-reporter{color:var(--ink-soft);font-size:12px}
+.v-table .col-reason{font-size:12px}
+
+.v-empty{text-align:center;padding:3rem 1rem;color:var(--mid);font-size:13.5px;background:#fff;border:1px solid var(--border);border-radius:8px}
+
+.v-status-badge{display:inline-block;padding:.2rem .55rem;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;white-space:nowrap}
+.v-status-badge.open{background:#fff8e1;color:#8a6d1c}
+.v-status-badge.under_review{background:#eef4ff;color:#1e3a6f}
+.v-status-badge.resolved_takedown{background:#fde8e8;color:#a83232}
+.v-status-badge.resolved_no_action{background:#eceff1;color:#546e7a}
+.v-status-badge.dismissed_spam{background:#f5e8f8;color:#6a1b8a}
+
+/* Modal de detalle */
+.v-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto}
+.v-overlay.open{display:flex}
+.v-modal{background:#fff;border-radius:10px;max-width:640px;width:100%;padding:1.75rem 2rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.v-modal h2{font-size:18px;font-weight:600;margin-bottom:1rem}
+.v-modal .info-rows{display:grid;grid-template-columns:auto 1fr;gap:.5rem 1.2rem;margin-bottom:1rem;font-size:13px}
+.v-modal .info-rows .label{color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.v-modal .info-rows .value{color:var(--ink)}
+.v-modal .details-block{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.85rem 1rem;font-size:13px;color:var(--ink-soft);margin:1rem 0;white-space:pre-wrap}
+.v-modal label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .35rem;font-weight:600}
+.v-modal textarea{width:100%;padding:.6rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink);resize:vertical;min-height:80px}
+.v-modal-actions{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+.v-btn{padding:.6rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;transition:opacity .15s,background .15s,border-color .15s}
+.v-btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.v-btn-primary:hover{background:#333;border-color:#333}
+.v-btn-secondary{background:#fff;color:#1a1a1a;border-color:var(--border)}
+.v-btn-secondary:hover{border-color:#1a1a1a}
+.v-btn-danger{background:#a83232;color:#fff;border-color:#a83232}
+.v-btn-danger:hover{background:#8a2828;border-color:#8a2828}
+.v-btn:disabled{opacity:.5;cursor:not-allowed}
+.v-error{background:#fde8e8;border-left:4px solid #a83232;color:#7a2424;padding:.7rem 1rem;border-radius:4px;margin-top:.85rem;font-size:13px;display:none}
+.v-error.visible{display:block}
+
+.v-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:6px;font-size:13px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .25s}
+.v-toast.visible{opacity:1}
+.v-toast.success{background:var(--accent)}
+.v-toast.error{background:#a83232}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<header class="v-header">
+  <h1>Curino <span class="sub">Reports</span></h1>
+  <nav>
+    <a href="/admin/">Panel admin</a>
+    <a href="/mi-cuenta/">Mi cuenta</a>
+    <button onclick="adminSignOut()">Cerrar sesión</button>
+  </nav>
+</header>
+
+<section class="v-section">
+  <h1 class="v-title">Reports del marketplace</h1>
+  <p class="v-subtitle">Revisión de reports de piezas del marketplace.</p>
+
+  <div class="v-toolbar">
+    <label for="filterStatus">Estado</label>
+    <select id="filterStatus" onchange="loadReports()">
+      <option value="open" selected>Abiertos</option>
+      <option value="under_review">Bajo revisión</option>
+      <option value="resolved_takedown">Resueltos · takedown</option>
+      <option value="resolved_no_action">Resueltos · sin acción</option>
+      <option value="dismissed_spam">Spam</option>
+      <option value="">Todos</option>
+    </select>
+    <button class="v-btn v-btn-secondary" onclick="loadReports()" style="margin-left:auto">Recargar</button>
+  </div>
+
+  <div id="vList"><div class="v-loading">Cargando…</div></div>
+</section>
+
+<div class="v-overlay" id="vOverlay" onmousedown="onOverlayMouseDown(event)">
+  <div class="v-modal" id="vModal" onmousedown="event.stopPropagation()"></div>
+</div>
+
+<div class="v-toast" id="vToast"></div>
+
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var _supabase=null,_currentUser=null,_reports=[];
+
+var REASON_LABELS={
+  copyright:'Copyright',
+  inappropriate:'Inapropiado',
+  incorrect_info:'Info incorrecta',
+  other:'Otro'
+};
+var STATUS_LABELS={
+  open:'Abierto',
+  under_review:'Bajo revisión',
+  resolved_takedown:'Takedown',
+  resolved_no_action:'Sin acción',
+  dismissed_spam:'Spam'
+};
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/admin/marketplace/reports/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    window.SUPABASE_URL=c.supabaseUrl;
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/admin/marketplace/reports/';return;
+    }
+    _currentUser=s.data.session.user;
+
+    // Verificar admin
+    var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
+    if(!rr.data||rr.data.role!=='admin'){
+      alert('Solo administradores pueden acceder a esta página.');
+      window.location.href='/';return;
+    }
+
+    document.body.classList.remove('hidden-until-auth');
+    await loadReports();
+  }catch(e){
+    console.error('admin reports bootstrap',e);
+    window.location.href='/login/?redirect=/admin/marketplace/reports/';
+  }
+})();
+
+async function adminSignOut(){
+  if(_supabase) await _supabase.auth.signOut();
+  window.location.href='/login/';
+}
+
+async function loadReports(){
+  var list=document.getElementById('vList');
+  list.innerHTML='<div class="v-loading">Cargando reports…</div>';
+
+  var statusFilter=document.getElementById('filterStatus').value;
+  var q=_supabase.from('library_item_reports_with_details').select('*').order('created_at',{ascending:false});
+  if(statusFilter) q=q.eq('status',statusFilter);
+
+  var r=await q;
+  if(r.error){
+    list.innerHTML='<div class="v-empty">Error: '+escHtml(r.error.message)+'</div>';
+    return;
+  }
+  _reports=r.data||[];
+  if(_reports.length===0){
+    list.innerHTML='<div class="v-empty">Sin reports'+(statusFilter?' en este estado':'')+'.</div>';
+    return;
+  }
+
+  var rows=_reports.map(function(rep){
+    var date=new Date(rep.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})+
+      ' '+new Date(rep.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    return '<tr onclick="openReportDetail(\''+escHtml(rep.id)+'\')">'+
+      '<td class="col-date">'+escHtml(date)+'</td>'+
+      '<td class="col-item">'+escHtml(rep.item_name||'(sin nombre)')+'</td>'+
+      '<td class="col-reporter">'+escHtml(rep.reporter_email||'(sin email)')+'</td>'+
+      '<td class="col-reason">'+escHtml(REASON_LABELS[rep.reason]||rep.reason)+'</td>'+
+      '<td><span class="v-status-badge '+escHtml(rep.status)+'">'+escHtml(STATUS_LABELS[rep.status]||rep.status)+'</span></td>'+
+    '</tr>';
+  }).join('');
+
+  list.innerHTML='<table class="v-table">'+
+    '<thead><tr><th>Fecha</th><th>Pieza</th><th>Reporter</th><th>Razón</th><th>Estado</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
+
+function openReportDetail(reportId){
+  var rep=_reports.find(function(r){return r.id===reportId;});
+  if(!rep) return;
+  var modal=document.getElementById('vModal');
+  var date=new Date(rep.created_at).toLocaleString('es-ES');
+  var resolvedDate=rep.resolved_at?new Date(rep.resolved_at).toLocaleString('es-ES'):'—';
+  var detailsBlock=rep.details
+    ? '<label>Detalles del reporter</label><div class="details-block">'+escHtml(rep.details)+'</div>'
+    : '';
+  var existingNotes=rep.admin_notes
+    ? '<label>Notas previas del admin</label><div class="details-block">'+escHtml(rep.admin_notes)+'</div>'
+    : '';
+  var actionsHtml=(rep.status==='open'||rep.status==='under_review')
+    ? '<button class="v-btn v-btn-secondary" onclick="resolveReport(\''+escHtml(rep.id)+'\',\'review\',this)">Marcar bajo revisión</button>'+
+      '<button class="v-btn v-btn-danger" onclick="resolveReport(\''+escHtml(rep.id)+'\',\'takedown\',this)">Hacer takedown</button>'+
+      '<button class="v-btn v-btn-secondary" onclick="resolveReport(\''+escHtml(rep.id)+'\',\'no_action\',this)">Sin acción</button>'+
+      '<button class="v-btn v-btn-secondary" onclick="resolveReport(\''+escHtml(rep.id)+'\',\'spam\',this)">Marcar spam</button>'
+    : '<div style="color:var(--mid);font-size:12.5px;flex:1">Este report ya está resuelto. No se permiten más cambios.</div>';
+
+  modal.innerHTML=''+
+    '<h2>Report '+escHtml(rep.id.substring(0,8))+'…</h2>'+
+    '<div class="info-rows">'+
+      '<div class="label">Pieza</div><div class="value">'+escHtml(rep.item_name||'(sin nombre)')+' <span style="color:var(--mid);font-size:11px">('+escHtml(rep.library_item_id)+')</span></div>'+
+      '<div class="label">Estado pieza</div><div class="value">'+escHtml(rep.item_status||'?')+'</div>'+
+      '<div class="label">Reporter</div><div class="value">'+escHtml(rep.reporter_email||'(sin email)')+'</div>'+
+      '<div class="label">Razón</div><div class="value">'+escHtml(REASON_LABELS[rep.reason]||rep.reason)+'</div>'+
+      '<div class="label">Estado report</div><div class="value"><span class="v-status-badge '+escHtml(rep.status)+'">'+escHtml(STATUS_LABELS[rep.status]||rep.status)+'</span></div>'+
+      '<div class="label">Creado</div><div class="value">'+escHtml(date)+'</div>'+
+      '<div class="label">Resuelto</div><div class="value">'+escHtml(resolvedDate)+'</div>'+
+    '</div>'+
+    detailsBlock+
+    existingNotes+
+    ((rep.status==='open'||rep.status==='under_review')
+      ? '<label for="adminNotes">Notas del admin <span style="color:#999;font-weight:normal">(opcional)</span></label>'+
+        '<textarea id="adminNotes" maxlength="1000" placeholder="Notas internas sobre la decisión..."></textarea>'
+      : '')+
+    '<div class="v-error" id="vErr"></div>'+
+    '<div class="v-modal-actions">'+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>'+
+      actionsHtml+
+    '</div>';
+  showOverlay();
+}
+
+async function resolveReport(reportId,action,btn){
+  var rep=_reports.find(function(r){return r.id===reportId;});
+  if(!rep) return;
+  var notesEl=document.getElementById('adminNotes');
+  var notes=notesEl?notesEl.value.trim():'';
+  var errEl=document.getElementById('vErr');
+  function showErr(msg){if(errEl){errEl.textContent=msg;errEl.classList.add('visible');}}
+
+  // Confirmación específica para takedown
+  if(action==='takedown'){
+    if(!confirm('¿Hacer takedown de "'+(rep.item_name||'esta pieza')+'"? La pieza dejará de ser visible y se enviará un email automático al seller.')) return;
+  }
+
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Procesando…';
+  try{
+    var r=await _supabase.rpc('resolve_report',{p_report_id:reportId,p_action:action,p_admin_notes:notes||null});
+    if(r.error) throw r.error;
+
+    // Si action=takedown, llamar Edge Function notify-takedown
+    if(action==='takedown'){
+      try{
+        var s=await _supabase.auth.getSession();
+        var fnUrl=(window.SUPABASE_URL||_supabase.supabaseUrl)+'/functions/v1/notify-takedown';
+        var emailResp=await fetch(fnUrl,{
+          method:'POST',
+          headers:{
+            'Authorization':'Bearer '+s.data.session.access_token,
+            'Content-Type':'application/json'
+          },
+          body:JSON.stringify({item_id:rep.library_item_id,reason:rep.reason,admin_notes:notes||null})
+        });
+        if(!emailResp.ok){
+          var t=await emailResp.text();
+          console.error('notify-takedown failed:',emailResp.status,t);
+          showToast('Takedown OK, pero email al seller falló. Ver consola.','error');
+        }
+      }catch(eMail){
+        console.error('notify-takedown exception:',eMail);
+        showToast('Takedown OK, pero email al seller falló. Ver consola.','error');
+      }
+    }
+
+    hideOverlay();
+    showToast('Report actualizado.','success');
+    await loadReports();
+  }catch(err){
+    console.error('resolve_report error:',err);
+    var msg=(err.message||'').toLowerCase();
+    if(msg.includes('admin_only')) showErr('Solo administradores pueden resolver reports.');
+    else if(msg.includes('report_not_found')) showErr('Report no encontrado.');
+    else showErr('Error: '+err.message);
+    btn.disabled=false;btn.textContent=prev;
+  }
+}
+
+function showOverlay(){document.getElementById('vOverlay').classList.add('open');}
+function hideOverlay(){document.getElementById('vOverlay').classList.remove('open');}
+function onOverlayMouseDown(e){if(e.target.id==='vOverlay') hideOverlay();}
+document.addEventListener('keydown',function(e){if(e.key==='Escape') hideOverlay();});
+
+function showToast(msg,kind){
+  var t=document.getElementById('vToast');
+  t.textContent=msg;
+  t.className='v-toast '+(kind||'')+' visible';
+  setTimeout(function(){t.classList.remove('visible');},3500);
+}
+</script>
+</body>
+</html>
