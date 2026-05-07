@@ -116,7 +116,7 @@ window.MarketplaceReport = (function() {
         });
         if (error) throw error;
         overlay.remove();
-        alert('Report enviado. Gracias por avisarnos.');
+        _showToast('Report enviado. Gracias por avisarnos.');
       } catch (err) {
         const msg = (err.message || '').toLowerCase();
         if (msg.includes('already_reported')) {
@@ -136,6 +136,26 @@ window.MarketplaceReport = (function() {
 
   function _escapeHtml(s) {
     return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  function _showToast(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1a7a3e; color: #fff; padding: 12px 20px; border-radius: 6px;
+      font-family: system-ui, sans-serif; font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 10001;
+      opacity: 0; transition: opacity 0.2s;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    // Trigger fade in
+    requestAnimationFrame(() => { toast.style.opacity = '1'; });
+    // Remove after 3s
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 200);
+    }, 3000);
   }
 
   return { init, open };
