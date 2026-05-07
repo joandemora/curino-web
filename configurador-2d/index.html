@@ -11,6 +11,7 @@
 <script src="/assets/js/catalog-helpers.js"></script>
 <script src="/assets/js/library-categories.js"></script>
 <script src="/assets/js/library-dxf.js"></script>
+<script src="/assets/js/marketplace-report.js"></script>
 <script src="/assets/js/dxf-tools.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -179,6 +180,8 @@ body{font-family:var(--font);color:var(--black);background:var(--bg);overflow:hi
 .c2d-saved-del:hover{color:#dc2626}
 .c2d-saved-publish{width:20px;height:20px;background:none;border:none;color:var(--mid);font-size:13px;cursor:pointer;flex-shrink:0;display:none;align-items:center;justify-content:center;border-radius:50%;transition:color .15s,background .15s}
 .c2d-saved-card:hover .c2d-saved-publish{display:flex}
+.c2d-lib-card:hover .c2d-lib-report{display:flex !important}
+.c2d-lib-card .c2d-lib-report:hover{background:#fff;color:#7a2424}
 .c2d-saved-publish:hover{color:#2e7d32;background:#e8f5e9}
 /* Marketplace publish modal */
 .c2d-mp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:none;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto;font-family:var(--font)}
@@ -4978,6 +4981,7 @@ function finishInit(){
     if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
       _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
       window.SUPABASE_URL=c.supabaseUrl;
+      if(window.MarketplaceReport) window.MarketplaceReport.init(_supabase);
       var s=await _supabase.auth.getSession();
       if(s.data.session) _currentUser=s.data.session.user;
       if(_currentUser){await loadUserLogo();await loadUserRole();}
@@ -5347,10 +5351,19 @@ function renderLibraryPanel(){
     return;
   }
   body.innerHTML='';
+  // Botón "Reportar pieza" (icono ⚠️). Visible solo si:
+  //  - hay user logueado
+  //  - el user NO es el seller de la pieza
+  //  - existe el módulo MarketplaceReport
+  var canReport=!!(_currentUser&&window.MarketplaceReport);
   function renderItemCard(it){
     var photoUrl=it.thumbnail_url||null;
     var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
-    return '<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'">'+
+    var reportBtn=(canReport&&it.seller_id!==_currentUser.id)
+      ? '<button class="c2d-lib-report" data-id="'+_escHtml(it.id)+'" title="Reportar pieza" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border:0;background:rgba(255,255,255,.85);border-radius:50%;cursor:pointer;font-size:12px;line-height:1;padding:0;display:none;align-items:center;justify-content:center;color:#a83232" onmousedown="event.stopPropagation()">⚠</button>'
+      : '';
+    return '<div class="c2d-saved-card c2d-lib-card" draggable="true" data-id="'+_escHtml(it.id)+'" style="position:relative">'+
+      reportBtn+
       thumb+
       '<div class="c2d-cat-name"><strong>'+_escHtml(it.name)+'</strong></div>'+
     '</div>';
@@ -5400,6 +5413,15 @@ function renderLibraryPanel(){
       // product_photo_url, so the companion-image step skips itself.
       _dragData={type:'catalog_dxf',catalogItem:item,w:item.width_mm||500,h:item.height_mm||500};
       e.dataTransfer.setData('text','library');
+    });
+  });
+  // Wire botones de reportar (Fase F).
+  body.querySelectorAll('.c2d-lib-report').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();e.preventDefault();
+      var id=btn.dataset.id;
+      var item=(_libraryItems||[]).find(function(it){return it.id===id;});
+      if(item&&window.MarketplaceReport) window.MarketplaceReport.open(item);
     });
   });
 }
@@ -5650,6 +5672,10 @@ function showPurchaseGateMessage(opts){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:1rem';
   var modal=document.createElement('div');
   modal.style.cssText='background:#fff;border-radius:8px;max-width:440px;width:100%;padding:1.5rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:var(--font)';
+  // Link "Reportar pieza" solo en purchase_required (Fase F).
+  var reportLinkHtml=(type==='purchase_required'&&itemId&&window.MarketplaceReport&&_currentUser)
+    ? '<div style="margin-top:.85rem;font-size:12px;color:#888"><a href="#" id="_pgReport" style="color:#888;text-decoration:underline">¿Algo no encaja? Reportar pieza</a></div>'
+    : '';
   modal.innerHTML=
     '<h3 style="font-size:18px;font-weight:600;margin:0 0 .6rem;color:var(--ink,#1a1a1a)">'+_escHtml(title)+'</h3>'+
     '<p style="font-size:14px;line-height:1.5;color:#555;margin:0 0 1.25rem">'+msg+'</p>'+
@@ -5660,7 +5686,7 @@ function showPurchaseGateMessage(opts){
             ? '<button id="_pgCancel" style="padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #e5e5e5;background:#fff;color:#1a1a1a;cursor:pointer;font-family:var(--font)">'+_escHtml(secondaryLabel)+'</button>'
             : ''))+
       '<button id="_pgPrimary" style="padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:var(--font)">'+_escHtml(primaryLabel)+'</button>'+
-    '</div>';
+    '</div>'+reportLinkHtml;
   ov.appendChild(modal);
   document.body.appendChild(ov);
 
@@ -5689,6 +5715,17 @@ function showPurchaseGateMessage(opts){
   };
   var cancelBtn=modal.querySelector('#_pgCancel');
   if(cancelBtn) cancelBtn.onclick=close;
+  // Link "Reportar pieza" (Fase F) — solo presente en purchase_required.
+  var reportLink=modal.querySelector('#_pgReport');
+  if(reportLink){
+    reportLink.onclick=function(e){
+      e.preventDefault();
+      close();
+      if(window.MarketplaceReport){
+        window.MarketplaceReport.open({id:itemId,name:itemName});
+      }
+    };
+  }
   ov.addEventListener('mousedown',function(e){if(e.target===ov) close();});
   document.addEventListener('keydown',onKey,true);
 }

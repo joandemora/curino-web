@@ -338,12 +338,19 @@ function renderCard(it){
     if(isAdmin()){
       actions+='<button class="v-btn v-btn-secondary v-btn-small" onclick="onPublish(\''+it.id+'\')">Republicar</button>';
       actions+='<button class="v-btn v-btn-danger v-btn-small" onclick="onDelete(\''+it.id+'\')">Eliminar</button>';
+    }else{
+      // Seller no-admin: pieza retirada por administración. Read-only, solo
+      // CTA de contacto. La razón se muestra abajo en takedownMsg si existe.
+      actions+='<a class="v-btn v-btn-secondary v-btn-small" href="mailto:hola@casacurino.com?subject=Pieza%20retirada%20-%20'+encodeURIComponent(it.name||it.id)+'" style="text-decoration:none">Contactar admin</a>';
     }
   }
 
   var takedownMsg='';
-  if(it.status==='taken_down'&&it.taken_down_reason){
-    takedownMsg='<div class="v-card-takedown-msg">Esta pieza fue retirada: '+escHtml(it.taken_down_reason)+'</div>';
+  if(it.status==='taken_down'){
+    var reasonText=it.taken_down_reason
+      ? 'Esta pieza fue retirada por administración: '+escHtml(it.taken_down_reason)
+      : 'Esta pieza fue retirada por administración. Contacta con admin para detalles.';
+    takedownMsg='<div class="v-card-takedown-msg">'+reasonText+'</div>';
   }
 
   return ''+
