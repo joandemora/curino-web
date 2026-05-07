@@ -286,12 +286,19 @@ async function handleCheckoutCompleted(
     console.error('Error assigning simplified invoice number:', simplifiedError);
   }
 
-  const { data: autoNum, error: autoError } = await supabase.rpc('assign_invoice_number', {
-    p_type: 'auto_invoice',
-    p_year: currentYear
-  });
-  if (autoError) {
-    console.error('Error assigning auto invoice number:', autoError);
+  // Auto-factura solo si seller NO es admin. Curino vendiendo directo no
+  // necesita auto-factura (no hay tercero al que facturar en su nombre).
+  let autoNum: string | null = null;
+  if (!sellerIsAdmin) {
+    const { data: an, error: autoError } = await supabase.rpc('assign_invoice_number', {
+      p_type: 'auto_invoice',
+      p_year: currentYear
+    });
+    if (autoError) {
+      console.error('Error assigning auto invoice number:', autoError);
+    } else {
+      autoNum = an;
+    }
   }
 
   // INSERT marketplace_order
@@ -403,23 +410,13 @@ async function handleCheckoutCompleted(
       }
     }
 
-    // Generar PDFs
+    // Generar PDF del comprador (siempre).
     const buyerPdf = await generateBuyerInvoicePdf(orderForInvoice);
-    const sellerPdf = await generateSellerInvoicePdf(orderForInvoice, {
-      email: sellerEmail || '',
-      legal_name: sellerLegalName,
-      tax_id: sellerTaxId,
-      address: sellerAddress
-    });
-
-    // Subir a Storage
     await uploadInvoicePdf(supabase, orderData.id, 'buyer', buyerPdf);
-    await uploadInvoicePdf(supabase, orderData.id, 'seller', sellerPdf);
 
-    // Enviar emails
+    // Email comprador
     const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
     const configuradorUrl = `${siteUrl}/configurador-2d/`;
-
     if (buyerEmail) {
       await sendInvoiceEmail(
         buyerEmail,
@@ -430,15 +427,27 @@ async function handleCheckoutCompleted(
       );
     }
 
-    // Email al seller solo si no es Curino mismo (admin) y tenemos su email.
-    if (!sellerIsAdmin && sellerEmail) {
-      await sendInvoiceEmail(
-        sellerEmail,
-        `Has vendido una pieza en Curino — ${item.name}`,
-        sellerEmailHtml(orderForInvoice),
-        sellerPdf,
-        `auto-factura-${autoNum}.pdf`
-      );
+    // Auto-factura + email al seller solo si NO es admin (Curino vendiendo directo
+    // no genera auto-factura). El auto_invoice_number tampoco se asignó arriba en
+    // ese caso, así que aquí ni siquiera tocamos seller.pdf.
+    if (!sellerIsAdmin) {
+      const sellerPdf = await generateSellerInvoicePdf(orderForInvoice, {
+        email: sellerEmail || '',
+        legal_name: sellerLegalName,
+        tax_id: sellerTaxId,
+        address: sellerAddress
+      });
+      await uploadInvoicePdf(supabase, orderData.id, 'seller', sellerPdf);
+
+      if (sellerEmail) {
+        await sendInvoiceEmail(
+          sellerEmail,
+          `Has vendido una pieza en Curino — ${item.name}`,
+          sellerEmailHtml(orderForInvoice),
+          sellerPdf,
+          `auto-factura-${autoNum}.pdf`
+        );
+      }
     }
 
     console.log(`Invoices generated and emails sent for order ${orderData.id}`);
