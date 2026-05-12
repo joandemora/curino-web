@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
   <p>Tu pieza <strong>${item.name}</strong> ha sido retirada del marketplace de Curino tras la revisión de un report.</p>
   <p><strong>Motivo:</strong> ${reasonLabel}</p>
   ${admin_notes ? `<p><strong>Notas del equipo:</strong> ${admin_notes}</p>` : ''}
-  <p>Si crees que es un error o quieres más información, contacta con nosotros respondiendo a este email o escribiendo a <a href="mailto:hola@casacurino.com">hola@casacurino.com</a>.</p>
+  <p>Si crees que es un error o quieres más información, contacta con nosotros respondiendo a este email o escribiendo a <a href="mailto:info@casacurino.com">info@casacurino.com</a>.</p>
   <p style="font-size: 12px; color: #888; margin-top: 30px;">SISTEMA & CURINO SLU — Equipo Curino.</p>
 </body>
 </html>`;
