@@ -98,6 +98,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .auth-divider{display:flex;align-items:center;gap:1rem;margin:1.5rem 0;color:var(--mid);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .auth-error{background:#fef2f2;color:#dc2626;padding:.75rem;font-size:13px;margin-bottom:1rem;display:none}
+.auth-title{font-size:20px;font-weight:600;margin-bottom:.5rem;letter-spacing:-.01em;color:var(--black)}
+.auth-subtitle{font-size:13px;color:var(--mid);margin-bottom:1.5rem;line-height:1.5}
+.auth-subtitle strong{color:var(--black);font-weight:600}
+.auth-input-otp{font-size:18px;letter-spacing:.4em;text-align:center;font-family:'Open Sans',monospace;font-weight:600}
+.auth-actions{display:flex;gap:.5rem;justify-content:center;align-items:center;margin-top:1.25rem;font-size:12px;color:var(--mid)}
+.auth-actions-sep{color:var(--border)}
+.auth-link{color:var(--mid);text-decoration:underline;cursor:pointer;transition:color .2s;background:none;border:none;font-family:inherit;font-size:inherit;padding:0}
+.auth-link:hover{color:var(--black)}
+.auth-link.disabled{pointer-events:none;opacity:.5;text-decoration:none}
 
 /* ── FOOTER ── */
 footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
@@ -188,23 +197,16 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="#">Magazine</a><a href="#">Partners</a><a href="#">Contacto</a>
 </div>
 
-<!-- LOGIN -->
+<!-- LOGIN — OTP-only flow (link + código) + Google OAuth -->
 <div class="login-wrap">
-  <div class="auth-tabs">
-    <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Inicia sesi&oacute;n</button>
-    <span class="auth-tab-sep">|</span>
-    <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Crea tu cuenta</button>
-  </div>
-
-  <div class="auth-error" id="authError"></div>
-
-  <!-- LOGIN PANEL -->
-  <div class="auth-panel active" id="panelLogin">
-    <form id="loginForm" onsubmit="handleLogin(event)">
-      <input type="email" class="auth-input" placeholder="Email" id="loginEmail" required autocomplete="email">
-      <input type="password" class="auth-input" placeholder="Contrase&ntilde;a" id="loginPassword" required autocomplete="current-password">
-      <a href="javascript:void(0)" class="auth-forgot" onclick="handleForgot()">&iquest;Has olvidado tu contrase&ntilde;a?</a>
-      <button type="submit" class="auth-btn auth-btn-primary" id="btnLogin">Iniciar sesi&oacute;n</button>
+  <!-- Paso 1: introducir email -->
+  <div id="authPanelEmail">
+    <h1 class="auth-title">Inicia sesi&oacute;n o crea tu cuenta</h1>
+    <p class="auth-subtitle">Te enviaremos un c&oacute;digo por email.</p>
+    <div class="auth-error" id="authError"></div>
+    <form id="emailForm" onsubmit="handleEmailSubmit(event)">
+      <input type="email" class="auth-input" placeholder="Email" id="authEmail" required autocomplete="email">
+      <button type="submit" class="auth-btn auth-btn-primary" id="btnEmail">Continuar</button>
     </form>
     <div class="auth-divider">o</div>
     <button class="auth-btn auth-btn-social" onclick="loginWithGoogle()">
@@ -213,19 +215,20 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
     </button>
   </div>
 
-  <!-- REGISTER PANEL -->
-  <div class="auth-panel" id="panelRegister">
-    <form id="registerForm" onsubmit="handleRegister(event)">
-      <input type="text" class="auth-input" placeholder="Nombre completo" id="regName" required autocomplete="name">
-      <input type="email" class="auth-input" placeholder="Email" id="regEmail" required autocomplete="email">
-      <input type="password" class="auth-input" placeholder="Contrase&ntilde;a (m&iacute;n. 6 caracteres)" id="regPassword" required minlength="6" autocomplete="new-password">
-      <button type="submit" class="auth-btn auth-btn-primary" id="btnRegister">Crear cuenta</button>
+  <!-- Paso 2: introducir código -->
+  <div id="authPanelOtp" style="display:none">
+    <h1 class="auth-title">Revisa tu email</h1>
+    <p class="auth-subtitle">Hemos enviado un c&oacute;digo a <strong id="otpEmailDisplay"></strong>. Tambi&eacute;n puedes hacer click en el enlace del email.</p>
+    <div class="auth-error" id="authErrorOtp"></div>
+    <form id="otpForm" onsubmit="handleOtpSubmit(event)">
+      <input type="text" class="auth-input auth-input-otp" placeholder="000000" id="authOtp" required inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+      <button type="submit" class="auth-btn auth-btn-primary" id="btnVerify">Verificar</button>
     </form>
-    <div class="auth-divider">o</div>
-    <button class="auth-btn auth-btn-social" onclick="loginWithGoogle()">
-      <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-      Continuar con Google
-    </button>
+    <div class="auth-actions">
+      <button type="button" class="auth-link" id="btnResend" onclick="handleResend()">Reenviar c&oacute;digo</button>
+      <span class="auth-actions-sep">&middot;</span>
+      <button type="button" class="auth-link" onclick="backToEmail()">Usar otro email</button>
+    </div>
   </div>
 </div>
 
@@ -279,16 +282,10 @@ function toggleMenu(){
   document.getElementById('hamburger').classList.toggle('open');
 }
 
-function switchTab(tab){
-  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
-  document.getElementById('tabRegister').classList.toggle('active',tab==='register');
-  document.getElementById('panelLogin').classList.toggle('active',tab==='login');
-  document.getElementById('panelRegister').classList.toggle('active',tab==='register');
-  document.getElementById('authError').style.display='none';
-}
-
 var supabase;
 var _redirect=new URLSearchParams(window.location.search).get('redirect')||'/mi-cuenta/';
+var _otpEmail='';
+var _resendCooldownTimer=null;
 
 (async function(){
   try{
@@ -304,45 +301,130 @@ var _redirect=new URLSearchParams(window.location.search).get('redirect')||'/mi-
   }catch(e){console.error('Failed to init Supabase:',e);}
 })();
 
-async function handleLogin(e){
-  e.preventDefault();
-  var btn=document.getElementById('btnLogin');
-  var err=document.getElementById('authError');
-  err.style.display='none';
-  btn.disabled=true;btn.textContent='Entrando...';
-  var result=await supabase.auth.signInWithPassword({
-    email:document.getElementById('loginEmail').value,
-    password:document.getElementById('loginPassword').value
-  });
-  if(result.error){
-    err.textContent=result.error.message;err.style.display='block';
-    btn.disabled=false;btn.textContent='Iniciar sesi\u00F3n';return;
-  }
-  window.location.href=_redirect;
+function showError(panel,msg){
+  var errId=panel==='email'?'authError':'authErrorOtp';
+  var el=document.getElementById(errId);
+  el.textContent=msg;
+  el.style.background='';el.style.color='';
+  el.style.display='block';
+}
+function showSuccess(panel,msg){
+  var errId=panel==='email'?'authError':'authErrorOtp';
+  var el=document.getElementById(errId);
+  el.textContent=msg;
+  el.style.background='#f0fdf4';el.style.color='#16a34a';
+  el.style.display='block';
+}
+function clearErrors(){
+  document.getElementById('authError').style.display='none';
+  document.getElementById('authErrorOtp').style.display='none';
+}
+function mapAuthError(msg){
+  msg=String(msg||'').toLowerCase();
+  if(msg.indexOf('rate limit')>=0) return 'Has solicitado demasiados c\u00F3digos. Espera unos minutos.';
+  if(msg.indexOf('expired')>=0) return 'El c\u00F3digo ha expirado. Reenv\u00EDa uno nuevo.';
+  if(msg.indexOf('invalid')>=0||msg.indexOf('token')>=0) return 'C\u00F3digo incorrecto. Int\u00E9ntalo de nuevo.';
+  return 'Algo ha ido mal. Int\u00E9ntalo de nuevo.';
 }
 
-async function handleRegister(e){
+async function handleEmailSubmit(e){
   e.preventDefault();
-  var btn=document.getElementById('btnRegister');
-  var err=document.getElementById('authError');
-  err.style.display='none';
-  btn.disabled=true;btn.textContent='Creando cuenta...';
-  var result=await supabase.auth.signUp({
-    email:document.getElementById('regEmail').value,
-    password:document.getElementById('regPassword').value,
-    options:{data:{full_name:document.getElementById('regName').value}}
-  });
-  if(result.error){
-    err.textContent=result.error.message;err.style.display='block';
-    btn.disabled=false;btn.textContent='Crear cuenta';return;
+  clearErrors();
+  var btn=document.getElementById('btnEmail');
+  var email=document.getElementById('authEmail').value.trim().toLowerCase();
+  if(!email) return;
+  btn.disabled=true;btn.textContent='Enviando\u2026';
+  try{
+    var result=await supabase.auth.signInWithOtp({
+      email:email,
+      options:{
+        shouldCreateUser:true,
+        emailRedirectTo:window.location.origin+_redirect
+      }
+    });
+    if(result.error) throw result.error;
+    _otpEmail=email;
+    showOtpStep(email);
+  }catch(err){
+    showError('email',mapAuthError(err.message));
+    btn.disabled=false;btn.textContent='Continuar';
   }
-  if(result.data.user&&!result.data.session){
-    err.textContent='Cuenta creada. Revisa tu email para confirmar.';
-    err.style.display='block';err.style.background='#f0fdf4';err.style.color='#16a34a';
-    btn.disabled=false;btn.textContent='Crear cuenta';
-  }else{
+}
+
+function showOtpStep(email){
+  document.getElementById('authPanelEmail').style.display='none';
+  document.getElementById('authPanelOtp').style.display='block';
+  document.getElementById('otpEmailDisplay').textContent=email;
+  setTimeout(function(){document.getElementById('authOtp').focus();},100);
+  startResendCooldown(30);
+}
+
+async function handleOtpSubmit(e){
+  e.preventDefault();
+  clearErrors();
+  var btn=document.getElementById('btnVerify');
+  var code=document.getElementById('authOtp').value.trim();
+  if(!code) return;
+  btn.disabled=true;btn.textContent='Verificando\u2026';
+  try{
+    var result=await supabase.auth.verifyOtp({email:_otpEmail,token:code,type:'email'});
+    if(result.error) throw result.error;
     window.location.href=_redirect;
+  }catch(err){
+    showError('otp',mapAuthError(err.message));
+    btn.disabled=false;btn.textContent='Verificar';
   }
+}
+
+async function handleResend(){
+  if(!_otpEmail) return;
+  var link=document.getElementById('btnResend');
+  if(link.classList.contains('disabled')) return;
+  clearErrors();
+  try{
+    var result=await supabase.auth.signInWithOtp({
+      email:_otpEmail,
+      options:{
+        shouldCreateUser:true,
+        emailRedirectTo:window.location.origin+_redirect
+      }
+    });
+    if(result.error) throw result.error;
+    showSuccess('otp','C\u00F3digo reenviado.');
+    setTimeout(function(){clearErrors();},3000);
+    startResendCooldown(30);
+  }catch(err){
+    showError('otp',mapAuthError(err.message));
+  }
+}
+
+function backToEmail(){
+  clearErrors();
+  _otpEmail='';
+  document.getElementById('authOtp').value='';
+  var btn=document.getElementById('btnVerify');
+  btn.disabled=false;btn.textContent='Verificar';
+  document.getElementById('authPanelOtp').style.display='none';
+  document.getElementById('authPanelEmail').style.display='block';
+  if(_resendCooldownTimer){clearInterval(_resendCooldownTimer);_resendCooldownTimer=null;}
+}
+
+function startResendCooldown(seconds){
+  var link=document.getElementById('btnResend');
+  link.classList.add('disabled');
+  var s=seconds;
+  link.textContent='Reenviar c\u00F3digo ('+s+'s)';
+  if(_resendCooldownTimer) clearInterval(_resendCooldownTimer);
+  _resendCooldownTimer=setInterval(function(){
+    s-=1;
+    if(s<=0){
+      clearInterval(_resendCooldownTimer);_resendCooldownTimer=null;
+      link.classList.remove('disabled');
+      link.textContent='Reenviar c\u00F3digo';
+    }else{
+      link.textContent='Reenviar c\u00F3digo ('+s+'s)';
+    }
+  },1000);
 }
 
 function getCallbackUrl(){
@@ -352,23 +434,6 @@ function getCallbackUrl(){
 async function loginWithGoogle(){
   if(!supabase) return;
   await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:getCallbackUrl()}});
-}
-
-async function handleForgot(){
-  var email=document.getElementById('loginEmail').value.trim();
-  var err=document.getElementById('authError');
-  if(!email){
-    err.textContent='Introduce tu email para recuperar la contrase\u00F1a.';
-    err.style.display='block';err.style.background='';err.style.color='';return;
-  }
-  if(!supabase) return;
-  var result=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/recuperar-contrasena/'});
-  if(result.error){
-    err.textContent=result.error.message;err.style.display='block';err.style.background='';err.style.color='';
-  }else{
-    err.textContent='Email enviado. Revisa tu bandeja de entrada.';
-    err.style.display='block';err.style.background='#f0fdf4';err.style.color='#16a34a';
-  }
 }
 </script>
 
