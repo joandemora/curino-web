@@ -421,10 +421,40 @@ footer{
     <div class="account-card card-brand">
       <div class="card-header">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 21V11"/></svg>
-        <h2>Cuenta de marca</h2>
+        <h2>Mi Cuenta</h2>
       </div>
-      <div class="card-body" id="brandCard">
-        <div class="card-empty">Cargando…</div>
+      <div class="card-body">
+        <div id="brandCard">
+          <div class="card-empty">Cargando…</div>
+        </div>
+        <!-- Accesos rápidos según rol (Fase F+). Visibles condicionalmente
+             desde loadShortcuts(). Viven aquí dentro como sibling de
+             #brandCard para que renderBrandCard() (innerHTML=...) no los
+             destruya al actualizarse. -->
+        <div id="mc-shortcuts" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e5e5">
+          <div id="mc-section-seller" style="display:none;margin-bottom:24px">
+            <h3 style="font-size:16px;margin:0 0 12px;color:#333">Vender en Curino</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a href="/cuenta/vendedor/" class="mc-shortcut-link">
+                <span>Mi perfil de vendedor</span>
+                <span style="color:#999">&rarr;</span>
+              </a>
+              <a href="/cuenta/vendedor/dibujos/" class="mc-shortcut-link">
+                <span>Gestionar mis piezas</span>
+                <span style="color:#999">&rarr;</span>
+              </a>
+            </div>
+          </div>
+          <div id="mc-section-admin" style="display:none;margin-bottom:24px">
+            <h3 style="font-size:16px;margin:0 0 12px;color:#333">Administración</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a href="/admin/marketplace/reports/" class="mc-shortcut-link">
+                <span>Reports y takedowns</span>
+                <span style="color:#999">&rarr;</span>
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -503,31 +533,6 @@ footer{
     </div>
   </div>
 
-  <!-- Accesos rápidos según rol (Fase F+) -->
-  <div id="mc-shortcuts" style="display:none;margin-top:32px">
-    <div id="mc-section-seller" style="display:none;margin-bottom:24px">
-      <h3 style="font-size:16px;margin:0 0 12px;color:#333">Vender en Curino</h3>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <a href="/cuenta/vendedor/" class="mc-shortcut-link">
-          <span>Mi perfil de vendedor</span>
-          <span style="color:#999">&rarr;</span>
-        </a>
-        <a href="/cuenta/vendedor/dibujos/" class="mc-shortcut-link">
-          <span>Gestionar mis piezas</span>
-          <span style="color:#999">&rarr;</span>
-        </a>
-      </div>
-    </div>
-    <div id="mc-section-admin" style="display:none;margin-bottom:24px">
-      <h3 style="font-size:16px;margin:0 0 12px;color:#333">Administración</h3>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <a href="/admin/marketplace/reports/" class="mc-shortcut-link">
-          <span>Reports y takedowns</span>
-          <span style="color:#999">&rarr;</span>
-        </a>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- FOOTER -->
