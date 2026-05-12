@@ -142,8 +142,6 @@ nav{
 .account-logo-clear:hover{background:#dc2626;transform:scale(1.1)}
 .account-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;letter-spacing:-.02em;text-transform:none;text-align:left}
 .account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.mc-shortcut-link{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f7f7f7;border:1px solid #e5e5e5;border-radius:6px;text-decoration:none;color:#000;font-size:14px;transition:background 0.15s}
-.mc-shortcut-link:hover{background:#efefef}
 .account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-height:320px}
 .card-header{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
 .card-header svg{width:20px;height:20px;stroke:var(--coral);stroke-width:1.8;fill:none;flex-shrink:0}
@@ -432,26 +430,15 @@ footer{
              #brandCard para que renderBrandCard() (innerHTML=...) no los
              destruya al actualizarse. -->
         <div id="mc-shortcuts" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e5e5">
-          <div id="mc-section-seller" style="display:none;margin-bottom:24px">
-            <h3 style="font-size:16px;margin:0 0 12px;color:#333">Vender en Curino</h3>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <a href="/cuenta/vendedor/" class="mc-shortcut-link">
-                <span>Mi perfil de vendedor</span>
-                <span style="color:#999">&rarr;</span>
-              </a>
-              <a href="/cuenta/vendedor/dibujos/" class="mc-shortcut-link">
-                <span>Gestionar mis piezas</span>
-                <span style="color:#999">&rarr;</span>
-              </a>
+          <div id="mc-section-seller" style="display:none;margin-bottom:12px">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+              <a href="/cuenta/vendedor/" class="btn btn-outline btn-small">Mi perfil de vendedor</a>
+              <a href="/cuenta/vendedor/dibujos/" class="btn btn-outline btn-small">Gestionar mis piezas</a>
             </div>
           </div>
-          <div id="mc-section-admin" style="display:none;margin-bottom:24px">
-            <h3 style="font-size:16px;margin:0 0 12px;color:#333">Administración</h3>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <a href="/admin/marketplace/reports/" class="mc-shortcut-link">
-                <span>Reports y takedowns</span>
-                <span style="color:#999">&rarr;</span>
-              </a>
+          <div id="mc-section-admin" style="display:none">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+              <a href="/admin/marketplace/reports/" class="btn btn-outline btn-small">Reports y takedowns</a>
             </div>
           </div>
         </div>
