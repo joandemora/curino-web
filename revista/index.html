@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revista | Curino</title>
+<meta name="description" content="Proyectos, materiales y reflexiones para el diseño de interiores. La revista de Curino.">
+<link rel="canonical" href="https://casacurino.com/revista/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Revista | Curino">
+<meta property="og:description" content="Proyectos, materiales y reflexiones para el diseño de interiores. La revista de Curino.">
+<meta property="og:url" content="https://casacurino.com/revista/">
+<meta property="og:image" content="https://casacurino.com/assets/imagenes/logo-curino.svg">
+<meta property="og:site_name" content="Curino Revista">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Revista | Curino">
+<meta name="twitter:description" content="Proyectos, materiales y reflexiones para el diseño de interiores.">
+
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/revista-shell.css">
+<link rel="stylesheet" href="/assets/css/revista.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="rv-nav-mount"></div>
+
+<!-- HERO -->
+<section class="rv-hero">
+  <h1>Curino Revista</h1>
+  <p class="rv-subtitle">Proyectos, materiales y reflexiones para el diseño de interiores.</p>
+</section>
+
+<div class="rv-wrap">
+  <section class="rv-section">
+    <div class="rv-section-head">
+      <h2 class="rv-section-title">Proyectos destacados</h2>
+      <a class="rv-section-link" href="/revista/proyectos/">Ver todos →</a>
+    </div>
+    <div class="rv-grid cols-4" id="grid-proyecto"><div class="rv-card-empty">Cargando…</div></div>
+  </section>
+
+  <section class="rv-section">
+    <div class="rv-section-head">
+      <h2 class="rv-section-title">Materiales y novedades</h2>
+      <a class="rv-section-link" href="/revista/materiales/">Ver todos →</a>
+    </div>
+    <div class="rv-grid cols-4" id="grid-material"><div class="rv-card-empty">Cargando…</div></div>
+  </section>
+
+  <section class="rv-section">
+    <div class="rv-section-head">
+      <h2 class="rv-section-title">Artículos</h2>
+      <a class="rv-section-link" href="/revista/articulos/">Ver todos →</a>
+    </div>
+    <div class="rv-grid" id="grid-articulo"><div class="rv-card-empty">Cargando…</div></div>
+  </section>
+
+  <section class="rv-section">
+    <div class="rv-section-head">
+      <h2 class="rv-section-title">Noticias</h2>
+      <a class="rv-section-link" href="/revista/noticias/">Ver todas →</a>
+    </div>
+    <div class="rv-grid" id="grid-noticia"><div class="rv-card-empty">Cargando…</div></div>
+  </section>
+
+  <section class="rv-section">
+    <div class="rv-section-head">
+      <h2 class="rv-section-title">Entrevistas</h2>
+      <a class="rv-section-link" href="/revista/entrevistas/">Ver todas →</a>
+    </div>
+    <div class="rv-grid" id="grid-entrevista"><div class="rv-card-empty">Cargando…</div></div>
+  </section>
+</div>
+
+<div id="rv-footer-mount"></div>
+
+<script src="/assets/js/revista-shell.js"></script>
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var TYPE_TO_SECCION={proyecto:'proyectos',material:'materiales',articulo:'articulos',noticia:'noticias',entrevista:'entrevistas'};
+var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase) return;
+    var supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var queries=[
+      {type:'proyecto',limit:4},
+      {type:'material',limit:4},
+      {type:'articulo',limit:3},
+      {type:'noticia',limit:3},
+      {type:'entrevista',limit:3}
+    ];
+    await Promise.all(queries.map(function(q){return loadSection(supa,q.type,q.limit);}));
+  }catch(e){
+    console.error('revista landing',e);
+  }
+})();
+
+async function loadSection(supa,type,limit){
+  var grid=document.getElementById('grid-'+type);
+  if(!grid) return;
+  var r=await supa.from('magazine_articles_public')
+    .select('id,title,slug,type,cover_image_url,author_first_name,author_last_name,published_at')
+    .eq('type',type)
+    .order('published_at',{ascending:false})
+    .limit(limit);
+  if(r.error||!r.data||r.data.length===0){
+    grid.innerHTML='<div class="rv-card-empty">Próximamente más contenidos…</div>';
+    return;
+  }
+  grid.innerHTML=r.data.map(renderCard).join('');
+}
+
+function renderCard(a){
+  var seccion=TYPE_TO_SECCION[a.type]||'articulos';
+  var label=TYPE_LABELS[a.type]||a.type;
+  var author=((a.author_first_name||'')+' '+(a.author_last_name||'')).trim();
+  var date=a.published_at?new Date(a.published_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
+  var meta=author?(author+(date?' · '+date:'')):date;
+  var cover=a.cover_image_url||'';
+  return '<a class="rv-card" href="/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/">'+
+    '<div class="rv-card-cover">'+
+      '<span class="rv-card-badge">'+escHtml(label)+'</span>'+
+      (cover?'<img loading="lazy" src="'+escHtml(cover)+'" alt="'+escHtml(a.title)+'">':'')+
+    '</div>'+
+    '<h3 class="rv-card-title">'+escHtml(a.title)+'</h3>'+
+    '<div class="rv-card-meta">'+escHtml(meta)+'</div>'+
+  '</a>';
+}
+</script>
+</body>
+</html>

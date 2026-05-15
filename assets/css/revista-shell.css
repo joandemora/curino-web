@@ -1,0 +1,78 @@
+/* ============================================================
+ * revista-shell.css — estilos del NAV + footer compartidos
+ * por todas las páginas /revista/*. Se carga junto a tokens.css
+ * y revista.css.
+ * ============================================================ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Open Sans',system-ui,sans-serif;color:#1a1a1a;background:#fff;line-height:1.6;padding-top:80px}
+a{color:inherit}
+
+nav#nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.nav-logo{text-decoration:none;display:flex;align-items:center}
+.nav-logo img{height:28px;width:auto;display:block}
+.nav-right{display:flex;align-items:center;gap:1.8rem}
+.nav-links{display:flex;gap:1.8rem;align-items:center}
+.nav-links a{font-size:12px;letter-spacing:.24px;text-transform:uppercase;color:#1a1a1a;text-decoration:none;font-weight:400;transition:color .2s}
+.nav-links a:hover{color:#888}
+.nav-icons{display:flex;gap:1.2rem;align-items:center}
+.nav-icons a{font-size:12px;letter-spacing:.24px;text-transform:uppercase;color:#1a1a1a;text-decoration:none}
+.nav-mobile-right{display:none}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+.nav-hamburger span{display:block;width:22px;height:1px;background:#0a0a0a;transition:all .3s}
+.nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-hamburger.open span:nth-child(2){opacity:0}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+.mega-trigger{position:relative}
+.mega-trigger::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;display:none}
+.mega-trigger:hover::after{display:block}
+.mega-trigger:hover .megamenu,.megamenu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.megamenu{position:fixed;top:80px;left:0;right:0;z-index:99;background:#fff;padding:32px;display:flex;justify-content:flex-start;gap:120px;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .25s .1s,visibility .25s .1s,transform .25s .1s;border-top:1px solid #e5e5e5}
+.mega-col{margin-bottom:32px}
+.mega-col-title{font-size:12px;letter-spacing:.24px;text-transform:uppercase;color:#000;font-weight:600;margin-bottom:1rem}
+.mega-col a{display:block;font-size:14px;line-height:1.5;color:#000;text-decoration:none;font-weight:400;text-transform:none;margin-bottom:4px}
+.mega-col a:hover{color:#999}
+
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:#fff;padding:1.5rem 2rem;z-index:99;flex-direction:column;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid #e5e5e5}
+.mobile-accordion{border-bottom:1px solid #e5e5e5}
+.mobile-accordion-title{display:flex;justify-content:space-between;align-items:center;padding:.8rem 0;cursor:pointer;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000}
+.mobile-accordion-title::after{content:'+';font-size:18px;font-weight:300}
+.mobile-accordion.open .mobile-accordion-title::after{content:'−'}
+.mobile-accordion-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.mobile-accordion.open .mobile-accordion-body{max-height:800px}
+.mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
+
+footer{background:#1a1a1a;color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto" "logo alta corp prensa newsletter";font-size:12px;line-height:1.66}
+.footer-tagline{max-width:320px;color:#fff;font-size:12px;line-height:1.66}
+.footer-col h4{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
+.footer-col a{display:block;font-size:12px;color:#fff;text-decoration:none;margin-bottom:.6rem}
+.footer-col a:hover{color:#999}
+.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:inherit;font-size:12px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
+.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
+.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:inherit;font-size:12px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px}
+.footer-bottom{background:#1a1a1a;padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.65rem;color:#fff;text-transform:uppercase;align-items:center}
+.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none}
+
+@media(max-width:1200px){
+  body{padding-top:60px}
+  nav#nav{padding:0 16px;height:60px}
+  .nav-logo img{height:20px}
+  .nav-right{display:none}
+  .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  .nav-hamburger{display:flex}
+  footer{display:flex!important;flex-direction:column;gap:0;padding:2rem 16px 1.5rem}
+  footer>div,footer>.footer-col{grid-area:auto!important;width:100%}
+  .footer-tagline{width:100%;max-width:none}
+  .footer-col h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:.8rem 0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .footer-col h4::after{content:'+';font-size:18px;font-weight:300}
+  .footer-col.open h4::after{content:'−'}
+  .footer-col .footer-links{max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .footer-col.open .footer-links{max-height:300px}
+  .footer-col a{padding:.4rem 0}
+  .footer-newsletter h4::after{display:none}
+  .footer-newsletter .footer-links{max-height:none}
+  .footer-bottom{flex-direction:column;gap:.5rem;padding:1.2rem 16px}
+}

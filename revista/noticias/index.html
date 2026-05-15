@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noticias | Curino Revista</title>
+<meta name="description" content="Noticias del mundo del mueble, la arquitectura y el diseño.">
+<link rel="canonical" href="https://casacurino.com/revista/noticias/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Noticias | Curino Revista">
+<meta property="og:description" content="Noticias del mundo del mueble y el diseño.">
+<meta property="og:url" content="https://casacurino.com/revista/noticias/">
+<meta property="og:image" content="https://casacurino.com/assets/imagenes/logo-curino.svg">
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/revista-shell.css">
+<link rel="stylesheet" href="/assets/css/revista.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="rv-nav-mount"></div>
+
+<section class="rv-hero">
+  <div class="rv-breadcrumb"><a href="/revista/">Revista</a> · Proyectos</div>
+  <h1>Noticias</h1>
+  <p class="rv-subtitle">Noticias del mundo del mueble y el diseño.firmados por estudios y particulares.</p>
+</section>
+
+<div class="rv-wrap">
+  <section class="rv-section">
+    <div class="rv-grid" id="grid"><div class="rv-card-empty">Cargando…</div></div>
+    <div class="rv-load-more" id="loadMoreWrap" style="display:none">
+      <button id="loadMoreBtn" onclick="loadMore()">Cargar más</button>
+    </div>
+  </section>
+</div>
+
+<div id="rv-footer-mount"></div>
+
+<script src="/assets/js/revista-shell.js"></script>
+<script>
+var SECTION_TYPE='noticia';
+var SECTION_SLUG='noticias';
+var SECTION_LABEL='Noticia';
+var PAGE_SIZE=12;
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+var _supa=null,_offset=0,_total=null;
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase) return;
+    _supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    await loadBatch(true);
+  }catch(e){console.error('section',e);}
+})();
+async function loadBatch(reset){
+  if(reset){_offset=0;}
+  var r=await _supa.from('magazine_articles_public')
+    .select('id,title,slug,cover_image_url,author_first_name,author_last_name,published_at',{count:'exact'})
+    .eq('type',SECTION_TYPE)
+    .order('published_at',{ascending:false})
+    .range(_offset,_offset+PAGE_SIZE-1);
+  var grid=document.getElementById('grid');
+  if(r.error){grid.innerHTML='<div class="rv-card-empty">Error al cargar.</div>';return;}
+  _total=r.count;
+  if(reset){grid.innerHTML='';}
+  if((!r.data||r.data.length===0)&&reset){
+    grid.innerHTML='<div class="rv-empty-section" style="grid-column:1/-1"><h2>Próximamente la sección de '+SECTION_LABEL.toLowerCase()+'s.</h2><p>Vuelve pronto para descubrir nuevo contenido.</p></div>';
+    document.getElementById('loadMoreWrap').style.display='none';
+    return;
+  }
+  r.data.forEach(function(a){grid.insertAdjacentHTML('beforeend',renderCard(a));});
+  _offset+=r.data.length;
+  document.getElementById('loadMoreWrap').style.display=(_total!=null&&_offset<_total)?'flex':'none';
+}
+async function loadMore(){
+  var btn=document.getElementById('loadMoreBtn');
+  btn.disabled=true;btn.textContent='Cargando…';
+  await loadBatch(false);
+  btn.disabled=false;btn.textContent='Cargar más';
+}
+function renderCard(a){
+  var author=((a.author_first_name||'')+' '+(a.author_last_name||'')).trim();
+  var date=a.published_at?new Date(a.published_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
+  var meta=author?(author+(date?' · '+date:'')):date;
+  var cover=a.cover_image_url||'';
+  return '<a class="rv-card" href="/revista/'+SECTION_SLUG+'/'+encodeURIComponent(a.slug)+'/">'+
+    '<div class="rv-card-cover"><span class="rv-card-badge">'+SECTION_LABEL+'</span>'+
+    (cover?'<img loading="lazy" src="'+escHtml(cover)+'" alt="'+escHtml(a.title)+'">':'')+
+    '</div><h3 class="rv-card-title">'+escHtml(a.title)+'</h3><div class="rv-card-meta">'+escHtml(meta)+'</div></a>';
+}
+</script>
+</body>
+</html>

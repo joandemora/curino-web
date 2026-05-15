@@ -1,0 +1,437 @@
+/* ============================================================
+ * revista.css — estilos compartidos del frontend público
+ * de Revista Curino (Fase G3).
+ * Carga junto a tokens.css. No depende de otros CSS.
+ * ============================================================ */
+
+:root{
+  --rv-ink:#1a1a1a;
+  --rv-ink-soft:#555;
+  --rv-ink-mute:#888;
+  --rv-line:#e5e5e5;
+  --rv-line-soft:#f1f0ea;
+  --rv-paper:#fff;
+  --rv-bg:#fafaf7;
+  --rv-coral:#cc785c;
+  --rv-serif:'Cormorant Garamond',Georgia,serif;
+  --rv-sans:'Open Sans',system-ui,sans-serif;
+}
+
+/* Cargar serif si la página principal no la tiene */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Open+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ── Hero header (landing y secciones) ───────────────────── */
+.rv-hero{
+  padding:120px 32px 80px;
+  text-align:center;
+  background:var(--rv-paper);
+  border-bottom:1px solid var(--rv-line);
+}
+.rv-hero h1{
+  font-family:var(--rv-serif);
+  font-size:clamp(36px,5vw,72px);
+  font-weight:300;
+  letter-spacing:-.02em;
+  line-height:1.05;
+  margin:0 0 1rem;
+  color:var(--rv-ink);
+}
+.rv-hero .rv-subtitle{
+  font-size:clamp(14px,1.4vw,18px);
+  color:var(--rv-ink-soft);
+  max-width:640px;
+  margin:0 auto;
+  line-height:1.5;
+  font-weight:400;
+}
+.rv-hero .rv-breadcrumb{
+  font-size:12px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--rv-ink-mute);
+  margin-bottom:1.5rem;
+}
+.rv-hero .rv-breadcrumb a{color:var(--rv-ink-mute);text-decoration:none}
+.rv-hero .rv-breadcrumb a:hover{color:var(--rv-ink)}
+
+/* ── Wrapper de sección ──────────────────────────────────── */
+.rv-wrap{
+  max-width:1280px;
+  margin:0 auto;
+  padding:0 32px;
+}
+.rv-section{padding:64px 0}
+.rv-section-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin-bottom:2rem;
+  gap:1rem;
+  flex-wrap:wrap;
+}
+.rv-section-title{
+  font-family:var(--rv-serif);
+  font-size:clamp(24px,3vw,34px);
+  font-weight:400;
+  letter-spacing:-.01em;
+  color:var(--rv-ink);
+  margin:0;
+}
+.rv-section-link{
+  font-size:13px;
+  letter-spacing:.05em;
+  color:var(--rv-coral);
+  text-decoration:none;
+  border-bottom:1px solid transparent;
+  padding-bottom:2px;
+  transition:border-color .2s;
+}
+.rv-section-link:hover{border-color:var(--rv-coral)}
+
+/* ── Grid de cards ───────────────────────────────────────── */
+.rv-grid{
+  display:grid;
+  gap:32px;
+  grid-template-columns:repeat(3,1fr);
+}
+.rv-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:980px){
+  .rv-grid,.rv-grid.cols-4{grid-template-columns:repeat(2,1fr);gap:24px}
+}
+@media(max-width:640px){
+  .rv-grid,.rv-grid.cols-4{grid-template-columns:1fr;gap:20px}
+}
+
+/* ── Card de artículo ────────────────────────────────────── */
+.rv-card{
+  display:flex;
+  flex-direction:column;
+  background:var(--rv-paper);
+  text-decoration:none;
+  color:var(--rv-ink);
+  position:relative;
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+.rv-card:hover{transform:translateY(-3px)}
+.rv-card:hover .rv-card-cover img{transform:scale(1.04)}
+.rv-card-cover{
+  position:relative;
+  width:100%;
+  aspect-ratio:4/3;
+  background:var(--rv-bg);
+  overflow:hidden;
+  margin-bottom:1rem;
+}
+.rv-card-cover img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform .35s ease;
+}
+.rv-card-badge{
+  position:absolute;
+  top:12px;
+  left:12px;
+  background:var(--rv-paper);
+  color:var(--rv-ink);
+  font-size:10px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  font-weight:600;
+  padding:4px 10px;
+  border-radius:999px;
+  z-index:1;
+}
+.rv-card-title{
+  font-family:var(--rv-serif);
+  font-size:clamp(18px,1.5vw,22px);
+  font-weight:400;
+  letter-spacing:-.01em;
+  line-height:1.25;
+  margin:0 0 .5rem;
+}
+.rv-card-meta{
+  font-size:12px;
+  letter-spacing:.05em;
+  color:var(--rv-ink-mute);
+  text-transform:uppercase;
+}
+.rv-card-empty{
+  grid-column:1/-1;
+  padding:3rem 1rem;
+  text-align:center;
+  color:var(--rv-ink-mute);
+  font-size:14px;
+  background:var(--rv-bg);
+  border:1px dashed var(--rv-line);
+  border-radius:8px;
+}
+
+/* ── Botón "Cargar más" ──────────────────────────────────── */
+.rv-load-more{
+  display:flex;
+  justify-content:center;
+  margin-top:3rem;
+}
+.rv-load-more button{
+  background:transparent;
+  border:1px solid var(--rv-ink);
+  color:var(--rv-ink);
+  padding:.85rem 2.5rem;
+  font-family:var(--rv-sans);
+  font-size:12px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:background .2s, color .2s;
+}
+.rv-load-more button:hover{background:var(--rv-ink);color:var(--rv-paper)}
+.rv-load-more button:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Detalle de artículo ─────────────────────────────────── */
+.rv-article-hero{
+  position:relative;
+  width:100%;
+  height:clamp(380px,55vh,640px);
+  background-size:cover;
+  background-position:center;
+  background-color:var(--rv-ink);
+  margin-top:80px;
+}
+.rv-article-hero::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.65) 100%);
+}
+.rv-article-hero-content{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  padding:48px 32px;
+  color:#fff;
+  max-width:1100px;
+  margin:0 auto;
+  z-index:2;
+}
+.rv-article-breadcrumb{
+  font-size:11px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  margin-bottom:1rem;
+  color:rgba(255,255,255,.85);
+}
+.rv-article-breadcrumb a{color:rgba(255,255,255,.85);text-decoration:none;border-bottom:1px solid rgba(255,255,255,.4);padding-bottom:2px}
+.rv-article-breadcrumb a:hover{color:#fff;border-color:#fff}
+.rv-article-hero h1{
+  font-family:var(--rv-serif);
+  font-size:clamp(28px,4.5vw,56px);
+  font-weight:400;
+  letter-spacing:-.01em;
+  line-height:1.1;
+  margin:0 0 .85rem;
+  color:#fff;
+}
+.rv-article-author{
+  font-size:13px;
+  letter-spacing:.05em;
+  color:rgba(255,255,255,.9);
+  margin:0;
+}
+
+.rv-article-body{
+  max-width:760px;
+  margin:0 auto;
+  padding:64px 24px;
+  font-family:var(--rv-sans);
+  font-size:17px;
+  line-height:1.75;
+  color:var(--rv-ink);
+}
+.rv-article-body p{margin:0 0 1.2em}
+.rv-article-body h2{
+  font-family:var(--rv-serif);
+  font-size:clamp(22px,2.6vw,30px);
+  font-weight:400;
+  letter-spacing:-.01em;
+  margin:2em 0 .6em;
+  line-height:1.2;
+}
+.rv-article-body h3{
+  font-family:var(--rv-serif);
+  font-size:clamp(19px,2vw,24px);
+  font-weight:400;
+  margin:1.6em 0 .5em;
+  line-height:1.3;
+}
+.rv-article-body blockquote{
+  border-left:3px solid var(--rv-coral);
+  padding:.4em 1.2rem;
+  margin:1.8em 0;
+  font-style:italic;
+  color:var(--rv-ink-soft);
+  font-size:1.05em;
+}
+.rv-article-body ul,.rv-article-body ol{padding-left:1.6em;margin:.4em 0 1.4em}
+.rv-article-body li{margin:.4em 0}
+.rv-article-body a{color:var(--rv-coral);text-decoration:underline;text-underline-offset:3px}
+.rv-article-body img{
+  max-width:100%;
+  height:auto;
+  border-radius:4px;
+  margin:1.5em 0;
+  display:block;
+}
+.rv-article-body hr{
+  border:none;
+  border-top:1px solid var(--rv-line);
+  margin:2.5em auto;
+  max-width:120px;
+}
+.rv-article-body .video-embed,
+.rv-article-body iframe{
+  width:100%;
+  aspect-ratio:16/9;
+  border:none;
+  border-radius:4px;
+  margin:1.5em 0;
+}
+.rv-article-body .video-embed iframe{width:100%;height:100%;aspect-ratio:16/9;border:none;border-radius:4px;margin:0}
+
+/* ── Formulario contacto autor (integrado en página) ──────── */
+.rv-contact{
+  max-width:760px;
+  margin:0 auto 96px;
+  padding:48px 32px;
+  background:var(--rv-bg);
+  border-top:1px solid var(--rv-line);
+  border-bottom:1px solid var(--rv-line);
+}
+.rv-contact h3{
+  font-family:var(--rv-serif);
+  font-size:clamp(20px,2.4vw,26px);
+  font-weight:400;
+  margin:0 0 1rem;
+  letter-spacing:-.01em;
+}
+.rv-contact-intro{
+  font-size:14px;
+  color:var(--rv-ink-soft);
+  margin:0 0 1.5rem;
+  line-height:1.55;
+}
+.rv-contact button.rv-btn-primary{
+  background:var(--rv-ink);
+  color:#fff;
+  border:none;
+  padding:.85rem 2rem;
+  font-family:var(--rv-sans);
+  font-size:12px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:background .2s;
+}
+.rv-contact button.rv-btn-primary:hover{background:var(--rv-coral)}
+.rv-contact button.rv-btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.rv-contact button.rv-btn-outline{
+  background:transparent;
+  color:var(--rv-ink);
+  border:1px solid var(--rv-ink);
+  padding:.75rem 1.6rem;
+  font-family:var(--rv-sans);
+  font-size:12px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  cursor:pointer;
+  margin-left:.6rem;
+  transition:background .2s, color .2s;
+}
+.rv-contact button.rv-btn-outline:hover{background:var(--rv-ink);color:#fff}
+
+.rv-contact-form{
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+  max-width:520px;
+  margin-top:1rem;
+}
+.rv-contact-form input,
+.rv-contact-form textarea{
+  width:100%;
+  padding:.85rem 1rem;
+  border:1px solid var(--rv-line);
+  border-radius:6px;
+  font-family:var(--rv-sans);
+  font-size:14px;
+  color:var(--rv-ink);
+  background:var(--rv-paper);
+  outline:none;
+  transition:border-color .2s;
+  box-sizing:border-box;
+}
+.rv-contact-form input:focus,
+.rv-contact-form textarea:focus{border-color:var(--rv-ink)}
+.rv-contact-form textarea{resize:vertical;min-height:120px;font-family:var(--rv-sans)}
+.rv-contact-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.rv-contact-status{font-size:13px;margin-top:.5rem;line-height:1.5}
+.rv-contact-status.error{color:#a83232}
+.rv-contact-status.success{color:#1d6f3d}
+
+/* ── Dropdown "Revista" en NAV (reutiliza .mega-trigger pattern) ── */
+.rv-nav-dropdown{position:relative}
+.rv-nav-dropdown::after{
+  content:'';
+  position:absolute;
+  left:0;right:0;top:100%;height:24px;display:none;
+}
+.rv-nav-dropdown:hover::after{display:block}
+.rv-nav-dropdown:hover .rv-nav-menu,
+.rv-nav-menu:hover{opacity:1;visibility:visible;transform:translateY(0)}
+.rv-nav-menu{
+  position:absolute;
+  top:calc(100% + 12px);
+  left:50%;
+  transform:translate(-50%,-8px);
+  background:var(--rv-paper);
+  border:1px solid var(--rv-line);
+  padding:18px 24px;
+  min-width:200px;
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .25s, visibility .25s, transform .25s;
+  z-index:99;
+  box-shadow:0 8px 24px rgba(0,0,0,.06);
+  border-radius:4px;
+}
+.rv-nav-menu a{
+  display:block;
+  font-size:13px;
+  color:var(--rv-ink);
+  text-decoration:none;
+  text-transform:none;
+  letter-spacing:0;
+  padding:6px 0;
+  font-weight:400;
+  white-space:nowrap;
+}
+.rv-nav-menu a:hover{color:var(--rv-coral)}
+
+/* ── No artículos en sección (estado empty completo) ───── */
+.rv-empty-section{
+  text-align:center;
+  padding:96px 32px;
+  background:var(--rv-bg);
+  border-top:1px solid var(--rv-line);
+  border-bottom:1px solid var(--rv-line);
+  margin:48px 0;
+}
+.rv-empty-section h2{
+  font-family:var(--rv-serif);
+  font-size:clamp(22px,2.5vw,30px);
+  font-weight:400;
+  margin:0 0 .5rem;
+}
+.rv-empty-section p{color:var(--rv-ink-soft);margin:0;font-size:14px}
