@@ -521,10 +521,11 @@ async function handleMagazinePackageCompleted(
   const buyerEmail = session.customer_details?.email || session.customer_email || '';
   const currentYear = new Date().getFullYear();
 
-  // 2. Asignar número de factura. Usamos 'auto_invoice' por consistencia con
-  // el resto del sistema (Curino emite la factura, no es marketplace).
+  // 2. Asignar número de factura. Usamos 'magazine' (serie propia
+  // REVISTA-XXXX-NNNNNN) para diferenciar fiscalmente las facturas de
+  // paquetes de revista de las del marketplace.
   const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', {
-    p_type: 'auto_invoice',
+    p_type: 'magazine',
     p_year: currentYear
   });
   if (invErr) {
