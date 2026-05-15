@@ -28,6 +28,12 @@ import {
   sellerEmailHtml,
   OrderData
 } from '../_shared/invoices.ts'
+import {
+  generateMagazineInvoicePdf,
+  uploadMagazineInvoicePdf,
+  sendMagazinePurchaseEmail,
+  MagazinePurchaseData
+} from '../_shared/magazine-invoices.ts'
 
 Deno.serve(async (req) => {
   // Stripe siempre manda POST
@@ -118,7 +124,14 @@ Deno.serve(async (req) => {
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(supabase, stripe, session);
+        // Routing por metadata.purpose: 'magazine_package' va al handler de
+        // Revista; el resto cae en el handler marketplace (compatible con
+        // sessions de Fase D que NO llevan purpose explícito).
+        if (session.metadata?.purpose === 'magazine_package') {
+          await handleMagazinePackageCompleted(supabase, session);
+        } else {
+          await handleCheckoutCompleted(supabase, stripe, session);
+        }
         break;
       }
 
@@ -453,5 +466,140 @@ async function handleCheckoutCompleted(
     console.log(`Invoices generated and emails sent for order ${orderData.id}`);
   } catch (invoiceError) {
     console.error(`Invoice generation failed for order ${orderData.id}:`, invoiceError);
+  }
+}
+
+// ============================================================================
+// REVISTA (Fase G2): compra de paquetes de publicaciones.
+//
+// metadata esperada en la session:
+//   purpose = 'magazine_package'
+//   user_id = <uuid>
+//   package_size = '1' | '2' | '6'
+//
+// Acciones:
+//   1. Idempotencia: skip si magazine_purchases.stripe_session_id ya existe.
+//   2. Insert magazine_purchases con invoice_number (RPC assign_invoice_number).
+//   3. Insert magazine_credits (FIFO al consumir, expira en 12 meses).
+//   4. Generar PDF + subir a 'invoices/magazine/<purchase_id>.pdf'.
+//   5. Update magazine_purchases.pdf_url con el path.
+//   6. Enviar email Resend al user con factura adjunta.
+//
+// Errores en pasos 4-6 NO revierten la compra: créditos ya acreditados,
+// solo se loguea el fallo de factura/email.
+// ============================================================================
+async function handleMagazinePackageCompleted(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const userId = session.metadata?.user_id;
+  const packageSize = parseInt(session.metadata?.package_size || '0', 10);
+
+  if (!userId || ![1, 2, 6].includes(packageSize)) {
+    console.error('magazine: missing or invalid metadata for session', session.id);
+    return;
+  }
+
+  // 1. Idempotencia
+  const { data: existing } = await supabase
+    .from('magazine_purchases')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`magazine: purchase already exists for session ${session.id}`);
+    return;
+  }
+
+  const amountPaidCents = session.amount_total ?? 0;
+  if (amountPaidCents <= 0) {
+    console.error('magazine: invalid amount_total for session', session.id);
+    return;
+  }
+
+  const buyerEmail = session.customer_details?.email || session.customer_email || '';
+  const currentYear = new Date().getFullYear();
+
+  // 2. Asignar número de factura. Usamos 'magazine' (serie propia
+  // REVISTA-XXXX-NNNNNN) para diferenciar fiscalmente las facturas de
+  // paquetes de revista de las del marketplace.
+  const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'magazine',
+    p_year: currentYear
+  });
+  if (invErr) {
+    console.error('magazine: error assigning invoice number:', invErr);
+  }
+
+  // 3. Insert magazine_purchases
+  const { data: purchase, error: purchaseError } = await supabase
+    .from('magazine_purchases')
+    .insert({
+      user_id: userId,
+      package_size: packageSize,
+      amount_paid_cents: amountPaidCents,
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: session.payment_intent,
+      invoice_number: invoiceNum
+    })
+    .select('id, created_at')
+    .single();
+
+  if (purchaseError || !purchase) {
+    console.error('magazine: error inserting purchase:', purchaseError);
+    throw purchaseError;
+  }
+
+  // 4. Insert magazine_credits (expira en 12 meses)
+  const expiresAt = new Date();
+  expiresAt.setMonth(expiresAt.getMonth() + 12);
+
+  const { error: creditsError } = await supabase
+    .from('magazine_credits')
+    .insert({
+      user_id: userId,
+      purchase_id: purchase.id,
+      credits_total: packageSize,
+      credits_remaining: packageSize,
+      expires_at: expiresAt.toISOString()
+    });
+
+  if (creditsError) {
+    console.error('magazine: error inserting credits:', creditsError);
+    throw creditsError;
+  }
+
+  console.log(`magazine: purchase ${purchase.id} + ${packageSize} credits granted to ${userId}`);
+
+  // 5+6. Factura PDF + email (best-effort)
+  try {
+    const purchaseData: MagazinePurchaseData = {
+      id: purchase.id,
+      user_id: userId,
+      package_size: packageSize,
+      amount_paid_cents: amountPaidCents,
+      invoice_number: invoiceNum || `MAG-${purchase.id.slice(0, 8)}`,
+      buyer_email: buyerEmail,
+      created_at: purchase.created_at
+    };
+
+    const pdfBytes = await generateMagazineInvoicePdf(purchaseData);
+    const pdfPath = await uploadMagazineInvoicePdf(supabase, purchase.id, pdfBytes);
+
+    await supabase
+      .from('magazine_purchases')
+      .update({ pdf_url: pdfPath })
+      .eq('id', purchase.id);
+
+    if (buyerEmail) {
+      const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
+      const magazineUrl = `${siteUrl}/mi-cuenta/revista/`;
+      await sendMagazinePurchaseEmail(buyerEmail, purchaseData, pdfBytes, magazineUrl);
+    }
+
+    console.log(`magazine: invoice + email sent for purchase ${purchase.id}`);
+  } catch (invoiceError) {
+    console.error(`magazine: invoice/email generation failed for purchase ${purchase.id}:`, invoiceError);
   }
 }
