@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor — Revista Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{background:var(--paper);font-family:var(--font);color:var(--ink);min-height:100vh}
+body.hidden-until-auth{visibility:hidden}
+.r-nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.r-nav-logo img{height:28px;width:auto;display:block}
+.r-nav-actions{display:flex;gap:12px;align-items:center}
+.r-nav-actions a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.r-nav-actions a:hover{color:var(--ink-mute)}
+
+.e-wrap{max-width:880px;margin:32px auto 4rem;padding:0 24px}
+.e-title{font-family:var(--serif);font-size:clamp(22px,3vw,28px);font-weight:300;letter-spacing:-.02em;margin-bottom:1.5rem}
+
+.e-rejected-banner{background:#fff8e1;border:1px solid #f0d97c;color:#8a6d1c;padding:.85rem 1rem;border-radius:8px;font-size:13px;line-height:1.5;margin-bottom:1.5rem}
+.e-rejected-banner strong{display:block;margin-bottom:.25rem}
+
+.e-section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:1.25rem}
+.e-field{margin-bottom:1.1rem}
+.e-field:last-child{margin-bottom:0}
+.e-label{display:block;font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;font-weight:600}
+.e-label .opt{font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-mute);margin-left:.4rem}
+.e-input,.e-select,.e-textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;box-sizing:border-box;background:#fff}
+.e-input:focus,.e-select:focus,.e-textarea:focus{border-color:var(--ink)}
+.e-textarea{resize:vertical;min-height:70px}
+.e-help{font-size:11px;color:var(--ink-mute);margin-top:.35rem}
+.e-field.has-error .e-input,.e-field.has-error .e-select{border-color:#a83232}
+.e-field.has-error .e-help{color:#a83232}
+
+.e-upload{border:1.5px dashed var(--line);border-radius:10px;padding:1.25rem;text-align:center;background:#fbfaf6;transition:border-color .2s,background .2s;cursor:pointer}
+.e-upload:hover{border-color:var(--ink);background:#f6f5ee}
+.e-upload p{font-size:13px;color:var(--ink-mute);margin:0}
+.e-upload-preview{display:flex;align-items:center;gap:1rem;padding:.75rem;background:#fff;border:1px solid var(--line);border-radius:8px;margin-top:.5rem}
+.e-upload-preview img{width:80px;height:80px;object-fit:cover;border-radius:6px;background:#eee}
+.e-upload-preview .meta{flex:1;font-size:12px;color:var(--ink-soft)}
+.e-upload-preview .meta strong{color:var(--ink);display:block;margin-bottom:.2rem}
+.e-upload-preview button{background:none;border:none;color:#a83232;font-size:13px;cursor:pointer;font-family:var(--font)}
+
+/* TipTap */
+.tt-toolbar{display:flex;flex-wrap:wrap;gap:4px;padding:6px;border:1px solid var(--line);border-bottom:none;border-radius:10px 10px 0 0;background:#fafaf7}
+.tt-btn{background:#fff;border:1px solid var(--line);color:var(--ink);font-family:var(--font);font-size:12px;padding:6px 10px;border-radius:6px;cursor:pointer;font-weight:600;min-width:32px;transition:background .15s,border-color .15s}
+.tt-btn:hover{border-color:var(--ink)}
+.tt-btn.is-active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tt-sep{width:1px;background:var(--line);margin:4px 4px}
+.tt-editor{border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;background:#fff;padding:14px 16px;min-height:320px;font-size:15px;line-height:1.65}
+.tt-editor:focus-within{border-color:var(--ink)}
+.tt-editor .ProseMirror{outline:none;min-height:280px}
+.tt-editor .ProseMirror p{margin:0 0 .9em}
+.tt-editor .ProseMirror h2{font-family:var(--serif);font-size:24px;font-weight:400;margin:1.2em 0 .5em;letter-spacing:-.01em}
+.tt-editor .ProseMirror h3{font-family:var(--serif);font-size:19px;font-weight:400;margin:1em 0 .4em}
+.tt-editor .ProseMirror blockquote{border-left:3px solid var(--coral);padding-left:1rem;margin:1em 0;color:var(--ink-soft);font-style:italic}
+.tt-editor .ProseMirror ul,.tt-editor .ProseMirror ol{padding-left:1.4em;margin:.4em 0 1em}
+.tt-editor .ProseMirror li{margin:.25em 0}
+.tt-editor .ProseMirror a{color:var(--coral);text-decoration:underline}
+.tt-editor .ProseMirror hr{border:none;border-top:1px solid var(--line);margin:1.5em 0}
+.tt-editor .ProseMirror img{max-width:100%;height:auto;border-radius:6px;margin:.6em 0}
+.tt-editor .ProseMirror .video-embed{margin:1em 0}
+.tt-editor .ProseMirror .video-embed iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:6px}
+.tt-editor .ProseMirror p.is-editor-empty:first-child::before{content:'Empieza a escribir tu artículo…';float:left;color:#aaa;pointer-events:none;height:0}
+
+.e-actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-end;margin-top:1.5rem;padding:1.25rem;background:var(--paper);border:1px solid var(--line);border-radius:14px;position:sticky;bottom:1rem}
+.e-actions .btn-primary,.e-actions .btn-outline{padding:.7rem 1.3rem;font-size:13px}
+
+.r-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:1rem}
+.r-modal-overlay.open{display:flex}
+.r-modal{background:#fff;border-radius:12px;max-width:480px;width:100%;padding:1.75rem 2rem}
+.r-modal h3{font-family:var(--serif);font-size:20px;font-weight:400;margin-bottom:.7rem}
+.r-modal p{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:1.25rem}
+.r-modal-actions{display:flex;gap:.6rem;justify-content:flex-end}
+
+.r-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:8px;font-size:13px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.r-toast.visible{opacity:1}
+.r-toast.success{background:#1d6f3d}
+.r-toast.error{background:#a83232}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<nav class="r-nav">
+  <a href="/" class="r-nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <div class="r-nav-actions">
+    <span id="saveStatus" style="font-size:12px;color:var(--ink-mute)"></span>
+    <a href="/mi-cuenta/revista/">Volver a Mis publicaciones</a>
+  </div>
+</nav>
+
+<div class="e-wrap">
+  <h1 class="e-title" id="pageTitle">Editor de artículo</h1>
+
+  <div id="rejectedBanner" class="e-rejected-banner" style="display:none">
+    <strong>Tu artículo necesita revisión</strong>
+    <span id="rejectedNotes"></span>
+  </div>
+
+  <div class="e-section">
+    <div class="e-field" data-name="type">
+      <label class="e-label" for="type">Tipo de publicación</label>
+      <select class="e-select" id="type">
+        <option value="proyecto">Proyecto</option>
+        <option value="material">Material</option>
+        <option value="articulo" selected>Artículo</option>
+        <option value="noticia">Noticia</option>
+        <option value="entrevista">Entrevista</option>
+      </select>
+    </div>
+
+    <div class="e-field" data-name="title">
+      <label class="e-label" for="title">Título</label>
+      <input class="e-input" id="title" type="text" maxlength="120" placeholder="Título del artículo">
+      <div class="e-help">Máximo 120 caracteres. El slug se generará a partir del título.</div>
+    </div>
+
+    <div class="e-field" data-name="cover_image">
+      <label class="e-label">Imagen de portada</label>
+      <input type="file" id="coverFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="if(this.files[0]) uploadCover(this.files[0])">
+      <div class="e-upload" onclick="document.getElementById('coverFile').click()">
+        <p id="coverPlaceholder">Arrastra una imagen o pulsa para seleccionar (JPG/PNG/WebP, máx 4&nbsp;MB).</p>
+      </div>
+      <div class="e-upload-preview" id="coverPreview" style="display:none">
+        <img id="coverThumb" alt="">
+        <div class="meta"><strong>Portada</strong><span id="coverFilename"></span></div>
+        <button type="button" onclick="removeCover()">Quitar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="e-section">
+    <label class="e-label">Contenido</label>
+    <div class="tt-toolbar" id="toolbar"></div>
+    <div class="tt-editor" id="editor"></div>
+  </div>
+
+  <div class="e-section">
+    <div class="e-field">
+      <label class="e-label" for="metaDesc">Meta descripción para SEO<span class="opt">(opcional)</span></label>
+      <textarea class="e-textarea" id="metaDesc" maxlength="160" rows="2" placeholder="Máximo 160 caracteres. Aparecerá en buscadores y previsualizaciones."></textarea>
+    </div>
+
+    <div class="e-field">
+      <label class="e-label">Imagen para compartir en redes <span class="opt">(opcional, 1200×630&nbsp;px recomendado)</span></label>
+      <input type="file" id="ogFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="if(this.files[0]) uploadOg(this.files[0])">
+      <div class="e-upload" onclick="document.getElementById('ogFile').click()">
+        <p id="ogPlaceholder">Pulsa para seleccionar imagen (JPG/PNG/WebP).</p>
+      </div>
+      <div class="e-upload-preview" id="ogPreview" style="display:none">
+        <img id="ogThumb" alt="">
+        <div class="meta"><strong>Imagen OG</strong><span id="ogFilename"></span></div>
+        <button type="button" onclick="removeOg()">Quitar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="e-actions">
+    <button class="btn btn-outline" type="button" onclick="saveDraft()">Guardar como borrador</button>
+    <button class="btn btn-primary" type="button" onclick="openSendModal()">Enviar a revisión</button>
+  </div>
+</div>
+
+<div class="r-modal-overlay" id="sendModal" onclick="if(event.target.id==='sendModal') closeSendModal()">
+  <div class="r-modal">
+    <h3>Enviar a revisión</h3>
+    <p>El editor revisará tu artículo y lo publicará o te devolverá comentarios. Se descontará 1 crédito de tu saldo. ¿Continuar?</p>
+    <div class="r-modal-actions">
+      <button class="btn btn-outline btn-small" onclick="closeSendModal()">Cancelar</button>
+      <button class="btn btn-primary btn-small" id="confirmSendBtn" onclick="sendForReview()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="r-toast" id="toast"></div>
+
+<script type="module">
+import { Editor } from 'https://esm.sh/@tiptap/core@2.6.6'
+import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.6.6'
+import Image from 'https://esm.sh/@tiptap/extension-image@2.6.6'
+import Link from 'https://esm.sh/@tiptap/extension-link@2.6.6'
+import Underline from 'https://esm.sh/@tiptap/extension-underline@2.6.6'
+import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2.6.6'
+import { Node, mergeAttributes } from 'https://esm.sh/@tiptap/core@2.6.6'
+
+// Custom embed para YouTube + Vimeo (iframe genérico).
+const VideoEmbed = Node.create({
+  name: 'videoEmbed',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  draggable: true,
+  addAttributes() {
+    return {
+      src: { default: '' },
+      provider: { default: 'youtube' }
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-video-embed]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    const src = HTMLAttributes.src;
+    return ['div', mergeAttributes({ 'data-video-embed': '', 'data-provider': HTMLAttributes.provider, class: 'video-embed' }),
+      ['iframe', { src, frameborder: '0', allowfullscreen: 'true', loading: 'lazy', allow: 'accelerometer; encrypted-media; picture-in-picture' }]
+    ];
+  },
+  addCommands() {
+    return {
+      insertVideoEmbed: (attrs) => ({ commands }) => commands.insertContent({ type: 'videoEmbed', attrs })
+    };
+  }
+});
+
+function parseVideoUrl(url) {
+  url = (url || '').trim();
+  // YouTube
+  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+  if (m) return { provider: 'youtube', src: 'https://www.youtube.com/embed/' + m[1] };
+  // Vimeo (incluyendo URLs con hash)
+  m = url.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([\w-]+))?/);
+  if (m) {
+    const base = 'https://player.vimeo.com/video/' + m[1];
+    return { provider: 'vimeo', src: m[2] ? base + '?h=' + m[2] : base };
+  }
+  return null;
+}
+
+// === Estado de la página ===
+const params = new URLSearchParams(window.location.search);
+const articleId = params.get('id');
+const isFresh = params.get('fresh') === '1';
+
+if (!articleId) {
+  window.location.href = '/mi-cuenta/revista/';
+}
+
+let supa = null;
+let currentUser = null;
+let currentArticle = null;
+let editor = null;
+let coverUrl = null;
+let ogUrl = null;
+let savingTimer = null;
+
+(async function bootstrap() {
+  try {
+    const r = await fetch('/api/config', { redirect: 'follow' });
+    const c = await r.json();
+    if (!c.supabaseUrl || !c.supabaseAnonKey || !window.supabase) {
+      window.location.href = '/login/?redirect=/mi-cuenta/revista/editar/?id=' + articleId;
+      return;
+    }
+    supa = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
+    window.SUPABASE_URL = c.supabaseUrl;
+    const s = await supa.auth.getSession();
+    if (!s.data.session) {
+      window.location.href = '/login/?redirect=/mi-cuenta/revista/editar/?id=' + articleId;
+      return;
+    }
+    currentUser = s.data.session.user;
+    await loadArticle();
+    initEditor();
+    document.body.classList.remove('hidden-until-auth');
+    if (isFresh) {
+      // Limpia ?fresh=1 de la URL para que F5 no triplique drafts.
+      history.replaceState(null, '', '/mi-cuenta/revista/editar/?id=' + articleId);
+    }
+  } catch (e) {
+    console.error('bootstrap', e);
+    showToast('Error al cargar editor', 'error');
+  }
+})();
+
+async function loadArticle() {
+  const r = await supa.from('magazine_articles').select('*').eq('id', articleId).maybeSingle();
+  if (r.error || !r.data) {
+    showToast('Artículo no encontrado', 'error');
+    setTimeout(() => window.location.href = '/mi-cuenta/revista/', 1500);
+    return;
+  }
+  if (r.data.user_id !== currentUser.id) {
+    showToast('No tienes acceso a este artículo', 'error');
+    setTimeout(() => window.location.href = '/mi-cuenta/revista/', 1500);
+    return;
+  }
+  // Solo se pueden editar drafts y rechazados.
+  if (r.data.status !== 'draft' && r.data.status !== 'rejected') {
+    showToast('Este artículo ya no es editable (estado: ' + r.data.status + ')', 'error');
+    setTimeout(() => window.location.href = '/mi-cuenta/revista/', 2000);
+    return;
+  }
+  currentArticle = r.data;
+
+  // Prefill campos.
+  document.getElementById('type').value = r.data.type || 'articulo';
+  // Mostrar título vacío si era "Sin título" (el placeholder inicial del draft fresh).
+  document.getElementById('title').value = (isFresh && r.data.title === 'Sin título') ? '' : (r.data.title || '');
+  document.getElementById('metaDesc').value = r.data.meta_description || '';
+
+  coverUrl = r.data.cover_image_url || null;
+  ogUrl = r.data.og_image_url || null;
+  renderCoverPreview();
+  renderOgPreview();
+
+  if (r.data.status === 'rejected' && r.data.admin_notes) {
+    document.getElementById('rejectedBanner').style.display = 'block';
+    document.getElementById('rejectedNotes').textContent = r.data.admin_notes;
+    document.getElementById('pageTitle').textContent = 'Editar y reenviar';
+  }
+}
+
+function initEditor() {
+  editor = new Editor({
+    element: document.getElementById('editor'),
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [2, 3] }
+      }),
+      Underline,
+      Image.configure({ inline: false, allowBase64: false }),
+      Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
+      Placeholder.configure({ placeholder: 'Empieza a escribir tu artículo…' }),
+      VideoEmbed
+    ],
+    content: currentArticle && currentArticle.content_html ? currentArticle.content_html : '',
+    onUpdate: () => {
+      refreshToolbarState();
+    },
+    onSelectionUpdate: () => {
+      refreshToolbarState();
+    }
+  });
+  buildToolbar();
+  refreshToolbarState();
+}
+
+const TOOLBAR_BUTTONS = [
+  { id: 'bold', label: 'B', title: 'Negrita', style: 'font-weight:700', cmd: e => e.chain().focus().toggleBold().run(), active: e => e.isActive('bold') },
+  { id: 'italic', label: 'I', title: 'Cursiva', style: 'font-style:italic', cmd: e => e.chain().focus().toggleItalic().run(), active: e => e.isActive('italic') },
+  { id: 'underline', label: 'U', title: 'Subrayado', style: 'text-decoration:underline', cmd: e => e.chain().focus().toggleUnderline().run(), active: e => e.isActive('underline') },
+  { sep: true },
+  { id: 'h2', label: 'H2', title: 'Encabezado 2', cmd: e => e.chain().focus().toggleHeading({ level: 2 }).run(), active: e => e.isActive('heading', { level: 2 }) },
+  { id: 'h3', label: 'H3', title: 'Encabezado 3', cmd: e => e.chain().focus().toggleHeading({ level: 3 }).run(), active: e => e.isActive('heading', { level: 3 }) },
+  { sep: true },
+  { id: 'ul', label: '• Lista', title: 'Lista', cmd: e => e.chain().focus().toggleBulletList().run(), active: e => e.isActive('bulletList') },
+  { id: 'ol', label: '1. Lista', title: 'Lista ordenada', cmd: e => e.chain().focus().toggleOrderedList().run(), active: e => e.isActive('orderedList') },
+  { sep: true },
+  { id: 'link', label: '🔗 Link', title: 'Insertar enlace', cmd: e => insertLink(), active: e => e.isActive('link') },
+  { id: 'image', label: '🖼 Imagen', title: 'Insertar imagen', cmd: e => document.getElementById('inlineImageFile').click() },
+  { id: 'quote', label: '" Cita', title: 'Cita', cmd: e => e.chain().focus().toggleBlockquote().run(), active: e => e.isActive('blockquote') },
+  { id: 'hr', label: '— HR', title: 'Separador', cmd: e => e.chain().focus().setHorizontalRule().run() },
+  { sep: true },
+  { id: 'yt', label: 'YouTube', title: 'Insertar YouTube', cmd: e => insertVideo('youtube') },
+  { id: 'vimeo', label: 'Vimeo', title: 'Insertar Vimeo', cmd: e => insertVideo('vimeo') }
+];
+
+function buildToolbar() {
+  const toolbar = document.getElementById('toolbar');
+  toolbar.innerHTML = '';
+  TOOLBAR_BUTTONS.forEach(b => {
+    if (b.sep) {
+      const s = document.createElement('div'); s.className = 'tt-sep'; toolbar.appendChild(s); return;
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tt-btn';
+    btn.dataset.id = b.id;
+    btn.title = b.title;
+    btn.innerHTML = b.label;
+    if (b.style) btn.setAttribute('style', b.style);
+    btn.addEventListener('click', () => b.cmd(editor));
+    toolbar.appendChild(btn);
+  });
+  // Input oculto para subida inline de imágenes.
+  const f = document.createElement('input');
+  f.type = 'file'; f.id = 'inlineImageFile'; f.accept = 'image/jpeg,image/png,image/webp'; f.style.display = 'none';
+  f.addEventListener('change', () => { if (f.files[0]) uploadInlineImage(f.files[0]); f.value = ''; });
+  toolbar.appendChild(f);
+}
+
+function refreshToolbarState() {
+  if (!editor) return;
+  document.querySelectorAll('.tt-btn[data-id]').forEach(btn => {
+    const id = btn.dataset.id;
+    const def = TOOLBAR_BUTTONS.find(b => b.id === id);
+    if (def && def.active) {
+      if (def.active(editor)) btn.classList.add('is-active'); else btn.classList.remove('is-active');
+    }
+  });
+}
+
+function insertLink() {
+  const prev = editor.getAttributes('link').href || '';
+  const url = window.prompt('URL del enlace:', prev);
+  if (url === null) return;
+  if (url === '') {
+    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    return;
+  }
+  let final = url.trim();
+  if (!/^https?:\/\//i.test(final) && !final.startsWith('mailto:')) final = 'https://' + final;
+  editor.chain().focus().extendMarkRange('link').setLink({ href: final }).run();
+}
+
+function insertVideo(kind) {
+  const placeholder = kind === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'https://vimeo.com/...';
+  const url = window.prompt('URL del vídeo ' + (kind === 'youtube' ? 'YouTube' : 'Vimeo') + ':', placeholder);
+  if (!url || url === placeholder) return;
+  const parsed = parseVideoUrl(url);
+  if (!parsed) {
+    showToast('URL no reconocida. Usa una URL de YouTube o Vimeo válida.', 'error');
+    return;
+  }
+  editor.chain().focus().insertVideoEmbed(parsed).run();
+}
+
+async function uploadInlineImage(file) {
+  const validation = validateImage(file, 8);
+  if (validation) { showToast(validation, 'error'); return; }
+  showToast('Subiendo imagen…');
+  try {
+    const path = await uploadToBucket(file, 'inline');
+    const signed = await signUrl(path);
+    editor.chain().focus().setImage({ src: signed }).run();
+    showToast('Imagen insertada', 'success');
+  } catch (e) {
+    console.error('uploadInlineImage', e);
+    showToast('Error al subir: ' + (e.message || e), 'error');
+  }
+}
+
+window.uploadCover = async function(file) {
+  const validation = validateImage(file, 4);
+  if (validation) { showToast(validation, 'error'); return; }
+  showToast('Subiendo portada…');
+  try {
+    const path = await uploadToBucket(file, 'cover');
+    coverUrl = await signUrl(path);
+    renderCoverPreview();
+    showToast('Portada subida', 'success');
+  } catch (e) {
+    console.error('uploadCover', e);
+    showToast('Error al subir: ' + (e.message || e), 'error');
+  }
+};
+
+window.uploadOg = async function(file) {
+  const validation = validateImage(file, 4);
+  if (validation) { showToast(validation, 'error'); return; }
+  showToast('Subiendo imagen OG…');
+  try {
+    const path = await uploadToBucket(file, 'og');
+    ogUrl = await signUrl(path);
+    renderOgPreview();
+    showToast('Imagen OG subida', 'success');
+  } catch (e) {
+    console.error('uploadOg', e);
+    showToast('Error al subir: ' + (e.message || e), 'error');
+  }
+};
+
+window.removeCover = function() { coverUrl = null; renderCoverPreview(); };
+window.removeOg = function() { ogUrl = null; renderOgPreview(); };
+
+function renderCoverPreview() {
+  const preview = document.getElementById('coverPreview');
+  const placeholder = document.getElementById('coverPlaceholder');
+  if (coverUrl) {
+    preview.style.display = 'flex';
+    document.getElementById('coverThumb').src = coverUrl;
+    document.getElementById('coverFilename').textContent = '';
+    placeholder.textContent = 'Cambiar imagen de portada';
+  } else {
+    preview.style.display = 'none';
+    placeholder.textContent = 'Arrastra una imagen o pulsa para seleccionar (JPG/PNG/WebP, máx 4 MB).';
+  }
+}
+function renderOgPreview() {
+  const preview = document.getElementById('ogPreview');
+  const placeholder = document.getElementById('ogPlaceholder');
+  if (ogUrl) {
+    preview.style.display = 'flex';
+    document.getElementById('ogThumb').src = ogUrl;
+    document.getElementById('ogFilename').textContent = '';
+    placeholder.textContent = 'Cambiar imagen';
+  } else {
+    preview.style.display = 'none';
+    placeholder.textContent = 'Pulsa para seleccionar imagen (JPG/PNG/WebP).';
+  }
+}
+
+function validateImage(file, maxMb) {
+  if (!file) return 'Sin archivo';
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return 'Formato no soportado (JPG/PNG/WebP)';
+  if (file.size > maxMb * 1024 * 1024) return 'Archivo demasiado grande (máx ' + maxMb + ' MB)';
+  return null;
+}
+
+async function uploadToBucket(file, prefix) {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const filename = prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+  const path = articleId + '/' + filename;
+  const up = await supa.storage.from('magazine-articles').upload(path, file, { upsert: false, contentType: file.type, cacheControl: '3600' });
+  if (up.error) throw up.error;
+  return path;
+}
+
+async function signUrl(path) {
+  // Signed URL larga (1 año). En G3 las imágenes de artículos publicados se servirán
+  // mediante un mecanismo distinto (bucket público o función signer en render).
+  const r = await supa.storage.from('magazine-articles').createSignedUrl(path, 60 * 60 * 24 * 365);
+  if (r.error) throw r.error;
+  return r.data.signedUrl;
+}
+
+window.saveDraft = async function() {
+  const title = document.getElementById('title').value.trim();
+  const type = document.getElementById('type').value;
+  const metaDesc = document.getElementById('metaDesc').value.trim();
+  const contentHtml = editor.getHTML();
+
+  // Si el título cambió respecto al guardado actual, regenerar slug.
+  let payload = {
+    title: title || 'Sin título',
+    type,
+    content_html: contentHtml,
+    cover_image_url: coverUrl,
+    meta_description: metaDesc || null,
+    og_image_url: ogUrl,
+    updated_at: new Date().toISOString()
+  };
+
+  if (currentArticle && title && title !== currentArticle.title) {
+    const slugRes = await supa.rpc('generate_unique_slug', { p_title: title });
+    if (!slugRes.error && slugRes.data) payload.slug = slugRes.data;
+  }
+
+  const r = await supa.from('magazine_articles').update(payload).eq('id', articleId);
+  if (r.error) { showToast('Error al guardar: ' + r.error.message, 'error'); return; }
+  // Actualizamos referencia local.
+  currentArticle = Object.assign({}, currentArticle, payload);
+  setSaveStatus('Guardado');
+  showToast('Borrador guardado', 'success');
+};
+
+window.openSendModal = function() {
+  // Validación previa antes de abrir el modal.
+  const errors = validateForSend();
+  if (errors.length > 0) {
+    showToast(errors[0], 'error');
+    return;
+  }
+  document.getElementById('sendModal').classList.add('open');
+};
+
+window.closeSendModal = function() {
+  document.getElementById('sendModal').classList.remove('open');
+};
+
+function validateForSend() {
+  const errors = [];
+  const title = document.getElementById('title').value.trim();
+  const type = document.getElementById('type').value;
+  const contentHtml = editor.getHTML().trim();
+  // Limpiamos los wrappers vacíos para validar.
+  const isEmpty = !contentHtml || contentHtml === '<p></p>' || editor.isEmpty;
+  if (!type) errors.push('Selecciona el tipo de publicación.');
+  if (!title) errors.push('Añade un título.');
+  if (!coverUrl) errors.push('Sube una imagen de portada.');
+  if (isEmpty) errors.push('Escribe el contenido del artículo.');
+  return errors;
+}
+
+window.sendForReview = async function() {
+  const errors = validateForSend();
+  if (errors.length > 0) {
+    closeSendModal();
+    showToast(errors[0], 'error');
+    return;
+  }
+
+  // Primero guardamos el draft con todos los campos finales.
+  await window.saveDraft();
+
+  const btn = document.getElementById('confirmSendBtn');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  try {
+    const r = await supa.rpc('consume_magazine_credit', { p_article_id: articleId });
+    if (r.error) {
+      const msg = (r.error.message || '').toLowerCase();
+      if (msg.includes('no_credits_available')) {
+        closeSendModal();
+        showToast('No tienes créditos disponibles. Te llevamos a comprar un paquete.', 'error');
+        setTimeout(() => window.location.href = '/mi-cuenta/revista/', 1500);
+        return;
+      }
+      if (msg.includes('profile_required')) {
+        closeSendModal();
+        showToast('Necesitas completar tu perfil de revista.', 'error');
+        setTimeout(() => window.location.href = '/mi-cuenta/revista/perfil/', 1500);
+        return;
+      }
+      throw r.error;
+    }
+    window.location.href = '/mi-cuenta/revista/?sent=1';
+  } catch (e) {
+    console.error('sendForReview', e);
+    showToast('Error al enviar: ' + (e.message || e), 'error');
+    btn.disabled = false; btn.textContent = 'Enviar';
+  }
+};
+
+function setSaveStatus(text) {
+  document.getElementById('saveStatus').textContent = text;
+  clearTimeout(savingTimer);
+  savingTimer = setTimeout(() => document.getElementById('saveStatus').textContent = '', 3000);
+}
+
+function showToast(msg, kind) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'r-toast ' + (kind || '') + ' visible';
+  setTimeout(() => t.classList.remove('visible'), 3500);
+}
+window.showToast = showToast;
+</script>
+</body>
+</html>

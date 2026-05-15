@@ -445,6 +445,22 @@ footer{
       </div>
     </div>
 
+    <!-- Card: Publicar en Revista (Fase G2) -->
+    <div class="account-card card-revista">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a4 4 0 014 4v12H8a4 4 0 01-4-4z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+        <h2>Publicar en Revista</h2>
+      </div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin-bottom:1rem">Comparte tus proyectos, materiales o artículos en la revista Curino.</p>
+        <div id="revistaShortcuts" style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+          <a href="/mi-cuenta/revista/perfil/" class="btn btn-outline btn-small" id="revistaBtnPerfil">Crear perfil de revista</a>
+          <a href="/mi-cuenta/revista/" class="btn btn-outline btn-small" id="revistaBtnPublicaciones" style="display:none">Mis publicaciones</a>
+          <a href="/mi-cuenta/revista/" class="btn btn-outline btn-small" id="revistaBtnComprar" style="display:none">Comprar paquete</a>
+        </div>
+      </div>
+    </div>
+
     <!-- Card 4: Configura tu armario -->
     <a href="https://www.casacurino.com/configurador-armarios-vestidores/" class="account-card card-cta card-configurator">
       <div class="card-cta-icon">
@@ -699,9 +715,11 @@ async function loadShortcuts(){
   try{
     var roleP=_supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
     var sellerP=_supabase.from('seller_accounts').select('user_id').eq('user_id',_currentUser.id).maybeSingle();
-    var rRole=await roleP, rSeller=await sellerP;
+    var magazineP=_supabase.from('magazine_profiles').select('user_id').eq('user_id',_currentUser.id).maybeSingle();
+    var rRole=await roleP, rSeller=await sellerP, rMagazine=await magazineP;
     var isAdmin=rRole.data&&rRole.data.role==='admin';
     var isSeller=!!(rSeller.data&&rSeller.data.user_id);
+    var hasMagazineProfile=!!(rMagazine.data&&rMagazine.data.user_id);
     var container=document.getElementById('mc-shortcuts');
     var sellerSection=document.getElementById('mc-section-seller');
     var adminSection=document.getElementById('mc-section-admin');
@@ -711,6 +729,19 @@ async function loadShortcuts(){
     }
     if(isAdmin){
       adminSection.style.display='block';
+    }
+    // Revista shortcuts (Fase G2): siempre visible card, botones condicionales.
+    var btnPerfil=document.getElementById('revistaBtnPerfil');
+    var btnPublicaciones=document.getElementById('revistaBtnPublicaciones');
+    var btnComprar=document.getElementById('revistaBtnComprar');
+    if(hasMagazineProfile){
+      if(btnPerfil) btnPerfil.textContent='Editar perfil de revista';
+      if(btnPublicaciones) btnPublicaciones.style.display='';
+      if(btnComprar) btnComprar.style.display='';
+    }else{
+      if(btnPerfil) btnPerfil.textContent='Crear perfil de revista';
+      if(btnPublicaciones) btnPublicaciones.style.display='none';
+      if(btnComprar) btnComprar.style.display='none';
     }
   }catch(e){
     console.error('loadShortcuts error',e);

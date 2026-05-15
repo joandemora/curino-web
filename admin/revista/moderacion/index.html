@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moderación Revista — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh;font-size:14px;line-height:1.6}
+body.hidden-until-auth{visibility:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.v-header{background:#111;color:#fff;padding:.85rem 1.5rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.v-header h1{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.v-header h1 .sub{opacity:.55;margin-left:.4rem;font-weight:300}
+.v-header nav{display:flex;gap:.5rem;align-items:center}
+.v-header nav a{color:#bbb;font-size:12px;padding:.4rem .7rem;border-radius:4px;transition:background .15s,color .15s}
+.v-header nav a:hover{color:#fff;background:rgba(255,255,255,.1);text-decoration:none}
+.v-header button{background:transparent;color:#bbb;border:1px solid #444;font-size:11px;padding:.35rem .7rem;border-radius:4px;cursor:pointer;font-family:var(--font);letter-spacing:.05em;text-transform:uppercase}
+.v-header button:hover{color:#fff;border-color:#666}
+
+.v-section{padding:2rem 1.5rem 4rem;max-width:1200px;margin:0 auto}
+.v-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+.v-title{font-size:26px;font-weight:300;margin-bottom:.4rem;letter-spacing:-.01em}
+.v-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:1.5rem}
+
+.v-toolbar{display:flex;gap:1rem;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap}
+.v-toolbar label{font-size:12px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em}
+.v-toolbar select{padding:.5rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink)}
+.v-toolbar select:focus{outline:none;border-color:var(--ink)}
+
+.v-table{width:100%;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;border-collapse:collapse}
+.v-table th{text-align:left;padding:.85rem 1rem;font-size:11px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.v-table td{padding:.85rem 1rem;font-size:13px;border-top:1px solid var(--border);vertical-align:top}
+.v-table tr:hover td{background:#fdfcf6;cursor:pointer}
+.v-table .col-date{white-space:nowrap;color:var(--mid);font-size:12px}
+.v-table .col-title{font-weight:600;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-table .col-type{font-size:12px}
+.v-table .col-author{color:var(--ink-soft);font-size:12px}
+
+.v-empty{text-align:center;padding:3rem 1rem;color:var(--mid);font-size:13.5px;background:#fff;border:1px solid var(--border);border-radius:8px}
+
+.v-status-badge{display:inline-block;padding:.2rem .55rem;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;white-space:nowrap}
+.v-status-badge.pending_review{background:#fff8e1;color:#8a6d1c}
+.v-status-badge.published{background:#eaf5ee;color:#1d6f3d}
+.v-status-badge.rejected{background:#fde8e8;color:#a83232}
+.v-status-badge.draft{background:#eceff1;color:#546e7a}
+.v-status-badge.unpublished{background:#f5e8f8;color:#6a1b8a}
+
+/* Modal de detalle */
+.v-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.v-overlay.open{display:flex}
+.v-modal{background:#fff;border-radius:10px;max-width:960px;width:100%;padding:1.75rem 2rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.v-modal h2{font-size:20px;font-weight:600;margin-bottom:.6rem}
+.v-modal .article-meta{display:grid;grid-template-columns:auto 1fr;gap:.4rem 1.2rem;margin-bottom:1.2rem;font-size:13px}
+.v-modal .article-meta .label{color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.v-modal .article-meta .value{color:var(--ink);word-break:break-word}
+.v-modal .slug-row{display:flex;gap:.5rem;align-items:center}
+.v-modal .slug-row input{flex:1;padding:.4rem .55rem;font-size:12px;border:1px solid var(--border);border-radius:4px;font-family:var(--font);color:var(--ink)}
+.v-modal .cover-preview{margin:1rem 0}
+.v-modal .cover-preview img{max-width:100%;max-height:280px;border-radius:6px;border:1px solid var(--border);object-fit:contain}
+
+.v-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.v-tab{padding:.65rem 1.1rem;font-size:13px;font-weight:600;color:var(--mid);border:none;background:transparent;cursor:pointer;font-family:var(--font);border-bottom:2px solid transparent}
+.v-tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+
+.v-tab-content{display:none}
+.v-tab-content.active{display:block}
+
+.v-preview-content{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:1rem 1.25rem;max-height:50vh;overflow-y:auto;font-size:14px;line-height:1.65}
+.v-preview-content h2{font-size:20px;font-weight:400;margin:1em 0 .4em;letter-spacing:-.01em}
+.v-preview-content h3{font-size:17px;font-weight:400;margin:.8em 0 .3em}
+.v-preview-content p{margin:0 0 .8em}
+.v-preview-content ul,.v-preview-content ol{padding-left:1.4em;margin:.4em 0 1em}
+.v-preview-content blockquote{border-left:3px solid var(--coral);padding-left:1rem;color:var(--ink-soft);font-style:italic;margin:1em 0}
+.v-preview-content img{max-width:100%;border-radius:6px;margin:.6em 0}
+.v-preview-content a{color:var(--coral);text-decoration:underline}
+.v-preview-content hr{border:none;border-top:1px solid var(--border);margin:1.5em 0}
+.v-preview-content iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:6px;margin:1em 0}
+
+.v-edit-content{width:100%;min-height:300px;max-height:50vh;padding:.7rem .9rem;font-size:13px;border:1px solid var(--border);border-radius:6px;background:#fff;font-family:'Courier New',monospace;color:var(--ink);resize:vertical;line-height:1.5}
+
+.v-modal label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .35rem;font-weight:600}
+.v-modal input[type=text],.v-modal textarea{width:100%;padding:.55rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink)}
+.v-modal textarea{resize:vertical;min-height:80px}
+
+.v-modal-actions{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+.v-btn{padding:.6rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;transition:opacity .15s,background .15s,border-color .15s}
+.v-btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.v-btn-primary:hover{background:#333;border-color:#333}
+.v-btn-secondary{background:#fff;color:#1a1a1a;border-color:var(--border)}
+.v-btn-secondary:hover{border-color:#1a1a1a}
+.v-btn-success{background:#1d6f3d;color:#fff;border-color:#1d6f3d}
+.v-btn-success:hover{background:#155a30;border-color:#155a30}
+.v-btn-danger{background:#a83232;color:#fff;border-color:#a83232}
+.v-btn-danger:hover{background:#8a2828;border-color:#8a2828}
+.v-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.v-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:6px;font-size:13px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .25s}
+.v-toast.visible{opacity:1}
+.v-toast.success{background:var(--accent)}
+.v-toast.error{background:#a83232}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<header class="v-header">
+  <h1>Curino <span class="sub">Revista · Moderación</span></h1>
+  <nav>
+    <a href="/admin/">Panel admin</a>
+    <a href="/mi-cuenta/">Mi cuenta</a>
+    <button onclick="adminSignOut()">Cerrar sesión</button>
+  </nav>
+</header>
+
+<section class="v-section">
+  <h1 class="v-title">Moderación de Revista</h1>
+  <p class="v-subtitle">Cola de artículos enviados por los usuarios. Aprueba, edita o rechaza.</p>
+
+  <div class="v-toolbar">
+    <label for="filterStatus">Estado</label>
+    <select id="filterStatus" onchange="loadArticles()">
+      <option value="pending_review" selected>Pendientes</option>
+      <option value="published">Publicados</option>
+      <option value="rejected">Rechazados</option>
+      <option value="">Todos</option>
+    </select>
+    <button class="v-btn v-btn-secondary" onclick="loadArticles()" style="margin-left:auto">Recargar</button>
+  </div>
+
+  <div id="vList"><div class="v-loading">Cargando…</div></div>
+</section>
+
+<div class="v-overlay" id="vOverlay" onmousedown="onOverlayMouseDown(event)">
+  <div class="v-modal" id="vModal" onmousedown="event.stopPropagation()"></div>
+</div>
+
+<div class="v-toast" id="vToast"></div>
+
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
+var STATUS_LABELS={draft:'Borrador',pending_review:'En revisión',published:'Publicado',rejected:'Rechazado',unpublished:'Despublicado'};
+
+var _supabase=null,_currentUser=null,_articles=[],_currentDetail=null;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/admin/revista/moderacion/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    window.SUPABASE_URL=c.supabaseUrl;
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/admin/revista/moderacion/';return;
+    }
+    _currentUser=s.data.session.user;
+
+    var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
+    if(!rr.data||rr.data.role!=='admin'){
+      alert('Solo administradores pueden acceder a esta página.');
+      window.location.href='/';return;
+    }
+
+    document.body.classList.remove('hidden-until-auth');
+    await loadArticles();
+  }catch(e){
+    console.error('admin moderacion bootstrap',e);
+    window.location.href='/login/?redirect=/admin/revista/moderacion/';
+  }
+})();
+
+async function adminSignOut(){
+  if(_supabase) await _supabase.auth.signOut();
+  window.location.href='/login/';
+}
+
+async function loadArticles(){
+  var list=document.getElementById('vList');
+  list.innerHTML='<div class="v-loading">Cargando…</div>';
+
+  var statusFilter=document.getElementById('filterStatus').value;
+  var q=_supabase.from('magazine_articles').select('id,title,slug,type,status,created_at,updated_at,author_first_name,author_last_name,author_contact_email,credit_consumed_at')
+    .order('credit_consumed_at',{ascending:false,nullsFirst:false});
+  if(statusFilter) q=q.eq('status',statusFilter);
+
+  var r=await q;
+  if(r.error){
+    list.innerHTML='<div class="v-empty">Error: '+escHtml(r.error.message)+'</div>';
+    return;
+  }
+  _articles=r.data||[];
+  if(_articles.length===0){
+    list.innerHTML='<div class="v-empty">Sin artículos'+(statusFilter?' en este estado':'')+'.</div>';
+    return;
+  }
+
+  var rows=_articles.map(function(a){
+    var when=a.credit_consumed_at||a.updated_at||a.created_at;
+    var date=new Date(when).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})+
+      ' '+new Date(when).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    var author=(a.author_first_name||'')+' '+(a.author_last_name||'');
+    author=author.trim()||'(sin perfil)';
+    return '<tr onclick="openArticleDetail(\''+escHtml(a.id)+'\')">'+
+      '<td class="col-date">'+escHtml(date)+'</td>'+
+      '<td class="col-author">'+escHtml(author)+'</td>'+
+      '<td class="col-type">'+escHtml(TYPE_LABELS[a.type]||a.type)+'</td>'+
+      '<td class="col-title">'+escHtml(a.title||'(sin título)')+'</td>'+
+      '<td><span class="v-status-badge '+escHtml(a.status)+'">'+escHtml(STATUS_LABELS[a.status]||a.status)+'</span></td>'+
+    '</tr>';
+  }).join('');
+
+  list.innerHTML='<table class="v-table">'+
+    '<thead><tr><th>Fecha envío</th><th>Autor</th><th>Tipo</th><th>Título</th><th>Estado</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
+
+async function openArticleDetail(articleId){
+  // Carga el row completo (con content_html, cover, etc) para tener todo el contexto.
+  var r=await _supabase.from('magazine_articles').select('*').eq('id',articleId).maybeSingle();
+  if(r.error||!r.data){
+    showToast('Error: '+(r.error?r.error.message:'No encontrado'),'error');
+    return;
+  }
+  _currentDetail=r.data;
+  renderDetailModal();
+  showOverlay();
+}
+
+function renderDetailModal(){
+  var a=_currentDetail;
+  if(!a) return;
+  var modal=document.getElementById('vModal');
+  var sentDate=a.credit_consumed_at?new Date(a.credit_consumed_at).toLocaleString('es-ES'):'—';
+  var coverImg=a.cover_image_url
+    ? '<div class="cover-preview"><img src="'+escHtml(a.cover_image_url)+'" alt="Portada"></div>'
+    : '<div class="cover-preview" style="color:var(--mid);font-size:12px">Sin portada</div>';
+
+  var isEditable=(a.status==='pending_review');
+
+  var actionsHtml='';
+  if(isEditable){
+    actionsHtml=''+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar sin cambios</button>'+
+      '<button class="v-btn v-btn-danger" onclick="rejectArticle(this)">Rechazar</button>'+
+      '<button class="v-btn v-btn-primary" onclick="saveAndPublish(this)">Guardar y publicar</button>'+
+      '<button class="v-btn v-btn-success" onclick="publishAsIs(this)">Publicar tal cual</button>';
+  }else{
+    actionsHtml='<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>';
+  }
+
+  modal.innerHTML=''+
+    '<h2>'+escHtml(a.title||'(sin título)')+'</h2>'+
+    '<div class="article-meta">'+
+      '<div class="label">Tipo</div><div class="value">'+escHtml(TYPE_LABELS[a.type]||a.type)+'</div>'+
+      '<div class="label">Estado</div><div class="value"><span class="v-status-badge '+escHtml(a.status)+'">'+escHtml(STATUS_LABELS[a.status]||a.status)+'</span></div>'+
+      '<div class="label">Autor</div><div class="value">'+escHtml((a.author_first_name||'')+' '+(a.author_last_name||''))+'</div>'+
+      '<div class="label">Email autor</div><div class="value">'+escHtml(a.author_contact_email||'—')+'</div>'+
+      '<div class="label">Enviado</div><div class="value">'+escHtml(sentDate)+'</div>'+
+      '<div class="label">Slug</div><div class="value">'+(isEditable
+        ? '<div class="slug-row"><input type="text" id="slugInput" value="'+escHtml(a.slug||'')+'"><button class="v-btn v-btn-secondary" style="padding:.4rem .8rem;font-size:11px" onclick="regenerateSlug()">Regenerar</button></div>'
+        : escHtml(a.slug||''))+'</div>'+
+    '</div>'+
+    coverImg+
+    '<div class="v-tabs">'+
+      '<button class="v-tab active" onclick="switchTab(\'preview\')" data-tab="preview">Previsualizar</button>'+
+      (isEditable?'<button class="v-tab" onclick="switchTab(\'edit\')" data-tab="edit">Editar HTML</button>':'')+
+    '</div>'+
+    '<div class="v-tab-content active" data-content="preview">'+
+      '<div class="v-preview-content" id="previewArea">'+(a.content_html||'<em>(sin contenido)</em>')+'</div>'+
+    '</div>'+
+    (isEditable?
+      '<div class="v-tab-content" data-content="edit">'+
+        '<textarea class="v-edit-content" id="editContent">'+escHtml(a.content_html||'')+'</textarea>'+
+        '<p style="font-size:11px;color:var(--mid);margin-top:.4rem">Edición avanzada en HTML. El user verá tu versión publicada y el flag <code>edited_by_admin</code> quedará en true.</p>'+
+      '</div>'
+      :'')+
+    (isEditable?
+      '<label for="titleInput">Título</label>'+
+      '<input type="text" id="titleInput" value="'+escHtml(a.title||'')+'" maxlength="200">'+
+      '<label for="metaDescInput">Meta descripción (SEO)</label>'+
+      '<textarea id="metaDescInput" maxlength="160" rows="2">'+escHtml(a.meta_description||'')+'</textarea>'+
+      '<label for="adminNotes">Notas para el autor <span style="color:#999;font-weight:normal;text-transform:none;letter-spacing:0">(visible al user si rechazas)</span></label>'+
+      '<textarea id="adminNotes" rows="3" placeholder="Comentarios para el autor sobre la edición o rechazo…">'+escHtml(a.admin_notes||'')+'</textarea>'
+      :'')+
+    '<div class="v-modal-actions">'+actionsHtml+'</div>';
+}
+
+function switchTab(name){
+  document.querySelectorAll('.v-tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===name);});
+  document.querySelectorAll('.v-tab-content').forEach(function(c){c.classList.toggle('active',c.dataset.content===name);});
+  if(name==='preview'){
+    // Reflejar lo que esté en el textarea para preview en vivo.
+    var ta=document.getElementById('editContent');
+    if(ta){
+      document.getElementById('previewArea').innerHTML=ta.value;
+    }
+  }
+}
+
+async function regenerateSlug(){
+  var titleEl=document.getElementById('titleInput');
+  if(!titleEl) return;
+  var r=await _supabase.rpc('generate_unique_slug',{p_title:titleEl.value.trim()||'sin-titulo'});
+  if(r.error){showToast('Error: '+r.error.message,'error');return;}
+  document.getElementById('slugInput').value=r.data;
+}
+
+function getEditedPayload(){
+  var titleEl=document.getElementById('titleInput');
+  var slugEl=document.getElementById('slugInput');
+  var contentEl=document.getElementById('editContent');
+  var metaEl=document.getElementById('metaDescInput');
+  var notesEl=document.getElementById('adminNotes');
+  var payload={
+    title:(titleEl&&titleEl.value.trim())||_currentDetail.title,
+    slug:(slugEl&&slugEl.value.trim())||_currentDetail.slug,
+    content_html:contentEl?contentEl.value:_currentDetail.content_html,
+    meta_description:metaEl?(metaEl.value.trim()||null):_currentDetail.meta_description,
+    admin_notes:notesEl?(notesEl.value.trim()||null):_currentDetail.admin_notes,
+    updated_at:new Date().toISOString()
+  };
+  return payload;
+}
+
+async function saveAndPublish(btn){
+  if(!confirm('Vas a guardar tus cambios y publicar el artículo. ¿Continuar?')) return;
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Procesando…';
+  try{
+    var payload=getEditedPayload();
+    var u=await _supabase.from('magazine_articles').update(payload).eq('id',_currentDetail.id);
+    if(u.error) throw u.error;
+    var p=await _supabase.rpc('publish_magazine_article',{p_article_id:_currentDetail.id,p_edited_by_admin:true});
+    if(p.error) throw p.error;
+    await notifyAuthorPublished(_currentDetail.id);
+    hideOverlay();
+    showToast('Artículo publicado.','success');
+    await loadArticles();
+  }catch(e){
+    console.error('saveAndPublish',e);
+    showToast('Error: '+(e.message||e),'error');
+    btn.disabled=false;btn.textContent=prev;
+  }
+}
+
+async function publishAsIs(btn){
+  if(!confirm('Publicar el artículo tal cual lo envió el autor. ¿Continuar?')) return;
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Publicando…';
+  try{
+    var p=await _supabase.rpc('publish_magazine_article',{p_article_id:_currentDetail.id,p_edited_by_admin:false});
+    if(p.error) throw p.error;
+    await notifyAuthorPublished(_currentDetail.id);
+    hideOverlay();
+    showToast('Artículo publicado.','success');
+    await loadArticles();
+  }catch(e){
+    console.error('publishAsIs',e);
+    showToast('Error: '+(e.message||e),'error');
+    btn.disabled=false;btn.textContent=prev;
+  }
+}
+
+async function rejectArticle(btn){
+  var notesEl=document.getElementById('adminNotes');
+  var notes=notesEl?notesEl.value.trim():'';
+  if(!notes){
+    showToast('Añade notas para el autor antes de rechazar.','error');
+    if(notesEl) notesEl.focus();
+    return;
+  }
+  if(!confirm('Rechazar este artículo y devolver el crédito al autor (si no caducó)?')) return;
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Rechazando…';
+  try{
+    var r=await _supabase.rpc('refund_magazine_credit',{p_article_id:_currentDetail.id,p_admin_notes:notes});
+    if(r.error) throw r.error;
+    hideOverlay();
+    var refunded=r.data&&r.data.credit_refunded;
+    showToast(refunded?'Artículo rechazado y crédito devuelto.':'Artículo rechazado (crédito ya había caducado).','success');
+    await loadArticles();
+  }catch(e){
+    console.error('rejectArticle',e);
+    showToast('Error: '+(e.message||e),'error');
+    btn.disabled=false;btn.textContent=prev;
+  }
+}
+
+async function notifyAuthorPublished(articleId){
+  try{
+    var s=await _supabase.auth.getSession();
+    var fnUrl=(window.SUPABASE_URL||_supabase.supabaseUrl)+'/functions/v1/magazine-notify-published';
+    var resp=await fetch(fnUrl,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+s.data.session.access_token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({article_id:articleId})
+    });
+    if(!resp.ok){
+      var t=await resp.text();
+      console.error('magazine-notify-published failed:',resp.status,t);
+      showToast('Publicado, pero email al autor falló (ver consola).','error');
+    }
+  }catch(e){
+    console.error('notifyAuthorPublished',e);
+    showToast('Publicado, pero email al autor falló (ver consola).','error');
+  }
+}
+
+function showOverlay(){document.getElementById('vOverlay').classList.add('open');}
+function hideOverlay(){document.getElementById('vOverlay').classList.remove('open');_currentDetail=null;}
+function onOverlayMouseDown(e){if(e.target.id==='vOverlay') hideOverlay();}
+document.addEventListener('keydown',function(e){if(e.key==='Escape') hideOverlay();});
+
+function showToast(msg,kind){
+  var t=document.getElementById('vToast');
+  t.textContent=msg;
+  t.className='v-toast '+(kind||'')+' visible';
+  setTimeout(function(){t.classList.remove('visible');},3500);
+}
+</script>
+</body>
+</html>

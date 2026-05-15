@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfil de Revista — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{background:var(--paper);font-family:var(--font);color:var(--ink);min-height:100vh}
+body.hidden-until-auth{visibility:hidden}
+.r-nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.r-nav-logo img{height:28px;width:auto;display:block}
+.r-nav a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:var(--ink);text-decoration:none;font-weight:400}
+.r-nav a:hover{color:var(--ink-mute)}
+.r-wrap{max-width:640px;margin:48px auto 4rem;padding:0 24px}
+.r-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;letter-spacing:-.02em;margin-bottom:.5rem}
+.r-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:2rem;line-height:1.55}
+.r-form{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px}
+.r-field{margin-bottom:1.25rem}
+.r-field label{display:block;font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem}
+.r-field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;box-sizing:border-box}
+.r-field input:focus{border-color:var(--ink)}
+.r-field.has-error input{border-color:#a83232}
+.r-field-error{display:none;color:#a83232;font-size:12px;margin-top:.3rem}
+.r-field.has-error .r-field-error{display:block}
+.r-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--line)}
+.r-actions a{padding:.65rem 1.2rem;font-size:13px}
+.r-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:8px;font-size:13px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.r-toast.visible{opacity:1}
+.r-toast.error{background:#a83232}
+.r-footer{margin-top:auto;padding:1.5rem 32px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-mute);text-align:center}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<nav class="r-nav">
+  <a href="/" class="r-nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <a href="/mi-cuenta/">Volver a Mi cuenta</a>
+</nav>
+
+<div class="r-wrap">
+  <h1 class="r-title">Perfil de Revista</h1>
+  <p class="r-subtitle">Estos datos aparecerán como autor en los artículos que publiques. Puedes editarlos en cualquier momento.</p>
+
+  <form class="r-form" id="profileForm" onsubmit="event.preventDefault();saveProfile();">
+    <div class="r-field" data-name="first_name">
+      <label>Nombre</label>
+      <input type="text" id="firstName" maxlength="80" autocomplete="given-name" required>
+      <div class="r-field-error">* Obligatorio</div>
+    </div>
+    <div class="r-field" data-name="last_name">
+      <label>Apellidos</label>
+      <input type="text" id="lastName" maxlength="120" autocomplete="family-name" required>
+      <div class="r-field-error">* Obligatorio</div>
+    </div>
+    <div class="r-field" data-name="contact_email">
+      <label>Email de contacto</label>
+      <input type="email" id="contactEmail" maxlength="200" autocomplete="email" required>
+      <div class="r-field-error">* Email válido obligatorio</div>
+    </div>
+    <div class="r-field" data-name="contact_phone">
+      <label>Teléfono de contacto</label>
+      <input type="tel" id="contactPhone" maxlength="30" placeholder="+34 600 000 000" autocomplete="tel" required>
+      <div class="r-field-error">* Teléfono válido obligatorio (formato +XXX...)</div>
+    </div>
+
+    <div class="r-actions">
+      <a href="/mi-cuenta/" class="btn btn-outline btn-small">Cancelar</a>
+      <button type="submit" class="btn btn-primary btn-small" id="btnSave">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<div class="r-toast" id="toast"></div>
+
+<div class="r-footer">SISTEMA &amp; CURINO SLU &middot; <a href="mailto:info@casacurino.com" style="color:var(--ink-mute);text-decoration:none">info@casacurino.com</a></div>
+
+<script>
+var _supabase=null,_currentUser=null,_existingProfile=null;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/mi-cuenta/revista/perfil/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/mi-cuenta/revista/perfil/';return;
+    }
+    _currentUser=s.data.session.user;
+    await loadProfile();
+    document.body.classList.remove('hidden-until-auth');
+  }catch(e){
+    console.error('bootstrap',e);
+    window.location.href='/login/?redirect=/mi-cuenta/revista/perfil/';
+  }
+})();
+
+async function loadProfile(){
+  var r=await _supabase.from('magazine_profiles').select('*').eq('user_id',_currentUser.id).maybeSingle();
+  if(r.data){
+    _existingProfile=r.data;
+    document.getElementById('firstName').value=r.data.first_name||'';
+    document.getElementById('lastName').value=r.data.last_name||'';
+    document.getElementById('contactEmail').value=r.data.contact_email||'';
+    document.getElementById('contactPhone').value=r.data.contact_phone||'';
+  }else{
+    // Prefill email con el del user.
+    document.getElementById('contactEmail').value=_currentUser.email||'';
+  }
+}
+
+function validateEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
+function validatePhone(v){return /^\+?[\d\s().-]{6,30}$/.test(v);}
+
+function clearErrors(){
+  document.querySelectorAll('.r-field').forEach(function(f){f.classList.remove('has-error');});
+}
+
+async function saveProfile(){
+  clearErrors();
+  var data={
+    user_id:_currentUser.id,
+    first_name:document.getElementById('firstName').value.trim(),
+    last_name:document.getElementById('lastName').value.trim(),
+    contact_email:document.getElementById('contactEmail').value.trim(),
+    contact_phone:document.getElementById('contactPhone').value.trim(),
+    updated_at:new Date().toISOString()
+  };
+
+  var firstError=null;
+  if(!data.first_name){firstError=firstError||markError('first_name');}
+  if(!data.last_name){firstError=firstError||markError('last_name');}
+  if(!data.contact_email||!validateEmail(data.contact_email)){firstError=firstError||markError('contact_email');}
+  if(!data.contact_phone||!validatePhone(data.contact_phone)){firstError=firstError||markError('contact_phone');}
+  if(firstError){firstError.scrollIntoView({behavior:'smooth',block:'center'});return;}
+
+  var btn=document.getElementById('btnSave');
+  btn.disabled=true;btn.textContent='Guardando…';
+
+  var r=await _supabase.from('magazine_profiles').upsert(data,{onConflict:'user_id'});
+  if(r.error){
+    showToast('Error al guardar: '+r.error.message,'error');
+    btn.disabled=false;btn.textContent='Guardar';
+    return;
+  }
+
+  // Redirect con flag para mostrar toast en la siguiente página.
+  window.location.href='/mi-cuenta/revista/?profile_saved=1';
+}
+
+function markError(name){
+  var f=document.querySelector('.r-field[data-name="'+name+'"]');
+  if(f) f.classList.add('has-error');
+  return f;
+}
+
+function showToast(msg,kind){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='r-toast '+(kind||'')+' visible';
+  setTimeout(function(){t.classList.remove('visible');},3500);
+}
+</script>
+</body>
+</html>

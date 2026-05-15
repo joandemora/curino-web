@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nuevo artículo — Revista Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{background:var(--paper);font-family:var(--font);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.loader{text-align:center;color:var(--ink-mute);font-size:14px}
+</style>
+</head>
+<body>
+<div class="loader" id="loader">Creando borrador…</div>
+
+<script>
+// Crea un draft vacío en magazine_articles y redirige a /editar/?id=...
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/mi-cuenta/revista/nuevo/';return;
+    }
+    var supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    var s=await supa.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/mi-cuenta/revista/nuevo/';return;
+    }
+    var user=s.data.session.user;
+
+    // Verificar perfil de revista; sin perfil, redirigir.
+    var profCheck=await supa.from('magazine_profiles').select('user_id').eq('user_id',user.id).maybeSingle();
+    if(!profCheck.data){
+      window.location.href='/mi-cuenta/revista/perfil/';return;
+    }
+
+    // Generar slug único.
+    var slugRes=await supa.rpc('generate_unique_slug',{p_title:'Sin titulo'});
+    if(slugRes.error){
+      document.getElementById('loader').textContent='Error: '+slugRes.error.message;
+      return;
+    }
+
+    // Tipo por defecto: 'articulo' (el user lo cambia en el editor).
+    var ins=await supa.from('magazine_articles').insert({
+      user_id:user.id,
+      title:'Sin título',
+      slug:slugRes.data,
+      type:'articulo',
+      status:'draft'
+    }).select('id').single();
+
+    if(ins.error){
+      document.getElementById('loader').textContent='Error al crear borrador: '+ins.error.message;
+      return;
+    }
+
+    window.location.replace('/mi-cuenta/revista/editar/?id='+encodeURIComponent(ins.data.id)+'&fresh=1');
+  }catch(e){
+    console.error(e);
+    document.getElementById('loader').textContent='Error: '+(e.message||e);
+  }
+})();
+</script>
+</body>
+</html>

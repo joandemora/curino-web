@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis publicaciones — Revista Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{background:var(--paper);font-family:var(--font);color:var(--ink);min-height:100vh}
+body.hidden-until-auth{visibility:hidden}
+.r-nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.r-nav-logo img{height:28px;width:auto;display:block}
+.r-nav a{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:var(--ink);text-decoration:none;font-weight:400}
+.r-nav a:hover{color:var(--ink-mute)}
+.r-wrap{max-width:1100px;margin:48px auto 4rem;padding:0 24px}
+.r-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;letter-spacing:-.02em;margin-bottom:.4rem}
+.r-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:2rem;line-height:1.55}
+
+.r-balance{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+.r-balance-text{font-size:16px;color:var(--ink)}
+.r-balance-text strong{font-weight:600;font-size:22px}
+.r-balance-text small{display:block;color:var(--ink-mute);font-size:12px;margin-top:.25rem}
+
+.r-section-title{font-family:var(--serif);font-size:20px;font-weight:400;margin:2.25rem 0 1rem;letter-spacing:-.01em}
+
+.r-packs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:1rem}
+.r-pack{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;transition:border-color .2s,box-shadow .2s}
+.r-pack:hover{border-color:var(--coral);box-shadow:0 4px 20px rgba(204,120,92,.08)}
+.r-pack-name{font-family:var(--serif);font-size:18px;font-weight:400}
+.r-pack-price{font-size:24px;font-weight:600;color:var(--ink)}
+.r-pack-desc{font-size:13px;color:var(--ink-soft);line-height:1.45;flex:1}
+.r-pack-save{font-size:12px;color:#1d6f3d;background:#eaf5ee;padding:2px 8px;border-radius:999px}
+.r-pack button{margin-top:auto;width:100%;padding:.65rem 1rem;background:var(--ink);color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s}
+.r-pack button:hover{background:var(--coral)}
+.r-pack button:disabled{opacity:.5;cursor:not-allowed}
+.r-pack-fineprint{font-size:11px;color:var(--ink-mute);margin-top:1rem;text-align:center}
+
+.r-cta-new{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin:1.5rem 0 1rem}
+.r-cta-new .btn-primary{padding:.75rem 1.4rem;font-size:13px}
+.r-cta-disabled{opacity:.5;pointer-events:none}
+.r-tooltip{font-size:12px;color:var(--ink-mute)}
+
+.r-table{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden;border-collapse:collapse;font-size:13px}
+.r-table th{text-align:left;padding:.85rem 1rem;font-size:11px;font-weight:600;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--line)}
+.r-table td{padding:.9rem 1rem;border-top:1px solid var(--line);vertical-align:middle}
+.r-table .col-actions{text-align:right;white-space:nowrap}
+.r-table .col-actions a,.r-table .col-actions button{margin-left:.5rem;font-size:12px}
+
+.r-badge{display:inline-block;padding:.18rem .55rem;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;white-space:nowrap}
+.r-badge.draft{background:#eceff1;color:#546e7a}
+.r-badge.pending_review{background:#fff8e1;color:#8a6d1c}
+.r-badge.published{background:#eaf5ee;color:#1d6f3d}
+.r-badge.rejected{background:#fde8e8;color:#a83232}
+.r-badge.unpublished{background:#f5e8f8;color:#6a1b8a}
+
+.r-rejected-notes{display:block;margin-top:.4rem;font-size:12px;color:#a83232;background:#fde8e8;padding:.5rem .65rem;border-radius:6px;line-height:1.4}
+
+.r-empty{padding:2.5rem 1rem;text-align:center;color:var(--ink-mute);font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:12px}
+
+.r-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:1rem}
+.r-modal-overlay.open{display:flex}
+.r-modal{background:#fff;border-radius:12px;max-width:480px;width:100%;padding:1.75rem 2rem}
+.r-modal h3{font-family:var(--serif);font-size:20px;font-weight:400;margin-bottom:.7rem}
+.r-modal p{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:1.25rem}
+.r-modal-actions{display:flex;gap:.6rem;justify-content:flex-end}
+
+.r-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:8px;font-size:13px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.r-toast.visible{opacity:1}
+.r-toast.success{background:#1d6f3d}
+.r-toast.error{background:#a83232}
+
+.r-footer{padding:1.5rem 32px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-mute);text-align:center}
+
+@media(max-width:768px){
+  .r-packs{grid-template-columns:1fr}
+  .r-balance{flex-direction:column;align-items:flex-start}
+  .r-table th,.r-table td{padding:.6rem .5rem;font-size:12px}
+}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<nav class="r-nav">
+  <a href="/" class="r-nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
+  <a href="/mi-cuenta/">Volver a Mi cuenta</a>
+</nav>
+
+<div class="r-wrap">
+  <h1 class="r-title">Mis publicaciones</h1>
+  <p class="r-subtitle">Gestiona tu saldo, compra paquetes y consulta el estado de tus artículos en la Revista Curino.</p>
+
+  <div class="r-balance">
+    <div class="r-balance-text">
+      <span>Saldo disponible: </span><strong id="creditBalance">—</strong> <span>publicaciones</span>
+      <small id="creditExpiry"></small>
+    </div>
+  </div>
+
+  <div class="r-cta-new">
+    <h2 class="r-section-title" style="margin:0">Acciones</h2>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <span class="r-tooltip" id="newArticleTooltip" style="display:none">Completa tu perfil para crear artículos.</span>
+      <a href="/mi-cuenta/revista/nuevo/" class="btn btn-primary" id="btnNewArticle">+ Crear nuevo artículo</a>
+    </div>
+  </div>
+
+  <h2 class="r-section-title">Paquetes</h2>
+  <div class="r-packs">
+    <div class="r-pack">
+      <div class="r-pack-name">1 publicación</div>
+      <div class="r-pack-price">99 €</div>
+      <div class="r-pack-desc">Una publicación individual en la Revista.</div>
+      <button onclick="buyPackage(1,this)">Comprar</button>
+    </div>
+    <div class="r-pack">
+      <div class="r-pack-name">2 publicaciones</div>
+      <div class="r-pack-price">159 €</div>
+      <div class="r-pack-desc">Para difundir varios proyectos o piezas.</div>
+      <span class="r-pack-save">Ahorras 39 €</span>
+      <button onclick="buyPackage(2,this)">Comprar</button>
+    </div>
+    <div class="r-pack">
+      <div class="r-pack-name">6 publicaciones</div>
+      <div class="r-pack-price">386 €</div>
+      <div class="r-pack-desc">Plan anual para perfiles de estudio activos.</div>
+      <span class="r-pack-save">Ahorras 208 €</span>
+      <button onclick="buyPackage(6,this)">Comprar</button>
+    </div>
+  </div>
+  <p class="r-pack-fineprint">Los créditos caducan a los 12 meses desde la compra.</p>
+
+  <h2 class="r-section-title">Mis publicaciones</h2>
+  <div id="articlesList"><div class="r-empty">Cargando…</div></div>
+</div>
+
+<div class="r-modal-overlay" id="noCreditsModal" onclick="if(event.target.id==='noCreditsModal') closeModal()">
+  <div class="r-modal">
+    <h3>Sin créditos disponibles</h3>
+    <p>Para crear y enviar artículos necesitas créditos de publicación. Compra un paquete para empezar.</p>
+    <div class="r-modal-actions">
+      <button class="btn btn-outline btn-small" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-primary btn-small" onclick="buyPackage(1,this)">Comprar 1 publicación</button>
+    </div>
+  </div>
+</div>
+
+<div class="r-toast" id="toast"></div>
+
+<div class="r-footer">SISTEMA &amp; CURINO SLU &middot; <a href="mailto:info@casacurino.com" style="color:var(--ink-mute);text-decoration:none">info@casacurino.com</a></div>
+
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
+var STATUS_LABELS={draft:'Borrador',pending_review:'En revisión',published:'Publicado',rejected:'Rechazado',unpublished:'Despublicado'};
+
+var _supabase=null,_currentUser=null,_hasProfile=false,_credits=0;
+
+(async function(){
+  try{
+    var r=await fetch('/api/config',{redirect:'follow'});
+    var c=await r.json();
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/mi-cuenta/revista/';return;
+    }
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    window.SUPABASE_URL=c.supabaseUrl;
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/mi-cuenta/revista/';return;
+    }
+    _currentUser=s.data.session.user;
+
+    await checkProfile();
+    await Promise.all([loadCredits(),loadArticles()]);
+
+    handleQueryFlags();
+    document.body.classList.remove('hidden-until-auth');
+  }catch(e){
+    console.error('bootstrap',e);
+    window.location.href='/login/?redirect=/mi-cuenta/revista/';
+  }
+})();
+
+function handleQueryFlags(){
+  var qs=new URLSearchParams(window.location.search);
+  if(qs.get('profile_saved')==='1'){
+    showToast('Perfil guardado.','success');
+    history.replaceState(null,'','/mi-cuenta/revista/');
+  }else if(qs.get('sent')==='1'){
+    showToast('Tu artículo está en revisión. Te avisaremos cuando sea publicado.','success');
+    history.replaceState(null,'','/mi-cuenta/revista/');
+  }else if(qs.get('purchase')==='success'){
+    showToast('Compra completada. Recibirás la factura por email en unos minutos.','success');
+    history.replaceState(null,'','/mi-cuenta/revista/');
+    // Refrescar saldo tras unos segundos por si el webhook aún no procesó.
+    setTimeout(function(){loadCredits();},5000);
+  }else if(qs.get('purchase')==='cancelled'){
+    showToast('Compra cancelada.','error');
+    history.replaceState(null,'','/mi-cuenta/revista/');
+  }
+}
+
+async function checkProfile(){
+  var r=await _supabase.from('magazine_profiles').select('user_id').eq('user_id',_currentUser.id).maybeSingle();
+  _hasProfile=!!(r.data&&r.data.user_id);
+  var btn=document.getElementById('btnNewArticle');
+  var tooltip=document.getElementById('newArticleTooltip');
+  if(!_hasProfile){
+    btn.classList.add('r-cta-disabled');
+    btn.removeAttribute('href');
+    btn.style.opacity='0.5';
+    btn.style.cursor='not-allowed';
+    btn.title='Completa tu perfil de revista primero';
+    tooltip.style.display='inline';
+  }
+}
+
+async function loadCredits(){
+  var r=await _supabase.from('magazine_credits').select('credits_remaining,expires_at')
+    .eq('user_id',_currentUser.id)
+    .gt('credits_remaining',0)
+    .gt('expires_at',new Date().toISOString());
+  var total=0;
+  var earliestExpiry=null;
+  if(r.data){
+    r.data.forEach(function(c){
+      total+=c.credits_remaining||0;
+      if(c.expires_at&&(!earliestExpiry||c.expires_at<earliestExpiry)) earliestExpiry=c.expires_at;
+    });
+  }
+  _credits=total;
+  document.getElementById('creditBalance').textContent=total;
+  if(earliestExpiry){
+    var d=new Date(earliestExpiry).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+    document.getElementById('creditExpiry').textContent='Próximo lote caduca el '+d;
+  }
+}
+
+async function loadArticles(){
+  var r=await _supabase.from('magazine_articles')
+    .select('id,title,slug,type,status,admin_notes,created_at,published_at,updated_at')
+    .eq('user_id',_currentUser.id)
+    .order('updated_at',{ascending:false});
+  var container=document.getElementById('articlesList');
+  if(r.error){
+    container.innerHTML='<div class="r-empty">Error: '+escHtml(r.error.message)+'</div>';
+    return;
+  }
+  if(!r.data||r.data.length===0){
+    container.innerHTML='<div class="r-empty">Aún no tienes publicaciones. Cuando crees un artículo, aparecerá aquí.</div>';
+    return;
+  }
+  var rows=r.data.map(function(a){
+    var date=new Date(a.updated_at||a.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+    var actions='';
+    if(a.status==='draft'){
+      actions='<a class="btn btn-outline btn-small" href="/mi-cuenta/revista/editar/?id='+encodeURIComponent(a.id)+'">Editar</a>';
+    }else if(a.status==='pending_review'){
+      actions='<span class="r-tooltip">En revisión</span>';
+    }else if(a.status==='published'){
+      var slugPath='/revista/'+encodeURIComponent(a.type)+'/'+encodeURIComponent(a.slug||'')+'/';
+      actions='<a class="btn btn-outline btn-small" href="'+slugPath+'">Ver en revista</a>';
+    }else if(a.status==='rejected'){
+      actions='<a class="btn btn-primary btn-small" href="/mi-cuenta/revista/editar/?id='+encodeURIComponent(a.id)+'">Editar y reenviar</a>';
+    }else{
+      actions='<span class="r-tooltip">—</span>';
+    }
+    var rejectedNotes=(a.status==='rejected'&&a.admin_notes)
+      ? '<div class="r-rejected-notes"><strong>Notas del editor:</strong> '+escHtml(a.admin_notes)+'</div>'
+      : '';
+    return '<tr>'+
+      '<td>'+escHtml(TYPE_LABELS[a.type]||a.type)+'</td>'+
+      '<td><strong>'+escHtml(a.title||'(sin título)')+'</strong>'+rejectedNotes+'</td>'+
+      '<td><span class="r-badge '+escHtml(a.status)+'">'+escHtml(STATUS_LABELS[a.status]||a.status)+'</span></td>'+
+      '<td>'+escHtml(date)+'</td>'+
+      '<td class="col-actions">'+actions+'</td>'+
+    '</tr>';
+  }).join('');
+  container.innerHTML='<table class="r-table"><thead><tr><th>Tipo</th><th>Título</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+async function buyPackage(size,btn){
+  if(!_hasProfile){
+    // Si compra sin perfil, primero pedimos crear perfil — el webhook acreditará igualmente,
+    // pero el user no podrá publicar hasta tener perfil. Mejor UX: avisar.
+    if(!confirm('Aún no tienes tu perfil de revista completado. Puedes comprar igualmente pero necesitarás crear el perfil antes de enviar artículos. ¿Continuar?')) return;
+  }
+  if(btn){btn.disabled=true;var prev=btn.textContent;btn.textContent='Procesando…';}
+  try{
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){throw new Error('auth_required');}
+    var fnUrl=(window.SUPABASE_URL||_supabase.supabaseUrl)+'/functions/v1/magazine-checkout';
+    var resp=await fetch(fnUrl,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+s.data.session.access_token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({package_size:size})
+    });
+    var json=await resp.json();
+    if(!resp.ok||!json.checkout_url){throw new Error(json.error||'checkout_failed');}
+    window.location.href=json.checkout_url;
+  }catch(e){
+    console.error('buyPackage',e);
+    showToast('Error al iniciar la compra: '+(e.message||e),'error');
+    if(btn){btn.disabled=false;btn.textContent=prev;}
+  }
+}
+
+function closeModal(){document.getElementById('noCreditsModal').classList.remove('open');}
+
+function showToast(msg,kind){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='r-toast '+(kind||'')+' visible';
+  setTimeout(function(){t.classList.remove('visible');},4000);
+}
+</script>
+</body>
+</html>
