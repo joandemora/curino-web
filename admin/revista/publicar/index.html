@@ -226,8 +226,8 @@ const VideoEmbed = Node.create({
   parseHTML() {
     return [{ tag: 'div[data-video-embed]' }];
   },
-  renderHTML({ HTMLAttributes }) {
-    const src = HTMLAttributes.src;
+  renderHTML({ node, HTMLAttributes }) {
+    const src = node.attrs.src || HTMLAttributes['data-src'] || '';
     return ['div', mergeAttributes(HTMLAttributes, { 'data-video-embed': '', class: 'video-embed' }),
       ['iframe', { src, frameborder: '0', allowfullscreen: 'true', loading: 'lazy', allow: 'accelerometer; encrypted-media; picture-in-picture' }]
     ];
