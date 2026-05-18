@@ -35,6 +35,14 @@
 </section>
 
 <div class="rv-wrap">
+  <!-- Destacados (boosts main_page) — solo visible si hay boosts activos -->
+  <section class="rv-section" id="featuredSection" style="display:none">
+    <div class="rv-section-head">
+      <h2 class="rv-section-title">Destacados</h2>
+    </div>
+    <div class="rv-grid" id="grid-featured"></div>
+  </section>
+
   <section class="rv-section">
     <div class="rv-section-head">
       <h2 class="rv-section-title">Proyectos destacados</h2>
@@ -85,12 +93,20 @@ function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/<
 var TYPE_TO_SECCION={proyecto:'proyectos',material:'materiales',articulo:'articulos',noticia:'noticias',entrevista:'entrevistas'};
 var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
 
+var _supa=null,_supaUrl=null;
+var _boostsBySection={}; // section_cover boosts, keyed por article_type
+var _mainPageBoosts=[];
+
 (async function(){
   try{
     var r=await fetch('/api/config',{redirect:'follow'});
     var c=await r.json();
     if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase) return;
-    var supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    _supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    _supaUrl=c.supabaseUrl;
+    triggerBoostActivation();
+    await loadAllBoosts();
+    renderFeatured();
     var queries=[
       {type:'proyecto',limit:4},
       {type:'material',limit:4},
@@ -98,37 +114,108 @@ var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',no
       {type:'noticia',limit:3},
       {type:'entrevista',limit:3}
     ];
-    await Promise.all(queries.map(function(q){return loadSection(supa,q.type,q.limit);}));
+    await Promise.all(queries.map(function(q){return loadSection(q.type,q.limit);}));
   }catch(e){
     console.error('revista landing',e);
   }
 })();
 
-async function loadSection(supa,type,limit){
+function triggerBoostActivation(){
+  (async function(){
+    try{
+      var r=await _supa.rpc('activate_boost_queue');
+      if(r&&r.data&&Array.isArray(r.data.activated_ids)&&r.data.activated_ids.length>0){
+        fetch(_supaUrl+'/functions/v1/magazine-notify-boost-active',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_supa.supabaseKey||'')},
+          body:JSON.stringify({boost_ids:r.data.activated_ids})
+        }).catch(function(){});
+      }
+    }catch(e){console.warn('activate_boost_queue',e);}
+  })();
+}
+
+async function loadAllBoosts(){
+  var r=await _supa.from('magazine_boosts_active')
+    .select('article_id,title,slug,article_type,cover_image_url,author_first_name,author_last_name,published_at,ends_at,boost_type')
+    .order('starts_at',{ascending:false});
+  _boostsBySection={};
+  _mainPageBoosts=[];
+  if(!r||!r.data) return;
+  r.data.forEach(function(b){
+    if(b.boost_type==='main_page'){
+      _mainPageBoosts.push(b);
+    }else if(b.boost_type==='section_cover'){
+      if(!_boostsBySection[b.article_type]) _boostsBySection[b.article_type]=[];
+      _boostsBySection[b.article_type].push(b);
+    }
+  });
+}
+
+function renderFeatured(){
+  if(_mainPageBoosts.length===0) return;
+  var section=document.getElementById('featuredSection');
+  var grid=document.getElementById('grid-featured');
+  if(!section||!grid) return;
+  grid.innerHTML=_mainPageBoosts.slice(0,3).map(function(b){
+    return renderCard({
+      id:b.article_id,title:b.title,slug:b.slug,type:b.article_type,
+      cover_image_url:b.cover_image_url,
+      author_first_name:b.author_first_name,
+      author_last_name:b.author_last_name,
+      published_at:b.published_at
+    },true);
+  }).join('');
+  section.style.display='';
+}
+
+async function loadSection(type,limit){
   var grid=document.getElementById('grid-'+type);
   if(!grid) return;
-  var r=await supa.from('magazine_articles_public')
-    .select('id,title,slug,type,cover_image_url,author_first_name,author_last_name,published_at')
-    .eq('type',type)
-    .order('published_at',{ascending:false})
-    .limit(limit);
-  if(r.error||!r.data||r.data.length===0){
+  var boosts=_boostsBySection[type]||[];
+  var boostedIds=new Set(boosts.map(function(b){return b.article_id;}));
+  var remaining=limit-boosts.length;
+  var regular=[];
+  if(remaining>0){
+    var q=_supa.from('magazine_articles_public')
+      .select('id,title,slug,type,cover_image_url,author_first_name,author_last_name,published_at')
+      .eq('type',type)
+      .order('published_at',{ascending:false})
+      .limit(remaining + boosts.length); // fetch un poco más por si hay solape
+    var r=await q;
+    if(r&&r.data){
+      regular=r.data.filter(function(a){return !boostedIds.has(a.id);}).slice(0,remaining);
+    }
+  }
+  if(boosts.length===0 && regular.length===0){
     grid.innerHTML='<div class="rv-card-empty">Próximamente más contenidos…</div>';
     return;
   }
-  grid.innerHTML=r.data.map(renderCard).join('');
+  var html='';
+  boosts.forEach(function(b){
+    html+=renderCard({
+      id:b.article_id,title:b.title,slug:b.slug,type:b.article_type,
+      cover_image_url:b.cover_image_url,
+      author_first_name:b.author_first_name,
+      author_last_name:b.author_last_name,
+      published_at:b.published_at
+    },true);
+  });
+  regular.forEach(function(a){html+=renderCard(a,false);});
+  grid.innerHTML=html;
 }
 
-function renderCard(a){
+function renderCard(a,boosted){
   var seccion=TYPE_TO_SECCION[a.type]||'articulos';
   var label=TYPE_LABELS[a.type]||a.type;
   var author=((a.author_first_name||'')+' '+(a.author_last_name||'')).trim();
   var date=a.published_at?new Date(a.published_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
   var meta=author?(author+(date?' · '+date:'')):date;
   var cover=a.cover_image_url||'';
+  var featuredBadge=boosted?'<span class="rv-card-featured-badge">Destacado</span>':'';
   return '<a class="rv-card" href="/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/">'+
     '<div class="rv-card-cover">'+
-      '<span class="rv-card-badge">'+escHtml(label)+'</span>'+
+      '<span class="rv-card-badge">'+escHtml(label)+'</span>'+featuredBadge+
       (cover?'<img loading="lazy" src="'+escHtml(cover)+'" alt="'+escHtml(a.title)+'">':'')+
     '</div>'+
     '<h3 class="rv-card-title">'+escHtml(a.title)+'</h3>'+

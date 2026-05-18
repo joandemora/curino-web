@@ -66,6 +66,14 @@ body.hidden-until-auth{visibility:hidden}
 .r-modal h3{font-family:var(--serif);font-size:20px;font-weight:400;margin-bottom:.7rem}
 .r-modal p{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:1.25rem}
 .r-modal-actions{display:flex;gap:.6rem;justify-content:flex-end}
+.r-boost-options{display:flex;flex-direction:column;gap:.75rem}
+.r-boost-option{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;background:var(--paper)}
+.r-boost-opt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.6rem}
+.r-boost-opt-name{font-family:var(--serif);font-size:17px;font-weight:400}
+.r-boost-opt-sub{font-size:12px;color:var(--ink-mute);margin-top:.2rem;line-height:1.4}
+.r-boost-opt-price{font-size:22px;font-weight:600;white-space:nowrap}
+.r-boost-status{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;color:var(--ink-mute);background:#f6f5ee;padding:.2rem .55rem;border-radius:999px;margin-top:.25rem}
+.r-boost-status.active{color:#1d6f3d;background:#eaf5ee}
 
 .r-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:8px;font-size:13px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .r-toast.visible{opacity:1}
@@ -147,6 +155,39 @@ body.hidden-until-auth{visibility:hidden}
   </div>
 </div>
 
+<!-- Modal: Promocionar artículo (Fase G4 boosts) -->
+<div class="r-modal-overlay" id="boostModal" onclick="if(event.target.id==='boostModal') closeBoostModal()">
+  <div class="r-modal" style="max-width:560px">
+    <h3 id="boostModalTitle">Promociona tu artículo</h3>
+    <p style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:1.25rem">Tu artículo aparecerá destacado en la zona elegida durante <strong>15 días</strong>. Si los slots están ocupados, entras en cola FIFO y recibes email al activarse.</p>
+    <div class="r-boost-options">
+      <div class="r-boost-option">
+        <div class="r-boost-opt-head">
+          <div>
+            <div class="r-boost-opt-name">Portada de sección</div>
+            <div class="r-boost-opt-sub" id="boostSectionLabel">Aparece en la cabecera de tu sección.</div>
+          </div>
+          <div class="r-boost-opt-price">55 €</div>
+        </div>
+        <button class="btn btn-primary btn-small" onclick="buyBoost('section_cover',this)">Comprar boost sección</button>
+      </div>
+      <div class="r-boost-option">
+        <div class="r-boost-opt-head">
+          <div>
+            <div class="r-boost-opt-name">Página principal</div>
+            <div class="r-boost-opt-sub">Aparece destacado en el home de Revista.</div>
+          </div>
+          <div class="r-boost-opt-price">125 €</div>
+        </div>
+        <button class="btn btn-primary btn-small" onclick="buyBoost('main_page',this)">Comprar boost home</button>
+      </div>
+    </div>
+    <div class="r-modal-actions" style="margin-top:1.25rem">
+      <button class="btn btn-outline btn-small" onclick="closeBoostModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="r-toast" id="toast"></div>
 
 <div class="r-footer">SISTEMA &amp; CURINO SLU &middot; <a href="mailto:info@casacurino.com" style="color:var(--ink-mute);text-decoration:none">info@casacurino.com</a></div>
@@ -156,8 +197,13 @@ function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/<
 
 var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
 var STATUS_LABELS={draft:'Borrador',pending_review:'En revisión',published:'Publicado',rejected:'Rechazado',unpublished:'Despublicado'};
+var TYPE_TO_SECCION={proyecto:'proyectos',material:'materiales',articulo:'articulos',noticia:'noticias',entrevista:'entrevistas'};
 
 var _supabase=null,_currentUser=null,_hasProfile=false,_credits=0;
+// Mapa article_id → array de boosts del user para ese artículo (status active/queued).
+var _articleBoosts={};
+// Artículo seleccionado en el modal de promocionar.
+var _boostingArticle=null;
 
 (async function(){
   try{
@@ -175,7 +221,8 @@ var _supabase=null,_currentUser=null,_hasProfile=false,_credits=0;
     _currentUser=s.data.session.user;
 
     await checkProfile();
-    await Promise.all([loadCredits(),loadArticles()]);
+    await Promise.all([loadCredits(),loadArticles(),loadBoosts()]);
+    renderArticlesTable();
 
     handleQueryFlags();
     document.body.classList.remove('hidden-until-auth');
@@ -200,6 +247,14 @@ function handleQueryFlags(){
     setTimeout(function(){loadCredits();},5000);
   }else if(qs.get('purchase')==='cancelled'){
     showToast('Compra cancelada.','error');
+    history.replaceState(null,'','/mi-cuenta/revista/');
+  }else if(qs.get('boost')==='success'){
+    showToast('Boost comprado. Recibirás email con la factura y el estado (activo o en cola).','success');
+    history.replaceState(null,'','/mi-cuenta/revista/');
+    // Recargar boosts tras unos segundos (webhook async)
+    setTimeout(function(){loadBoosts().then(renderArticlesTable);},5000);
+  }else if(qs.get('boost')==='cancelled'){
+    showToast('Compra de boost cancelada.','error');
     history.replaceState(null,'','/mi-cuenta/revista/');
   }
 }
@@ -240,30 +295,63 @@ async function loadCredits(){
   }
 }
 
+var _articles=[];
+
 async function loadArticles(){
   var r=await _supabase.from('magazine_articles')
     .select('id,title,slug,type,status,admin_notes,created_at,published_at,updated_at')
     .eq('user_id',_currentUser.id)
     .order('updated_at',{ascending:false});
-  var container=document.getElementById('articlesList');
-  if(r.error){
-    container.innerHTML='<div class="r-empty">Error: '+escHtml(r.error.message)+'</div>';
-    return;
+  if(r.error){_articles=[];return r.error;}
+  _articles=r.data||[];
+}
+
+async function loadBoosts(){
+  // Carga los boosts del user para sus artículos (active o queued).
+  // El badge "expired" no se muestra (boosts vencidos no requieren UI especial).
+  var r=await _supabase.from('magazine_boosts')
+    .select('id,article_id,type,status,starts_at,ends_at,created_at')
+    .eq('user_id',_currentUser.id)
+    .in('status',['active','queued'])
+    .order('created_at',{ascending:false});
+  _articleBoosts={};
+  if(r.data){
+    r.data.forEach(function(b){
+      if(!_articleBoosts[b.article_id]) _articleBoosts[b.article_id]=[];
+      _articleBoosts[b.article_id].push(b);
+    });
   }
-  if(!r.data||r.data.length===0){
+}
+
+function renderArticlesTable(){
+  var container=document.getElementById('articlesList');
+  if(!_articles||_articles.length===0){
     container.innerHTML='<div class="r-empty">Aún no tienes publicaciones. Cuando crees un artículo, aparecerá aquí.</div>';
     return;
   }
-  var rows=r.data.map(function(a){
+  var rows=_articles.map(function(a){
     var date=new Date(a.updated_at||a.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+    var boosts=_articleBoosts[a.id]||[];
     var actions='';
+    var titleExtras='';
+
     if(a.status==='draft'){
       actions='<a class="btn btn-outline btn-small" href="/mi-cuenta/revista/editar/?id='+encodeURIComponent(a.id)+'">Editar</a>';
     }else if(a.status==='pending_review'){
       actions='<span class="r-tooltip">En revisión</span>';
     }else if(a.status==='published'){
-      var slugPath='/revista/'+encodeURIComponent(a.type)+'/'+encodeURIComponent(a.slug||'')+'/';
+      var seccion=TYPE_TO_SECCION[a.type]||'articulos';
+      var slugPath='/revista/'+seccion+'/'+encodeURIComponent(a.slug||'')+'/';
       actions='<a class="btn btn-outline btn-small" href="'+slugPath+'">Ver en revista</a>';
+      // Boosts: pintar estado por tipo. Si hay slots libres (faltan tipos sin boost), botón Promocionar.
+      var hasSection=boosts.some(function(b){return b.type==='section_cover';});
+      var hasMain=boosts.some(function(b){return b.type==='main_page';});
+      if(!hasSection||!hasMain){
+        actions+='<button class="btn btn-outline btn-small" style="margin-left:.4rem" onclick="openBoostModal(\''+a.id+'\')">Promocionar</button>';
+      }
+      boosts.forEach(function(b){
+        titleExtras+=renderBoostBadge(b);
+      });
     }else if(a.status==='rejected'){
       actions='<a class="btn btn-primary btn-small" href="/mi-cuenta/revista/editar/?id='+encodeURIComponent(a.id)+'">Editar y reenviar</a>';
     }else{
@@ -274,13 +362,69 @@ async function loadArticles(){
       : '';
     return '<tr>'+
       '<td>'+escHtml(TYPE_LABELS[a.type]||a.type)+'</td>'+
-      '<td><strong>'+escHtml(a.title||'(sin título)')+'</strong>'+rejectedNotes+'</td>'+
+      '<td><strong>'+escHtml(a.title||'(sin título)')+'</strong>'+titleExtras+rejectedNotes+'</td>'+
       '<td><span class="r-badge '+escHtml(a.status)+'">'+escHtml(STATUS_LABELS[a.status]||a.status)+'</span></td>'+
       '<td>'+escHtml(date)+'</td>'+
       '<td class="col-actions">'+actions+'</td>'+
     '</tr>';
   }).join('');
   container.innerHTML='<table class="r-table"><thead><tr><th>Tipo</th><th>Título</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+function renderBoostBadge(b){
+  var typeLabel=b.type==='main_page'?'home':'sección';
+  if(b.status==='active'){
+    var until=b.ends_at?new Date(b.ends_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):'';
+    return '<div class="r-boost-status active">⚑ Boost '+typeLabel+' activo hasta '+escHtml(until)+'</div>';
+  }
+  return '<div class="r-boost-status">⌛ Boost '+typeLabel+' en cola</div>';
+}
+
+function openBoostModal(articleId){
+  var article=_articles.find(function(a){return a.id===articleId;});
+  if(!article) return;
+  _boostingArticle=article;
+  document.getElementById('boostModalTitle').textContent='Promociona "'+article.title+'"';
+  var seccion=TYPE_TO_SECCION[article.type]||'articulos';
+  document.getElementById('boostSectionLabel').textContent='Aparece en la cabecera de la sección de '+(seccion);
+  // Si ya tiene un boost de un tipo, ocultar esa opción (UX: spec dice "un boost a la vez por artículo y por tipo")
+  var boosts=_articleBoosts[articleId]||[];
+  var hasSection=boosts.some(function(b){return b.type==='section_cover';});
+  var hasMain=boosts.some(function(b){return b.type==='main_page';});
+  var opts=document.querySelectorAll('#boostModal .r-boost-option');
+  if(opts[0]) opts[0].style.display=hasSection?'none':'block';
+  if(opts[1]) opts[1].style.display=hasMain?'none':'block';
+  document.getElementById('boostModal').classList.add('open');
+}
+
+function closeBoostModal(){
+  document.getElementById('boostModal').classList.remove('open');
+  _boostingArticle=null;
+}
+
+async function buyBoost(type,btn){
+  if(!_boostingArticle){return;}
+  if(btn){btn.disabled=true;var prev=btn.textContent;btn.textContent='Procesando…';}
+  try{
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){throw new Error('auth_required');}
+    var fnUrl=(window.SUPABASE_URL||_supabase.supabaseUrl)+'/functions/v1/magazine-boost-checkout';
+    var resp=await fetch(fnUrl,{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+s.data.session.access_token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({article_id:_boostingArticle.id,type:type})
+    });
+    var json=await resp.json();
+    if(!resp.ok||!json.checkout_url){throw new Error(json.error||'checkout_failed');}
+    window.location.href=json.checkout_url;
+  }catch(e){
+    console.error('buyBoost',e);
+    showToast('Error al iniciar la compra del boost: '+(e.message||e),'error');
+    if(btn){btn.disabled=false;btn.textContent=prev;}
+  }
 }
 
 async function buyPackage(size,btn){

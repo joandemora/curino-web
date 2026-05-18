@@ -32,7 +32,11 @@ import {
   generateMagazineInvoicePdf,
   uploadMagazineInvoicePdf,
   sendMagazinePurchaseEmail,
-  MagazinePurchaseData
+  generateMagazineBoostInvoicePdf,
+  uploadMagazineBoostInvoicePdf,
+  sendMagazineBoostEmail,
+  MagazinePurchaseData,
+  MagazineBoostInvoiceData
 } from '../_shared/magazine-invoices.ts'
 
 Deno.serve(async (req) => {
@@ -124,11 +128,15 @@ Deno.serve(async (req) => {
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        // Routing por metadata.purpose: 'magazine_package' va al handler de
-        // Revista; el resto cae en el handler marketplace (compatible con
-        // sessions de Fase D que NO llevan purpose explícito).
-        if (session.metadata?.purpose === 'magazine_package') {
+        // Routing por metadata.purpose:
+        //   'magazine_package' → paquete de créditos de Revista (G2)
+        //   'magazine_boost'   → boost/promoción de Revista (G4)
+        //   resto              → marketplace (compatible con Fase D sin purpose)
+        const purpose = session.metadata?.purpose;
+        if (purpose === 'magazine_package') {
           await handleMagazinePackageCompleted(supabase, session);
+        } else if (purpose === 'magazine_boost') {
+          await handleMagazineBoostCompleted(supabase, session);
         } else {
           await handleCheckoutCompleted(supabase, stripe, session);
         }
@@ -601,5 +609,166 @@ async function handleMagazinePackageCompleted(
     console.log(`magazine: invoice + email sent for purchase ${purchase.id}`);
   } catch (invoiceError) {
     console.error(`magazine: invoice/email generation failed for purchase ${purchase.id}:`, invoiceError);
+  }
+}
+
+// ============================================================================
+// REVISTA G4: compra de boost/promoción temporal de 15 días.
+//
+// metadata esperada en la session:
+//   purpose = 'magazine_boost'
+//   user_id = <uuid>
+//   article_id = <uuid>
+//   boost_type = 'section_cover' | 'main_page'
+//
+// Acciones:
+//   1. Idempotencia: skip si magazine_boosts.stripe_session_id ya existe.
+//   2. Calcular slots libres en la zona (article.type para section_cover,
+//      global para main_page). 3 slots por zona.
+//      Si <3 activos → status='active', starts_at=now(), ends_at=now()+15d
+//      Si >=3 activos → status='queued' (sin starts_at/ends_at).
+//   3. Insert magazine_boosts con invoice_number (RPC assign_invoice_number
+//      con tipo 'magazine', misma serie que paquetes G2).
+//   4. Generar PDF de factura + subir a invoices/magazine-boost/<id>.pdf.
+//   5. Update magazine_boosts.pdf_url con el path.
+//   6. Enviar email Resend (active vs queued con texto distinto).
+// ============================================================================
+const BOOST_SLOTS_PER_ZONE = 3;
+const BOOST_PRICES_CENTS: Record<string, number> = { section_cover: 5500, main_page: 12500 };
+const ARTICLE_TYPE_TO_SECCION: Record<string, string> = {
+  proyecto: 'proyectos', material: 'materiales', articulo: 'articulos',
+  noticia: 'noticias', entrevista: 'entrevistas'
+};
+const ARTICLE_TYPE_LABELS: Record<string, string> = {
+  proyecto: 'Proyectos', material: 'Materiales', articulo: 'Artículos',
+  noticia: 'Noticias', entrevista: 'Entrevistas'
+};
+
+async function handleMagazineBoostCompleted(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const userId = session.metadata?.user_id;
+  const articleId = session.metadata?.article_id;
+  const boostType = session.metadata?.boost_type;
+
+  if (!userId || !articleId || !boostType || !BOOST_PRICES_CENTS[boostType]) {
+    console.error('boost: missing or invalid metadata for session', session.id);
+    return;
+  }
+
+  // 1. Idempotencia
+  const { data: existing } = await supabase
+    .from('magazine_boosts')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+  if (existing) {
+    console.log(`boost: row already exists for session ${session.id}`);
+    return;
+  }
+
+  const amountPaidCents = session.amount_total ?? BOOST_PRICES_CENTS[boostType];
+  const buyerEmail = session.customer_details?.email || session.customer_email || '';
+  const currentYear = new Date().getFullYear();
+
+  // 2. Cargar artículo (para article.type necesario en slot counting + email)
+  const { data: article } = await supabase
+    .from('magazine_articles')
+    .select('id, title, type, status, user_id')
+    .eq('id', articleId)
+    .maybeSingle();
+  if (!article) {
+    console.error(`boost: article ${articleId} not found for session ${session.id}`);
+    return;
+  }
+
+  // 3. Contar slots ocupados en la zona
+  let activeCount = 0;
+  if (boostType === 'section_cover') {
+    const { data: activeBoosts } = await supabase
+      .from('magazine_boosts')
+      .select('id, article_id, magazine_articles!inner(type)')
+      .eq('type', 'section_cover')
+      .eq('status', 'active')
+      .eq('magazine_articles.type', article.type);
+    activeCount = (activeBoosts || []).length;
+  } else {
+    const { count } = await supabase
+      .from('magazine_boosts')
+      .select('id', { count: 'exact', head: true })
+      .eq('type', 'main_page')
+      .eq('status', 'active');
+    activeCount = count ?? 0;
+  }
+
+  const willBeActive = activeCount < BOOST_SLOTS_PER_ZONE;
+  const startsAt = willBeActive ? new Date().toISOString() : null;
+  const endsAt = willBeActive
+    ? new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+  const status = willBeActive ? 'active' : 'queued';
+
+  // 4. Asignar invoice number (serie 'magazine' compartida con paquetes G2)
+  const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'magazine',
+    p_year: currentYear
+  });
+  if (invErr) {
+    console.error('boost: error assigning invoice number:', invErr);
+  }
+
+  // 5. Insert magazine_boosts
+  const { data: boost, error: boostError } = await supabase
+    .from('magazine_boosts')
+    .insert({
+      article_id: articleId,
+      user_id: userId,
+      type: boostType,
+      amount_paid_cents: amountPaidCents,
+      stripe_session_id: session.id,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      status,
+      invoice_number: invoiceNum
+    })
+    .select('id, created_at')
+    .single();
+
+  if (boostError || !boost) {
+    console.error('boost: error inserting magazine_boosts:', boostError);
+    throw boostError;
+  }
+
+  console.log(`boost: ${boost.id} created (status=${status}) for article ${articleId}`);
+
+  // 6. Factura PDF + email (best-effort)
+  try {
+    const invoiceData: MagazineBoostInvoiceData = {
+      boost_id: boost.id,
+      article_title: article.title,
+      boost_type: boostType as 'section_cover' | 'main_page',
+      amount_paid_cents: amountPaidCents,
+      invoice_number: invoiceNum || `BOOST-${boost.id.slice(0, 8)}`,
+      buyer_email: buyerEmail,
+      created_at: boost.created_at
+    };
+
+    const pdfBytes = await generateMagazineBoostInvoicePdf(invoiceData);
+    const pdfPath = await uploadMagazineBoostInvoicePdf(supabase, boost.id, pdfBytes);
+    await supabase.from('magazine_boosts').update({ pdf_url: pdfPath }).eq('id', boost.id);
+
+    if (buyerEmail) {
+      const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
+      const magazineUrl = `${siteUrl}/mi-cuenta/revista/`;
+      const zoneLabel = boostType === 'main_page'
+        ? 'la página principal de Revista'
+        : `la portada de ${ARTICLE_TYPE_LABELS[article.type] || article.type}`;
+      await sendMagazineBoostEmail(buyerEmail, invoiceData, status as 'active' | 'queued', endsAt, zoneLabel, pdfBytes, magazineUrl);
+    }
+
+    console.log(`boost: invoice + email sent for ${boost.id}`);
+  } catch (invoiceError) {
+    console.error(`boost: invoice/email failed for ${boost.id}:`, invoiceError);
   }
 }

@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Entrevistas | Curino Revista</title>
-<meta name="description" content="Entrevistas a diseñadores, arquitectos y artesanos del mueble.">
+<meta name="description" content="Proyectos de mobiliario a medida, interiorismo y diseño en la Revista Curino.">
 <link rel="canonical" href="https://casacurino.com/revista/entrevistas/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Entrevistas | Curino Revista">
-<meta property="og:description" content="Entrevistas a diseñadores y arquitectos.">
+<meta property="og:title" content="Proyectos | Curino Revista">
+<meta property="og:description" content="Proyectos de mobiliario a medida, interiorismo y diseño.">
 <meta property="og:url" content="https://casacurino.com/revista/entrevistas/">
 <meta property="og:image" content="https://casacurino.com/assets/imagenes/logo-curino.svg">
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
@@ -25,7 +25,7 @@
 <section class="rv-hero">
   <div class="rv-breadcrumb"><a href="/revista/">Revista</a> · Proyectos</div>
   <h1>Entrevistas</h1>
-  <p class="rv-subtitle">Entrevistas a diseñadores y arquitectos.firmados por estudios y particulares.</p>
+  <p class="rv-subtitle">Proyectos de mobiliario a medida, interiorismo y diseño firmados por estudios y particulares.</p>
 </section>
 
 <div class="rv-wrap">
@@ -46,35 +46,82 @@ var SECTION_SLUG='entrevistas';
 var SECTION_LABEL='Entrevista';
 var PAGE_SIZE=12;
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-var _supa=null,_offset=0,_total=null;
+var _supa=null,_supaUrl=null,_offset=0,_total=null,_boostedIds=new Set(),_boostedArticles=[];
 (async function(){
   try{
     var r=await fetch('/api/config',{redirect:'follow'});
     var c=await r.json();
     if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase) return;
     _supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    _supaUrl=c.supabaseUrl;
+    // Activación lazy (fire and forget — no bloquea el render).
+    triggerBoostActivation();
+    // Cargar boosts activos de esta sección + primer batch.
+    await loadBoosts();
     await loadBatch(true);
   }catch(e){console.error('section',e);}
 })();
+function triggerBoostActivation(){
+  // Llama RPC activate_boost_queue y, si activa boosts, notifica al backend.
+  (async function(){
+    try{
+      var r=await _supa.rpc('activate_boost_queue');
+      if(r&&r.data&&Array.isArray(r.data.activated_ids)&&r.data.activated_ids.length>0){
+        fetch(_supaUrl+'/functions/v1/magazine-notify-boost-active',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_supa.supabaseKey||'')},
+          body:JSON.stringify({boost_ids:r.data.activated_ids})
+        }).catch(function(){});
+      }
+    }catch(e){console.warn('activate_boost_queue',e);}
+  })();
+}
+async function loadBoosts(){
+  var r=await _supa.from('magazine_boosts_active')
+    .select('article_id,title,slug,article_type,cover_image_url,author_first_name,author_last_name,published_at,ends_at,boost_type')
+    .eq('boost_type','section_cover')
+    .eq('article_type',SECTION_TYPE)
+    .order('starts_at',{ascending:false});
+  _boostedArticles=(r&&r.data)?r.data:[];
+  _boostedIds=new Set(_boostedArticles.map(function(b){return b.article_id;}));
+}
 async function loadBatch(reset){
   if(reset){_offset=0;}
-  var r=await _supa.from('magazine_articles_public')
+  var q=_supa.from('magazine_articles_public')
     .select('id,title,slug,cover_image_url,author_first_name,author_last_name,published_at',{count:'exact'})
     .eq('type',SECTION_TYPE)
     .order('published_at',{ascending:false})
     .range(_offset,_offset+PAGE_SIZE-1);
+  // Si hay boosts, excluir esos ids del query regular para no duplicar.
+  if(_boostedIds.size>0){
+    q=q.not('id','in','('+Array.from(_boostedIds).map(function(id){return '"'+id+'"';}).join(',')+')');
+  }
+  var r=await q;
   var grid=document.getElementById('grid');
   if(r.error){grid.innerHTML='<div class="rv-card-empty">Error al cargar.</div>';return;}
-  _total=r.count;
-  if(reset){grid.innerHTML='';}
-  if((!r.data||r.data.length===0)&&reset){
+  _total=(r.count||0)+_boostedArticles.length;
+  if(reset){
+    grid.innerHTML='';
+    // Boosted first
+    _boostedArticles.forEach(function(b){
+      grid.insertAdjacentHTML('beforeend',renderCard({
+        id:b.article_id,title:b.title,slug:b.slug,
+        cover_image_url:b.cover_image_url,
+        author_first_name:b.author_first_name,
+        author_last_name:b.author_last_name,
+        published_at:b.published_at
+      },true));
+    });
+  }
+  if((!r.data||r.data.length===0)&&reset&&_boostedArticles.length===0){
     grid.innerHTML='<div class="rv-empty-section" style="grid-column:1/-1"><h2>Próximamente la sección de '+SECTION_LABEL.toLowerCase()+'s.</h2><p>Vuelve pronto para descubrir nuevo contenido.</p></div>';
     document.getElementById('loadMoreWrap').style.display='none';
     return;
   }
-  r.data.forEach(function(a){grid.insertAdjacentHTML('beforeend',renderCard(a));});
-  _offset+=r.data.length;
-  document.getElementById('loadMoreWrap').style.display=(_total!=null&&_offset<_total)?'flex':'none';
+  (r.data||[]).forEach(function(a){grid.insertAdjacentHTML('beforeend',renderCard(a,false));});
+  _offset+=r.data?r.data.length:0;
+  var totalShown=_offset+_boostedArticles.length;
+  document.getElementById('loadMoreWrap').style.display=(_total!=null&&totalShown<_total)?'flex':'none';
 }
 async function loadMore(){
   var btn=document.getElementById('loadMoreBtn');
@@ -82,13 +129,14 @@ async function loadMore(){
   await loadBatch(false);
   btn.disabled=false;btn.textContent='Cargar más';
 }
-function renderCard(a){
+function renderCard(a,boosted){
   var author=((a.author_first_name||'')+' '+(a.author_last_name||'')).trim();
   var date=a.published_at?new Date(a.published_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
   var meta=author?(author+(date?' · '+date:'')):date;
   var cover=a.cover_image_url||'';
+  var featuredBadge=boosted?'<span class="rv-card-featured-badge">Destacado</span>':'';
   return '<a class="rv-card" href="/revista/'+SECTION_SLUG+'/'+encodeURIComponent(a.slug)+'/">'+
-    '<div class="rv-card-cover"><span class="rv-card-badge">'+SECTION_LABEL+'</span>'+
+    '<div class="rv-card-cover"><span class="rv-card-badge">'+SECTION_LABEL+'</span>'+featuredBadge+
     (cover?'<img loading="lazy" src="'+escHtml(cover)+'" alt="'+escHtml(a.title)+'">':'')+
     '</div><h3 class="rv-card-title">'+escHtml(a.title)+'</h3><div class="rv-card-meta">'+escHtml(meta)+'</div></a>';
 }
