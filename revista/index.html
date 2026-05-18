@@ -182,7 +182,7 @@ function renderCard(a){
   var href='/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/';
   var cover=a.cover_image_url||'';
   return '<a class="revista-card" href="'+href+'">'+
-    '<div class="revista-card-img"'+(cover?' style="background-image:url(\\''+escHtml(cover).replace(/'/g,'%27')+'\\')"':'')+'></div>'+
+    '<div class="revista-card-img"'+(cover?' style="background-image:url(\''+escHtml(cover).replace(/'/g,'%27')+'\')"':'')+'></div>'+
     '<h3>'+escHtml(a.title||'')+'</h3>'+
   '</a>';
 }
