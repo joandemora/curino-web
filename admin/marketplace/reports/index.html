@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -85,16 +86,7 @@ a:hover{text-decoration:underline}
 </head>
 <body class="hidden-until-auth">
 
-<header class="v-header">
-  <h1>Curino <span class="sub">Reports</span></h1>
-  <nav>
-    <a href="/admin/">Panel admin</a>
-    <a href="/mi-cuenta/">Mi cuenta</a>
-    <button onclick="adminSignOut()">Cerrar sesión</button>
-  </nav>
-</header>
-
-<section class="v-section">
+<main class="ash-content">
   <h1 class="v-title">Reports del marketplace</h1>
   <p class="v-subtitle">Revisión de reports de piezas del marketplace.</p>
 
@@ -112,7 +104,7 @@ a:hover{text-decoration:underline}
   </div>
 
   <div id="vList"><div class="v-loading">Cargando…</div></div>
-</section>
+</main>
 
 <div class="v-overlay" id="vOverlay" onmousedown="onOverlayMouseDown(event)">
   <div class="v-modal" id="vModal" onmousedown="event.stopPropagation()"></div>
@@ -120,6 +112,7 @@ a:hover{text-decoration:underline}
 
 <div class="v-toast" id="vToast"></div>
 
+<script src="/assets/js/admin-shell.js"></script>
 <script>
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -139,40 +132,11 @@ var STATUS_LABELS={
   dismissed_spam:'Spam'
 };
 
-(async function(){
-  try{
-    var r=await fetch('/api/config',{redirect:'follow'});
-    var c=await r.json();
-    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
-      window.location.href='/login/?redirect=/admin/marketplace/reports/';return;
-    }
-    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-    window.SUPABASE_URL=c.supabaseUrl;
-    var s=await _supabase.auth.getSession();
-    if(!s.data.session){
-      window.location.href='/login/?redirect=/admin/marketplace/reports/';return;
-    }
-    _currentUser=s.data.session.user;
-
-    // Verificar admin
-    var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
-    if(!rr.data||rr.data.role!=='admin'){
-      alert('Solo administradores pueden acceder a esta página.');
-      window.location.href='/';return;
-    }
-
-    document.body.classList.remove('hidden-until-auth');
-    await loadReports();
-  }catch(e){
-    console.error('admin reports bootstrap',e);
-    window.location.href='/login/?redirect=/admin/marketplace/reports/';
-  }
-})();
-
-async function adminSignOut(){
-  if(_supabase) await _supabase.auth.signOut();
-  window.location.href='/login/';
-}
+initAdminShell({ activeSection: 'marketplace-reports', title: 'Reports del marketplace' }).then(async function(ctx){
+  _supabase = ctx.supabase;
+  _currentUser = ctx.user;
+  await loadReports();
+}).catch(function(){ /* shell already redirected */ });
 
 async function loadReports(){
   var list=document.getElementById('vList');
