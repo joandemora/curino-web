@@ -58,7 +58,9 @@
 <div id="rv-footer-mount"></div>
 
 <script src="/assets/js/revista-shell.js"></script>
+<script src="/assets/js/image-transform.js"></script>
 <script>
+function imgT(url,preset){return (window.transformImageUrl?window.transformImageUrl(url,preset):url)||'';}
 var SECTION_TYPE='articulo';
 var SECTION_SLUG='articulos';
 var SECTION_LABEL='Artículo';
@@ -123,7 +125,8 @@ async function loadFeatured(){
   _featuredId=picked.id;
   var seccion=SECTION_SLUG;
   document.getElementById('featuredLink').setAttribute('href','/revista/'+seccion+'/'+encodeURIComponent(picked.slug)+'/');
-  document.getElementById('featuredImg').style.backgroundImage=picked.cover_image_url?"url('"+picked.cover_image_url.replace(/'/g,"\\'")+"')":'';
+  var featCover=imgT(picked.cover_image_url,'hero');
+  document.getElementById('featuredImg').style.backgroundImage=featCover?"url('"+featCover.replace(/'/g,"\\'")+"')":'';
   document.getElementById('featuredType').textContent=SECTION_LABEL;
   document.getElementById('featuredTitle').textContent=picked.title||'';
   document.getElementById('featuredDesc').textContent=picked.meta_description||'';
@@ -188,7 +191,7 @@ async function loadMore(){
 
 function renderCard(a){
   var href='/revista/'+SECTION_SLUG+'/'+encodeURIComponent(a.slug)+'/';
-  var cover=a.cover_image_url||'';
+  var cover=imgT(a.cover_image_url,'card');
   return '<a class="revista-card" href="'+href+'">'+
     '<div class="revista-card-img"'+(cover?' style="background-image:url(\''+escHtml(cover).replace(/'/g,'%27')+'\')"':'')+'></div>'+
     '<h3>'+escHtml(a.title||'')+'</h3>'+

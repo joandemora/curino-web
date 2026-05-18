@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/image-transform.js"></script>
 <script src="/assets/js/catalog-helpers.js"></script>
 <script src="/assets/js/library-categories.js"></script>
 <script src="/assets/js/library-dxf.js"></script>
@@ -5358,6 +5359,7 @@ function renderLibraryPanel(){
   var canReport=!!(_currentUser&&window.MarketplaceReport);
   function renderItemCard(it){
     var photoUrl=it.thumbnail_url||null;
+    if(photoUrl&&window.transformImageUrl) photoUrl=window.transformImageUrl(photoUrl,'thumbnail');
     var thumb=photoUrl?'<img class="c2d-saved-thumb" draggable="false" src="'+_escHtml(photoUrl)+'"/>':'<div class="c2d-saved-thumb"></div>';
     var reportBtn=(canReport&&it.seller_id!==_currentUser.id)
       ? '<button class="c2d-lib-report" data-id="'+_escHtml(it.id)+'" title="Reportar pieza" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border:0;background:rgba(255,255,255,.85);border-radius:50%;cursor:pointer;font-size:12px;line-height:1;padding:0;display:none;align-items:center;justify-content:center;color:#a83232" onmousedown="event.stopPropagation()">⚠</button>'
@@ -5599,6 +5601,7 @@ function renderMarcasGrid(){
   }
   grid.innerHTML=filtered.map(function(it){
     var photoUrl=window.CurinoCatalog?CurinoCatalog.getDisplayPhotoUrl(it):it.thumbnail_url;
+    if(photoUrl&&window.transformImageUrl) photoUrl=window.transformImageUrl(photoUrl,'thumbnail');
     var img=photoUrl
       ?'<div class="c2d-marcas-card-img"><img src="'+_escHtml(photoUrl)+'" alt=""></div>'
       :'<div class="c2d-marcas-card-img empty"></div>';
