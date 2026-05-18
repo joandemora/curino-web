@@ -80,6 +80,19 @@ export default async function handler(request) {
 
     const article = articles[0];
 
+    // Reescribe en runtime las URLs públicas del bucket magazine-articles
+    // que viven dentro de content_html (imágenes inline insertadas por el
+    // editor TipTap) para que también pasen por Image Transformations.
+    // 1200px de ancho cubre el body del artículo (~700-900px reales) con
+    // margen para retina 2x. Sin tocar Schema.org image (sigue siendo el
+    // cover_image_url original para que Google indexe alta resolución).
+    if (article.content_html) {
+      article.content_html = article.content_html.replace(
+        /\/storage\/v1\/object\/public\/(magazine-articles\/[^"'\s)?]+)/g,
+        '/storage/v1/render/image/public/$1?width=1200&quality=85'
+      );
+    }
+
     // Query artículos relacionados (mismo type, excluyendo el actual).
     // Si hay menos de 4 del mismo type, completa con otros publicados más recientes.
     let related = [];
