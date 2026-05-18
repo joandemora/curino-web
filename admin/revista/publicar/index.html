@@ -614,12 +614,10 @@ async function uploadToBucket(file, prefix) {
   return path;
 }
 
-async function signUrl(path) {
-  // Signed URL larga (1 año). En G3 las imágenes de artículos publicados se servirán
-  // mediante un mecanismo distinto (bucket público o función signer en render).
-  const r = await supa.storage.from('magazine-articles').createSignedUrl(path, 60 * 60 * 24 * 365);
-  if (r.error) throw r.error;
-  return r.data.signedUrl;
+function signUrl(path) {
+  // Bucket magazine-articles es público desde G2 cleanup → URL pública directa,
+  // permite Image Transformations y caché CDN sin token.
+  return supa.storage.from('magazine-articles').getPublicUrl(path).data.publicUrl;
 }
 
 window.saveDraft = async function() {
