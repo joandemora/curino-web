@@ -79,7 +79,47 @@ export default async function handler(request) {
     }
 
     const article = articles[0];
-    const html = buildArticleHtml(article, seccion);
+
+    // Query artículos relacionados (mismo type, excluyendo el actual).
+    // Si hay menos de 4 del mismo type, completa con otros publicados más recientes.
+    let related = [];
+    try {
+      const relatedRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/magazine_articles_public?type=eq.${type}&id=neq.${article.id}&select=*&order=published_at.desc&limit=4`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      if (relatedRes.ok) related = await relatedRes.json();
+
+      if (related.length < 4) {
+        const excludeIds = [article.id, ...related.map(r => r.id)];
+        const excludeFilter = excludeIds.map(id => `id.neq.${id}`).join(',');
+        const fillRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/magazine_articles_public?and=(${excludeFilter})&select=*&order=published_at.desc&limit=${4 - related.length}`,
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+        if (fillRes.ok) {
+          const fill = await fillRes.json();
+          related = [...related, ...fill];
+        }
+      }
+    } catch (relErr) {
+      console.error('related fetch failed (non-blocking)', relErr);
+      related = [];
+    }
+
+    const html = buildArticleHtml(article, seccion, related);
 
     return new Response(html, {
       status: 200,
@@ -98,8 +138,9 @@ export default async function handler(request) {
   }
 }
 
-function buildArticleHtml(article, seccion) {
+function buildArticleHtml(article, seccion, related) {
   const sectionTitle = SECTION_TITLES[seccion];
+  related = Array.isArray(related) ? related : [];
   const author = ((article.author_first_name || '') + ' ' + (article.author_last_name || '')).trim() || 'Curino';
   const description = article.meta_description || article.title;
   const canonical = `https://casacurino.com/revista/${seccion}/${article.slug}/`;
@@ -165,35 +206,58 @@ ${publishedAt ? `<meta property="article:published_time" content="${escapeHtml(p
 
 <div id="rv-nav-mount"></div>
 
-<article>
-  <header class="rv-article-hero"${cover ? ` style="background-image:url('${escapeAttr(cover)}')"` : ''}>
-    <div class="rv-article-hero-content">
-      <div class="rv-article-breadcrumb"><a href="/revista/">Revista</a> · <a href="/revista/${seccion}/">${escapeHtml(sectionTitle)}</a></div>
+<article class="magazine-article">
+  <header class="article-hero"${cover ? ` style="background-image:url('${escapeAttr(cover)}')"` : ''}>
+    <div class="article-hero-overlay">
+      <a href="/revista/${seccion}/" class="breadcrumb-link">${escapeHtml(sectionTitle)}</a>
       <h1>${escapeHtml(article.title)}</h1>
-      <p class="rv-article-author">Por ${escapeHtml(author)}${dateLabel ? ' · ' + escapeHtml(dateLabel) : ''}</p>
+      <p class="article-author">Por ${escapeHtml(author)}${dateLabel ? ' · ' + escapeHtml(dateLabel) : ''}</p>
     </div>
   </header>
 
-  <div class="rv-article-body">
-    ${contentHtml}
-  </div>
-
-  <section class="rv-contact">
-    <h3>¿Quieres contactar con ${escapeHtml(article.author_first_name || 'el autor')}?</h3>
-    <p class="rv-contact-intro">Envíale un mensaje. Tu nombre, email y texto llegarán directamente a su dirección de contacto.</p>
-    <button id="openContactBtn" class="rv-btn-primary" type="button">Contactar al autor</button>
-
-    <div class="rv-contact-form" id="contactForm" style="display:none">
-      <input type="text" id="contactName" placeholder="Tu nombre" autocomplete="name">
-      <input type="email" id="contactEmail" placeholder="Tu email" autocomplete="email">
-      <textarea id="contactMessage" placeholder="Tu mensaje..." rows="6"></textarea>
-      <div class="rv-contact-actions">
-        <button id="sendContactBtn" class="rv-btn-primary" type="button">Enviar mensaje</button>
-        <button id="cancelContactBtn" class="rv-btn-outline" type="button">Cancelar</button>
+  <div class="article-layout">
+    <div class="article-main">
+      <div class="article-body">
+        ${contentHtml}
       </div>
-      <div class="rv-contact-status" id="contactStatus"></div>
+
+      <section class="article-contact rv-contact">
+        <h3>¿Quieres contactar con ${escapeHtml(article.author_first_name || 'el autor')}?</h3>
+        <p class="rv-contact-intro">Envíale un mensaje. Tu nombre, email y texto llegarán directamente a su dirección de contacto.</p>
+        <button id="openContactBtn" class="rv-btn-primary" type="button">Contactar al autor</button>
+
+        <div class="rv-contact-form" id="contactForm" style="display:none">
+          <input type="text" id="contactName" placeholder="Tu nombre" autocomplete="name">
+          <input type="email" id="contactEmail" placeholder="Tu email" autocomplete="email">
+          <textarea id="contactMessage" placeholder="Tu mensaje..." rows="6"></textarea>
+          <div class="rv-contact-actions">
+            <button id="sendContactBtn" class="rv-btn-primary" type="button">Enviar mensaje</button>
+            <button id="cancelContactBtn" class="rv-btn-outline" type="button">Cancelar</button>
+          </div>
+          <div class="rv-contact-status" id="contactStatus"></div>
+        </div>
+      </section>
     </div>
-  </section>
+
+    ${related.length > 0 ? `<aside class="article-sidebar">
+      <h3 class="sidebar-title">Más en Revista</h3>
+      <div class="sidebar-cards">
+        ${related.map(r => {
+          const rSeccion = (Object.entries(TYPE_MAP).find(([, t]) => t === r.type) || [seccion])[0];
+          const rCover = r.cover_image_url || '';
+          const rAuthor = ((r.author_first_name || '') + ' ' + (r.author_last_name || '')).trim();
+          return `<a href="/revista/${rSeccion}/${encodeURIComponent(r.slug)}/" class="sidebar-card">
+            <div class="sidebar-card-img"${rCover ? ` style="background-image:url('${escapeAttr(rCover)}')"` : ''}></div>
+            <div class="sidebar-card-info">
+              <span class="sidebar-card-type">${escapeHtml(rSeccion.toUpperCase())}</span>
+              <h4>${escapeHtml(r.title)}</h4>
+              ${rAuthor ? `<p>${escapeHtml(rAuthor)}</p>` : ''}
+            </div>
+          </a>`;
+        }).join('')}
+      </div>
+    </aside>` : ''}
+  </div>
 </article>
 
 <div id="rv-footer-mount"></div>
