@@ -143,6 +143,20 @@
   border-radius:999px;
   z-index:1;
 }
+.rv-card-featured-badge{
+  position:absolute;
+  top:12px;
+  right:12px;
+  background:var(--rv-coral);
+  color:#fff;
+  font-size:10px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  font-weight:600;
+  padding:4px 10px;
+  border-radius:999px;
+  z-index:1;
+}
 .rv-card-title{
   font-family:var(--rv-serif);
   font-size:clamp(18px,1.5vw,22px);
