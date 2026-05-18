@@ -195,8 +195,16 @@ const VideoEmbed = Node.create({
   draggable: true,
   addAttributes() {
     return {
-      src: { default: '' },
-      provider: { default: 'youtube' }
+      src: {
+        default: '',
+        parseHTML: element => element.getAttribute('data-src') || element.querySelector('iframe')?.getAttribute('src') || '',
+        renderHTML: attrs => attrs.src ? { 'data-src': attrs.src } : {}
+      },
+      provider: {
+        default: 'youtube',
+        parseHTML: element => element.getAttribute('data-provider') || 'youtube',
+        renderHTML: attrs => ({ 'data-provider': attrs.provider })
+      }
     };
   },
   parseHTML() {
@@ -204,7 +212,7 @@ const VideoEmbed = Node.create({
   },
   renderHTML({ HTMLAttributes }) {
     const src = HTMLAttributes.src;
-    return ['div', mergeAttributes({ 'data-video-embed': '', 'data-provider': HTMLAttributes.provider, class: 'video-embed' }),
+    return ['div', mergeAttributes(HTMLAttributes, { 'data-video-embed': '', class: 'video-embed' }),
       ['iframe', { src, frameborder: '0', allowfullscreen: 'true', loading: 'lazy', allow: 'accelerometer; encrypted-media; picture-in-picture' }]
     ];
   },
