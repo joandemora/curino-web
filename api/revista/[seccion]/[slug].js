@@ -138,14 +138,35 @@ export default async function handler(request) {
   }
 }
 
+// Mismo helper que /assets/js/image-transform.js, inline en el Edge runtime
+// para evitar imports (la function corre en Vercel Edge, no en el browser).
+function transformImageUrl(url, opts) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.indexOf('/storage/v1/object/public/') === -1) return url;
+  const o = opts || {};
+  const transformed = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+  const params = [];
+  if (o.width)   params.push('width=' + encodeURIComponent(o.width));
+  if (o.height)  params.push('height=' + encodeURIComponent(o.height));
+  if (o.quality) params.push('quality=' + encodeURIComponent(o.quality));
+  if (o.resize)  params.push('resize=' + encodeURIComponent(o.resize));
+  if (o.format)  params.push('format=' + encodeURIComponent(o.format));
+  return params.length ? transformed + '?' + params.join('&') : transformed;
+}
+
 function buildArticleHtml(article, seccion, related) {
   const sectionTitle = SECTION_TITLES[seccion];
   related = Array.isArray(related) ? related : [];
   const author = ((article.author_first_name || '') + ' ' + (article.author_last_name || '')).trim() || 'Curino';
   const description = article.meta_description || article.title;
   const canonical = `https://casacurino.com/revista/${seccion}/${article.slug}/`;
-  const ogImage = article.og_image_url || article.cover_image_url || 'https://casacurino.com/assets/imagenes/logo-curino.svg';
-  const cover = article.cover_image_url || '';
+  // og:image: 1200x630 cover (estándar de redes sociales).
+  // cover (hero CSS background): 1600 wide (full-width hero).
+  // Original sin tocar para Schema.org Article (Google prefiere alta resolución).
+  const rawOgImage = article.og_image_url || article.cover_image_url || 'https://casacurino.com/assets/imagenes/logo-curino.svg';
+  const ogImage = transformImageUrl(rawOgImage, { width: 1200, height: 630, resize: 'cover', quality: 85 });
+  const rawCover = article.cover_image_url || '';
+  const cover = transformImageUrl(rawCover, { width: 1600, quality: 85 });
   const publishedAt = article.published_at || article.created_at;
   const dateLabel = publishedAt ? new Date(publishedAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
@@ -153,7 +174,8 @@ function buildArticleHtml(article, seccion, related) {
     '@context': 'https://schema.org',
     '@type': 'Article',
     'headline': article.title,
-    'image': cover ? [cover] : undefined,
+    // Google Image indexing prefiere alta resolución — uso la original sin transform.
+    'image': rawCover ? [rawCover] : undefined,
     'datePublished': publishedAt,
     'dateModified': article.created_at,
     'author': { '@type': 'Person', 'name': author },
@@ -244,7 +266,7 @@ ${publishedAt ? `<meta property="article:published_time" content="${escapeHtml(p
       <div class="sidebar-cards">
         ${related.map(r => {
           const rSeccion = (Object.entries(TYPE_MAP).find(([, t]) => t === r.type) || [seccion])[0];
-          const rCover = r.cover_image_url || '';
+          const rCover = transformImageUrl(r.cover_image_url || '', { width: 400, quality: 80 });
           const rAuthor = ((r.author_first_name || '') + ' ' + (r.author_last_name || '')).trim();
           return `<a href="/revista/${rSeccion}/${encodeURIComponent(r.slug)}/" class="sidebar-card">
             <div class="sidebar-card-img"${rCover ? ` style="background-image:url('${escapeAttr(rCover)}')"` : ''}></div>

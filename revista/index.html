@@ -65,8 +65,10 @@
 <div id="rv-footer-mount"></div>
 
 <script src="/assets/js/revista-shell.js"></script>
+<script src="/assets/js/image-transform.js"></script>
 <script>
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function imgT(url,preset){return (window.transformImageUrl?window.transformImageUrl(url,preset):url)||'';}
 
 var TYPE_TO_SECCION={proyecto:'proyectos',material:'materiales',articulo:'articulos',noticia:'noticias',entrevista:'entrevistas'};
 var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
@@ -150,7 +152,8 @@ function renderFeatured(a){
   var seccion=TYPE_TO_SECCION[a.type]||'articulos';
   var href='/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/';
   document.getElementById('featuredLink').setAttribute('href',href);
-  document.getElementById('featuredImg').style.backgroundImage=a.cover_image_url?"url('"+a.cover_image_url.replace(/'/g,"\\'")+"')":'';
+  var featCover=imgT(a.cover_image_url,'hero');
+  document.getElementById('featuredImg').style.backgroundImage=featCover?"url('"+featCover.replace(/'/g,"\\'")+"')":'';
   document.getElementById('featuredType').textContent=TYPE_LABELS[a.type]||a.type;
   document.getElementById('featuredTitle').textContent=a.title||'';
   document.getElementById('featuredDesc').textContent=a.meta_description||'';
@@ -180,7 +183,7 @@ function renderGrid(items){
 function renderCard(a){
   var seccion=TYPE_TO_SECCION[a.type]||'articulos';
   var href='/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/';
-  var cover=a.cover_image_url||'';
+  var cover=imgT(a.cover_image_url,'card');
   return '<a class="revista-card" href="'+href+'">'+
     '<div class="revista-card-img"'+(cover?' style="background-image:url(\''+escHtml(cover).replace(/'/g,'%27')+'\')"':'')+'></div>'+
     '<h3>'+escHtml(a.title||'')+'</h3>'+
