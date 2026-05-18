@@ -20,7 +20,13 @@
 /* Cargar serif si la página principal no la tiene */
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Open+Sans:wght@300;400;500;600;700&display=swap');
 
-/* ── Hero header (landing y secciones) ───────────────────── */
+/* @deprecated — reemplazado por estilo editorial (.revista-hero-title,
+   .revista-nav, .revista-featured, .revista-grid, .revista-card).
+   Los selectores .rv-hero/.rv-section/.rv-grid/.rv-card-* a continuación
+   se mantienen para no romper consumidores externos si existieran;
+   ya no se referencian desde las páginas /revista/* tras este rediseño. */
+
+/* ── Hero header (landing y secciones) [@deprecated] ──────── */
 .rv-hero{
   padding:120px 32px 80px;
   text-align:center;
@@ -665,4 +671,201 @@
   .article-body { font-size: 17px; }
   .article-body h2 { font-size: 26px; }
   .article-body h3 { font-size: 20px; }
+}
+
+/* ============================================================
+ * Revista landing y secciones — estilo editorial (Archiproducts)
+ * ============================================================ */
+
+.revista-hero-title {
+  background: #faf8f3;
+  padding: 80px 20px 60px;
+  text-align: center;
+}
+.revista-hero-title h1 {
+  font-family: var(--rv-serif, Georgia, serif);
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 400;
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #1a1a1a;
+}
+.revista-hero-title p.subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 16px auto 0 auto;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+.revista-nav {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 24px 20px 60px;
+  background: #faf8f3;
+  flex-wrap: wrap;
+}
+.revista-nav a {
+  font-size: 17px;
+  color: #1a1a1a;
+  text-decoration: none;
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.revista-nav a:hover,
+.revista-nav a.active {
+  border-bottom-color: #1a1a1a;
+}
+
+/* Featured */
+.revista-featured {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 60px 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+.revista-featured a[style*="display:contents"] { color: inherit; text-decoration: none; }
+.revista-featured-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background-size: cover;
+  background-position: center;
+  background-color: #f1f0ea;
+}
+.revista-featured-text {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.revista-featured-type {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #888;
+}
+.revista-featured h2 {
+  font-family: var(--rv-serif, Georgia, serif);
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.revista-featured-desc {
+  font-size: 17px;
+  line-height: 1.6;
+  color: #555;
+  margin: 0;
+}
+.revista-featured-link {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #1a1a1a;
+  text-decoration: none;
+  font-weight: 500;
+}
+.revista-featured a:hover .revista-featured-link {
+  text-decoration: underline;
+}
+
+/* Grid editorial */
+.revista-grid {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 40px 100px;
+}
+.revista-grid-row {
+  display: grid;
+  gap: 40px 40px;
+  margin-bottom: 60px;
+}
+.revista-grid-row:last-child {
+  margin-bottom: 0;
+}
+.revista-grid-row.cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+.revista-grid-row.cols-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.revista-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.revista-card-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background-size: cover;
+  background-position: center;
+  background-color: #f1f0ea;
+  margin-bottom: 20px;
+  transition: opacity 0.3s;
+}
+.revista-card:hover .revista-card-img {
+  opacity: 0.92;
+}
+.revista-card h3 {
+  font-family: var(--rv-serif, Georgia, serif);
+  font-size: clamp(18px, 1.8vw, 28px);
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.01em;
+  color: #1a1a1a;
+}
+
+/* Cargar más en páginas de sección */
+.revista-load-more {
+  text-align: center;
+  padding: 40px 0;
+}
+.revista-load-more button {
+  background: transparent;
+  border: 1px solid #1a1a1a;
+  padding: 14px 32px;
+  font-family: inherit;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  color: #1a1a1a;
+}
+.revista-load-more button:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+.revista-load-more button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+  .revista-hero-title { padding: 60px 16px 40px; }
+  .revista-nav { gap: 20px; padding: 16px 16px 40px; }
+  .revista-nav a { font-size: 15px; }
+  .revista-featured {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 40px 20px;
+  }
+  .revista-grid-row.cols-2,
+  .revista-grid-row.cols-3 {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+  }
+  .revista-grid {
+    padding: 20px 20px 60px;
+  }
 }

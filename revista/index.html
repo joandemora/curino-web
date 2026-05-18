@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Revista | Curino</title>
+<title>De Revista | Curino</title>
 <meta name="description" content="Proyectos, materiales y reflexiones para el diseño de interiores. La revista de Curino.">
 <link rel="canonical" href="https://casacurino.com/revista/">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="Revista | Curino">
+<meta property="og:title" content="De Revista | Curino">
 <meta property="og:description" content="Proyectos, materiales y reflexiones para el diseño de interiores. La revista de Curino.">
 <meta property="og:url" content="https://casacurino.com/revista/">
 <meta property="og:image" content="https://casacurino.com/assets/imagenes/logo-curino.svg">
 <meta property="og:site_name" content="Curino Revista">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Revista | Curino">
+<meta name="twitter:title" content="De Revista | Curino">
 <meta name="twitter:description" content="Proyectos, materiales y reflexiones para el diseño de interiores.">
 
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
@@ -28,61 +28,39 @@
 
 <div id="rv-nav-mount"></div>
 
-<!-- HERO -->
-<section class="rv-hero">
-  <h1>Curino Revista</h1>
-  <p class="rv-subtitle">Proyectos, materiales y reflexiones para el diseño de interiores.</p>
+<!-- Hero del título -->
+<section class="revista-hero-title">
+  <h1>De Revista</h1>
+  <p class="subtitle">Proyectos, materiales y reflexiones para el diseño de interiores.</p>
 </section>
 
-<div class="rv-wrap">
-  <!-- Destacados (boosts main_page) — solo visible si hay boosts activos -->
-  <section class="rv-section" id="featuredSection" style="display:none">
-    <div class="rv-section-head">
-      <h2 class="rv-section-title">Destacados</h2>
-    </div>
-    <div class="rv-grid" id="grid-featured"></div>
-  </section>
+<!-- Nav horizontal -->
+<nav class="revista-nav">
+  <a href="/revista/" class="active">Todo</a>
+  <a href="/revista/proyectos/">Proyectos</a>
+  <a href="/revista/materiales/">Materiales</a>
+  <a href="/revista/articulos/">Artículos</a>
+  <a href="/revista/noticias/">Noticias</a>
+  <a href="/revista/entrevistas/">Entrevistas</a>
+</nav>
 
-  <section class="rv-section">
-    <div class="rv-section-head">
-      <h2 class="rv-section-title">Proyectos destacados</h2>
-      <a class="rv-section-link" href="/revista/proyectos/">Ver todos →</a>
+<!-- Featured (boost main_page o último publicado) -->
+<section class="revista-featured" id="featured" style="display:none">
+  <a href="#" id="featuredLink" style="display:contents">
+    <div class="revista-featured-img" id="featuredImg"></div>
+    <div class="revista-featured-text">
+      <div class="revista-featured-type" id="featuredType"></div>
+      <h2 id="featuredTitle"></h2>
+      <p class="revista-featured-desc" id="featuredDesc"></p>
+      <span class="revista-featured-link">Leer artículo →</span>
     </div>
-    <div class="rv-grid cols-4" id="grid-proyecto"><div class="rv-card-empty">Cargando…</div></div>
-  </section>
+  </a>
+</section>
 
-  <section class="rv-section">
-    <div class="rv-section-head">
-      <h2 class="rv-section-title">Materiales y novedades</h2>
-      <a class="rv-section-link" href="/revista/materiales/">Ver todos →</a>
-    </div>
-    <div class="rv-grid cols-4" id="grid-material"><div class="rv-card-empty">Cargando…</div></div>
-  </section>
-
-  <section class="rv-section">
-    <div class="rv-section-head">
-      <h2 class="rv-section-title">Artículos</h2>
-      <a class="rv-section-link" href="/revista/articulos/">Ver todos →</a>
-    </div>
-    <div class="rv-grid" id="grid-articulo"><div class="rv-card-empty">Cargando…</div></div>
-  </section>
-
-  <section class="rv-section">
-    <div class="rv-section-head">
-      <h2 class="rv-section-title">Noticias</h2>
-      <a class="rv-section-link" href="/revista/noticias/">Ver todas →</a>
-    </div>
-    <div class="rv-grid" id="grid-noticia"><div class="rv-card-empty">Cargando…</div></div>
-  </section>
-
-  <section class="rv-section">
-    <div class="rv-section-head">
-      <h2 class="rv-section-title">Entrevistas</h2>
-      <a class="rv-section-link" href="/revista/entrevistas/">Ver todas →</a>
-    </div>
-    <div class="rv-grid" id="grid-entrevista"><div class="rv-card-empty">Cargando…</div></div>
-  </section>
-</div>
+<!-- Grid de cards -->
+<section class="revista-grid" id="gridWrap">
+  <div id="grid"><div style="text-align:center;color:#888;padding:60px 0">Cargando…</div></div>
+</section>
 
 <div id="rv-footer-mount"></div>
 
@@ -94,8 +72,6 @@ var TYPE_TO_SECCION={proyecto:'proyectos',material:'materiales',articulo:'articu
 var TYPE_LABELS={proyecto:'Proyecto',material:'Material',articulo:'Artículo',noticia:'Noticia',entrevista:'Entrevista'};
 
 var _supa=null,_supaUrl=null;
-var _boostsBySection={}; // section_cover boosts, keyed por article_type
-var _mainPageBoosts=[];
 
 (async function(){
   try{
@@ -105,18 +81,10 @@ var _mainPageBoosts=[];
     _supa=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
     _supaUrl=c.supabaseUrl;
     triggerBoostActivation();
-    await loadAllBoosts();
-    renderFeatured();
-    var queries=[
-      {type:'proyecto',limit:4},
-      {type:'material',limit:4},
-      {type:'articulo',limit:3},
-      {type:'noticia',limit:3},
-      {type:'entrevista',limit:3}
-    ];
-    await Promise.all(queries.map(function(q){return loadSection(q.type,q.limit);}));
+    await loadAll();
   }catch(e){
     console.error('revista landing',e);
+    document.getElementById('grid').innerHTML='<div style="text-align:center;color:#888;padding:60px 0">Error al cargar.</div>';
   }
 })();
 
@@ -135,91 +103,87 @@ function triggerBoostActivation(){
   })();
 }
 
-async function loadAllBoosts(){
-  var r=await _supa.from('magazine_boosts_active')
-    .select('article_id,title,slug,article_type,cover_image_url,author_first_name,author_last_name,published_at,ends_at,boost_type')
-    .order('starts_at',{ascending:false});
-  _boostsBySection={};
-  _mainPageBoosts=[];
-  if(!r||!r.data) return;
-  r.data.forEach(function(b){
-    if(b.boost_type==='main_page'){
-      _mainPageBoosts.push(b);
-    }else if(b.boost_type==='section_cover'){
-      if(!_boostsBySection[b.article_type]) _boostsBySection[b.article_type]=[];
-      _boostsBySection[b.article_type].push(b);
+async function loadAll(){
+  // 1) boosts activos main_page (todos los types).
+  // 2) todos los artículos publicados, los 30 más recientes.
+  var boostsP=_supa.from('magazine_boosts_active')
+    .select('article_id,title,slug,article_type,cover_image_url,author_first_name,author_last_name,published_at,boost_type')
+    .eq('boost_type','main_page');
+  var articlesP=_supa.from('magazine_articles_public')
+    .select('id,title,slug,type,cover_image_url,meta_description,author_first_name,author_last_name,published_at')
+    .order('published_at',{ascending:false})
+    .limit(30);
+  var [bRes,aRes]=await Promise.all([boostsP,articlesP]);
+  var boosts=(bRes&&bRes.data)?bRes.data:[];
+  var articles=(aRes&&aRes.data)?aRes.data:[];
+
+  if(articles.length===0){
+    document.getElementById('grid').innerHTML='<div style="text-align:center;color:#888;padding:60px 0">Próximamente más contenidos…</div>';
+    return;
+  }
+
+  // Featured: boost main_page (random entre los activos) si existe, fallback último publicado.
+  var featured=null;
+  if(boosts.length>0){
+    var pick=boosts[Math.floor(Math.random()*boosts.length)];
+    // Buscamos los meta_description en articles (la vista boost no los trae); si no está en los 30,
+    // hacemos un fetch puntual.
+    var inList=articles.find(function(a){return a.id===pick.article_id;});
+    if(inList){
+      featured=inList;
+    }else{
+      var r=await _supa.from('magazine_articles_public').select('id,title,slug,type,cover_image_url,meta_description,author_first_name,author_last_name,published_at').eq('id',pick.article_id).maybeSingle();
+      if(r&&r.data) featured=r.data;
     }
-  });
+  }
+  if(!featured) featured=articles[0];
+
+  renderFeatured(featured);
+
+  // Grid excluye el featured.
+  var rest=articles.filter(function(a){return a.id!==featured.id;});
+  renderGrid(rest);
 }
 
-function renderFeatured(){
-  if(_mainPageBoosts.length===0) return;
-  var section=document.getElementById('featuredSection');
-  var grid=document.getElementById('grid-featured');
-  if(!section||!grid) return;
-  grid.innerHTML=_mainPageBoosts.slice(0,3).map(function(b){
-    return renderCard({
-      id:b.article_id,title:b.title,slug:b.slug,type:b.article_type,
-      cover_image_url:b.cover_image_url,
-      author_first_name:b.author_first_name,
-      author_last_name:b.author_last_name,
-      published_at:b.published_at
-    },true);
-  }).join('');
+function renderFeatured(a){
+  var section=document.getElementById('featured');
+  var seccion=TYPE_TO_SECCION[a.type]||'articulos';
+  var href='/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/';
+  document.getElementById('featuredLink').setAttribute('href',href);
+  document.getElementById('featuredImg').style.backgroundImage=a.cover_image_url?"url('"+a.cover_image_url.replace(/'/g,"\\'")+"')":'';
+  document.getElementById('featuredType').textContent=TYPE_LABELS[a.type]||a.type;
+  document.getElementById('featuredTitle').textContent=a.title||'';
+  document.getElementById('featuredDesc').textContent=a.meta_description||'';
   section.style.display='';
 }
 
-async function loadSection(type,limit){
-  var grid=document.getElementById('grid-'+type);
-  if(!grid) return;
-  var boosts=_boostsBySection[type]||[];
-  var boostedIds=new Set(boosts.map(function(b){return b.article_id;}));
-  var remaining=limit-boosts.length;
-  var regular=[];
-  if(remaining>0){
-    var q=_supa.from('magazine_articles_public')
-      .select('id,title,slug,type,cover_image_url,author_first_name,author_last_name,published_at')
-      .eq('type',type)
-      .order('published_at',{ascending:false})
-      .limit(remaining + boosts.length); // fetch un poco más por si hay solape
-    var r=await q;
-    if(r&&r.data){
-      regular=r.data.filter(function(a){return !boostedIds.has(a.id);}).slice(0,remaining);
-    }
-  }
-  if(boosts.length===0 && regular.length===0){
-    grid.innerHTML='<div class="rv-card-empty">Próximamente más contenidos…</div>';
+function renderGrid(items){
+  var grid=document.getElementById('grid');
+  if(items.length===0){
+    grid.innerHTML='<div style="text-align:center;color:#888;padding:60px 0">No hay más artículos por ahora.</div>';
     return;
   }
+  // Primera fila: hasta 2 cards (cols-2). Resto: cols-3 en filas de hasta 3.
   var html='';
-  boosts.forEach(function(b){
-    html+=renderCard({
-      id:b.article_id,title:b.title,slug:b.slug,type:b.article_type,
-      cover_image_url:b.cover_image_url,
-      author_first_name:b.author_first_name,
-      author_last_name:b.author_last_name,
-      published_at:b.published_at
-    },true);
-  });
-  regular.forEach(function(a){html+=renderCard(a,false);});
+  var firstRow=items.slice(0,2);
+  if(firstRow.length>0){
+    html+='<div class="revista-grid-row cols-2">'+firstRow.map(renderCard).join('')+'</div>';
+  }
+  var rest=items.slice(2);
+  for(var i=0;i<rest.length;i+=3){
+    var chunk=rest.slice(i,i+3);
+    html+='<div class="revista-grid-row cols-3">'+chunk.map(renderCard).join('')+'</div>';
+  }
   grid.innerHTML=html;
 }
 
-function renderCard(a,boosted){
+function renderCard(a){
   var seccion=TYPE_TO_SECCION[a.type]||'articulos';
-  var label=TYPE_LABELS[a.type]||a.type;
-  var author=((a.author_first_name||'')+' '+(a.author_last_name||'')).trim();
-  var date=a.published_at?new Date(a.published_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'';
-  var meta=author?(author+(date?' · '+date:'')):date;
+  var href='/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/';
   var cover=a.cover_image_url||'';
-  var featuredBadge=boosted?'<span class="rv-card-featured-badge">Destacado</span>':'';
-  return '<a class="rv-card" href="/revista/'+seccion+'/'+encodeURIComponent(a.slug)+'/">'+
-    '<div class="rv-card-cover">'+
-      '<span class="rv-card-badge">'+escHtml(label)+'</span>'+featuredBadge+
-      (cover?'<img loading="lazy" src="'+escHtml(cover)+'" alt="'+escHtml(a.title)+'">':'')+
-    '</div>'+
-    '<h3 class="rv-card-title">'+escHtml(a.title)+'</h3>'+
-    '<div class="rv-card-meta">'+escHtml(meta)+'</div>'+
+  return '<a class="revista-card" href="'+href+'">'+
+    '<div class="revista-card-img"'+(cover?' style="background-image:url(\\''+escHtml(cover).replace(/'/g,'%27')+'\\')"':'')+'></div>'+
+    '<h3>'+escHtml(a.title||'')+'</h3>'+
   '</a>';
 }
 </script>
