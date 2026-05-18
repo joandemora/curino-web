@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -110,16 +111,7 @@ a:hover{text-decoration:underline}
 </head>
 <body class="hidden-until-auth">
 
-<header class="v-header">
-  <h1>Curino <span class="sub">Revista · Moderación</span></h1>
-  <nav>
-    <a href="/admin/">Panel admin</a>
-    <a href="/mi-cuenta/">Mi cuenta</a>
-    <button onclick="adminSignOut()">Cerrar sesión</button>
-  </nav>
-</header>
-
-<section class="v-section">
+<main class="ash-content">
   <h1 class="v-title">Moderación de Revista</h1>
   <p class="v-subtitle">Cola de artículos enviados por los usuarios. Aprueba, edita o rechaza.</p>
 
@@ -129,13 +121,14 @@ a:hover{text-decoration:underline}
       <option value="pending_review" selected>Pendientes</option>
       <option value="published">Publicados</option>
       <option value="rejected">Rechazados</option>
+      <option value="unpublished">Despublicados</option>
       <option value="">Todos</option>
     </select>
     <button class="v-btn v-btn-secondary" onclick="loadArticles()" style="margin-left:auto">Recargar</button>
   </div>
 
   <div id="vList"><div class="v-loading">Cargando…</div></div>
-</section>
+</main>
 
 <div class="v-overlay" id="vOverlay" onmousedown="onOverlayMouseDown(event)">
   <div class="v-modal" id="vModal" onmousedown="event.stopPropagation()"></div>
@@ -143,6 +136,7 @@ a:hover{text-decoration:underline}
 
 <div class="v-toast" id="vToast"></div>
 
+<script src="/assets/js/admin-shell.js"></script>
 <script>
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -151,39 +145,11 @@ var STATUS_LABELS={draft:'Borrador',pending_review:'En revisión',published:'Pub
 
 var _supabase=null,_currentUser=null,_articles=[],_currentDetail=null;
 
-(async function(){
-  try{
-    var r=await fetch('/api/config',{redirect:'follow'});
-    var c=await r.json();
-    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
-      window.location.href='/login/?redirect=/admin/revista/moderacion/';return;
-    }
-    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-    window.SUPABASE_URL=c.supabaseUrl;
-    var s=await _supabase.auth.getSession();
-    if(!s.data.session){
-      window.location.href='/login/?redirect=/admin/revista/moderacion/';return;
-    }
-    _currentUser=s.data.session.user;
-
-    var rr=await _supabase.from('user_roles').select('role').eq('user_id',_currentUser.id).maybeSingle();
-    if(!rr.data||rr.data.role!=='admin'){
-      alert('Solo administradores pueden acceder a esta página.');
-      window.location.href='/';return;
-    }
-
-    document.body.classList.remove('hidden-until-auth');
-    await loadArticles();
-  }catch(e){
-    console.error('admin moderacion bootstrap',e);
-    window.location.href='/login/?redirect=/admin/revista/moderacion/';
-  }
-})();
-
-async function adminSignOut(){
-  if(_supabase) await _supabase.auth.signOut();
-  window.location.href='/login/';
-}
+initAdminShell({ activeSection: 'revista-moderacion', title: 'Moderación de Revista' }).then(async function(ctx){
+  _supabase = ctx.supabase;
+  _currentUser = ctx.user;
+  await loadArticles();
+}).catch(function(){ /* shell already redirected */ });
 
 async function loadArticles(){
   var list=document.getElementById('vList');
@@ -255,6 +221,16 @@ function renderDetailModal(){
       '<button class="v-btn v-btn-danger" onclick="rejectArticle(this)">Rechazar</button>'+
       '<button class="v-btn v-btn-primary" onclick="saveAndPublish(this)">Guardar y publicar</button>'+
       '<button class="v-btn v-btn-success" onclick="publishAsIs(this)">Publicar tal cual</button>';
+  }else if(a.status==='published'){
+    var editHref='/admin/revista/publicar/?id='+encodeURIComponent(a.id);
+    actionsHtml=''+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>'+
+      '<button class="v-btn v-btn-danger" onclick="unpublishArticle(this)">Despublicar</button>'+
+      '<a class="v-btn v-btn-primary" href="'+editHref+'" style="text-decoration:none">Editar</a>';
+  }else if(a.status==='unpublished'){
+    actionsHtml=''+
+      '<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>'+
+      '<button class="v-btn v-btn-success" onclick="republishArticle(this)">Republicar</button>';
   }else{
     actionsHtml='<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>';
   }
@@ -389,6 +365,40 @@ async function rejectArticle(btn){
     await loadArticles();
   }catch(e){
     console.error('rejectArticle',e);
+    showToast('Error: '+(e.message||e),'error');
+    btn.disabled=false;btn.textContent=prev;
+  }
+}
+
+async function unpublishArticle(btn){
+  if(!_currentDetail) return;
+  if(!confirm('Despublicar este artículo? Dejará de ser visible en la revista pública.')) return;
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Procesando…';
+  try{
+    var u=await _supabase.from('magazine_articles').update({status:'unpublished',updated_at:new Date().toISOString()}).eq('id',_currentDetail.id);
+    if(u.error) throw u.error;
+    hideOverlay();
+    showToast('Artículo despublicado.','success');
+    await loadArticles();
+  }catch(e){
+    console.error('unpublishArticle',e);
+    showToast('Error: '+(e.message||e),'error');
+    btn.disabled=false;btn.textContent=prev;
+  }
+}
+
+async function republishArticle(btn){
+  if(!_currentDetail) return;
+  if(!confirm('Republicar este artículo? Volverá a ser visible en la revista pública.')) return;
+  btn.disabled=true;var prev=btn.textContent;btn.textContent='Procesando…';
+  try{
+    var u=await _supabase.from('magazine_articles').update({status:'published',published_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',_currentDetail.id);
+    if(u.error) throw u.error;
+    hideOverlay();
+    showToast('Artículo republicado.','success');
+    await loadArticles();
+  }catch(e){
+    console.error('republishArticle',e);
     showToast('Error: '+(e.message||e),'error');
     btn.disabled=false;btn.textContent=prev;
   }
