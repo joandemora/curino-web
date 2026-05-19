@@ -127,8 +127,19 @@ function buildUserMessage({ topic, angle, extraInstructions, wordCount, sources,
   parts.push('');
 
   if (relatedPiece) {
-    parts.push('PIEZA RELACIONADA YA PUBLICADA EN CURINO (puedes referenciarla):');
-    parts.push('- ' + (relatedPiece.title || '') + ' (id=' + relatedPiece.id + ', slug=' + relatedPiece.slug + ')');
+    parts.push('PRODUCTO RELACIONADO (incluir referencias en el artículo cuando sea natural; usa los datos exactos):');
+    parts.push('- Nombre: ' + (relatedPiece.name || ''));
+    if (relatedPiece.designer) parts.push('- Diseñador/Autor: ' + relatedPiece.designer);
+    if (relatedPiece.year) parts.push('- Año: ' + relatedPiece.year);
+    if (relatedPiece.category || relatedPiece.subcategory) {
+      parts.push('- Categoría: ' + [relatedPiece.category, relatedPiece.subcategory].filter(Boolean).join(' / '));
+    }
+    const dims = ['width_mm', 'height_mm', 'depth_mm']
+      .map((k) => relatedPiece[k] ? Math.round(Number(relatedPiece[k])) + ' mm' : null)
+      .filter(Boolean);
+    if (dims.length > 0) parts.push('- Dimensiones (an × al × fo): ' + dims.join(' × '));
+    if (relatedPiece.description) parts.push('- Descripción: ' + relatedPiece.description);
+    parts.push('Nota: el producto vive en el marketplace de Curino pero NO existe aún página pública de detalle. NO inventes URLs.');
     parts.push('');
   }
 
@@ -381,11 +392,14 @@ module.exports = async function handler(req, res) {
   }
 
   // --- 6. ANTHROPIC ---
+  // related_piece_id apunta a library_items (productos del marketplace).
+  // Cargamos los datos reales para que la IA pueda referenciarlos sin
+  // inventar. Si la pieza no existe / no es accesible, se ignora silenciosamente.
   const relatedPiece = relatedPieceId ? await (async () => {
     try {
       const { data } = await admin
-        .from('magazine_articles')
-        .select('id, title, slug')
+        .from('library_items')
+        .select('id, name, designer, year, description, width_mm, height_mm, depth_mm, category, subcategory')
         .eq('id', relatedPieceId)
         .maybeSingle();
       return data || null;
@@ -489,6 +503,7 @@ module.exports = async function handler(req, res) {
       ai_generation_id: generationId,
       suggested_images: suggestedImages,
       external_references: externalRefs,
+      related_library_item_id: relatedPieceId || null,
       admin_notes: 'Generado por IA. Generation ID: ' + generationId
     })
     .select('id, slug')

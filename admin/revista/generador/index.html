@@ -115,11 +115,11 @@
     </div>
 
     <div class="g-field">
-      <label for="g-related">Pieza relacionada <span class="opt">(opcional)</span></label>
+      <label for="g-related">Producto del marketplace <span class="opt">(opcional)</span></label>
       <select class="g-select" id="g-related">
-        <option value="">— Ninguna —</option>
+        <option value="">— Ninguno —</option>
       </select>
-      <div class="g-help">Últimos 20 artículos de Revista publicados por ti. Si seleccionas, el modelo lo conoce y puede referenciarlo.</div>
+      <div class="g-help">Últimos 20 productos publicados por ti en el marketplace (library_items con status=published). Si seleccionas uno, el modelo recibe sus datos reales (nombre, diseñador, año, descripción, dimensiones) y puede referenciarlo en el artículo.</div>
     </div>
 
     <div class="g-field">
@@ -227,18 +227,19 @@ function onTypeChange() {
 
 async function loadRelatedPieces() {
   try {
-    const r = await supa.from('magazine_articles')
-      .select('id,title,type,status,published_at,updated_at')
-      .eq('user_id', currentUser.id)
-      .in('status', ['published', 'draft'])
+    const r = await supa.from('library_items')
+      .select('id,name,designer,year,updated_at')
+      .eq('seller_id', currentUser.id)
+      .eq('status', 'published')
       .order('updated_at', { ascending: false })
       .limit(20);
     if (r.error) throw r.error;
     const sel = document.getElementById('g-related');
-    sel.innerHTML = '<option value="">— Ninguna —</option>' + (r.data || []).map(function (a) {
-      const date = a.published_at || a.updated_at;
-      const tag = date ? new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }) : '';
-      return '<option value="' + escAttr(a.id) + '">' + escHtml(a.title || '(sin título)') + ' · ' + escHtml(a.type) + ' · ' + escHtml(tag) + '</option>';
+    sel.innerHTML = '<option value="">— Ninguno —</option>' + (r.data || []).map(function (it) {
+      const parts = [it.name || '(sin nombre)'];
+      if (it.designer) parts.push(it.designer);
+      if (it.year) parts.push(String(it.year));
+      return '<option value="' + escAttr(it.id) + '">' + escHtml(parts.join(' · ')) + '</option>';
     }).join('');
   } catch (e) {
     console.warn('loadRelatedPieces failed (no bloquea)', e);
