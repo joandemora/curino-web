@@ -338,6 +338,7 @@ module.exports = async function handler(req, res) {
       brief_related_piece_id: relatedPieceId,
       brief_extra_instructions: extraInstructions,
       model_used: config.active_model,
+      article_type: typeId,
       status: 'pending'
     })
     .select('id')

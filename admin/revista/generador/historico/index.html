@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histórico Generador IA — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+
+.g-tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.g-tab{padding:.7rem 1.2rem;font-size:13px;font-weight:600;color:var(--mid);text-decoration:none;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.g-tab:hover{color:var(--ink)}
+.g-tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+
+.g-hero{margin-bottom:1rem}
+.g-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.g-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+
+.g-filters{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin:1rem 0 1.25rem;padding:1rem 1.25rem;background:#fff;border:1px solid var(--border);border-radius:8px}
+.g-filter{display:flex;flex-direction:column}
+.g-filter label{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:.3rem}
+.g-filter select{padding:.5rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink);min-width:160px}
+.g-filter select:focus{outline:none;border-color:var(--ink)}
+.g-filter .filter-spacer{flex:1}
+
+.g-table{width:100%;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;border-collapse:collapse;font-size:13px}
+.g-table th{text-align:left;padding:.75rem .9rem;font-size:10px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border);white-space:nowrap}
+.g-table td{padding:.7rem .9rem;border-top:1px solid var(--border);vertical-align:middle}
+.g-table .col-date{white-space:nowrap;color:var(--mid);font-size:12px}
+.g-table .col-topic{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink)}
+.g-table .col-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.g-table .col-actions{white-space:nowrap;text-align:right}
+
+.g-badge{display:inline-block;padding:.2rem .55rem;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;white-space:nowrap}
+.g-badge.success{background:#eaf5ee;color:#1d6f3d}
+.g-badge.failed{background:#fde8e8;color:#a83232}
+.g-badge.pending{background:#fff8e1;color:#8a6d1c}
+.g-badge.urls-failed{background:#fde8e8;color:#a83232;margin-left:.35rem}
+
+.g-action-btn{display:inline-block;padding:.3rem .65rem;font-size:11px;font-weight:600;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer;text-decoration:none;font-family:var(--font);transition:border-color .15s}
+.g-action-btn:hover{border-color:var(--ink)}
+
+.g-empty{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13.5px;background:#fff;border:1px solid var(--border);border-radius:8px}
+
+.g-pagination{display:flex;justify-content:space-between;align-items:center;margin-top:1.25rem;gap:1rem}
+.g-pagination-info{font-size:12px;color:var(--mid)}
+.g-pagination-buttons{display:flex;gap:.4rem}
+.g-pagination-buttons button{padding:.4rem .9rem;font-size:12px;border:1px solid var(--border);background:#fff;border-radius:4px;cursor:pointer;color:var(--ink);font-family:var(--font);font-weight:600}
+.g-pagination-buttons button:disabled{opacity:.4;cursor:not-allowed}
+.g-pagination-buttons button:not(:disabled):hover{border-color:var(--ink)}
+
+/* Modal raw JSON */
+.g-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.g-overlay.open{display:flex}
+.g-modal{background:#fff;border-radius:10px;max-width:920px;width:100%;padding:1.5rem 1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.g-modal h3{font-size:16px;font-weight:600;margin-bottom:.5rem}
+.g-modal .meta{font-size:12px;color:var(--mid);margin-bottom:1rem}
+.g-modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem}
+.g-modal pre{background:#f6f5ee;border:1px solid var(--border);border-radius:6px;padding:.9rem 1rem;max-height:60vh;overflow:auto;font-size:11.5px;line-height:1.45;font-family:'SF Mono','Courier New',monospace;white-space:pre-wrap;word-break:break-word}
+.g-btn{padding:.55rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent}
+.g-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.g-btn-primary:hover{background:#333}
+.g-btn-secondary{background:#fff;color:var(--ink);border-color:var(--border)}
+.g-btn-secondary:hover{border-color:var(--ink)}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="g-tabs">
+    <a class="g-tab" href="/admin/revista/generador/">Formulario</a>
+    <a class="g-tab active" href="/admin/revista/generador/historico/">Histórico</a>
+    <a class="g-tab" href="/admin/revista/generador/config/">Configuración</a>
+  </div>
+
+  <div class="g-hero">
+    <h1>Histórico de generaciones</h1>
+    <p>Cada generación (éxito o fallo) queda registrada. Las raw_response se pueden inspeccionar para debugging.</p>
+  </div>
+
+  <div class="g-filters">
+    <div class="g-filter">
+      <label for="f-status">Estado</label>
+      <select id="f-status">
+        <option value="">Todos</option>
+        <option value="success">Success</option>
+        <option value="failed">Failed</option>
+        <option value="pending">Pending</option>
+      </select>
+    </div>
+    <div class="g-filter">
+      <label for="f-month">Mes</label>
+      <select id="f-month"><option value="">Todos</option></select>
+    </div>
+    <div class="g-filter">
+      <label for="f-type">Tipo</label>
+      <select id="f-type"><option value="">Todos</option></select>
+    </div>
+    <div class="filter-spacer" style="flex:1"></div>
+  </div>
+
+  <div id="g-list">
+    <div class="g-empty">Cargando…</div>
+  </div>
+
+  <div class="g-pagination" id="g-pagination" style="display:none">
+    <div class="g-pagination-info" id="g-page-info"></div>
+    <div class="g-pagination-buttons">
+      <button type="button" id="g-prev">← Anterior</button>
+      <button type="button" id="g-next">Siguiente →</button>
+    </div>
+  </div>
+</main>
+
+<!-- Modal raw response -->
+<div class="g-overlay" id="g-modal-raw" onclick="if(event.target.id==='g-modal-raw') closeRaw()">
+  <div class="g-modal">
+    <h3>Detalle de la generación</h3>
+    <div class="meta" id="g-modal-meta"></div>
+    <div id="g-modal-error" style="display:none;background:#fde8e8;border-left:4px solid #a83232;color:#7a2424;padding:.6rem .9rem;border-radius:4px;margin-bottom:.85rem;font-size:13px"></div>
+    <div style="font-size:11px;color:var(--mid);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Fila de ai_article_generations</div>
+    <pre id="g-modal-pre"></pre>
+    <p style="font-size:11.5px;color:var(--mid);margin-top:.75rem">raw_response no se muestra aquí (es voluminoso). Para inspeccionarlo, abrir la fila directamente en Supabase Studio (tabla <code>ai_article_generations</code>, id arriba).</p>
+    <div class="g-modal-actions">
+      <button class="g-btn g-btn-secondary" type="button" onclick="closeRaw()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+const TYPE_TO_SECCION = { proyecto: 'proyectos', material: 'materiales', articulo: 'articulos', noticia: 'noticias', entrevista: 'entrevistas', reportaje: 'articulos', tendencia: 'articulos' };
+const STATUS_LABEL = { success: 'success', failed: 'failed', pending: 'pending' };
+
+let supa = null;
+let articleTypes = [];
+let page = 1;
+const pageSize = 20;
+let lastGenerations = [];
+
+initAdminShell({ activeSection: 'revista-generador', title: 'Generador IA — Histórico' }).then(async function (ctx) {
+  supa = ctx.supabase;
+
+  buildMonthOptions();
+  document.getElementById('f-status').addEventListener('change', resetAndLoad);
+  document.getElementById('f-month').addEventListener('change', resetAndLoad);
+  document.getElementById('f-type').addEventListener('change', resetAndLoad);
+  document.getElementById('g-prev').addEventListener('click', function () { if (page > 1) { page--; loadHistory(); } });
+  document.getElementById('g-next').addEventListener('click', function () { page++; loadHistory(); });
+
+  await loadTypes();
+  await loadHistory();
+}).catch(function () { /* shell ya redirige */ });
+
+function buildMonthOptions() {
+  const sel = document.getElementById('f-month');
+  const now = new Date();
+  const opts = ['<option value="">Todos</option>'];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const v = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+    const label = d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    opts.push('<option value="' + v + '">' + escHtml(label.charAt(0).toUpperCase() + label.slice(1)) + '</option>');
+  }
+  sel.innerHTML = opts.join('');
+}
+
+async function authFetch(url, opts) {
+  const s = await supa.auth.getSession();
+  const headers = Object.assign({}, opts && opts.headers, {
+    'Authorization': 'Bearer ' + s.data.session.access_token
+  });
+  return fetch(url, Object.assign({}, opts, { headers }));
+}
+
+async function loadTypes() {
+  try {
+    const r = await authFetch('/api/admin/article-types');
+    if (!r.ok) return;
+    const data = await r.json();
+    articleTypes = data.article_types || [];
+    const sel = document.getElementById('f-type');
+    sel.innerHTML = '<option value="">Todos</option>' + articleTypes.map(function (t) {
+      return '<option value="' + escAttr(t.id) + '">' + escHtml(t.label) + '</option>';
+    }).join('');
+  } catch (e) { /* silent */ }
+}
+
+function resetAndLoad() { page = 1; loadHistory(); }
+
+async function loadHistory() {
+  const status = document.getElementById('f-status').value;
+  const month = document.getElementById('f-month').value;
+  const type = document.getElementById('f-type').value;
+
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (month) params.set('month', month);
+  if (type) params.set('type', type);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+
+  const container = document.getElementById('g-list');
+  container.innerHTML = '<div class="g-empty">Cargando…</div>';
+
+  try {
+    const r = await authFetch('/api/admin/generator-history?' + params.toString());
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok || !data) {
+      container.innerHTML = '<div class="g-empty">Error al cargar histórico.</div>';
+      return;
+    }
+    lastGenerations = data.generations || [];
+    renderTable(lastGenerations);
+    renderPagination(data.total || 0, data.page, data.page_size);
+  } catch (e) {
+    console.error('loadHistory', e);
+    container.innerHTML = '<div class="g-empty">Error de red.</div>';
+  }
+}
+
+function renderTable(rows) {
+  const container = document.getElementById('g-list');
+  if (!rows || rows.length === 0) {
+    container.innerHTML = '<div class="g-empty">No hay generaciones para los filtros seleccionados.</div>';
+    return;
+  }
+  const tbody = rows.map(function (g) {
+    const date = new Date(g.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const cost = g.cost_estimate_usd != null ? Number(g.cost_estimate_usd).toFixed(4) : '—';
+    const tokens = (g.input_tokens || g.output_tokens)
+      ? (fmtNum(g.input_tokens || 0) + ' / ' + fmtNum(g.output_tokens || 0))
+      : '—';
+    const status = (g.status || '').toLowerCase();
+    const statusBadge = '<span class="g-badge ' + status + '">' + escHtml(STATUS_LABEL[status] || status) + '</span>';
+    const urlsBadge = (g.urls_failed && g.urls_failed.length > 0)
+      ? '<span class="g-badge urls-failed" title="' + escAttr(g.urls_failed.join(', ')) + '">' + g.urls_failed.length + ' URL fallida' + (g.urls_failed.length > 1 ? 's' : '') + '</span>'
+      : '';
+    const typeLabel = articleTypes.find(function (t) { return t.id === g.article_type; });
+    const typeText = typeLabel ? typeLabel.label : (g.article_type || '—');
+
+    let actions = '';
+    if (g.article_id) {
+      actions += '<a class="g-action-btn" href="/admin/revista/publicar/?id=' + encodeURIComponent(g.article_id) + '">Ver artículo</a> ';
+    }
+    actions += '<button class="g-action-btn" type="button" onclick="openRaw(\'' + g.id + '\')">Detalle</button>';
+
+    return '<tr>'
+      + '<td class="col-date">' + escHtml(date) + '</td>'
+      + '<td class="col-topic" title="' + escAttr(g.brief_topic || '') + '">' + escHtml(g.brief_topic || '(sin topic)') + urlsBadge + '</td>'
+      + '<td>' + escHtml(typeText) + '</td>'
+      + '<td style="font-size:12px;color:#888">' + escHtml(g.model_used || '—') + '</td>'
+      + '<td>' + statusBadge + '</td>'
+      + '<td class="col-num">' + escHtml(cost) + '</td>'
+      + '<td class="col-num" style="font-size:12px;color:#888">' + escHtml(tokens) + '</td>'
+      + '<td class="col-actions">' + actions + '</td>'
+      + '</tr>';
+  }).join('');
+
+  container.innerHTML = ''
+    + '<table class="g-table">'
+    + '<thead><tr>'
+    + '<th>Fecha</th><th>Tema</th><th>Tipo</th><th>Modelo</th><th>Estado</th><th class="col-num">Coste USD</th><th class="col-num">Tokens in/out</th><th class="col-actions">Acciones</th>'
+    + '</tr></thead>'
+    + '<tbody>' + tbody + '</tbody>'
+    + '</table>';
+}
+
+function renderPagination(total, currentPage, ps) {
+  const wrap = document.getElementById('g-pagination');
+  if (total === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const from = (currentPage - 1) * ps + 1;
+  const to = Math.min(currentPage * ps, total);
+  document.getElementById('g-page-info').textContent = from + '–' + to + ' de ' + total + ' generaciones';
+  document.getElementById('g-prev').disabled = currentPage <= 1;
+  document.getElementById('g-next').disabled = currentPage * ps >= total;
+}
+
+function fmtNum(n) {
+  if (n == null) return '—';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+window.openRaw = function (id) {
+  const g = lastGenerations.find(function (x) { return x.id === id; });
+  if (!g) return;
+  const meta = 'ID: ' + g.id + ' · ' + new Date(g.created_at).toLocaleString('es-ES');
+  document.getElementById('g-modal-meta').textContent = meta;
+  const errEl = document.getElementById('g-modal-error');
+  if (g.status === 'failed' && g.error_message) {
+    errEl.textContent = g.error_message;
+    errEl.style.display = '';
+  } else {
+    errEl.style.display = 'none';
+  }
+  const display = {
+    id: g.id,
+    created_at: g.created_at,
+    status: g.status,
+    article_type: g.article_type,
+    model_used: g.model_used,
+    input_tokens: g.input_tokens,
+    output_tokens: g.output_tokens,
+    cost_estimate_usd: g.cost_estimate_usd,
+    brief_topic: g.brief_topic,
+    article_id: g.article_id,
+    urls_failed: g.urls_failed,
+    error_message: g.error_message
+  };
+  document.getElementById('g-modal-pre').textContent = JSON.stringify(display, null, 2);
+  document.getElementById('g-modal-raw').classList.add('open');
+};
+function closeRaw() { document.getElementById('g-modal-raw').classList.remove('open'); }
+window.closeRaw = closeRaw;
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+function escAttr(s) { return escHtml(s); }
+</script>
+</body>
+</html>

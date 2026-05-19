@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador IA — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+
+/* Tabs internas del generador */
+.g-tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.g-tab{padding:.7rem 1.2rem;font-size:13px;font-weight:600;color:var(--mid);text-decoration:none;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.g-tab:hover{color:var(--ink)}
+.g-tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+
+.g-hero{margin-bottom:1.5rem}
+.g-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.g-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+
+.g-form{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.75rem;max-width:760px}
+.g-field{margin-bottom:1.25rem}
+.g-field label{display:block;font-size:12px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:.4rem}
+.g-field .req{color:var(--coral);margin-left:.15rem}
+.g-field .opt{color:var(--mid);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;margin-left:.35rem}
+.g-input, .g-select, .g-textarea{
+  width:100%;padding:.6rem .75rem;font-size:13.5px;font-family:var(--font);color:var(--ink);
+  border:1px solid var(--border);border-radius:5px;background:#fff;
+}
+.g-input:focus, .g-select:focus, .g-textarea:focus{outline:none;border-color:var(--ink)}
+.g-textarea{min-height:90px;resize:vertical;line-height:1.55}
+.g-help{font-size:12px;color:var(--mid);margin-top:.35rem}
+.g-error-inline{font-size:12px;color:#a83232;margin-top:.35rem;display:none}
+.g-error-inline.visible{display:block}
+
+.g-actions{display:flex;justify-content:flex-end;gap:.7rem;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.g-btn{padding:.6rem 1.3rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;transition:background .15s,opacity .15s}
+.g-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.g-btn-primary:hover{background:#333}
+.g-btn-secondary{background:#fff;color:var(--ink);border-color:var(--border)}
+.g-btn-secondary:hover{border-color:var(--ink)}
+.g-btn:disabled{opacity:.55;cursor:not-allowed}
+
+/* Modal de confirmación */
+.g-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:center;justify-content:center;padding:1.5rem;overflow-y:auto}
+.g-overlay.open{display:flex}
+.g-modal{background:#fff;border-radius:10px;max-width:460px;width:100%;padding:1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.g-modal h3{font-size:17px;font-weight:600;margin-bottom:.7rem}
+.g-modal p{font-size:13.5px;color:var(--ink-soft);margin-bottom:.5rem;line-height:1.55}
+.g-modal .cost{font-size:14px;color:var(--ink);font-weight:600;margin:.85rem 0}
+.g-modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.25rem}
+
+/* Overlay generación con spinner */
+.g-loading{position:fixed;inset:0;background:rgba(250,250,247,.94);z-index:250;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem}
+.g-loading.open{display:flex}
+.g-spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--coral);border-radius:50%;animation:gspin 1s linear infinite;margin-bottom:1.5rem}
+@keyframes gspin{to{transform:rotate(360deg)}}
+.g-loading h3{font-size:17px;font-weight:400;color:var(--ink);margin-bottom:.5rem;letter-spacing:-.01em}
+.g-loading p{font-size:13.5px;color:var(--ink-soft);max-width:420px}
+.g-loading-status{font-size:13px;color:var(--coral);font-weight:600;margin-top:1rem;letter-spacing:.02em}
+
+/* Error tras llamada */
+.g-error-banner{background:#fde8e8;border-left:4px solid #a83232;color:#7a2424;padding:.85rem 1rem;border-radius:4px;margin-top:1rem;font-size:13px;display:none}
+.g-error-banner.visible{display:block}
+.g-error-banner a{color:#7a2424;font-weight:600;text-decoration:underline;margin-left:.5rem}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="g-tabs">
+    <a class="g-tab active" href="/admin/revista/generador/">Formulario</a>
+    <a class="g-tab" href="/admin/revista/generador/historico/">Histórico</a>
+    <a class="g-tab" href="/admin/revista/generador/config/">Configuración</a>
+  </div>
+
+  <div class="g-hero">
+    <h1>Generar artículo con IA</h1>
+    <p>Brief al modelo Claude. La voz Curino y las reglas legales sobre imágenes están definidas en Configuración.</p>
+  </div>
+
+  <form class="g-form" id="genForm" autocomplete="off" novalidate>
+    <div class="g-field">
+      <label for="g-type">Tipo de artículo <span class="req">*</span></label>
+      <select class="g-select" id="g-type" required>
+        <option value="">Cargando…</option>
+      </select>
+      <div class="g-help" id="g-type-help"></div>
+      <div class="g-error-inline" data-for="type"></div>
+    </div>
+
+    <div class="g-field">
+      <label for="g-topic">Tema / título tentativo <span class="req">*</span></label>
+      <input class="g-input" id="g-topic" type="text" maxlength="500"
+             placeholder="Ej: El renacer del terrazo veneciano en interiorismo contemporáneo" required>
+      <div class="g-help">Frase corta. El modelo decidirá el título final.</div>
+      <div class="g-error-inline" data-for="topic"></div>
+    </div>
+
+    <div class="g-field">
+      <label for="g-angle">Ángulo / tesis <span class="opt">(opcional)</span></label>
+      <input class="g-input" id="g-angle" type="text" maxlength="1000"
+             placeholder="Ej: por qué importa ahora">
+    </div>
+
+    <div class="g-field">
+      <label for="g-urls">URLs fuente <span class="req">*</span></label>
+      <textarea class="g-textarea" id="g-urls" rows="5"
+                placeholder="Una URL por línea. Máximo 5. Tienen que ser HTML accesibles."></textarea>
+      <div class="g-help">El generador descarga y extrae el texto de cada URL como input para el modelo.</div>
+      <div class="g-error-inline" data-for="urls"></div>
+    </div>
+
+    <div class="g-field">
+      <label for="g-related">Pieza relacionada <span class="opt">(opcional)</span></label>
+      <select class="g-select" id="g-related">
+        <option value="">— Ninguna —</option>
+      </select>
+      <div class="g-help">Últimos 20 artículos de Revista publicados por ti. Si seleccionas, el modelo lo conoce y puede referenciarlo.</div>
+    </div>
+
+    <div class="g-field">
+      <label for="g-extra">Instrucciones extra <span class="opt">(opcional)</span></label>
+      <textarea class="g-textarea" id="g-extra" rows="3" maxlength="2000"
+                placeholder="Ej: cita al menos 3 estudios europeos; evita imágenes con derechos."></textarea>
+    </div>
+
+    <div class="g-field">
+      <label for="g-wc">Longitud objetivo <span class="opt">(palabras, opcional)</span></label>
+      <input class="g-input" id="g-wc" type="number" min="200" max="4500" step="50"
+             placeholder="Deja vacío para usar el default del tipo">
+    </div>
+
+    <div class="g-actions">
+      <button class="g-btn g-btn-secondary" type="reset">Limpiar</button>
+      <button class="g-btn g-btn-primary" type="submit" id="g-submit">Generar artículo</button>
+    </div>
+
+    <div class="g-error-banner" id="g-error-banner"></div>
+  </form>
+</main>
+
+<!-- Modal confirmación -->
+<div class="g-overlay" id="g-confirm" onclick="if(event.target.id==='g-confirm') closeConfirm()">
+  <div class="g-modal">
+    <h3>Confirmar generación</h3>
+    <p>Vas a generar un artículo tipo <strong id="g-confirm-type"></strong>.</p>
+    <div class="cost">Coste estimado: <span id="g-confirm-cost">~0,14&nbsp;€</span></div>
+    <p style="font-size:12px;color:#888">El coste real depende del tamaño de las fuentes y de la longitud del artículo final. Se descuenta del cap mensual al completar.</p>
+    <div class="g-modal-actions">
+      <button class="g-btn g-btn-secondary" type="button" onclick="closeConfirm()">Cancelar</button>
+      <button class="g-btn g-btn-primary" type="button" id="g-confirm-go">Generar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay loading -->
+<div class="g-loading" id="g-loading">
+  <div class="g-spinner"></div>
+  <h3>Generando artículo…</h3>
+  <p>Esto puede llevar 30–90 segundos. No cierres ni recargues la ventana.</p>
+  <div class="g-loading-status" id="g-loading-status">Leyendo fuentes…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+const EUR_USD_RATE = 0.93; // 1 USD = 0.93 EUR (inverso de 1.08 EUR/USD)
+const FALLBACK_COST_EUR = 0.14;
+
+let supa = null;
+let currentUser = null;
+let articleTypes = [];
+let typeDefaults = {};
+let computedAvgCostEur = null;
+
+initAdminShell({ activeSection: 'revista-generador', title: 'Generador IA' }).then(async function (ctx) {
+  supa = ctx.supabase;
+  currentUser = ctx.user;
+
+  document.getElementById('genForm').addEventListener('submit', onSubmit);
+  document.getElementById('g-confirm-go').addEventListener('click', doGenerate);
+  document.getElementById('g-type').addEventListener('change', onTypeChange);
+
+  // Carga inicial en paralelo: tipos, piezas relacionadas, coste medio.
+  await Promise.all([loadTypes(), loadRelatedPieces(), loadAvgCost()]);
+}).catch(function () { /* shell ya redirige */ });
+
+async function authFetch(url, opts) {
+  const s = await supa.auth.getSession();
+  const headers = Object.assign({}, opts && opts.headers, {
+    'Authorization': 'Bearer ' + s.data.session.access_token
+  });
+  return fetch(url, Object.assign({}, opts, { headers }));
+}
+
+async function loadTypes() {
+  try {
+    const r = await authFetch('/api/admin/article-types');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    articleTypes = data.article_types || [];
+    const sel = document.getElementById('g-type');
+    sel.innerHTML = '<option value="">— Elige tipo —</option>' + articleTypes.map(function (t) {
+      typeDefaults[t.id] = t.default_word_count;
+      return '<option value="' + escAttr(t.id) + '">' + escHtml(t.label) + '</option>';
+    }).join('');
+  } catch (e) {
+    console.error('loadTypes', e);
+    document.getElementById('g-type').innerHTML = '<option value="">Error cargando tipos</option>';
+    showBanner('No se pudieron cargar los tipos editoriales. Recarga la página.');
+  }
+}
+
+function onTypeChange() {
+  const sel = document.getElementById('g-type');
+  const t = articleTypes.find(function (x) { return x.id === sel.value; });
+  const help = document.getElementById('g-type-help');
+  if (!t) { help.textContent = ''; return; }
+  help.textContent = (t.description || '') + ' · Longitud por defecto: ' + t.default_word_count + ' palabras.';
+  // Actualiza placeholder del input numérico
+  document.getElementById('g-wc').placeholder = 'Default del tipo: ' + t.default_word_count;
+}
+
+async function loadRelatedPieces() {
+  try {
+    const r = await supa.from('magazine_articles')
+      .select('id,title,type,status,published_at,updated_at')
+      .eq('user_id', currentUser.id)
+      .in('status', ['published', 'draft'])
+      .order('updated_at', { ascending: false })
+      .limit(20);
+    if (r.error) throw r.error;
+    const sel = document.getElementById('g-related');
+    sel.innerHTML = '<option value="">— Ninguna —</option>' + (r.data || []).map(function (a) {
+      const date = a.published_at || a.updated_at;
+      const tag = date ? new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }) : '';
+      return '<option value="' + escAttr(a.id) + '">' + escHtml(a.title || '(sin título)') + ' · ' + escHtml(a.type) + ' · ' + escHtml(tag) + '</option>';
+    }).join('');
+  } catch (e) {
+    console.warn('loadRelatedPieces failed (no bloquea)', e);
+  }
+}
+
+async function loadAvgCost() {
+  try {
+    const r = await authFetch('/api/admin/generator-stats');
+    if (!r.ok) return;
+    const data = await r.json();
+    const last = (data.last_10_generations || []).filter(function (g) {
+      return g.status === 'success' && Number(g.cost_estimate_usd) > 0;
+    });
+    if (last.length === 0) return;
+    const avgUsd = last.reduce(function (acc, g) { return acc + Number(g.cost_estimate_usd); }, 0) / last.length;
+    computedAvgCostEur = avgUsd * EUR_USD_RATE;
+  } catch (e) {
+    console.warn('loadAvgCost failed', e);
+  }
+}
+
+function onSubmit(e) {
+  e.preventDefault();
+  hideBanner();
+  clearInlineErrors();
+
+  const typeId = document.getElementById('g-type').value;
+  const topic = document.getElementById('g-topic').value.trim();
+  const urlsRaw = document.getElementById('g-urls').value;
+
+  let hasErr = false;
+  if (!typeId) { setInline('type', 'Elige un tipo.'); hasErr = true; }
+  if (!topic) { setInline('topic', 'Escribe el tema o título tentativo.'); hasErr = true; }
+
+  const urls = parseUrls(urlsRaw);
+  if (urls.length === 0) {
+    setInline('urls', 'Añade al menos una URL fuente.');
+    hasErr = true;
+  } else if (urls.length > 5) {
+    setInline('urls', 'Máximo 5 URLs. Recibí ' + urls.length + '.');
+    hasErr = true;
+  } else {
+    const invalid = urls.filter(function (u) { return !isValidUrl(u); });
+    if (invalid.length > 0) {
+      setInline('urls', 'URLs inválidas: ' + invalid.join(', '));
+      hasErr = true;
+    }
+  }
+
+  if (hasErr) return;
+
+  openConfirm(typeId);
+}
+
+function openConfirm(typeId) {
+  const t = articleTypes.find(function (x) { return x.id === typeId; });
+  document.getElementById('g-confirm-type').textContent = t ? t.label : typeId;
+  const eur = computedAvgCostEur && computedAvgCostEur > 0 ? computedAvgCostEur : FALLBACK_COST_EUR;
+  document.getElementById('g-confirm-cost').textContent = '~' + eur.toFixed(2).replace('.', ',') + ' €';
+  document.getElementById('g-confirm').classList.add('open');
+}
+function closeConfirm() { document.getElementById('g-confirm').classList.remove('open'); }
+window.closeConfirm = closeConfirm;
+
+const LOADING_STATES = ['Leyendo fuentes…', 'Analizando contenido…', 'Redactando artículo…', 'Sugiriendo imágenes…'];
+let loadingTimer = null;
+function startLoading() {
+  const el = document.getElementById('g-loading-status');
+  let i = 0;
+  el.textContent = LOADING_STATES[0];
+  document.getElementById('g-loading').classList.add('open');
+  loadingTimer = setInterval(function () {
+    i = (i + 1) % LOADING_STATES.length;
+    el.textContent = LOADING_STATES[i];
+  }, 3000);
+}
+function stopLoading() {
+  document.getElementById('g-loading').classList.remove('open');
+  if (loadingTimer) { clearInterval(loadingTimer); loadingTimer = null; }
+}
+
+async function doGenerate() {
+  closeConfirm();
+
+  const typeId = document.getElementById('g-type').value;
+  const topic = document.getElementById('g-topic').value.trim();
+  const angle = document.getElementById('g-angle').value.trim();
+  const urls = parseUrls(document.getElementById('g-urls').value);
+  const related = document.getElementById('g-related').value;
+  const extra = document.getElementById('g-extra').value.trim();
+  const wc = document.getElementById('g-wc').value;
+
+  const payload = {
+    type: typeId,
+    topic: topic,
+    source_urls: urls
+  };
+  if (angle) payload.angle = angle;
+  if (related) payload.related_piece_id = related;
+  if (extra) payload.extra_instructions = extra;
+  if (wc && Number(wc) > 0) payload.word_count = Number(wc);
+
+  setFormDisabled(true);
+  startLoading();
+  try {
+    const r = await authFetch('/api/admin/generate-article', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json().catch(function () { return null; });
+    stopLoading();
+    if (!r.ok) {
+      const detail = data && (data.detail || data.error) ? (data.detail || data.error) : ('HTTP ' + r.status);
+      showBanner('Error al generar: ' + detail, true);
+      setFormDisabled(false);
+      return;
+    }
+    // OK → redirección al editor
+    if (data && data.article_id) {
+      window.location.href = '/admin/revista/publicar/?id=' + encodeURIComponent(data.article_id) + '&fresh=1';
+    } else {
+      showBanner('Generación devuelta sin article_id. Revisa el histórico.', true);
+      setFormDisabled(false);
+    }
+  } catch (e) {
+    stopLoading();
+    console.error('doGenerate', e);
+    showBanner('Error de red: ' + (e.message || e), true);
+    setFormDisabled(false);
+  }
+}
+
+function setFormDisabled(on) {
+  document.querySelectorAll('#genForm input, #genForm textarea, #genForm select, #genForm button')
+    .forEach(function (el) { el.disabled = !!on; });
+}
+
+function parseUrls(raw) {
+  if (!raw) return [];
+  return raw.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+}
+function isValidUrl(u) {
+  try { const x = new URL(u); return x.protocol === 'http:' || x.protocol === 'https:'; }
+  catch (_e) { return false; }
+}
+
+function setInline(name, msg) {
+  const el = document.querySelector('.g-error-inline[data-for="' + name + '"]');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function clearInlineErrors() {
+  document.querySelectorAll('.g-error-inline').forEach(function (el) {
+    el.textContent = ''; el.classList.remove('visible');
+  });
+}
+function showBanner(msg, withHistoricLink) {
+  const el = document.getElementById('g-error-banner');
+  el.innerHTML = escHtml(msg) + (withHistoricLink
+    ? ' <a href="/admin/revista/generador/historico/">Ver detalles en histórico →</a>' : '');
+  el.classList.add('visible');
+}
+function hideBanner() {
+  document.getElementById('g-error-banner').classList.remove('visible');
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+function escAttr(s) { return escHtml(s); }
+</script>
+</body>
+</html>
