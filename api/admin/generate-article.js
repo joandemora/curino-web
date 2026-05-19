@@ -8,15 +8,20 @@
 //
 // Pasos:
 //  1. Auth admin (Bearer token Supabase + check user_roles).
-//  2. Cargar ai_generator_config.
-//  3. Rate limit horario + monthly cap en EUR.
-//  4. Insert fila ai_article_generations con status='pending'.
-//  5. Fetch fuentes URL en paralelo (Promise.allSettled + timeout 10s).
-//  6. Llamar Anthropic API /v1/messages con system prompt.
-//  7. Parsear JSON estricto del modelo.
-//  8. Insert magazine_articles (status='draft', ai_generated=true).
-//  9. Update ai_article_generations a status='success' con métricas.
-// 10. Devolver { article_id, slug, generation_id, urls_failed, cost_estimate_usd, suggested_images_count }.
+//  2. Validar body: 'topic' y 'type' son obligatorios. 'type' debe
+//     existir en magazine_article_types con active=true.
+//  3. Cargar ai_generator_config + fila del tipo (default_word_count,
+//     type_guidance).
+//  4. Rate limit horario + monthly cap en EUR.
+//  5. Insert fila ai_article_generations con status='pending'.
+//  6. Fetch fuentes URL en paralelo (Promise.allSettled + timeout 10s).
+//  7. Llamar Anthropic API /v1/messages componiendo system prompt =
+//     base + bloque específico del tipo (type_guidance[type]).
+//  8. Parsear JSON estricto del modelo.
+//  9. Insert magazine_articles (status='draft', type=<recibido>,
+//     ai_generated=true).
+// 10. Update ai_article_generations a status='success' con métricas.
+// 11. Devolver { article_id, slug, generation_id, urls_failed, cost_estimate_usd, suggested_images_count }.
 //
 // Errores: try/catch por paso. Siempre que se ha creado la fila de
 // generación, antes de devolver error se actualiza con status='failed'
@@ -34,7 +39,6 @@ const MAX_HTML_BYTES = 1_500_000; // 1.5 MB por URL
 const MAX_TEXT_PER_URL = 12_000;  // caracteres tras limpieza
 const ANTHROPIC_VERSION = '2023-06-01';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const VALID_ARTICLE_TYPES = ['proyecto', 'material', 'articulo', 'noticia', 'entrevista'];
 
 // Precios por modelo (USD por 1M tokens) — actualizar si Anthropic cambia tarifa.
 const MODEL_PRICING = {
@@ -157,11 +161,6 @@ function extractJsonFromText(text) {
   try { return JSON.parse(t.slice(first, last + 1)); } catch { return null; }
 }
 
-function sanitizeArticleType(t) {
-  if (typeof t === 'string' && VALID_ARTICLE_TYPES.includes(t)) return t;
-  return 'articulo';
-}
-
 function clampString(v, max) {
   if (typeof v !== 'string') return null;
   return v.trim().slice(0, max);
@@ -249,6 +248,9 @@ module.exports = async function handler(req, res) {
   const topic = clampString(body.topic, 500);
   if (!topic) return res.status(400).json({ error: 'missing_topic' });
 
+  const typeId = typeof body.type === 'string' ? body.type.trim() : '';
+  if (!typeId) return res.status(400).json({ error: 'missing_type' });
+
   const angle = clampString(body.angle, 1000);
   const extraInstructions = clampString(body.extra_instructions, 2000);
   const relatedPieceId = typeof body.related_piece_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.related_piece_id)
@@ -261,20 +263,30 @@ module.exports = async function handler(req, res) {
       .slice(0, MAX_URLS);
   }
 
-  // --- 3. CONFIG + LÍMITES ---
-  const { data: config, error: cfgErr } = await admin
-    .from('ai_generator_config')
-    .select('*')
-    .eq('id', 1)
-    .maybeSingle();
+  // --- 3. CONFIG + TIPO + LÍMITES ---
+  const [{ data: config, error: cfgErr }, { data: typeRow, error: typeErr }] = await Promise.all([
+    admin.from('ai_generator_config').select('*').eq('id', 1).maybeSingle(),
+    admin.from('magazine_article_types').select('*').eq('id', typeId).eq('active', true).maybeSingle()
+  ]);
   if (cfgErr || !config) {
     logErr('config-load', cfgErr || 'no row');
     return res.status(500).json({ error: 'config_missing' });
   }
+  if (typeErr) {
+    logErr('type-load', typeErr);
+    return res.status(500).json({ error: 'type_check_failed' });
+  }
+  if (!typeRow) {
+    return res.status(400).json({ error: 'invalid_type', detail: 'Tipo desconocido o inactivo: ' + typeId });
+  }
 
   const wordCount = Number.isFinite(body.word_count) && body.word_count > 100 && body.word_count < 5000
     ? Math.round(body.word_count)
-    : config.default_word_count;
+    : Number(typeRow.default_word_count || config.default_word_count);
+
+  const typeGuidance = (config.type_guidance && typeof config.type_guidance === 'object')
+    ? (config.type_guidance[typeId] || '')
+    : '';
 
   // Rate limit horario
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -383,6 +395,12 @@ module.exports = async function handler(req, res) {
     topic, angle, extraInstructions, wordCount, sources, relatedPiece
   });
 
+  // Componer system prompt: base + bloque específico del tipo.
+  let systemPrompt = config.system_prompt + '\n\nTIPO DE ARTÍCULO A GENERAR: ' + typeId;
+  if (typeGuidance) {
+    systemPrompt += '\n\nINSTRUCCIONES ESPECÍFICAS PARA ESTE TIPO:\n' + typeGuidance;
+  }
+
   let claudeRaw;
   let claudeJson;
   try {
@@ -396,7 +414,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model: config.active_model,
         max_tokens: 8000,
-        system: config.system_prompt,
+        system: systemPrompt,
         messages: [{ role: 'user', content: userMsg }]
       })
     });
@@ -433,12 +451,10 @@ module.exports = async function handler(req, res) {
 
   // --- 8. INSERT artículo ---
   const title = clampString(parsed.title, 200) || topic.slice(0, 80);
-  const subtitle = clampString(parsed.subtitle, 300);
   const metaDescription = clampString(parsed.meta_description, 320);
   const contentHtml = typeof parsed.content_html === 'string' ? parsed.content_html : '';
   const suggestedImages = Array.isArray(parsed.suggested_images) ? parsed.suggested_images : [];
   const externalRefs = Array.isArray(parsed.external_references) ? parsed.external_references : [];
-  const articleType = sanitizeArticleType(parsed.type);
 
   // Slug único: parte del propuesto por el modelo o lo derivamos del título.
   let baseSlug = slugify(parsed.slug || title);
@@ -457,20 +473,22 @@ module.exports = async function handler(req, res) {
   const { data: articleRow, error: artErr } = await admin
     .from('magazine_articles')
     .insert({
-      user_id: userId,
+      user_id: ADMIN_UUID,
       title,
       slug,
-      type: articleType,
+      type: typeId,
       content_html: contentHtml,
       meta_description: metaDescription,
       status: 'draft',
       author_first_name: 'Curino',
-      author_last_name: 'Redacción',
+      author_last_name: '',
       author_contact_email: null,
+      edited_by_admin: false,
       ai_generated: true,
       ai_generation_id: generationId,
       suggested_images: suggestedImages,
-      external_references: externalRefs
+      external_references: externalRefs,
+      admin_notes: 'Generado por IA. Generation ID: ' + generationId
     })
     .select('id, slug')
     .single();

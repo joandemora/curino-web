@@ -204,6 +204,117 @@ LONGITUD OBJETIVO: aproximadamente 1200 palabras en content_html, ajustable seg�
 on conflict (id) do nothing;
 
 -- =============================================================
+-- 8. magazine_article_types — catálogo editorial de tipos
+-- =============================================================
+create table if not exists magazine_article_types (
+  id text primary key,
+  label text not null,
+  description text,
+  default_word_count int not null,
+  sort_order int not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_magazine_article_types_active_sort
+  on magazine_article_types(active, sort_order);
+
+insert into magazine_article_types (id, label, description, default_word_count, sort_order, active) values
+  ('proyecto',  'Proyecto',  'Descripción editorial de un proyecto concreto de interiorismo o arquitectura', 1000, 1, true),
+  ('reportaje', 'Reportaje', 'Artículo largo temático de fondo',                                              1500, 2, true),
+  ('tendencia', 'Tendencia', 'Análisis de una corriente o movimiento actual del diseño',                     1200, 3, true),
+  ('noticia',   'Noticia',   'Novedad puntual del sector (lanzamiento, premio, apertura)',                    550, 4, true)
+on conflict (id) do nothing;
+
+-- RLS magazine_article_types: lectura abierta, escritura sólo admin UUID.
+alter table magazine_article_types enable row level security;
+
+drop policy if exists "Anyone can read magazine_article_types" on magazine_article_types;
+create policy "Anyone can read magazine_article_types" on magazine_article_types
+  for select to anon, authenticated using (true);
+
+drop policy if exists "Admin writes magazine_article_types" on magazine_article_types;
+create policy "Admin writes magazine_article_types" on magazine_article_types
+  for all
+  using (auth.uid() = 'a36ca0a3-4b67-413f-ac0f-f2ddb69ae008'::uuid)
+  with check (auth.uid() = 'a36ca0a3-4b67-413f-ac0f-f2ddb69ae008'::uuid);
+
+-- =============================================================
+-- 9. magazine_articles.type — ampliar check constraint
+-- =============================================================
+-- La columna ya existía con check (type in ('proyecto','material','articulo','noticia','entrevista')).
+-- Añadimos 'reportaje' y 'tendencia' (los tipos nuevos del generador IA) sin romper los anteriores.
+do $$
+declare
+  v_conname text;
+begin
+  select conname into v_conname
+  from pg_constraint
+  where conrelid = 'magazine_articles'::regclass
+    and contype = 'c'
+    and pg_get_constraintdef(oid) ilike '%type%in%';
+  if v_conname is not null then
+    execute format('alter table magazine_articles drop constraint %I', v_conname);
+  end if;
+end $$;
+
+alter table magazine_articles
+  add constraint magazine_articles_type_check
+  check (type in ('proyecto', 'material', 'articulo', 'noticia', 'entrevista', 'reportaje', 'tendencia'));
+
+-- =============================================================
+-- 10. ai_generator_config.type_guidance + history
+-- =============================================================
+alter table ai_generator_config
+  add column if not exists type_guidance jsonb not null default '{}'::jsonb;
+
+alter table ai_generator_config_history
+  add column if not exists type_guidance jsonb;
+
+-- Reescribir la función trigger para incluir también type_guidance.
+create or replace function ai_generator_config_log_history()
+returns trigger
+language plpgsql
+as $$
+begin
+  insert into ai_generator_config_history (
+    changed_by,
+    system_prompt,
+    default_word_count,
+    active_model,
+    monthly_cap_eur,
+    hourly_rate_limit,
+    type_guidance
+  ) values (
+    OLD.updated_by,
+    OLD.system_prompt,
+    OLD.default_word_count,
+    OLD.active_model,
+    OLD.monthly_cap_eur,
+    OLD.hourly_rate_limit,
+    OLD.type_guidance
+  );
+  return NEW;
+end;
+$$;
+
+-- Cargar guidance inicial en el singleton (id=1).
+-- Usamos update directo porque el trigger es BEFORE UPDATE y archivará
+-- los valores PREVIOS — al ser un default '{}'::jsonb la primera fila
+-- de history simplemente reflejará ese estado vacío inicial, lo cual
+-- es correcto.
+update ai_generator_config
+set type_guidance = $TG$
+{
+  "proyecto": "Para tipo PROYECTO: introducción del estudio que firma + ficha técnica al inicio (m², ubicación, año, materiales principales) + descripción del proyecto espacio por espacio o por capas (estructura, materiales, mobiliario, iluminación) + cierre con datos del estudio. Longitud objetivo 800-1200 palabras.",
+  "reportaje": "Para tipo REPORTAJE: hook editorial en el primer párrafo + tesis del artículo + desarrollo temático en 3-5 secciones con subtítulos H2 + ejemplos concretos de estudios o proyectos en cada sección + cierre reflexivo. Longitud objetivo 1200-1800 palabras.",
+  "tendencia": "Para tipo TENDENCIA: definición clara de la tendencia + origen y contexto histórico breve + ejemplos representativos actuales + análisis de por qué importa ahora + proyección o lectura crítica al cierre. Longitud objetivo 1000-1400 palabras.",
+  "noticia": "Para tipo NOTICIA: lead en el primer párrafo (qué, quién, cuándo, dónde) + desarrollo con detalles concretos + contexto del actor (estudio, marca, diseñador) + datos finales (link a la fuente oficial si aplica). Longitud objetivo 400-700 palabras. Tono más directo y conciso que en otros tipos."
+}
+$TG$::jsonb
+where id = 1;
+
+-- =============================================================
 -- VERIFICACIÓN FINAL
 -- =============================================================
 select 'tablas creadas' as item, count(*)::text as count from information_schema.tables
@@ -217,4 +328,9 @@ select 'config singleton rows', count(*)::text from ai_generator_config
 union all
 select 'columnas IA en magazine_articles', count(*)::text from information_schema.columns
   where table_name = 'magazine_articles'
-    and column_name in ('ai_generated','ai_generation_id','suggested_images','external_references');
+    and column_name in ('ai_generated','ai_generation_id','suggested_images','external_references')
+union all
+select 'tipos editoriales activos', count(*)::text from magazine_article_types where active = true
+union all
+select 'columna type_guidance en config', count(*)::text from information_schema.columns
+  where table_name = 'ai_generator_config' and column_name = 'type_guidance';

@@ -1,9 +1,13 @@
 // /api/admin/generator-config.js
 //
 // GET  → devuelve la fila actual de ai_generator_config + las 5 últimas
-//        entradas de ai_generator_config_history.
-// PUT  → actualiza la fila id=1. El trigger SQL trg_ai_generator_config_history
-//        guarda automáticamente los valores anteriores en history.
+//        entradas de ai_generator_config_history + la lista completa
+//        de magazine_article_types activos (orden sort_order asc) para
+//        que el frontend rellene el dropdown.
+// PUT  → actualiza la fila id=1. Acepta también type_guidance jsonb
+//        (validamos que las keys correspondan a tipos existentes con
+//        active=true). El trigger SQL trg_ai_generator_config_history
+//        archiva los valores anteriores en history.
 //
 // Sólo accesible al admin de Curino (check user_roles).
 
@@ -84,13 +88,22 @@ module.exports = async function handler(req, res) {
   // GET
   if (req.method === 'GET') {
     try {
-      const [{ data: config, error: cfgErr }, { data: history, error: histErr }] = await Promise.all([
+      const [
+        { data: config, error: cfgErr },
+        { data: history, error: histErr },
+        { data: types, error: typesErr }
+      ] = await Promise.all([
         admin.from('ai_generator_config').select('*').eq('id', 1).maybeSingle(),
         admin
           .from('ai_generator_config_history')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(HISTORY_LIMIT)
+          .limit(HISTORY_LIMIT),
+        admin
+          .from('magazine_article_types')
+          .select('*')
+          .eq('active', true)
+          .order('sort_order', { ascending: true })
       ]);
       if (cfgErr) {
         console.error('[ai-generator] generator-config GET cfg', cfgErr);
@@ -100,7 +113,15 @@ module.exports = async function handler(req, res) {
         console.error('[ai-generator] generator-config GET hist', histErr);
         return res.status(500).json({ error: 'history_load_failed' });
       }
-      return res.status(200).json({ config: config || null, history: history || [] });
+      if (typesErr) {
+        console.error('[ai-generator] generator-config GET types', typesErr);
+        return res.status(500).json({ error: 'types_load_failed' });
+      }
+      return res.status(200).json({
+        config: config || null,
+        history: history || [],
+        article_types: types || []
+      });
     } catch (err) {
       console.error('[ai-generator] generator-config GET', err);
       return res.status(500).json({ error: 'internal_error' });
@@ -128,6 +149,39 @@ module.exports = async function handler(req, res) {
   }
   if (Number.isFinite(body.hourly_rate_limit) && body.hourly_rate_limit > 0 && body.hourly_rate_limit < 1000) {
     update.hourly_rate_limit = Math.round(body.hourly_rate_limit);
+  }
+
+  // type_guidance: validar que las keys correspondan a tipos activos.
+  if (body.type_guidance !== undefined) {
+    if (!body.type_guidance || typeof body.type_guidance !== 'object' || Array.isArray(body.type_guidance)) {
+      return res.status(400).json({ error: 'invalid_type_guidance', detail: 'Debe ser objeto JSON.' });
+    }
+    const keys = Object.keys(body.type_guidance);
+    for (const k of keys) {
+      if (typeof body.type_guidance[k] !== 'string') {
+        return res.status(400).json({ error: 'invalid_type_guidance', detail: 'Cada valor debe ser string. Key inválida: ' + k });
+      }
+    }
+    if (keys.length > 0) {
+      const { data: activeTypes, error: typesErr } = await admin
+        .from('magazine_article_types')
+        .select('id')
+        .eq('active', true)
+        .in('id', keys);
+      if (typesErr) {
+        console.error('[ai-generator] generator-config PUT types', typesErr);
+        return res.status(500).json({ error: 'types_check_failed' });
+      }
+      const validIds = new Set((activeTypes || []).map((t) => t.id));
+      const unknown = keys.filter((k) => !validIds.has(k));
+      if (unknown.length > 0) {
+        return res.status(400).json({
+          error: 'invalid_type_guidance',
+          detail: 'Tipos desconocidos o inactivos: ' + unknown.join(', ')
+        });
+      }
+    }
+    update.type_guidance = body.type_guidance;
   }
 
   // Si sólo viene updated_at/updated_by, no hay nada que cambiar.
