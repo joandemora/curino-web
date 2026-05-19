@@ -81,6 +81,67 @@ body.hidden-until-auth{visibility:hidden}
 .r-toast.visible{opacity:1}
 .r-toast.success{background:#1d6f3d}
 .r-toast.error{background:#a83232}
+
+/* Badge IA en listado de artículos del admin */
+.ash-badge-ai{display:inline-block;background:#fde8e2;color:#a14a32;font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:3px;margin-left:.5rem;vertical-align:middle;text-transform:uppercase;border:1px solid #f4c8b9}
+
+/* === Panel lateral imágenes IA === */
+body.with-ai-panel .e-wrap{margin-right:calc(360px + 32px);max-width:none}
+@media(max-width:1280px){
+  body.with-ai-panel .e-wrap{margin-right:auto;max-width:880px}
+  #aiPanel{display:none}
+  body.with-ai-panel #aiPanelToggle{display:inline-flex}
+}
+@media(min-width:1281px){
+  #aiPanelToggle{display:none}
+}
+
+#aiPanel{
+  position:fixed;top:96px;right:16px;width:340px;
+  max-height:calc(100vh - 120px);overflow-y:auto;
+  background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:16px;z-index:40;
+  box-shadow:0 4px 14px rgba(0,0,0,.04);
+}
+#aiPanel.open{display:block}
+.ai-panel-header{padding-bottom:.75rem;border-bottom:1px solid var(--line);margin-bottom:.85rem}
+.ai-panel-header h3{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin:0 0 .25rem}
+.ai-panel-header .ai-pending-count{font-size:12px;color:var(--coral);font-weight:600}
+.ai-panel-header .ai-pending-count.all-done{color:#1d6f3d}
+
+.ai-img-card{padding:.85rem;border:1px solid var(--line);border-radius:8px;margin-bottom:.7rem;background:#fbfaf6}
+.ai-img-card .ai-thumb{width:100%;height:140px;background:#eee;border-radius:6px;margin-bottom:.6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ai-img-card .ai-thumb img{width:100%;height:100%;object-fit:cover}
+.ai-img-card .ai-thumb .ai-no-img{font-size:11px;color:var(--ink-mute);text-align:center;padding:.5rem;line-height:1.4}
+.ai-img-card .ai-desc{font-size:12.5px;color:var(--ink);line-height:1.5;margin-bottom:.55rem;font-weight:500}
+.ai-attr{font-size:11px;color:var(--ink-soft);line-height:1.55;margin-bottom:.55rem}
+.ai-attr .row{display:block;margin-bottom:.15rem}
+.ai-attr .label{color:var(--ink-mute);font-weight:600;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em;margin-right:.3rem}
+.ai-attr a{color:var(--coral);text-decoration:none;word-break:break-all}
+.ai-attr a:hover{text-decoration:underline}
+
+.ai-img-actions{display:flex;flex-direction:column;gap:.5rem;margin-top:.55rem;padding-top:.55rem;border-top:1px dashed var(--line)}
+.ai-status-select{width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink);font-family:var(--font)}
+.ai-status-select:focus{outline:none;border-color:var(--ink)}
+.ai-status-select[data-current="pendiente"]{background:#fff8e1;border-color:#f0d97c}
+.ai-status-select[data-current="ok"]{background:#eaf5ee;border-color:#a8d4b8}
+.ai-status-select[data-current="sustituir"]{background:#fff4e8;border-color:#f4c8b9}
+.ai-status-select[data-current="pedir_permiso"]{background:#eef4ff;border-color:#c4d4f0}
+.ai-status-select[data-current="descartar"]{background:#fde8e8;border-color:#f4b8b8}
+.ai-insert-btn{padding:6px 10px;font-size:11.5px;font-weight:600;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:5px;cursor:pointer;font-family:var(--font);transition:opacity .15s}
+.ai-insert-btn:disabled{opacity:.35;cursor:not-allowed;background:#fff;color:var(--ink-mute);border-color:var(--line)}
+.ai-insert-btn:not(:disabled):hover{background:var(--coral);border-color:var(--coral)}
+
+/* Toggle móvil */
+#aiPanelToggle{display:none;align-items:center;gap:.4rem;background:var(--ink);color:#fff;border:none;border-radius:99px;padding:.55rem .9rem;font-size:12px;font-weight:600;cursor:pointer;margin-left:.5rem;font-family:var(--font)}
+#aiPanelToggle .badge{background:var(--coral);color:#fff;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700}
+#aiPanelMobile{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:120;align-items:flex-end;justify-content:center}
+#aiPanelMobile.open{display:flex}
+#aiPanelMobile .ai-panel-mobile-inner{background:#fff;width:100%;max-height:85vh;overflow-y:auto;border-radius:14px 14px 0 0;padding:16px;position:relative}
+#aiPanelMobile .ai-close{position:absolute;top:10px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-mute)}
+
+/* Bloqueo botón publicar */
+.btn-primary[disabled]{opacity:.45;cursor:not-allowed}
 </style>
 </head>
 <body class="hidden-until-auth">
@@ -174,9 +235,33 @@ body.hidden-until-auth{visibility:hidden}
 
   <div class="e-actions">
     <button class="btn btn-outline" type="button" onclick="saveDraft()">Guardar como borrador</button>
-    <button class="btn btn-primary" type="button" onclick="openPublishModal()">Publicar ahora</button>
+    <button class="btn btn-primary" type="button" id="btnPublishNow" onclick="openPublishModal()">Publicar ahora</button>
+    <button type="button" id="aiPanelToggle" onclick="openAiPanelMobile()" aria-label="Revisión imágenes IA">
+      🖼 Revisión imágenes <span class="badge" id="aiToggleBadge">0</span>
+    </button>
   </div>
 </section>
+
+<!-- Panel lateral imágenes IA (visible solo cuando ai_generated=true; desktop ≥1281px) -->
+<aside id="aiPanel" style="display:none">
+  <div class="ai-panel-header">
+    <h3>Imágenes sugeridas por IA</h3>
+    <div class="ai-pending-count" id="aiPendingCount">Cargando…</div>
+  </div>
+  <div id="aiPanelList"></div>
+</aside>
+
+<!-- Versión drawer móvil del mismo contenido -->
+<div id="aiPanelMobile" onclick="if(event.target.id==='aiPanelMobile') closeAiPanelMobile()">
+  <div class="ai-panel-mobile-inner">
+    <button type="button" class="ai-close" onclick="closeAiPanelMobile()" aria-label="Cerrar">×</button>
+    <div class="ai-panel-header">
+      <h3>Imágenes sugeridas por IA</h3>
+      <div class="ai-pending-count" id="aiPendingCountMobile">Cargando…</div>
+    </div>
+    <div id="aiPanelListMobile"></div>
+  </div>
+</div>
 </main>
 
 <div class="r-modal-overlay" id="sendModal" onclick="if(event.target.id==='sendModal') closeSendModal()">
@@ -316,7 +401,7 @@ async function createNewArticle() {
 
 async function loadAdminArticles() {
   const r = await supa.from('magazine_articles')
-    .select('id,title,slug,type,status,created_at,published_at,updated_at')
+    .select('id,title,slug,type,status,created_at,published_at,updated_at,ai_generated')
     .eq('user_id', currentUser.id)
     .order('updated_at', { ascending: false });
   const container = document.getElementById('adminArticlesList');
@@ -339,9 +424,12 @@ async function loadAdminArticles() {
       actions += ' <button class="ash-btn ash-btn-outline ash-btn-small" onclick="toggleStatus(\'' + a.id + '\',\'published\')">Republicar</button>';
     }
     actions += ' <button class="ash-btn ash-btn-danger ash-btn-small" onclick="deleteArticle(\'' + a.id + '\')">Eliminar</button>';
+    const aiBadge = a.ai_generated === true
+      ? '<span class="ash-badge-ai" title="Artículo generado con IA">IA</span>'
+      : '';
     return '<tr>' +
       '<td>' + escapeHtml(TYPE_LABELS[a.type] || a.type) + '</td>' +
-      '<td><strong>' + escapeHtml(a.title || '(sin título)') + '</strong></td>' +
+      '<td><strong>' + escapeHtml(a.title || '(sin título)') + '</strong>' + aiBadge + '</td>' +
       '<td>' + escapeHtml(STATUS_LABELS[a.status] || a.status) + '</td>' +
       '<td style="white-space:nowrap;color:#888">' + escapeHtml(date) + '</td>' +
       '<td style="white-space:nowrap;text-align:right">' + actions + '</td>' +
@@ -416,6 +504,13 @@ async function loadArticle() {
   if (r.data.status === 'published') pageTitleText = 'Editar artículo publicado';
   else if (r.data.status === 'draft') pageTitleText = 'Editar borrador';
   document.getElementById('pageTitle').textContent = pageTitleText;
+
+  // Si el artículo fue generado por IA, activar panel lateral de revisión legal.
+  if (r.data.ai_generated === true) {
+    document.body.classList.add('with-ai-panel');
+    document.getElementById('aiPanel').style.display = 'block';
+    renderAiPanel();
+  }
 }
 
 function initEditor() {
@@ -706,7 +801,12 @@ window.publishNow = async function() {
     window.location.href = '/admin/revista/publicar/';
   } catch (e) {
     console.error('publishNow', e);
-    showToast('Error al publicar: ' + (e.message || e), 'error');
+    const msg = String((e && e.message) || e || '');
+    if (msg.indexOf('Cannot publish AI-generated article') !== -1 || msg.indexOf('image(s) pending legal review') !== -1) {
+      showToast('No puedes publicar: quedan imágenes sin revisar legalmente en el panel lateral. Marca cada imagen con su estado (OK uso, sustituir, descartar o pedir permiso) antes de publicar.', 'error');
+    } else {
+      showToast('Error al publicar: ' + msg, 'error');
+    }
     btn.disabled = false; btn.textContent = 'Publicar';
   }
 };
@@ -724,6 +824,217 @@ function showToast(msg, kind) {
   setTimeout(() => t.classList.remove('visible'), 3500);
 }
 window.showToast = showToast;
+
+// =========================================================
+// Panel lateral imágenes IA (solo si ai_generated=true)
+// =========================================================
+
+const AI_STATUS_LABELS = {
+  pendiente: 'Pendiente revisión',
+  ok: 'OK uso',
+  sustituir: 'Sustituir',
+  pedir_permiso: 'Pedir permiso',
+  descartar: 'Descartar'
+};
+const AI_STATUS_ORDER = ['pendiente', 'ok', 'sustituir', 'pedir_permiso', 'descartar'];
+
+function aiSafeStatus(s) {
+  return AI_STATUS_LABELS[s] ? s : 'pendiente';
+}
+
+function aiImageList() {
+  if (!currentArticle || !Array.isArray(currentArticle.suggested_images)) return [];
+  return currentArticle.suggested_images;
+}
+
+function aiPendingCount() {
+  return aiImageList().filter(function (img) { return aiSafeStatus(img && img.review_status) === 'pendiente'; }).length;
+}
+
+function renderAiPanel() {
+  const imgs = aiImageList();
+  const pending = aiPendingCount();
+  const total = imgs.length;
+
+  const countText = total === 0
+    ? 'Esta generación no sugirió imágenes.'
+    : (pending === 0
+        ? '✓ Todas las imágenes revisadas (' + total + ').'
+        : 'Quedan ' + pending + ' de ' + total + ' por revisar.');
+  const countCls = (pending === 0 && total > 0) ? 'ai-pending-count all-done' : 'ai-pending-count';
+
+  document.getElementById('aiPendingCount').className = countCls;
+  document.getElementById('aiPendingCount').textContent = countText;
+  document.getElementById('aiPendingCountMobile').className = countCls;
+  document.getElementById('aiPendingCountMobile').textContent = countText;
+
+  // Badge del toggle móvil
+  const tb = document.getElementById('aiToggleBadge');
+  if (tb) {
+    tb.textContent = String(pending);
+    tb.style.background = pending === 0 ? '#1d6f3d' : 'var(--coral)';
+  }
+
+  const html = imgs.length === 0
+    ? '<div style="color:var(--ink-mute);font-size:12px;padding:.5rem 0">Sin imágenes sugeridas por el modelo.</div>'
+    : imgs.map(function (img, i) { return renderAiCard(img, i); }).join('');
+  document.getElementById('aiPanelList').innerHTML = html;
+  document.getElementById('aiPanelListMobile').innerHTML = html;
+
+  // Actualizar bloqueo del botón Publicar según pending.
+  refreshPublishButtonState();
+}
+
+function renderAiCard(img, index) {
+  img = img || {};
+  const status = aiSafeStatus(img.review_status);
+  const thumb = img.image_url
+    ? '<div class="ai-thumb"><img src="' + escapeAttr(img.image_url) + '" alt="" loading="lazy" onerror="this.parentNode.innerHTML=\'<div class=ai-no-img>No se pudo cargar la imagen</div>\'"></div>'
+    : '<div class="ai-thumb"><div class="ai-no-img">Sin URL directa de imagen</div></div>';
+
+  const desc = img.description ? '<div class="ai-desc">' + escapeHtml(img.description) + '</div>' : '';
+
+  const rows = [];
+  if (img.photographer) {
+    const url = 'https://www.google.com/search?q=' + encodeURIComponent(img.photographer + ' fotógrafo');
+    rows.push('<span class="row"><span class="label">Fotógrafo</span> <a href="' + escapeAttr(url) + '" target="_blank" rel="noopener">' + escapeHtml(img.photographer) + '</a></span>');
+  }
+  if (img.author_studio) {
+    const link = img.author_website
+      ? '<a href="' + escapeAttr(img.author_website) + '" target="_blank" rel="noopener">' + escapeHtml(img.author_studio) + '</a>'
+      : escapeHtml(img.author_studio);
+    rows.push('<span class="row"><span class="label">Estudio</span> ' + link + '</span>');
+  }
+  if (img.source_url) {
+    rows.push('<span class="row"><span class="label">Fuente</span> <a href="' + escapeAttr(img.source_url) + '" target="_blank" rel="noopener">Abrir original</a></span>');
+  }
+  if (img.license_notes) {
+    rows.push('<span class="row"><span class="label">Licencia</span> ' + escapeHtml(img.license_notes) + '</span>');
+  }
+  if (img.placement_hint) {
+    rows.push('<span class="row"><span class="label">Colocación</span> ' + escapeHtml(img.placement_hint) + '</span>');
+  }
+  const attr = rows.length > 0 ? '<div class="ai-attr">' + rows.join('') + '</div>' : '';
+
+  const opts = AI_STATUS_ORDER.map(function (k) {
+    return '<option value="' + k + '"' + (k === status ? ' selected' : '') + '>' + escapeHtml(AI_STATUS_LABELS[k]) + '</option>';
+  }).join('');
+
+  const insertDisabled = status !== 'ok';
+
+  return ''
+    + '<div class="ai-img-card" data-index="' + index + '">'
+    +   thumb
+    +   desc
+    +   attr
+    +   '<div class="ai-img-actions">'
+    +     '<select class="ai-status-select" data-current="' + escapeAttr(status) + '" onchange="onAiStatusChange(' + index + ', this.value)">' + opts + '</select>'
+    +     '<button type="button" class="ai-insert-btn" ' + (insertDisabled ? 'disabled' : '') + ' onclick="insertAiImage(' + index + ')">Insertar en artículo</button>'
+    +   '</div>'
+    + '</div>';
+}
+
+window.onAiStatusChange = async function (index, newStatus) {
+  if (!currentArticle || !articleId) return;
+  // Optimistic UI: actualizar local antes de la llamada
+  const imgs = aiImageList();
+  if (!imgs[index]) return;
+  const prev = imgs[index].review_status;
+  imgs[index].review_status = newStatus;
+  renderAiPanel();
+
+  try {
+    const s = await supa.auth.getSession();
+    const r = await fetch('/api/admin/magazine-article-image-status', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + s.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ article_id: articleId, image_index: index, review_status: newStatus })
+    });
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok) {
+      // rollback
+      imgs[index].review_status = prev;
+      renderAiPanel();
+      const detail = data && (data.detail || data.error) ? (data.detail || data.error) : ('HTTP ' + r.status);
+      showToast('Error al guardar estado: ' + detail, 'error');
+      return;
+    }
+    if (data && Array.isArray(data.suggested_images)) {
+      currentArticle.suggested_images = data.suggested_images;
+      renderAiPanel();
+    }
+  } catch (e) {
+    imgs[index].review_status = prev;
+    renderAiPanel();
+    console.error('onAiStatusChange', e);
+    showToast('Error de red al guardar estado de imagen', 'error');
+  }
+};
+
+window.insertAiImage = function (index) {
+  const img = (aiImageList())[index];
+  if (!img) return;
+  if (!img.image_url) {
+    alert('Esta imagen no tiene URL directa. Debes localizarla manualmente, descargarla y subirla al artículo desde el botón "🖼 Imagen" de la toolbar.');
+    return;
+  }
+  const caption = aiBuildCaption(img);
+  const altText = (img.description || img.author_studio || 'Imagen sugerida por IA').slice(0, 200);
+  const figureHtml = ''
+    + '<figure>'
+    +   '<img src="' + escapeAttr(img.image_url) + '" alt="' + escapeAttr(altText) + '">'
+    +   '<figcaption>' + caption + '</figcaption>'
+    + '</figure>';
+  editor.chain().focus().insertContent(figureHtml).run();
+  showToast('Imagen insertada en el artículo', 'success');
+};
+
+function aiBuildCaption(img) {
+  const parts = [];
+  if (img.photographer) parts.push('Foto: ' + escapeHtml(img.photographer));
+  if (img.author_studio) {
+    const txt = 'Proyecto: ' + escapeHtml(img.author_studio);
+    parts.push(img.author_website
+      ? '<a href="' + escapeAttr(img.author_website) + '" target="_blank" rel="noopener">' + txt + '</a>'
+      : txt);
+  }
+  if (img.source_url) {
+    parts.push('<a href="' + escapeAttr(img.source_url) + '" target="_blank" rel="noopener">Fuente</a>');
+  }
+  return parts.length > 0 ? parts.join('. ') + '.' : 'Atribución pendiente.';
+}
+
+function refreshPublishButtonState() {
+  const btn = document.getElementById('btnPublishNow');
+  if (!btn) return;
+  if (!currentArticle || currentArticle.ai_generated !== true) {
+    btn.disabled = false;
+    btn.removeAttribute('title');
+    return;
+  }
+  const pending = aiPendingCount();
+  if (pending > 0) {
+    btn.disabled = true;
+    btn.title = 'Quedan ' + pending + ' imagen' + (pending === 1 ? '' : 'es') + ' sin revisar legalmente. Marca cada una con OK uso / sustituir / pedir permiso / descartar antes de publicar.';
+  } else {
+    btn.disabled = false;
+    btn.removeAttribute('title');
+  }
+}
+
+window.openAiPanelMobile = function () {
+  document.getElementById('aiPanelMobile').classList.add('open');
+};
+window.closeAiPanelMobile = function () {
+  document.getElementById('aiPanelMobile').classList.remove('open');
+};
+
+function escapeAttr(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 </script>
 </body>
 </html>

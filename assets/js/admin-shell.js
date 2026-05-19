@@ -41,7 +41,8 @@
       group: 'Revista',
       items: [
         { id: 'revista-publicar', label: 'Publicar', href: '/admin/revista/publicar/' },
-        { id: 'revista-moderacion', label: 'Moderación', href: '/admin/revista/moderacion/' }
+        { id: 'revista-moderacion', label: 'Moderación', href: '/admin/revista/moderacion/' },
+        { id: 'revista-generador', label: 'Generador IA', href: '/admin/revista/generador/' }
       ]
     }
   ];

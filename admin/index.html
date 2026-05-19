@@ -17,6 +17,18 @@
 .dash-card-domain{display:flex;flex-direction:column;height:100%}
 .dash-card-domain p{color:#555;font-size:13.5px;line-height:1.55;margin-bottom:.9rem}
 .dash-card-domain .ash-btn{align-self:flex-start;margin-top:auto}
+
+/* Card Generador IA */
+.dash-ai{margin-top:2rem;background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.5rem 1.75rem;max-width:560px}
+.dash-ai h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:.85rem;font-weight:600}
+.dash-ai .ai-line{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:#555;margin-bottom:.5rem}
+.dash-ai .ai-line strong{font-size:18px;font-weight:600;color:#1a1a1a}
+.dash-ai .ai-bar{height:8px;background:#f0eee6;border-radius:99px;overflow:hidden;margin:.75rem 0 .4rem;position:relative}
+.dash-ai .ai-bar-fill{height:100%;border-radius:99px;transition:width .25s,background .25s;background:#2e7d32}
+.dash-ai .ai-bar-fill.warn{background:#cc9a3c}
+.dash-ai .ai-bar-fill.danger{background:#a83232}
+.dash-ai .ai-pct{font-size:12px;color:#888;text-align:right}
+.dash-ai .ai-actions{margin-top:1rem;display:flex;gap:.5rem}
 </style>
 </head>
 <body class="hidden-until-auth">
@@ -71,6 +83,19 @@
       </div>
     </div>
   </div>
+
+  <!-- Generador IA — Este mes -->
+  <div class="dash-ai" id="aiCard">
+    <h2>Generador IA — Este mes</h2>
+    <div class="ai-line"><span>Artículos generados</span><strong id="aiCount">—</strong></div>
+    <div class="ai-line"><span>Coste</span><strong><span id="aiEurUsed">—</span> / <span id="aiEurCap">—</span> €</strong></div>
+    <div class="ai-bar"><div class="ai-bar-fill" id="aiBarFill" style="width:0%"></div></div>
+    <div class="ai-pct"><span id="aiPct">—</span>% del cap consumido</div>
+    <div class="ai-actions">
+      <a class="ash-btn" href="/admin/revista/generador/">Generar nuevo</a>
+      <a class="ash-btn ash-btn-outline ash-btn-small" href="/admin/revista/generador/historico/">Ver histórico</a>
+    </div>
+  </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -105,7 +130,34 @@ initAdminShell({ activeSection: 'dashboard', title: 'Dashboard' }).then(async fu
   loadStat(function () {
     return supa.from('magazine_boosts').select('id', { count: 'exact', head: true }).eq('status', 'active');
   }, 'statBoostsActive');
+
+  // Card Generador IA (vía endpoint server con Bearer admin)
+  loadAiStats(supa);
 });
+
+async function loadAiStats(supa) {
+  try {
+    const s = await supa.auth.getSession();
+    const r = await fetch('/api/admin/generator-stats', {
+      headers: { 'Authorization': 'Bearer ' + s.data.session.access_token }
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    const tm = data.this_month || {};
+    const used = Number(tm.cost_eur_used || 0);
+    const cap = Number(tm.cost_eur_cap || 0);
+    const pct = Number(tm.percentage_used || 0);
+    document.getElementById('aiCount').textContent = (tm.generations_count != null ? tm.generations_count : '0');
+    document.getElementById('aiEurUsed').textContent = used.toFixed(2).replace('.', ',');
+    document.getElementById('aiEurCap').textContent = cap.toFixed(2).replace('.', ',');
+    document.getElementById('aiPct').textContent = pct.toFixed(1).replace('.', ',');
+    const bar = document.getElementById('aiBarFill');
+    bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+    bar.classList.remove('warn', 'danger');
+    if (pct >= 90) bar.classList.add('danger');
+    else if (pct >= 70) bar.classList.add('warn');
+  } catch (e) { /* silent */ }
+}
 
 async function loadStat(queryFn, elementId) {
   try {

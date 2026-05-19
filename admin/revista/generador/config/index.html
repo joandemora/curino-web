@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configuración Generador IA — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+
+.g-tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.g-tab{padding:.7rem 1.2rem;font-size:13px;font-weight:600;color:var(--mid);text-decoration:none;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.g-tab:hover{color:var(--ink)}
+.g-tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+
+.g-hero{margin-bottom:1.25rem}
+.g-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.g-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+
+/* Anchor links arriba */
+.g-anchors{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.5rem;padding:.8rem 1rem;background:#fff;border:1px solid var(--border);border-radius:8px}
+.g-anchors a{font-size:12px;color:var(--coral);text-decoration:none;padding:.3rem .65rem;border:1px solid var(--border);border-radius:4px;transition:border-color .15s}
+.g-anchors a:hover{border-color:var(--coral)}
+
+.g-section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;max-width:920px}
+.g-section h2{font-size:17px;font-weight:600;margin-bottom:.5rem;color:var(--ink)}
+.g-section .desc{font-size:13px;color:var(--ink-soft);margin-bottom:1rem;line-height:1.55}
+
+.g-field{margin-bottom:1.25rem}
+.g-field label{display:block;font-size:12px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:.35rem}
+.g-field .type-desc{font-size:12px;color:var(--mid);font-style:italic;margin-bottom:.4rem;text-transform:none;letter-spacing:0;font-weight:400}
+.g-input, .g-select, .g-textarea{
+  width:100%;padding:.6rem .75rem;font-size:13px;font-family:var(--font);color:var(--ink);
+  border:1px solid var(--border);border-radius:5px;background:#fff;
+}
+.g-input:focus, .g-select:focus, .g-textarea:focus{outline:none;border-color:var(--ink)}
+.g-textarea{min-height:90px;resize:vertical;line-height:1.55;font-family:'SF Mono','Courier New',monospace;font-size:12.5px}
+.g-textarea.large{min-height:340px}
+.g-textarea.guidance{min-height:140px}
+
+.g-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:720px){.g-row{grid-template-columns:1fr}}
+
+/* Tabla historial */
+.g-table{width:100%;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;border-collapse:collapse;font-size:12.5px}
+.g-table th{text-align:left;padding:.7rem .85rem;font-size:10px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.g-table td{padding:.6rem .85rem;border-top:1px solid var(--border);vertical-align:middle}
+.g-table .col-date{white-space:nowrap;color:var(--mid);font-size:12px}
+.g-table .col-who{font-size:11.5px;color:var(--ink-soft);font-family:'SF Mono',monospace}
+.g-table .col-actions{white-space:nowrap;text-align:right}
+
+.g-action-btn{display:inline-block;padding:.3rem .65rem;font-size:11px;font-weight:600;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer;font-family:var(--font);transition:border-color .15s}
+.g-action-btn:hover{border-color:var(--coral);color:var(--coral)}
+
+/* Botones inferior */
+.g-actions-bar{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(250,250,247,0) 0%,var(--bg) 30%);padding:1rem 0;display:flex;justify-content:flex-end;gap:.7rem;max-width:920px;z-index:20}
+.g-btn{padding:.6rem 1.3rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent}
+.g-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.g-btn-primary:hover{background:#333}
+.g-btn-secondary{background:#fff;color:var(--ink);border-color:var(--border)}
+.g-btn-secondary:hover{border-color:var(--ink)}
+.g-btn:disabled{opacity:.55;cursor:not-allowed}
+
+/* Modal confirm */
+.g-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:center;justify-content:center;padding:1.5rem}
+.g-overlay.open{display:flex}
+.g-modal{background:#fff;border-radius:10px;max-width:440px;width:100%;padding:1.75rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.g-modal h3{font-size:17px;font-weight:600;margin-bottom:.7rem}
+.g-modal p{font-size:13.5px;color:var(--ink-soft);margin-bottom:.5rem;line-height:1.55}
+.g-modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.25rem}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="g-tabs">
+    <a class="g-tab" href="/admin/revista/generador/">Formulario</a>
+    <a class="g-tab" href="/admin/revista/generador/historico/">Histórico</a>
+    <a class="g-tab active" href="/admin/revista/generador/config/">Configuración</a>
+  </div>
+
+  <div class="g-hero">
+    <h1>Configuración del generador</h1>
+    <p>Ajusta la voz Curino, las instrucciones por tipo, el cap mensual y el modelo activo.</p>
+  </div>
+
+  <div class="g-anchors">
+    <a href="#sec-voz">Voz base</a>
+    <a href="#sec-guidance">Guidance por tipo</a>
+    <a href="#sec-params">Parámetros</a>
+    <a href="#sec-history">Historial</a>
+  </div>
+
+  <form id="g-cfg-form" novalidate>
+    <section class="g-section" id="sec-voz">
+      <h2>A. Voz Curino base (system prompt)</h2>
+      <p class="desc">Esta es la voz editorial base. Aplica a todos los tipos de artículo. Las instrucciones específicas por tipo se añaden encima del prompt en cada generación.</p>
+      <div class="g-field">
+        <label for="cfg-prompt">System prompt</label>
+        <textarea class="g-textarea large" id="cfg-prompt"></textarea>
+      </div>
+    </section>
+
+    <section class="g-section" id="sec-guidance">
+      <h2>B. Guidance por tipo</h2>
+      <p class="desc">Instrucciones específicas que se concatenan al system prompt en función del tipo elegido. Una entrada por tipo activo en <code>magazine_article_types</code>.</p>
+      <div id="cfg-guidance-fields"><div style="color:#888;font-size:13px">Cargando tipos…</div></div>
+    </section>
+
+    <section class="g-section" id="sec-params">
+      <h2>C. Parámetros operativos</h2>
+      <p class="desc">Límites y modelo activo. Cambios persisten al guardar y se reflejan en la próxima generación.</p>
+      <div class="g-row">
+        <div class="g-field">
+          <label for="cfg-cap">Cap mensual (EUR)</label>
+          <input class="g-input" id="cfg-cap" type="number" min="0" max="5000" step="0.01">
+        </div>
+        <div class="g-field">
+          <label for="cfg-rate">Rate limit por hora</label>
+          <input class="g-input" id="cfg-rate" type="number" min="1" max="100" step="1">
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-field">
+          <label for="cfg-model">Modelo activo</label>
+          <select class="g-select" id="cfg-model">
+            <option value="claude-opus-4-7">claude-opus-4-7 (Opus — calidad alta)</option>
+            <option value="claude-sonnet-4-6">claude-sonnet-4-6 (Sonnet — más barato)</option>
+          </select>
+        </div>
+        <div class="g-field">
+          <label for="cfg-wc">Longitud por defecto (palabras)</label>
+          <input class="g-input" id="cfg-wc" type="number" min="200" max="4500" step="50">
+        </div>
+      </div>
+    </section>
+
+    <section class="g-section" id="sec-history">
+      <h2>D. Historial de cambios</h2>
+      <p class="desc">Últimos 10 snapshots archivados automáticamente al guardar cambios. Pulsa “Restaurar” para repoblar el formulario con esa versión — no se guarda hasta que confirmes con el botón de abajo.</p>
+      <div id="cfg-history"><div style="color:#888;font-size:13px;padding:.5rem 0">Cargando…</div></div>
+    </section>
+
+    <div class="g-actions-bar">
+      <button class="g-btn g-btn-secondary" type="button" id="cfg-reload">Descartar cambios</button>
+      <button class="g-btn g-btn-primary" type="submit" id="cfg-save">Guardar cambios</button>
+    </div>
+  </form>
+</main>
+
+<!-- Confirm save -->
+<div class="g-overlay" id="g-confirm-save" onclick="if(event.target.id==='g-confirm-save') closeConfirm()">
+  <div class="g-modal">
+    <h3>Guardar cambios</h3>
+    <p>¿Guardar cambios en la configuración del generador? La versión actual se archivará en el historial.</p>
+    <div class="g-modal-actions">
+      <button class="g-btn g-btn-secondary" type="button" onclick="closeConfirm()">Cancelar</button>
+      <button class="g-btn g-btn-primary" type="button" id="cfg-confirm-go">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="ash-toast" id="cfg-toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+let supa = null;
+let currentUser = null;
+let currentConfig = null;
+let currentHistory = [];
+let activeTypes = [];
+
+initAdminShell({ activeSection: 'revista-generador', title: 'Generador IA — Configuración' }).then(async function (ctx) {
+  supa = ctx.supabase;
+  currentUser = ctx.user;
+
+  document.getElementById('g-cfg-form').addEventListener('submit', onSubmit);
+  document.getElementById('cfg-confirm-go').addEventListener('click', doSave);
+  document.getElementById('cfg-reload').addEventListener('click', function () {
+    if (confirm('¿Descartar los cambios no guardados y recargar la versión actual?')) loadAll();
+  });
+
+  await loadAll();
+}).catch(function () { /* shell ya redirige */ });
+
+async function authFetch(url, opts) {
+  const s = await supa.auth.getSession();
+  const headers = Object.assign({}, opts && opts.headers, {
+    'Authorization': 'Bearer ' + s.data.session.access_token
+  });
+  return fetch(url, Object.assign({}, opts, { headers }));
+}
+
+async function loadAll() {
+  try {
+    const r = await authFetch('/api/admin/generator-config');
+    if (!r.ok) {
+      showToast('Error cargando config: HTTP ' + r.status, 'error');
+      return;
+    }
+    const data = await r.json();
+    currentConfig = data.config || null;
+    currentHistory = data.history || [];
+    activeTypes = data.article_types || [];
+
+    populateForm(currentConfig);
+    populateGuidance(activeTypes, currentConfig && currentConfig.type_guidance ? currentConfig.type_guidance : {});
+    populateHistory(currentHistory);
+  } catch (e) {
+    console.error('loadAll', e);
+    showToast('Error de red cargando config', 'error');
+  }
+}
+
+function populateForm(cfg) {
+  if (!cfg) return;
+  document.getElementById('cfg-prompt').value = cfg.system_prompt || '';
+  document.getElementById('cfg-cap').value = cfg.monthly_cap_eur != null ? cfg.monthly_cap_eur : '';
+  document.getElementById('cfg-rate').value = cfg.hourly_rate_limit != null ? cfg.hourly_rate_limit : '';
+  document.getElementById('cfg-model').value = cfg.active_model || 'claude-opus-4-7';
+  document.getElementById('cfg-wc').value = cfg.default_word_count != null ? cfg.default_word_count : '';
+}
+
+function populateGuidance(types, guidance) {
+  const wrap = document.getElementById('cfg-guidance-fields');
+  if (!types || types.length === 0) {
+    wrap.innerHTML = '<div style="color:#888;font-size:13px">No hay tipos activos en magazine_article_types.</div>';
+    return;
+  }
+  wrap.innerHTML = types.map(function (t) {
+    const val = (guidance && typeof guidance[t.id] === 'string') ? guidance[t.id] : '';
+    return ''
+      + '<div class="g-field">'
+      + '  <label for="gu-' + escAttr(t.id) + '">' + escHtml(t.label) + ' <span style="text-transform:none;letter-spacing:0;color:var(--mid);font-weight:400">(default ' + t.default_word_count + ' palabras)</span></label>'
+      + '  <div class="type-desc">' + escHtml(t.description || '') + '</div>'
+      + '  <textarea class="g-textarea guidance" id="gu-' + escAttr(t.id) + '" data-type-id="' + escAttr(t.id) + '">' + escHtml(val) + '</textarea>'
+      + '</div>';
+  }).join('');
+}
+
+function populateHistory(rows) {
+  const wrap = document.getElementById('cfg-history');
+  if (!rows || rows.length === 0) {
+    wrap.innerHTML = '<div style="color:#888;font-size:13px;padding:.5rem 0">Aún no hay snapshots archivados.</div>';
+    return;
+  }
+  // Comparamos cada fila con la siguiente cronológica (la anterior en orden DESC) para detectar campos cambiados.
+  const tbody = rows.map(function (r, i) {
+    const next = rows[i + 1]; // fila más antigua (estado anterior a esta versión)
+    const changed = next ? diffFields(next, r) : ['inicial'];
+    const date = new Date(r.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const who = r.changed_by ? (String(r.changed_by).slice(0, 8) + '…') : '—';
+    return ''
+      + '<tr>'
+      + '<td class="col-date">' + escHtml(date) + '</td>'
+      + '<td class="col-who" title="' + escAttr(r.changed_by || '') + '">' + escHtml(who) + '</td>'
+      + '<td style="font-size:12px;color:var(--ink-soft)">' + escHtml(changed.join(', ')) + '</td>'
+      + '<td class="col-actions"><button class="g-action-btn" type="button" onclick="restoreFromHistory(' + i + ')">Restaurar</button></td>'
+      + '</tr>';
+  }).join('');
+  wrap.innerHTML = ''
+    + '<table class="g-table">'
+    + '<thead><tr><th>Fecha</th><th>Quién</th><th>Campos cambiados</th><th class="col-actions">Acciones</th></tr></thead>'
+    + '<tbody>' + tbody + '</tbody>'
+    + '</table>';
+}
+
+function diffFields(prev, curr) {
+  const fields = ['system_prompt', 'default_word_count', 'active_model', 'monthly_cap_eur', 'hourly_rate_limit', 'type_guidance'];
+  const out = [];
+  fields.forEach(function (k) {
+    const a = JSON.stringify(prev[k] == null ? null : prev[k]);
+    const b = JSON.stringify(curr[k] == null ? null : curr[k]);
+    if (a !== b) out.push(k);
+  });
+  if (out.length === 0) out.push('(sin cambios detectados)');
+  return out;
+}
+
+window.restoreFromHistory = function (idx) {
+  const r = currentHistory[idx];
+  if (!r) return;
+  // Carga sólo en el formulario, NO guarda.
+  document.getElementById('cfg-prompt').value = r.system_prompt != null ? r.system_prompt : (currentConfig.system_prompt || '');
+  if (r.default_word_count != null) document.getElementById('cfg-wc').value = r.default_word_count;
+  if (r.active_model != null) document.getElementById('cfg-model').value = r.active_model;
+  if (r.monthly_cap_eur != null) document.getElementById('cfg-cap').value = r.monthly_cap_eur;
+  if (r.hourly_rate_limit != null) document.getElementById('cfg-rate').value = r.hourly_rate_limit;
+  if (r.type_guidance && typeof r.type_guidance === 'object') {
+    activeTypes.forEach(function (t) {
+      const el = document.getElementById('gu-' + t.id);
+      if (el) el.value = (typeof r.type_guidance[t.id] === 'string') ? r.type_guidance[t.id] : '';
+    });
+  }
+  showToast('Versión cargada en el formulario. Pulsa "Guardar cambios" para confirmar.', 'success');
+};
+
+function onSubmit(e) {
+  e.preventDefault();
+  document.getElementById('g-confirm-save').classList.add('open');
+}
+function closeConfirm() { document.getElementById('g-confirm-save').classList.remove('open'); }
+window.closeConfirm = closeConfirm;
+
+async function doSave() {
+  closeConfirm();
+  const btn = document.getElementById('cfg-save');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+
+  const guidance = {};
+  activeTypes.forEach(function (t) {
+    const el = document.getElementById('gu-' + t.id);
+    if (el) guidance[t.id] = el.value;
+  });
+
+  const payload = {
+    system_prompt: document.getElementById('cfg-prompt').value,
+    default_word_count: Number(document.getElementById('cfg-wc').value),
+    active_model: document.getElementById('cfg-model').value,
+    monthly_cap_eur: Number(document.getElementById('cfg-cap').value),
+    hourly_rate_limit: Number(document.getElementById('cfg-rate').value),
+    type_guidance: guidance
+  };
+
+  try {
+    const r = await authFetch('/api/admin/generator-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok) {
+      const detail = data && (data.detail || data.error) ? (data.detail || data.error) : ('HTTP ' + r.status);
+      showToast('Error al guardar: ' + detail, 'error');
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+      return;
+    }
+    showToast('Configuración guardada. Versión anterior archivada en historial.', 'success');
+    setTimeout(function () { window.location.reload(); }, 900);
+  } catch (e) {
+    console.error('doSave', e);
+    showToast('Error de red al guardar', 'error');
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
+  }
+}
+
+function showToast(msg, kind) {
+  const t = document.getElementById('cfg-toast');
+  t.textContent = msg;
+  t.className = 'ash-toast ' + (kind || '') + ' visible';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function () { t.classList.remove('visible'); }, 4000);
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+function escAttr(s) { return escHtml(s); }
+</script>
+</body>
+</html>
