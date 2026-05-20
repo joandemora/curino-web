@@ -85,6 +85,17 @@ body.hidden-until-auth{visibility:hidden}
 /* Badge IA en listado de artículos del admin */
 .ash-badge-ai{display:inline-block;background:#fde8e2;color:#a14a32;font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:3px;margin-left:.5rem;vertical-align:middle;text-transform:uppercase;border:1px solid #f4c8b9}
 
+/* Preview en vivo de la cabecera (mini-réplica del header público) */
+.hp-preview{text-align:center;padding:1rem 0 .5rem;border:1px dashed var(--line);border-radius:8px;background:#fdfcf8}
+.hp-eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);margin:0 0 .8rem}
+.hp-title{font-family:var(--serif);font-size:clamp(22px,3vw,32px);font-weight:500;line-height:1.15;color:var(--ink);margin:0 .75rem .65rem;letter-spacing:-.01em}
+.hp-subtitle{font-family:var(--serif);font-style:italic;font-size:clamp(15px,1.6vw,18px);color:var(--ink-soft);margin:0 1rem 1rem;line-height:1.4}
+.hp-byline{font-size:12.5px;color:var(--ink-soft);margin:0 0 1.1rem}
+.hp-byline .hp-date{color:var(--ink-mute)}
+.hp-cover{margin:0 .75rem;display:block}
+.hp-cover img{display:block;width:100%;height:auto;max-height:300px;object-fit:contain}
+.hp-cover figcaption{font-size:11.5px;color:var(--ink-mute);text-align:left;margin:.4rem .25rem 0;line-height:1.4}
+
 /* === Panel lateral imágenes IA === */
 body.with-ai-panel .e-wrap{margin-right:calc(360px + 32px);max-width:none}
 @media(max-width:1280px){
@@ -201,6 +212,12 @@ body.with-ai-panel .e-wrap{margin-right:calc(360px + 32px);max-width:none}
       <div class="e-help">Máximo 120 caracteres. El slug se generará a partir del título.</div>
     </div>
 
+    <div class="e-field" data-name="subtitle">
+      <label class="e-label" for="subtitle">Subtítulo <span class="opt">(opcional)</span></label>
+      <input class="e-input" id="subtitle" type="text" maxlength="200" placeholder="Subtítulo / dek bajo el título principal">
+      <div class="e-help">Aparece bajo el título en la cabecera del artículo público, en serif itálica.</div>
+    </div>
+
     <div class="e-field" data-name="cover_image">
       <label class="e-label">Imagen de portada</label>
       <input type="file" id="coverFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="if(this.files[0]) uploadCover(this.files[0])">
@@ -212,6 +229,27 @@ body.with-ai-panel .e-wrap{margin-right:calc(360px + 32px);max-width:none}
         <div class="meta"><strong>Portada</strong><span id="coverFilename"></span></div>
         <button type="button" onclick="removeCover()">Quitar</button>
       </div>
+    </div>
+
+    <div class="e-field" data-name="cover_caption">
+      <label class="e-label" for="coverCaption">Pie de foto de la portada <span class="opt">(opcional)</span></label>
+      <input class="e-input" id="coverCaption" type="text" maxlength="240" placeholder='Ej: "La cocina del proyecto X. Foto: J. Pérez"'>
+      <div class="e-help">Aparece justo debajo de la imagen de portada en el artículo público.</div>
+    </div>
+  </div>
+
+  <!-- Preview de cabecera (replica simplificada del header público) -->
+  <div class="e-section" id="headerPreviewSection">
+    <label class="e-label">Vista previa de la cabecera</label>
+    <div class="hp-preview" id="headerPreview">
+      <p class="hp-eyebrow" id="hpEyebrow">ARTÍCULO</p>
+      <h2 class="hp-title" id="hpTitle">Título del artículo</h2>
+      <p class="hp-subtitle" id="hpSubtitle" style="display:none"></p>
+      <p class="hp-byline" id="hpByline">Por Curino · <span class="hp-date" id="hpDate"></span></p>
+      <figure class="hp-cover" id="hpCoverFig" style="display:none">
+        <img id="hpCoverImg" alt="">
+        <figcaption id="hpCoverCaption" style="display:none"></figcaption>
+      </figure>
     </div>
   </div>
 
@@ -494,12 +532,22 @@ async function loadArticle() {
 
   document.getElementById('type').value = r.data.type || 'articulo';
   document.getElementById('title').value = (isFresh && r.data.title === 'Sin título') ? '' : (r.data.title || '');
+  document.getElementById('subtitle').value = r.data.subtitle || '';
+  document.getElementById('coverCaption').value = r.data.cover_caption || '';
   document.getElementById('metaDesc').value = r.data.meta_description || '';
 
   coverUrl = r.data.cover_image_url || null;
   ogUrl = r.data.og_image_url || null;
   renderCoverPreview();
   renderOgPreview();
+
+  // Cabecera live-preview + listeners
+  updateHeaderPreview();
+  ['type','title','subtitle','coverCaption'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateHeaderPreview);
+    if (el) el.addEventListener('change', updateHeaderPreview);
+  });
 
   // Banner solo si rejected con notas (los publicados ya no muestran banner)
   if (r.data.status === 'rejected' && r.data.admin_notes) {
@@ -686,6 +734,55 @@ function renderCoverPreview() {
     preview.style.display = 'none';
     placeholder.textContent = 'Arrastra una imagen o pulsa para seleccionar (JPG/PNG/WebP, máx 4 MB).';
   }
+  // Sincronizar cover en el header live-preview.
+  if (typeof updateHeaderPreview === 'function') updateHeaderPreview();
+}
+
+// Mapeo type → eyebrow para el preview en vivo. Mismo set que el SSR público
+// (api/revista/[seccion]/[slug].js → TYPE_LABELS). Incluye los 7 valores.
+const HEADER_EYEBROW_LABELS = {
+  proyecto: 'PROYECTO',
+  material: 'MATERIAL',
+  articulo: 'ARTÍCULO',
+  noticia: 'NOTICIA',
+  entrevista: 'ENTREVISTA',
+  reportaje: 'REPORTAJE',
+  tendencia: 'TENDENCIA'
+};
+
+function updateHeaderPreview() {
+  const type = document.getElementById('type').value || 'articulo';
+  const title = document.getElementById('title').value.trim();
+  const subtitle = document.getElementById('subtitle').value.trim();
+  const coverCaption = document.getElementById('coverCaption').value.trim();
+
+  document.getElementById('hpEyebrow').textContent = HEADER_EYEBROW_LABELS[type] || type.toUpperCase();
+  document.getElementById('hpTitle').textContent = title || 'Título del artículo';
+
+  const hpSub = document.getElementById('hpSubtitle');
+  if (subtitle) { hpSub.textContent = subtitle; hpSub.style.display = ''; }
+  else          { hpSub.textContent = '';       hpSub.style.display = 'none'; }
+
+  // Fecha: published_at si existe, si no la actual (preview de draft).
+  let dateLabel = '';
+  const dateSrc = (currentArticle && currentArticle.published_at) ? currentArticle.published_at : new Date().toISOString();
+  try {
+    dateLabel = new Date(dateSrc).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (_e) { dateLabel = ''; }
+  document.getElementById('hpDate').textContent = dateLabel;
+
+  // Cover
+  const fig = document.getElementById('hpCoverFig');
+  const img = document.getElementById('hpCoverImg');
+  const cap = document.getElementById('hpCoverCaption');
+  if (coverUrl) {
+    img.src = coverUrl;
+    fig.style.display = '';
+  } else {
+    fig.style.display = 'none';
+  }
+  if (coverCaption) { cap.textContent = coverCaption; cap.style.display = ''; }
+  else              { cap.textContent = '';            cap.style.display = 'none'; }
 }
 function renderOgPreview() {
   const preview = document.getElementById('ogPreview');
@@ -726,6 +823,8 @@ function signUrl(path) {
 window.saveDraft = async function() {
   const title = document.getElementById('title').value.trim();
   const type = document.getElementById('type').value;
+  const subtitle = document.getElementById('subtitle').value.trim();
+  const coverCaption = document.getElementById('coverCaption').value.trim();
   const metaDesc = document.getElementById('metaDesc').value.trim();
   const contentHtml = editor.getHTML();
 
@@ -733,6 +832,8 @@ window.saveDraft = async function() {
   let payload = {
     title: title || 'Sin título',
     type,
+    subtitle: subtitle || null,
+    cover_caption: coverCaption || null,
     content_html: contentHtml,
     cover_image_url: coverUrl,
     meta_description: metaDesc || null,

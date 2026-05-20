@@ -462,47 +462,71 @@
  * generado por la Edge Function /api/revista/[seccion]/[slug])
  * ============================================================ */
 
-/* Hero full-width con título grande y overlay gradient */
-.article-hero {
-  width: 100%;
-  height: 70vh;
-  min-height: 500px;
-  background-size: cover;
-  background-position: center;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-}
-.article-hero-overlay {
-  width: 100%;
-  background: linear-gradient(transparent, rgba(0,0,0,0.7));
-  padding: 80px 40px 40px;
-  color: #fff;
-}
-.article-hero-overlay h1 {
-  max-width: 1400px;
+/* Cabecera editorial estilo AD: bloque centrado sobre fondo blanco con
+   eyebrow + título serif + subtítulo + byline + figura de portada con
+   pie de foto. Reemplaza el hero con background-image + overlay anterior. */
+.article-header {
+  max-width: 960px;
   margin: 0 auto;
-  font-size: 48px;
+  padding: 64px 40px 0;
+  text-align: center;
+}
+.article-eyebrow {
+  font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.15;
-}
-.breadcrumb-link {
-  display: block;
-  max-width: 1400px;
-  width: 100%;
-  margin: 0 auto 16px auto;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 13px;
-  color: rgba(255,255,255,0.8);
-  text-decoration: none;
+  color: var(--rv-ink-mute, #888);
+  margin: 0 0 1.25rem;
 }
-.breadcrumb-link:hover { color: #fff; }
-.article-hero-overlay .article-author {
-  max-width: 1400px;
-  margin: 16px auto 0 auto;
+.article-title {
+  font-family: var(--rv-serif, 'Cormorant Garamond', Georgia, serif);
+  font-size: clamp(34px, 5vw, 56px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--rv-ink, #1a1a1a);
+  margin: 0 0 1.1rem;
+}
+.article-subtitle {
+  font-family: var(--rv-serif, 'Cormorant Garamond', Georgia, serif);
+  font-size: clamp(19px, 2.2vw, 26px);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--rv-ink-soft, #555);
+  margin: 0 auto 1.6rem;
+  max-width: 760px;
+}
+.article-byline {
+  font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
   font-size: 14px;
-  color: rgba(255,255,255,0.85);
+  font-weight: 400;
+  color: var(--rv-ink-soft, #555);
+  margin: 0 0 2.5rem;
+  letter-spacing: 0.01em;
+}
+.article-byline .article-date {
+  color: var(--rv-ink-mute, #888);
+}
+.article-cover {
+  margin: 0 auto;
+  width: 100%;
+}
+.article-cover img {
+  display: block;
+  width: 100%;
+  height: auto; /* proporción natural, sin recorte */
+}
+.article-cover figcaption {
+  font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--rv-ink-mute, #888);
+  text-align: left;
+  margin: 0.55rem 0 0;
+  letter-spacing: 0.01em;
 }
 
 /* Layout 2 columnas del artículo */
@@ -655,9 +679,11 @@
 
 /* Responsive: mobile/tablet, una sola columna */
 @media (max-width: 968px) {
-  .article-hero { height: 50vh; min-height: 360px; }
-  .article-hero-overlay { padding: 60px 24px 24px; }
-  .article-hero-overlay h1 { font-size: 32px; }
+  .article-header {
+    padding: 40px 24px 0;
+  }
+  .article-byline { margin-bottom: 2rem; }
+  .article-cover figcaption { font-size: 12px; }
   .article-layout {
     grid-template-columns: 1fr;
     padding: 40px 24px;

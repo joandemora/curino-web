@@ -31,6 +31,21 @@ const SECTION_TITLES = {
   entrevistas: 'Entrevistas'
 };
 
+// Mapeo type (singular, como en magazine_articles.type) → label en mayúsculas
+// para el eyebrow editorial sobre el título. Cubre los 5 tipos originales del
+// check constraint + los 2 añadidos por el generador IA (reportaje, tendencia).
+// Mantenido estático aquí (en vez de joinear con magazine_article_types) por
+// simplicidad y para no añadir queries al SSR.
+const TYPE_LABELS = {
+  proyecto: 'PROYECTO',
+  material: 'MATERIAL',
+  articulo: 'ARTÍCULO',
+  noticia: 'NOTICIA',
+  entrevista: 'ENTREVISTA',
+  reportaje: 'REPORTAJE',
+  tendencia: 'TENDENCIA'
+};
+
 export default async function handler(request) {
   const url = new URL(request.url);
   const parts = url.pathname.split('/').filter(Boolean);
@@ -174,14 +189,17 @@ function buildArticleHtml(article, seccion, related) {
   const description = article.meta_description || article.title;
   const canonical = `https://casacurino.com/revista/${seccion}/${article.slug}/`;
   // og:image: 1200x630 cover (estándar de redes sociales).
-  // cover (hero CSS background): 1600 wide (full-width hero).
+  // cover (banner editorial dentro de la cabecera): 1600 wide, proporción natural.
   // Original sin tocar para Schema.org Article (Google prefiere alta resolución).
   const rawOgImage = article.og_image_url || article.cover_image_url || 'https://casacurino.com/assets/imagenes/logo-curino.svg';
   const ogImage = transformImageUrl(rawOgImage, { width: 1200, height: 630, resize: 'cover', quality: 85 });
   const rawCover = article.cover_image_url || '';
   const cover = transformImageUrl(rawCover, { width: 1600, quality: 85 });
-  const publishedAt = article.published_at || article.created_at;
-  const dateLabel = publishedAt ? new Date(publishedAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const publishedAt = article.published_at || article.created_at || new Date().toISOString();
+  const dateLabel = new Date(publishedAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  const typeLabel = TYPE_LABELS[article.type] || (article.type || '').toUpperCase();
+  const subtitle = (article.subtitle || '').trim();
+  const coverCaption = (article.cover_caption || '').trim();
 
   const jsonLd = JSON.stringify({
     '@context': 'https://schema.org',
@@ -242,12 +260,15 @@ ${publishedAt ? `<meta property="article:published_time" content="${escapeHtml(p
 <div id="rv-nav-mount"></div>
 
 <article class="magazine-article">
-  <header class="article-hero"${cover ? ` style="background-image:url('${escapeAttr(cover)}')"` : ''}>
-    <div class="article-hero-overlay">
-      <a href="/revista/${seccion}/" class="breadcrumb-link">${escapeHtml(sectionTitle)}</a>
-      <h1>${escapeHtml(article.title)}</h1>
-      <p class="article-author">Por ${escapeHtml(author)}${dateLabel ? ' · ' + escapeHtml(dateLabel) : ''}</p>
-    </div>
+  <header class="article-header">
+    <p class="article-eyebrow">${escapeHtml(typeLabel)}</p>
+    <h1 class="article-title">${escapeHtml(article.title)}</h1>
+    ${subtitle ? `<p class="article-subtitle">${escapeHtml(subtitle)}</p>` : ''}
+    <p class="article-byline">Por ${escapeHtml(author)} · <span class="article-date">${escapeHtml(dateLabel)}</span></p>
+    ${cover ? `<figure class="article-cover">
+      <img src="${escapeAttr(cover)}" alt="${escapeAttr(article.title)}">
+      ${coverCaption ? `<figcaption>${escapeHtml(coverCaption)}</figcaption>` : ''}
+    </figure>` : ''}
   </header>
 
   <div class="article-layout">
