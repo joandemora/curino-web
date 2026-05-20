@@ -462,14 +462,19 @@
  * generado por la Edge Function /api/revista/[seccion]/[slug])
  * ============================================================ */
 
-/* Cabecera editorial estilo AD: bloque centrado sobre fondo blanco con
-   eyebrow + título serif + subtítulo + byline + figura de portada con
-   pie de foto. Reemplaza el hero con background-image + overlay anterior. */
+/* Cabecera editorial estilo AD: bloque sobre fondo blanco con eyebrow +
+   título serif + subtítulo + byline + figura de portada con pie de foto.
+   Reemplaza el hero con background-image + overlay anterior.
+   El TEXTO va centrado en columna estrecha (~960px) para lectura cómoda.
+   La IMAGEN de portada se expande a un wrapper más ancho (~1300px) tipo
+   banner editorial. Ambos contenedores centrados respecto al viewport. */
 .article-header {
-  max-width: 960px;
-  margin: 0 auto;
   padding: 64px 40px 0;
   text-align: center;
+}
+.article-header-text {
+  max-width: 960px;
+  margin: 0 auto;
 }
 .article-eyebrow {
   font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
@@ -511,6 +516,7 @@
   color: var(--rv-ink-mute, #888);
 }
 .article-cover {
+  max-width: 1300px;
   margin: 0 auto;
   width: 100%;
 }

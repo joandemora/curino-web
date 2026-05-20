@@ -261,10 +261,12 @@ ${publishedAt ? `<meta property="article:published_time" content="${escapeHtml(p
 
 <article class="magazine-article">
   <header class="article-header">
-    <p class="article-eyebrow">${escapeHtml(typeLabel)}</p>
-    <h1 class="article-title">${escapeHtml(article.title)}</h1>
-    ${subtitle ? `<p class="article-subtitle">${escapeHtml(subtitle)}</p>` : ''}
-    <p class="article-byline">Por ${escapeHtml(author)} · <span class="article-date">${escapeHtml(dateLabel)}</span></p>
+    <div class="article-header-text">
+      <p class="article-eyebrow">${escapeHtml(typeLabel)}</p>
+      <h1 class="article-title">${escapeHtml(article.title)}</h1>
+      ${subtitle ? `<p class="article-subtitle">${escapeHtml(subtitle)}</p>` : ''}
+      <p class="article-byline">Por ${escapeHtml(author)} · <span class="article-date">${escapeHtml(dateLabel)}</span></p>
+    </div>
     ${cover ? `<figure class="article-cover">
       <img src="${escapeAttr(cover)}" alt="${escapeAttr(article.title)}">
       ${coverCaption ? `<figcaption>${escapeHtml(coverCaption)}</figcaption>` : ''}
