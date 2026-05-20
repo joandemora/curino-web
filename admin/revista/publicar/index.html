@@ -132,6 +132,14 @@ body.with-ai-panel .e-wrap{margin-right:calc(360px + 32px);max-width:none}
 .ai-insert-btn:disabled{opacity:.35;cursor:not-allowed;background:#fff;color:var(--ink-mute);border-color:var(--line)}
 .ai-insert-btn:not(:disabled):hover{background:var(--coral);border-color:var(--coral)}
 
+.ai-url-label{display:block;font-size:9.5px;color:var(--ink-mute);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem;margin-top:.15rem}
+.ai-url-input{width:100%;padding:5px 8px;font-size:11.5px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink);font-family:var(--font);margin-bottom:.4rem}
+.ai-url-input:focus{outline:none;border-color:var(--ink)}
+.ai-card-spinner{display:none;margin:.4rem auto 0;width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--coral);border-radius:50%;animation:aispin 1s linear infinite}
+.ai-card-spinner.visible{display:block}
+@keyframes aispin{to{transform:rotate(360deg)}}
+.ai-img-card.busy{opacity:.6;pointer-events:none}
+
 /* Toggle móvil */
 #aiPanelToggle{display:none;align-items:center;gap:.4rem;background:var(--ink);color:#fff;border:none;border-radius:99px;padding:.55rem .9rem;font-size:12px;font-weight:600;cursor:pointer;margin-left:.5rem;font-family:var(--font)}
 #aiPanelToggle .badge{background:var(--coral);color:#fff;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700}
@@ -856,6 +864,14 @@ function renderAiPanel() {
   const pending = aiPendingCount();
   const total = imgs.length;
 
+  // Preservar URLs que el admin haya tipeado en los inputs (si re-render por
+  // cambio de status mientras estaba escribiendo).
+  const typedUrls = {};
+  document.querySelectorAll('.ai-url-input').forEach(function (inp) {
+    const idx = inp.getAttribute('data-index');
+    if (idx != null && typedUrls[idx] == null) typedUrls[idx] = inp.value;
+  });
+
   const countText = total === 0
     ? 'Esta generación no sugirió imágenes.'
     : (pending === 0
@@ -880,6 +896,16 @@ function renderAiPanel() {
     : imgs.map(function (img, i) { return renderAiCard(img, i); }).join('');
   document.getElementById('aiPanelList').innerHTML = html;
   document.getElementById('aiPanelListMobile').innerHTML = html;
+
+  // Restaurar URLs tipeadas en AMBOS contenedores (desktop + mobile).
+  Object.keys(typedUrls).forEach(function (idx) {
+    document.querySelectorAll('.ai-url-input[data-index="' + idx + '"]').forEach(function (inp) {
+      inp.value = typedUrls[idx];
+    });
+  });
+
+  // Recalcular habilitación de botones (depende de status + input no vacío).
+  imgs.forEach(function (_img, i) { onAiUrlInput(i); });
 
   // Actualizar bloqueo del botón Publicar según pending.
   refreshPublishButtonState();
@@ -920,7 +946,11 @@ function renderAiCard(img, index) {
     return '<option value="' + k + '"' + (k === status ? ' selected' : '') + '>' + escapeHtml(AI_STATUS_LABELS[k]) + '</option>';
   }).join('');
 
-  const insertDisabled = status !== 'ok';
+  const urlInitial = img.image_url || '';
+  // El botón "Descargar e insertar" se habilita cuando status='ok' Y hay URL.
+  // El render inicial deja calculado el estado; onAiUrlInput lo refina si el
+  // admin escribe/borra después.
+  const btnDisabled = (status !== 'ok') || !urlInitial;
 
   return ''
     + '<div class="ai-img-card" data-index="' + index + '">'
@@ -929,10 +959,28 @@ function renderAiCard(img, index) {
     +   attr
     +   '<div class="ai-img-actions">'
     +     '<select class="ai-status-select" data-current="' + escapeAttr(status) + '" onchange="onAiStatusChange(' + index + ', this.value)">' + opts + '</select>'
-    +     '<button type="button" class="ai-insert-btn" ' + (insertDisabled ? 'disabled' : '') + ' onclick="insertAiImage(' + index + ')">Insertar en artículo</button>'
+    +     '<label class="ai-url-label" for="ai-url-' + index + '">URL de la imagen (revisada por ti)</label>'
+    +     '<input type="url" class="ai-url-input" data-index="' + index + '" value="' + escapeAttr(urlInitial) + '" placeholder="https://…" oninput="onAiUrlInput(' + index + ')">'
+    +     '<button type="button" class="ai-insert-btn" data-index="' + index + '" ' + (btnDisabled ? 'disabled' : '') + ' onclick="downloadAndInsertAiImage(' + index + ')">Descargar e insertar</button>'
+    +     '<div class="ai-card-spinner" data-index="' + index + '"></div>'
     +   '</div>'
     + '</div>';
 }
+
+// Habilita/deshabilita el botón "Descargar e insertar" en función de la URL
+// tipeada y el status actual. Se llama desde el oninput del input URL y
+// desde renderAiPanel tras restaurar valores.
+window.onAiUrlInput = function (index) {
+  const cards = document.querySelectorAll('.ai-img-card[data-index="' + index + '"]');
+  cards.forEach(function (card) {
+    const input = card.querySelector('.ai-url-input');
+    const btn = card.querySelector('.ai-insert-btn');
+    const sel = card.querySelector('.ai-status-select');
+    if (!input || !btn || !sel) return;
+    const has = input.value.trim().length > 0;
+    btn.disabled = !(sel.value === 'ok' && has);
+  });
+};
 
 window.onAiStatusChange = async function (index, newStatus) {
   if (!currentArticle || !articleId) return;
@@ -974,22 +1022,100 @@ window.onAiStatusChange = async function (index, newStatus) {
   }
 };
 
-window.insertAiImage = function (index) {
+// Descarga la imagen desde la URL que el admin ha pegado/validado, la sube
+// al bucket magazine-articles vía endpoint server (service_role) y la
+// inserta en el editor TipTap con atribución completa. Si el status no
+// estaba ya en 'ok', lo persiste automáticamente.
+window.downloadAndInsertAiImage = async function (index) {
+  if (!currentArticle || !articleId) return;
   const img = (aiImageList())[index];
   if (!img) return;
-  if (!img.image_url) {
-    alert('Esta imagen no tiene URL directa. Debes localizarla manualmente, descargarla y subirla al artículo desde el botón "🖼 Imagen" de la toolbar.');
+
+  // Tomar la URL del input (puede haber sido editada por el admin) desde
+  // cualquiera de las dos cards (desktop / mobile) — coinciden.
+  const card = document.querySelector('.ai-img-card[data-index="' + index + '"]');
+  if (!card) return;
+  const input = card.querySelector('.ai-url-input');
+  const url = (input && input.value || '').trim();
+  if (!url) { showToast('Pega la URL de la imagen antes de insertarla.', 'error'); return; }
+  if (!/^https?:\/\//i.test(url)) {
+    showToast('La URL debe empezar por http:// o https://.', 'error');
     return;
   }
+  // Aviso suave si la extensión no parece imagen; el endpoint validará por
+  // Content-Type, así que no bloqueamos aquí.
+  if (!/\.(jpe?g|png|webp|avif)(\?|$)/i.test(url)) {
+    if (!confirm('La URL no termina en una extensión de imagen reconocida (.jpg, .png, .webp, .avif). El servidor verificará el Content-Type. ¿Continuar?')) {
+      return;
+    }
+  }
+
+  // Bloquear UI de TODAS las cards de este índice (desktop + mobile).
+  const allCards = document.querySelectorAll('.ai-img-card[data-index="' + index + '"]');
+  allCards.forEach(function (c) {
+    c.classList.add('busy');
+    const sp = c.querySelector('.ai-card-spinner');
+    if (sp) sp.classList.add('visible');
+  });
+
+  let publicUrl = null;
+  try {
+    const s = await supa.auth.getSession();
+    const r = await fetch('/api/admin/download-insert-image', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + s.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ article_id: articleId, image_index: index, image_url: url })
+    });
+    const data = await r.json().catch(function () { return null; });
+    if (!r.ok || !data || !data.public_url) {
+      const detail = data && (data.detail || data.error) ? (data.detail || data.error) : ('HTTP ' + r.status);
+      showToast('Error al descargar imagen: ' + detail, 'error');
+      allCards.forEach(function (c) {
+        c.classList.remove('busy');
+        const sp = c.querySelector('.ai-card-spinner');
+        if (sp) sp.classList.remove('visible');
+      });
+      return;
+    }
+    publicUrl = data.public_url;
+  } catch (e) {
+    console.error('downloadAndInsertAiImage', e);
+    showToast('Error de red al descargar imagen', 'error');
+    allCards.forEach(function (c) {
+      c.classList.remove('busy');
+      const sp = c.querySelector('.ai-card-spinner');
+      if (sp) sp.classList.remove('visible');
+    });
+    return;
+  }
+
+  // Insertar en TipTap con atribución (descripción del modelo, fotógrafo,
+  // estudio, fuente). El SSR aplicará width=1200&quality=85 automáticamente
+  // al servir el artículo público (no transformamos nosotros).
   const caption = aiBuildCaption(img);
   const altText = (img.description || img.author_studio || 'Imagen sugerida por IA').slice(0, 200);
   const figureHtml = ''
     + '<figure>'
-    +   '<img src="' + escapeAttr(img.image_url) + '" alt="' + escapeAttr(altText) + '">'
+    +   '<img src="' + escapeAttr(publicUrl) + '" alt="' + escapeAttr(altText) + '">'
     +   '<figcaption>' + caption + '</figcaption>'
     + '</figure>';
   editor.chain().focus().insertContent(figureHtml).run();
-  showToast('Imagen insertada en el artículo', 'success');
+
+  // Asegurar review_status='ok' si no lo estaba ya (defensa de UX —el botón
+  // sólo se habilita con status=ok, pero por si acaso).
+  if (aiSafeStatus(img.review_status) !== 'ok') {
+    try { await window.onAiStatusChange(index, 'ok'); } catch (_e) { /* noop */ }
+  }
+
+  allCards.forEach(function (c) {
+    c.classList.remove('busy');
+    const sp = c.querySelector('.ai-card-spinner');
+    if (sp) sp.classList.remove('visible');
+  });
+  showToast('Imagen descargada e insertada en el artículo', 'success');
 };
 
 function aiBuildCaption(img) {
@@ -1004,7 +1130,7 @@ function aiBuildCaption(img) {
   if (img.source_url) {
     parts.push('<a href="' + escapeAttr(img.source_url) + '" target="_blank" rel="noopener">Fuente</a>');
   }
-  return parts.length > 0 ? parts.join('. ') + '.' : 'Atribución pendiente.';
+  return parts.length > 0 ? parts.join(' · ') : 'Atribución pendiente.';
 }
 
 function refreshPublishButtonState() {
