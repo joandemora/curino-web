@@ -522,11 +522,10 @@
 }
 .article-cover img {
   display: block;
-  width: 100%;
-  height: auto;          /* proporción natural, sin recorte */
-  max-height: 70vh;      /* tope vertical: fotos verticales no comen viewport */
-  object-fit: contain;   /* si la altura se trunca, la imagen sale entera con aire a los lados */
-  margin: 0 auto;        /* centrada por si object-fit deja aire lateral */
+  width: 100%;           /* usa todo el ancho del wrapper hasta 1300px */
+  height: auto;          /* proporción natural */
+  max-height: 80vh;      /* tope vertical: solo fotos muy verticales se topan */
+  margin: 0 auto;        /* si la altura tope reduce el ancho, queda centrada */
 }
 .article-cover figcaption {
   font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
