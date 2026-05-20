@@ -333,6 +333,45 @@ import Underline from 'https://esm.sh/@tiptap/extension-underline@2.6.6'
 import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2.6.6'
 import { Node, mergeAttributes } from 'https://esm.sh/@tiptap/core@2.6.6'
 
+// Nodos custom Figure + Figcaption.
+//
+// TipTap StarterKit no incluye figure/figcaption, y sin estos nodos
+// definidos en el schema, ProseMirror descarta esas etiquetas al
+// parsear/serializar — el caption queda aplanado como <p> hermano
+// del <img>, y los enlaces dentro del caption heredan el coral del
+// cuerpo en lugar del negro del figcaption.
+//
+// Defino dos nodos minimalistas que conservan exactamente la estructura
+// <figure><img><figcaption>...</figcaption></figure> al guardar.
+// El nodo Figure exige un nodo image como primer hijo (de la extensión
+// Image ya cargada) + opcionalmente un figcaption.
+const Figure = Node.create({
+  name: 'figure',
+  group: 'block',
+  content: 'image figcaption?',
+  defining: true,
+  isolating: true,
+  draggable: true,
+  parseHTML() {
+    return [{ tag: 'figure' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['figure', mergeAttributes(HTMLAttributes), 0];
+  }
+});
+
+const Figcaption = Node.create({
+  name: 'figcaption',
+  content: 'inline*',
+  defining: true,
+  parseHTML() {
+    return [{ tag: 'figcaption' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['figcaption', mergeAttributes(HTMLAttributes), 0];
+  }
+});
+
 // Custom embed para YouTube + Vimeo (iframe genérico).
 const VideoEmbed = Node.create({
   name: 'videoEmbed',
@@ -578,6 +617,10 @@ function initEditor() {
       }),
       Underline,
       Image.configure({ inline: false, allowBase64: false }),
+      // Figure y Figcaption deben ir DESPUÉS de Image porque Figure
+      // referencia el nodo image en su content schema.
+      Figure,
+      Figcaption,
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
       Placeholder.configure({ placeholder: 'Empieza a escribir tu artículo…' }),
       VideoEmbed
