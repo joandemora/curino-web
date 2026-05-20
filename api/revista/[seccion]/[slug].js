@@ -188,13 +188,20 @@ function buildArticleHtml(article, seccion, related) {
   const author = ((article.author_first_name || '') + ' ' + (article.author_last_name || '')).trim() || 'Curino';
   const description = article.meta_description || article.title;
   const canonical = `https://casacurino.com/revista/${seccion}/${article.slug}/`;
-  // og:image: 1200x630 cover (estándar de redes sociales).
-  // cover (banner editorial dentro de la cabecera): 1600 wide, proporción natural.
+  // og:image: 1200x630 cover (estándar de redes sociales). Aquí pedimos
+  // width+height+resize=cover, que recorta al box exacto — no deforma.
   // Original sin tocar para Schema.org Article (Google prefiere alta resolución).
   const rawOgImage = article.og_image_url || article.cover_image_url || 'https://casacurino.com/assets/imagenes/logo-curino.svg';
   const ogImage = transformImageUrl(rawOgImage, { width: 1200, height: 630, resize: 'cover', quality: 85 });
   const rawCover = article.cover_image_url || '';
-  const cover = transformImageUrl(rawCover, { width: 1600, quality: 85 });
+  // Portada: servimos el objeto ORIGINAL del bucket sin pasar por Image
+  // Transformations. La transformación ?width=1600 sobre algunos WebP
+  // devuelve la imagen aplastada horizontalmente (no recalcula el alto
+  // proporcional), p.ej. un 2240×1493 (ratio 3:2) sale 1600×1493 (ratio
+  // 1.07, casi cuadrada). Sirviendo el objeto original (puede ser webp
+  // grande) evitamos el bug; el CSS de .article-cover img controla el
+  // ancho/alto rendrizado.
+  const cover = rawCover;
   const publishedAt = article.published_at || article.created_at || new Date().toISOString();
   const dateLabel = new Date(publishedAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
   const typeLabel = TYPE_LABELS[article.type] || (article.type || '').toUpperCase();
