@@ -495,14 +495,14 @@
   margin: 0 0 1.1rem;
 }
 .article-subtitle {
-  font-family: var(--rv-serif, 'Cormorant Garamond', Georgia, serif);
-  font-size: clamp(19px, 2.2vw, 26px);
+  font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
+  font-size: clamp(15px, 1.4vw, 18px);
   font-weight: 400;
-  font-style: italic;
-  line-height: 1.4;
+  line-height: 1.5;
   color: var(--rv-ink-soft, #555);
   margin: 0 auto 1.6rem;
-  max-width: 760px;
+  max-width: 720px;
+  letter-spacing: 0.01em;
 }
 .article-byline {
   font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
@@ -523,7 +523,10 @@
 .article-cover img {
   display: block;
   width: 100%;
-  height: auto; /* proporción natural, sin recorte */
+  height: auto;          /* proporción natural, sin recorte */
+  max-height: 70vh;      /* tope vertical: fotos verticales no comen viewport */
+  object-fit: contain;   /* si la altura se trunca, la imagen sale entera con aire a los lados */
+  margin: 0 auto;        /* centrada por si object-fit deja aire lateral */
 }
 .article-cover figcaption {
   font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
