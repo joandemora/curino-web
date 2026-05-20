@@ -529,10 +529,19 @@
   font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
   font-size: 12.5px;
   line-height: 1.45;
-  color: var(--rv-ink-mute, #888);
+  color: var(--rv-ink, #1a1a1a);
   text-align: left;
-  margin: 0.55rem 0 0;
+  margin: 0.45rem 0 0;
   letter-spacing: 0.01em;
+}
+.article-cover figcaption a {
+  color: var(--rv-ink, #1a1a1a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.article-cover figcaption a:hover {
+  color: var(--rv-ink-soft, #555);
 }
 
 /* Layout 2 columnas del artículo */
@@ -593,6 +602,34 @@
   border-radius: 6px;
   aspect-ratio: auto;
   border: none;
+}
+/* Figuras inline del cuerpo (<figure><img><figcaption>): el flujo IA y
+   futuras inserciones manuales con figure-caption. El figure absorbe el
+   margin externo y el img dentro pega con su caption sin separación. */
+.article-body figure {
+  margin: 2em 0;
+}
+.article-body figure img {
+  margin: 0;
+  display: block;
+}
+.article-body figcaption {
+  font-family: var(--rv-sans, 'Open Sans', system-ui, sans-serif);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--rv-ink, #1a1a1a);
+  text-align: left;
+  margin: 0.45rem 0 0;
+  letter-spacing: 0.01em;
+}
+.article-body figcaption a {
+  color: var(--rv-ink, #1a1a1a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.article-body figcaption a:hover {
+  color: var(--rv-ink-soft, #555);
 }
 .article-body ul,
 .article-body ol {
