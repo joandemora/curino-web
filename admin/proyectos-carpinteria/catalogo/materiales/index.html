@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carpintería — Materiales</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+.cp-hero{margin-bottom:1.25rem}
+.cp-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.cp-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+.cp-tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.cp-tab{padding:.7rem 1.1rem;font-size:13px;font-weight:600;color:var(--mid);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font)}
+.cp-tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+.cp-section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem}
+.cp-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.cp-toolbar h2{font-size:15px;font-weight:600}
+.cp-btn{padding:.5rem 1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;background:var(--ink);color:#fff}
+.cp-btn:hover{background:#333}
+.cp-btn-small{padding:.35rem .7rem;font-size:11.5px}
+.cp-btn-outline{background:#fff;color:var(--ink);border-color:var(--border)}
+.cp-btn-outline:hover{border-color:var(--ink)}
+.cp-btn-danger{background:#fff;color:#a83232;border-color:#f0bcbc}
+.cp-btn-danger:hover{background:#fde8e8}
+.cp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cp-table th{text-align:left;padding:.55rem .7rem;font-size:10px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.cp-table td{padding:.55rem .7rem;border-top:1px solid var(--border);vertical-align:middle}
+.cp-table .col-num{text-align:right;font-variant-numeric:tabular-nums}
+.cp-table .col-actions{white-space:nowrap;text-align:right}
+.cp-row{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+.cp-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.cp-field{margin-bottom:.65rem}
+.cp-field label{display:block;font-size:10.5px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:.2rem}
+.cp-input,.cp-select{width:100%;padding:.4rem .55rem;font-size:13px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--font);color:var(--ink)}
+.cp-input:focus,.cp-select:focus{outline:none;border-color:var(--ink)}
+.cp-form{background:#fdfcf8;border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin:.5rem 0}
+.cp-form h3{font-size:13px;font-weight:600;margin-bottom:.7rem}
+.cp-form-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
+.cp-empty{text-align:center;padding:2rem;color:var(--mid);font-size:13px}
+.cp-sizes{margin-left:1.5rem;background:#fdfcf8;border-left:3px solid var(--border);padding:.5rem .75rem;font-size:12px;margin-top:.3rem}
+.cp-sizes-row{display:flex;align-items:center;gap:.5rem;padding:.25rem 0}
+.cp-sizes-row input{padding:.25rem .4rem;font-size:12px;width:90px}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="cp-hero">
+    <h1>Materiales</h1>
+    <p>Catálogo de tableros y cantos. Costes para presupuesto interno + PVP opcional con override.</p>
+  </div>
+
+  <div class="cp-tabs">
+    <button type="button" class="cp-tab active" data-type="panel">Tableros</button>
+    <button type="button" class="cp-tab" data-type="edge_band">Cantos</button>
+  </div>
+
+  <div class="cp-section">
+    <div class="cp-toolbar">
+      <h2 id="listTitle">Tableros</h2>
+      <button class="cp-btn" type="button" id="btnNew">+ Nuevo</button>
+    </div>
+    <div id="formMount"></div>
+    <div id="listMount"></div>
+  </div>
+</main>
+<div class="ash-toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-data.js"></script>
+<script>
+var currentType = 'panel';
+var items = [];
+var editingId = null;
+var sizesEditingFor = null; // material_id
+
+initAdminShell({ activeSection: 'carpinteria-materiales', title: 'Materiales — Carpintería' }).then(async function () {
+  document.querySelectorAll('.cp-tab').forEach(function (t) {
+    t.addEventListener('click', function () { setTab(t.dataset.type); });
+  });
+  document.getElementById('btnNew').addEventListener('click', openNewForm);
+  await loadList();
+}).catch(function () {});
+
+function setTab(type) {
+  currentType = type;
+  document.querySelectorAll('.cp-tab').forEach(function (t) {
+    t.classList.toggle('active', t.dataset.type === type);
+  });
+  document.getElementById('listTitle').textContent = type === 'panel' ? 'Tableros' : 'Cantos';
+  document.getElementById('formMount').innerHTML = '';
+  editingId = null; sizesEditingFor = null;
+  loadList();
+}
+
+async function loadList() {
+  var r = await CpData.listMaterials({ type: currentType, activeOnly: false });
+  if (r.error) { document.getElementById('listMount').innerHTML = err(r.error); return; }
+  items = r.data || [];
+  renderList();
+}
+
+function renderList() {
+  var mount = document.getElementById('listMount');
+  if (!items.length) {
+    mount.innerHTML = '<div class="cp-empty">No hay ' + (currentType === 'panel' ? 'tableros' : 'cantos') + '. Pulsa "Nuevo" para empezar.</div>';
+    return;
+  }
+  var headerColsPanel  = '<th>Nombre</th><th>Categoría</th><th>Espesor</th><th class="col-num">Coste €/m²</th><th class="col-num">PVP €/m²</th><th>Veta</th><th>Activo</th><th></th>';
+  var headerColsEdge   = '<th>Nombre</th><th>Categoría</th><th>Espesor</th><th class="col-num">Coste €/ml</th><th class="col-num">PVP €/ml</th><th>Activo</th><th></th>';
+  var headerCols = currentType === 'panel' ? headerColsPanel : headerColsEdge;
+  var rows = items.map(function (m) {
+    var actions = ''
+      + '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="openEdit(\'' + m.id + '\')">Editar</button> '
+      + (currentType === 'panel' ? '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="toggleSizes(\'' + m.id + '\')">Formatos</button> ' : '')
+      + '<button class="cp-btn cp-btn-danger cp-btn-small" type="button" onclick="del(\'' + m.id + '\', \'' + esc(m.name) + '\')">Eliminar</button>';
+    var common = '<td><strong>' + esc(m.name) + '</strong>' + (m.reference ? ' <span style="color:#888;font-size:11px">' + esc(m.reference) + '</span>' : '') + '</td>'
+      + '<td style="font-size:12px;color:#555">' + esc(m.category || '—') + '</td>'
+      + '<td class="col-num">' + Number(m.thickness_mm).toFixed(1) + ' mm</td>';
+    var sale, costo, vetaOrActivo;
+    if (currentType === 'panel') {
+      costo = num(m.cost_per_m2_eur);
+      sale  = m.sale_per_m2_eur != null ? num(m.sale_per_m2_eur) + ' <span style="color:#cc785c">·ovrd</span>' : '<span style="color:#888">margen</span>';
+      vetaOrActivo = '<td style="font-size:12px;color:#555">' + esc(m.grain_direction) + '</td>'
+        + '<td style="font-size:12px">' + (m.active ? '✓' : '<span style="color:#a83232">✗</span>') + '</td>';
+    } else {
+      costo = num(m.cost_per_ml_eur);
+      sale  = m.sale_per_ml_eur != null ? num(m.sale_per_ml_eur) + ' <span style="color:#cc785c">·ovrd</span>' : '<span style="color:#888">margen</span>';
+      vetaOrActivo = '<td style="font-size:12px">' + (m.active ? '✓' : '<span style="color:#a83232">✗</span>') + '</td>';
+    }
+    var row = '<tr data-id="' + m.id + '">' + common
+      + '<td class="col-num">' + costo + '</td>'
+      + '<td class="col-num">' + sale + '</td>'
+      + vetaOrActivo
+      + '<td class="col-actions">' + actions + '</td></tr>';
+    if (currentType === 'panel' && sizesEditingFor === m.id) {
+      row += '<tr><td colspan="8"><div id="sizesMount-' + m.id + '"></div></td></tr>';
+    }
+    return row;
+  }).join('');
+  mount.innerHTML = '<table class="cp-table"><thead><tr>' + headerCols + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  if (currentType === 'panel' && sizesEditingFor) renderSizes(sizesEditingFor);
+}
+
+function openNewForm() {
+  editingId = null;
+  renderForm({});
+}
+window.openEdit = function (id) {
+  var m = items.find(function (x) { return x.id === id; });
+  if (!m) return;
+  editingId = id;
+  renderForm(m);
+};
+
+function renderForm(m) {
+  var panelFields = ''
+    + '<div class="cp-row-3">'
+    +   '<div class="cp-field"><label>Coste €/m² <span style="color:#a83232">*</span></label><input class="cp-input" id="m-cost-m2" type="number" step="0.001" min="0" value="' + (m.cost_per_m2_eur != null ? m.cost_per_m2_eur : '') + '"></div>'
+    +   '<div class="cp-field"><label>PVP €/m² (override)</label><input class="cp-input" id="m-sale-m2" type="number" step="0.001" min="0" value="' + (m.sale_per_m2_eur != null ? m.sale_per_m2_eur : '') + '" placeholder="vacío = margen del proyecto"></div>'
+    +   '<div class="cp-field"><label>Veta</label><select class="cp-select" id="m-grain"><option value="none"' + (m.grain_direction==='none'?' selected':'') + '>Sin veta</option><option value="long"' + (m.grain_direction==='long'?' selected':'') + '>Larga</option><option value="short"' + (m.grain_direction==='short'?' selected':'') + '>Corta</option></select></div>'
+    + '</div>';
+  var edgeFields = ''
+    + '<div class="cp-row">'
+    +   '<div class="cp-field"><label>Coste €/ml <span style="color:#a83232">*</span></label><input class="cp-input" id="m-cost-ml" type="number" step="0.001" min="0" value="' + (m.cost_per_ml_eur != null ? m.cost_per_ml_eur : '') + '"></div>'
+    +   '<div class="cp-field"><label>PVP €/ml (override)</label><input class="cp-input" id="m-sale-ml" type="number" step="0.001" min="0" value="' + (m.sale_per_ml_eur != null ? m.sale_per_ml_eur : '') + '" placeholder="vacío = margen del proyecto"></div>'
+    + '</div>';
+  var fields = currentType === 'panel' ? panelFields : edgeFields;
+  document.getElementById('formMount').innerHTML = ''
+    + '<div class="cp-form">'
+    +   '<h3>' + (editingId ? 'Editar' : 'Nuevo') + ' ' + (currentType === 'panel' ? 'tablero' : 'canto') + '</h3>'
+    +   '<div class="cp-row">'
+    +     '<div class="cp-field"><label>Nombre <span style="color:#a83232">*</span></label><input class="cp-input" id="m-name" type="text" value="' + esc(m.name || '') + '"></div>'
+    +     '<div class="cp-field"><label>Referencia</label><input class="cp-input" id="m-ref" type="text" value="' + esc(m.reference || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Categoría</label><input class="cp-input" id="m-cat" type="text" value="' + esc(m.category || '') + '" placeholder="melamina, mdf, pvc…"></div>'
+    +     '<div class="cp-field"><label>Espesor (mm) <span style="color:#a83232">*</span></label><input class="cp-input" id="m-thick" type="number" step="0.1" min="0" value="' + (m.thickness_mm != null ? m.thickness_mm : '') + '"></div>'
+    +     '<div class="cp-field"><label>Proveedor</label><input class="cp-input" id="m-sup" type="text" value="' + esc(m.supplier || '') + '"></div>'
+    +   '</div>'
+    +   fields
+    +   '<div class="cp-field"><label>Notas</label><input class="cp-input" id="m-notes" type="text" value="' + esc(m.notes || '') + '"></div>'
+    +   '<div class="cp-field"><label><input type="checkbox" id="m-active" ' + (m.active === false ? '' : 'checked') + '> Activo</label></div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="closeForm()">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="save()">' + (editingId ? 'Guardar' : 'Crear') + '</button>'
+    +   '</div>'
+    + '</div>';
+}
+
+window.closeForm = function () { document.getElementById('formMount').innerHTML = ''; editingId = null; };
+
+window.save = async function () {
+  var payload = {
+    name: val('m-name').trim(),
+    type: currentType,
+    category: val('m-cat').trim() || null,
+    reference: val('m-ref').trim() || null,
+    thickness_mm: Number(val('m-thick')),
+    supplier: val('m-sup').trim() || null,
+    notes: val('m-notes').trim() || null,
+    active: document.getElementById('m-active').checked
+  };
+  if (currentType === 'panel') {
+    payload.cost_per_m2_eur = Number(val('m-cost-m2'));
+    payload.sale_per_m2_eur = val('m-sale-m2') === '' ? null : Number(val('m-sale-m2'));
+    payload.grain_direction = val('m-grain');
+  } else {
+    payload.cost_per_ml_eur = Number(val('m-cost-ml'));
+    payload.sale_per_ml_eur = val('m-sale-ml') === '' ? null : Number(val('m-sale-ml'));
+    payload.grain_direction = 'none';
+  }
+  if (!payload.name || !payload.thickness_mm) {
+    showToast('Nombre y espesor son obligatorios', 'error'); return;
+  }
+  try {
+    var r = editingId ? await CpData.updateMaterial(editingId, payload) : await CpData.createMaterial(payload);
+    if (r.error) throw r.error;
+    showToast('Guardado', 'success');
+    closeForm();
+    await loadList();
+  } catch (e) {
+    showToast('Error: ' + (e.message || e), 'error');
+  }
+};
+
+window.del = async function (id, name) {
+  if (!confirm('Eliminar "' + name + '"? Si está usado en algún proyecto, fallará por FK.')) return;
+  try {
+    var r = await CpData.deleteMaterial(id);
+    if (r.error) throw r.error;
+    showToast('Eliminado', 'success');
+    await loadList();
+  } catch (e) {
+    showToast('Error: ' + (e.message || e), 'error');
+  }
+};
+
+// ── Gestión de formatos de tablero ──────────────────────────────
+window.toggleSizes = function (matId) {
+  sizesEditingFor = sizesEditingFor === matId ? null : matId;
+  renderList();
+};
+async function renderSizes(matId) {
+  var mount = document.getElementById('sizesMount-' + matId);
+  if (!mount) return;
+  var r = await CpData.listBoardSizes(matId);
+  if (r.error) { mount.innerHTML = err(r.error); return; }
+  var rows = (r.data || []).map(function (s) {
+    return '<div class="cp-sizes-row">'
+      + '<span>' + s.width_mm + ' × ' + s.height_mm + ' mm</span>'
+      + (s.cost_per_board_eur != null ? '<span style="color:#888">— ' + num(s.cost_per_board_eur) + '€/ud</span>' : '')
+      + '<button class="cp-btn cp-btn-danger cp-btn-small" type="button" onclick="delSize(\'' + s.id + '\', \'' + matId + '\')">Eliminar</button>'
+      + '</div>';
+  }).join('');
+  mount.innerHTML = '<div class="cp-sizes">'
+    + '<strong style="display:block;margin-bottom:.4rem">Formatos de tablero</strong>'
+    + (rows || '<div style="color:#888;font-size:12px">Sin formatos. Añade uno abajo.</div>')
+    + '<div class="cp-sizes-row" style="margin-top:.4rem">'
+    +   '<input type="number" step="0.1" id="nsz-w-' + matId + '" placeholder="Ancho mm">'
+    +   '<input type="number" step="0.1" id="nsz-h-' + matId + '" placeholder="Alto mm">'
+    +   '<input type="number" step="0.01" id="nsz-c-' + matId + '" placeholder="€/tablero (opc)">'
+    +   '<button class="cp-btn cp-btn-small" type="button" onclick="addSize(\'' + matId + '\')">+ Añadir</button>'
+    + '</div>'
+    + '</div>';
+}
+window.addSize = async function (matId) {
+  var w = Number(document.getElementById('nsz-w-' + matId).value);
+  var h = Number(document.getElementById('nsz-h-' + matId).value);
+  var c = document.getElementById('nsz-c-' + matId).value;
+  if (!w || !h) { showToast('Ancho y alto requeridos', 'error'); return; }
+  try {
+    var r = await CpData.createBoardSize({ material_id: matId, width_mm: w, height_mm: h, cost_per_board_eur: c === '' ? null : Number(c) });
+    if (r.error) throw r.error;
+    await renderSizes(matId);
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+window.delSize = async function (id, matId) {
+  if (!confirm('Eliminar formato?')) return;
+  try {
+    var r = await CpData.deleteBoardSize(id);
+    if (r.error) throw r.error;
+    await renderSizes(matId);
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+// ── helpers ─────────────────────────────────────────────────────
+function val(id) { return document.getElementById(id).value; }
+function num(v) { return Number(v).toFixed(2); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+function err(e) { return '<div style="color:#a83232;font-size:13px;padding:1rem">Error: ' + esc(e.message || e) + '</div>'; }
+function showToast(msg, kind) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'ash-toast ' + (kind || '') + ' visible';
+  setTimeout(function () { t.classList.remove('visible'); }, 3500);
+}
+</script>
+</body>
+</html>

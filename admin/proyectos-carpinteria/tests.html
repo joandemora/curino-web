@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tests — Carpintería (cp-bom + cp-budget)</title>
+<style>
+* { box-sizing: border-box }
+body { font-family: 'SF Mono', Menlo, Consolas, monospace; background: #fafaf7; color: #1a1a1a; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+h1 { font-family: 'Open Sans', system-ui, sans-serif; font-size: 22px; font-weight: 600; margin-bottom: .3rem }
+.subtitle { font-family: 'Open Sans', sans-serif; color: #888; font-size: 13px; margin-bottom: 1.5rem }
+.summary { font-family: 'Open Sans', sans-serif; padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 14px; font-weight: 600 }
+.summary.ok { background: #eaf5ee; color: #1d6f3d; border: 1px solid #b8d8c4 }
+.summary.fail { background: #fde8e8; color: #a83232; border: 1px solid #f0bcbc }
+.test { background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; padding: .9rem 1.1rem; margin-bottom: .55rem; font-size: 12.5px; line-height: 1.5 }
+.test.pass { border-left: 4px solid #2e7d32 }
+.test.fail { border-left: 4px solid #a83232; background: #fef6f6 }
+.test-name { font-family: 'Open Sans', sans-serif; font-weight: 600; font-size: 13px; color: #1a1a1a; display: block; margin-bottom: .3rem }
+.test.pass .test-name::before { content: "✓ "; color: #2e7d32; font-weight: 700 }
+.test.fail .test-name::before { content: "✗ "; color: #a83232; font-weight: 700 }
+.test pre { background: #fafaf7; padding: .55rem .75rem; border-radius: 4px; margin-top: .35rem; overflow-x: auto; font-size: 11px; color: #555; white-space: pre-wrap; word-break: break-word }
+.section { font-family: 'Open Sans', sans-serif; font-weight: 600; margin: 1.5rem 0 .5rem; padding-bottom: .25rem; border-bottom: 1px solid #ddd; color: #444; font-size: 14px }
+</style>
+</head>
+<body>
+<h1>Tests — Carpintería</h1>
+<p class="subtitle">cp-bom.js + cp-budget.js · sin framework, asserts puros. Cargar este archivo en el navegador.</p>
+
+<div id="summary" class="summary">Cargando…</div>
+<div id="results"></div>
+
+<script src="lib/cp-labels.js"></script>
+<script src="lib/cp-bom.js"></script>
+<script src="lib/cp-budget.js"></script>
+<script>
+// =================================================================
+// MINI RUNNER
+// =================================================================
+var __tests = [];
+var __sections = [];
+function section(name) { __sections.push(name); }
+function test(name, fn) { __tests.push({ name: name, section: __sections[__sections.length - 1] || '', fn: fn }); }
+function assert(condition, message) {
+  if (!condition) throw new Error('assert failed: ' + (message || ''));
+}
+function approxEq(a, b, eps) {
+  eps = eps || 0.005;
+  return Math.abs(a - b) < eps;
+}
+function assertApprox(actual, expected, message, eps) {
+  if (!approxEq(actual, expected, eps)) {
+    throw new Error((message || 'approxEq') + ': esperado ' + expected + ', recibido ' + actual);
+  }
+}
+
+// =================================================================
+// FIXTURE — Caso del anexo de la propuesta arquitectónica
+//
+// Proyecto JOA01 · mueble M01 · 2 piezas:
+//   P01 Costado: Melamina 18mm @ 22 €/m², qty=2, 600×2000mm,
+//                edges top + right cantados (PVC @ 1.50 €/ml).
+//   P02 Trasera: DM 5mm @ 8 €/m², qty=1, 600×2000mm, sin cantos.
+//
+// Tarifas del proyecto: margen 30%, IVA 0% (para verificar el coste/PVP base),
+// corte 5 €/ml, canteado 3 €/ml.
+//
+// Cálculo manual esperado:
+//   - Material melamina:   2 × 1.20 m² × 22 €/m²        = 52.80 €
+//   - Material DM:         1 × 1.20 m² × 8 €/m²         =  9.60 €
+//   - Canto PVC top:       2 ×  0.6 ml × 1.5            =  1.80 €
+//   - Canto PVC right:     2 ×  2.0 ml × 1.5            =  6.00 €
+//   - Canto MO top:        2 ×  0.6 ml × 3              =  3.60 €
+//   - Canto MO right:      2 ×  2.0 ml × 3              = 12.00 €
+//   - Corte MO P01:        2 × 5.2 ml × 5               = 52.00 €
+//   - Corte MO P02:        1 × 5.2 ml × 5               = 26.00 €
+//   = 163.80 € coste · × 1.30 margen = 212.94 € PVP
+// =================================================================
+var MAT_MELAMINA = {
+  id: 'mat-melamina',
+  type: 'panel',
+  name: 'Melamina blanca 18mm',
+  thickness_mm: 18,
+  cost_per_m2_eur: 22,
+  sale_per_m2_eur: null,
+  sale_per_ml_eur: null
+};
+var MAT_DM = {
+  id: 'mat-dm',
+  type: 'panel',
+  name: 'DM 5mm',
+  thickness_mm: 5,
+  cost_per_m2_eur: 8,
+  sale_per_m2_eur: null
+};
+var MAT_PVC = {
+  id: 'mat-pvc',
+  type: 'edge_band',
+  name: 'PVC blanco 22mm',
+  thickness_mm: 1.0,
+  cost_per_ml_eur: 1.5,
+  sale_per_ml_eur: null
+};
+var HW_BISAGRA = {
+  id: 'hw-bisagra',
+  name: 'Bisagra cazoleta',
+  reference: 'BLM-001',
+  cost_eur: 2.50,
+  sale_eur: null
+};
+
+function fixtureProject(overrides) {
+  return Object.assign({
+    id: 'proj-joa01',
+    code: 'JOA01',
+    name: 'Encargo JOA01',
+    margin_percent: 30,
+    vat_percent: 0,
+    rate_cut_per_ml_eur: 5,
+    rate_edge_band_per_ml_eur: 3,
+    kerf_mm: 4, border_trim_mm: 10,
+    extra_costs: []
+  }, overrides || {});
+}
+
+function fixtureAnexo() {
+  return {
+    project: fixtureProject(),
+    furnitures: [{ id: 'f-m01', code: 'M01', name: 'Armario simple' }],
+    panelsByFurniture: {
+      'f-m01': [
+        { id: 'pn-p01', code: 'P01', name: 'Costado',
+          material_id: MAT_MELAMINA.id, qty: 2,
+          width_mm: 600, height_mm: 2000, thickness_mm: 18 },
+        { id: 'pn-p02', code: 'P02', name: 'Trasera',
+          material_id: MAT_DM.id, qty: 1,
+          width_mm: 600, height_mm: 2000, thickness_mm: 5 }
+      ]
+    },
+    edgesByPanel: {
+      'pn-p01': [
+        { edge: 'top',   edge_material_id: MAT_PVC.id },
+        { edge: 'right', edge_material_id: MAT_PVC.id }
+      ],
+      'pn-p02': []
+    },
+    opsByPanel: {},
+    furnitureHardwareByFurniture: {},
+    materials: [MAT_MELAMINA, MAT_DM, MAT_PVC],
+    hardware: []
+  };
+}
+
+// =================================================================
+// TESTS
+// =================================================================
+
+section('cp-bom — caso del anexo (JOA01 / M01)');
+
+test('BOM produce 8 líneas (2 paneles + 2 cuts + 2 edge_material + 2 edge_band_labor)', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var lines = bom.furnitures[0].lines;
+  assert(lines.length === 8, 'Esperaba 8 líneas, recibí ' + lines.length);
+  // 2 panel_material, 2 cut, 2 edge_material, 2 edge_band_labor
+  var byKind = {};
+  lines.forEach(function (l) { byKind[l.kind] = (byKind[l.kind] || 0) + 1; });
+  assert(byKind.panel_material === 2,    'panel_material count = ' + byKind.panel_material);
+  assert(byKind.cut === 2,               'cut count = ' + byKind.cut);
+  assert(byKind.edge_material === 2,     'edge_material count = ' + byKind.edge_material);
+  assert(byKind.edge_band_labor === 2,   'edge_band_labor count = ' + byKind.edge_band_labor);
+});
+
+test('Coste melamina = 52.80 €', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'panel_material' && l.material_id === MAT_MELAMINA.id;
+  });
+  assertApprox(line.cost_eur, 52.80, 'cost_eur melamina');
+});
+
+test('Coste DM = 9.60 €', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'panel_material' && l.material_id === MAT_DM.id;
+  });
+  assertApprox(line.cost_eur, 9.60, 'cost_eur DM');
+});
+
+test('Coste canto material PVC top = 1.80 € (qty 2 × 0.6 ml × 1.5)', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'edge_material' && l.edge === 'top';
+  });
+  assertApprox(line.cost_eur, 1.80, 'cost_eur edge_material top');
+});
+
+test('Coste canto material PVC right = 6.00 € (qty 2 × 2.0 ml × 1.5)', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'edge_material' && l.edge === 'right';
+  });
+  assertApprox(line.cost_eur, 6.00, 'cost_eur edge_material right');
+});
+
+test('Coste canteado MO top = 3.60 €', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'edge_band_labor' && l.edge === 'top';
+  });
+  assertApprox(line.cost_eur, 3.60, 'cost_eur edge_band_labor top');
+});
+
+test('Coste canteado MO right = 12.00 €', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'edge_band_labor' && l.edge === 'right';
+  });
+  assertApprox(line.cost_eur, 12.00, 'cost_eur edge_band_labor right');
+});
+
+test('Coste corte P01 = 52.00 €', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'cut' && l.panel_id === 'pn-p01';
+  });
+  assertApprox(line.cost_eur, 52.00, 'cost_eur cut P01');
+});
+
+test('Coste corte P02 = 26.00 €', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  var line = bom.furnitures[0].lines.find(function (l) {
+    return l.kind === 'cut' && l.panel_id === 'pn-p02';
+  });
+  assertApprox(line.cost_eur, 26.00, 'cost_eur cut P02');
+});
+
+test('Subtotal coste del mueble M01 = 163.80 € (suma de todas las líneas)', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  assertApprox(bom.furnitures[0].cost_eur, 163.80, 'M01.cost_eur');
+});
+
+test('Coste total proyecto = 163.80 € (solo 1 mueble)', function () {
+  var bom = CpBom.compute(fixtureAnexo());
+  assertApprox(bom.project_cost_eur, 163.80, 'project_cost_eur');
+});
+
+section('cp-budget — PVP con margen 30% (sin IVA)');
+
+test('PVP subtotal proyecto = 212.94 € (= 163.80 × 1.30)', function () {
+  var data = fixtureAnexo();
+  var bom = CpBom.compute(data);
+  var bud = CpBudget.build(bom, {
+    project: data.project,
+    materialsById: { 'mat-melamina': MAT_MELAMINA, 'mat-dm': MAT_DM, 'mat-pvc': MAT_PVC },
+    hardwareById: {}
+  });
+  assertApprox(bud.totals.sale_subtotal_eur, 212.94, 'sale_subtotal_eur', 0.01);
+});
+
+test('IVA con vat_percent=0 produce vat_eur=0 y total = subtotal', function () {
+  var data = fixtureAnexo();
+  var bom = CpBom.compute(data);
+  var bud = CpBudget.build(bom, {
+    project: data.project,
+    materialsById: { 'mat-melamina': MAT_MELAMINA, 'mat-dm': MAT_DM, 'mat-pvc': MAT_PVC },
+    hardwareById: {}
+  });
+  assertApprox(bud.totals.vat_eur, 0, 'vat_eur');
+  assertApprox(bud.totals.total_with_vat_eur, 212.94, 'total_with_vat_eur', 0.01);
+});
+
+section('cp-budget — IVA configurable');
+
+test('vat_percent=21 sobre 212.94 € → vat=44.7174 → total=257.6574', function () {
+  var data = fixtureAnexo();
+  data.project = fixtureProject({ vat_percent: 21 });
+  var bom = CpBom.compute(data);
+  var bud = CpBudget.build(bom, {
+    project: data.project,
+    materialsById: { 'mat-melamina': MAT_MELAMINA, 'mat-dm': MAT_DM, 'mat-pvc': MAT_PVC },
+    hardwareById: {}
+  });
+  assertApprox(bud.totals.sale_subtotal_eur, 212.94, 'sale_subtotal_eur', 0.01);
+  assertApprox(bud.totals.vat_eur, 44.7174, 'vat_eur', 0.01);
+  assertApprox(bud.totals.total_with_vat_eur, 257.6574, 'total_with_vat_eur', 0.01);
+});
+
+section('cp-budget — Override de PVP por material');
+
+test('Melamina con sale_per_m2_eur=30 ignora margen del proyecto (PVP = 2.4 × 30 = 72 €)', function () {
+  var data = fixtureAnexo();
+  var matOverride = Object.assign({}, MAT_MELAMINA, { sale_per_m2_eur: 30 });
+  data.materials = [matOverride, MAT_DM, MAT_PVC];
+  var bom = CpBom.compute(data);
+  var bud = CpBudget.build(bom, {
+    project: data.project,
+    materialsById: { 'mat-melamina': matOverride, 'mat-dm': MAT_DM, 'mat-pvc': MAT_PVC },
+    hardwareById: {}
+  });
+  var line = bud.furnitures[0].lines.find(function (l) {
+    return l.kind === 'panel_material' && l.material_id === MAT_MELAMINA.id;
+  });
+  assert(line.has_sale_override === true, 'has_sale_override debe ser true');
+  assertApprox(line.sale_eur, 72.00, 'sale_eur melamina con override');
+});
+
+test('Otras líneas (DM sin override) siguen aplicando margen del proyecto', function () {
+  var data = fixtureAnexo();
+  var matOverride = Object.assign({}, MAT_MELAMINA, { sale_per_m2_eur: 30 });
+  data.materials = [matOverride, MAT_DM, MAT_PVC];
+  var bom = CpBom.compute(data);
+  var bud = CpBudget.build(bom, {
+    project: data.project,
+    materialsById: { 'mat-melamina': matOverride, 'mat-dm': MAT_DM, 'mat-pvc': MAT_PVC },
+    hardwareById: {}
+  });
+  var lineDm = bud.furnitures[0].lines.find(function (l) {
+    return l.kind === 'panel_material' && l.material_id === MAT_DM.id;
+  });
+  assert(lineDm.has_sale_override === false, 'DM no debe tener override');
+  // 9.60 × 1.30 = 12.48
+  assertApprox(lineDm.sale_eur, 12.48, 'sale_eur DM con margen');
+});
+
+test('PVP override de Hardware (sale_eur=4) ignora margen', function () {
+  var data = fixtureAnexo();
+  var hwOverride = Object.assign({}, HW_BISAGRA, { sale_eur: 4 });
+  data.hardware = [hwOverride];
+  data.furnitureHardwareByFurniture = { 'f-m01': [{ hardware_id: hwOverride.id, qty: 6 }] };
+  var bom = CpBom.compute(data);
+  var bud = CpBudget.build(bom, {
+    project: data.project,
+    materialsById: { 'mat-melamina': MAT_MELAMINA, 'mat-dm': MAT_DM, 'mat-pvc': MAT_PVC },
+    hardwareById: { 'hw-bisagra': hwOverride }
+  });
+  var hwLine = bud.furnitures[0].lines.find(function (l) { return l.kind === 'hardware'; });
+  assert(hwLine.has_sale_override === true, 'override hardware true');
+  assertApprox(hwLine.sale_eur, 24.00, 'sale_eur hardware 6×4');
+});
+
+section('cp-bom — mueble con varias piezas y herrajes');
+
+test('Mueble con 3 piezas + 4 bisagras suma correctamente', function () {
+  // M02 con:
+  //   P01 Cierre frontal: Melamina 18mm, qty=1, 800×600, todos los edges con PVC.
+  //   P02 Fondo: DM 5mm, qty=1, 800×400, sin cantos.
+  //   P03 Estante: Melamina 18mm, qty=2, 760×380, edge front (top) PVC.
+  // 4 bisagras a 2.50 €/ud.
+  var data = {
+    project: fixtureProject(),
+    furnitures: [{ id: 'f-m02', code: 'M02', name: 'Cajonera' }],
+    panelsByFurniture: {
+      'f-m02': [
+        { id: 'pn-a', code: 'P01', name: 'Cierre', material_id: MAT_MELAMINA.id, qty: 1, width_mm: 800, height_mm: 600, thickness_mm: 18 },
+        { id: 'pn-b', code: 'P02', name: 'Fondo',  material_id: MAT_DM.id,       qty: 1, width_mm: 800, height_mm: 400, thickness_mm: 5 },
+        { id: 'pn-c', code: 'P03', name: 'Estante',material_id: MAT_MELAMINA.id, qty: 2, width_mm: 760, height_mm: 380, thickness_mm: 18 }
+      ]
+    },
+    edgesByPanel: {
+      'pn-a': [
+        { edge: 'top',    edge_material_id: MAT_PVC.id },
+        { edge: 'right',  edge_material_id: MAT_PVC.id },
+        { edge: 'bottom', edge_material_id: MAT_PVC.id },
+        { edge: 'left',   edge_material_id: MAT_PVC.id }
+      ],
+      'pn-b': [],
+      'pn-c': [{ edge: 'top', edge_material_id: MAT_PVC.id }]
+    },
+    opsByPanel: {},
+    furnitureHardwareByFurniture: {
+      'f-m02': [{ hardware_id: HW_BISAGRA.id, qty: 4 }]
+    },
+    materials: [MAT_MELAMINA, MAT_DM, MAT_PVC],
+    hardware: [HW_BISAGRA]
+  };
+  var bom = CpBom.compute(data);
+  var lines = bom.furnitures[0].lines;
+
+  // 3 panel_material + 3 cut + (4+0+1)=5 edge_material + 5 edge_band_labor + 1 hardware = 17
+  assert(lines.length === 17, 'Esperaba 17 líneas, recibí ' + lines.length);
+
+  // Verifico subtotal:
+  //  Material melamina P01:  1 × (0.8×0.6) × 22       = 10.56
+  //  Material melamina P03:  2 × (0.76×0.38) × 22     = 12.7072
+  //  Material DM P02:        1 × (0.8×0.4) × 8        =  2.56
+  //  Cantos PVC P01: 2×(0.8 + 0.6) = 2.8 ml × 1.5     =  4.20
+  //  Cantos PVC P03 top: 2 × 0.76 ml × 1.5            =  2.28
+  //  MO canteado P01: 2.8 ml × 3                      =  8.40
+  //  MO canteado P03 top: 2 × 0.76 × 3                =  4.56
+  //  Corte MO P01: 1 × 2.8 × 5                        = 14.00
+  //  Corte MO P02: 1 × 2.4 × 5                        = 12.00
+  //  Corte MO P03: 2 × 2.28 × 5                       = 22.80
+  //  Hardware: 4 × 2.5                                = 10.00
+  //  TOTAL ≈ 104.0672
+  assertApprox(bom.furnitures[0].cost_eur, 104.0672, 'cost mueble M02 con herrajes', 0.01);
+});
+
+section('cp-bom — qty multiplica TODAS las componentes');
+
+test('qty 2 sobre una pieza dobla material, corte y cantos', function () {
+  var data = {
+    project: fixtureProject(),
+    furnitures: [{ id: 'f-x', code: 'M99', name: 'Test qty' }],
+    panelsByFurniture: {
+      'f-x': [{ id: 'pn-x', code: 'P01', name: 'Pieza', material_id: MAT_MELAMINA.id, qty: 2, width_mm: 1000, height_mm: 500, thickness_mm: 18 }]
+    },
+    edgesByPanel: {
+      'pn-x': [{ edge: 'top', edge_material_id: MAT_PVC.id }]
+    },
+    opsByPanel: {},
+    furnitureHardwareByFurniture: {},
+    materials: [MAT_MELAMINA, MAT_PVC],
+    hardware: []
+  };
+  var bom = CpBom.compute(data);
+  var mat = bom.furnitures[0].lines.find(function (l) { return l.kind === 'panel_material'; });
+  var cut = bom.furnitures[0].lines.find(function (l) { return l.kind === 'cut'; });
+  var em  = bom.furnitures[0].lines.find(function (l) { return l.kind === 'edge_material'; });
+  // Material: 2 × (1.0 × 0.5) × 22 = 22.00 €
+  assertApprox(mat.cost_eur, 22.00, 'mat qty 2');
+  // Corte: 2 × (2 × (1.0 + 0.5)) × 5 = 30.00 €
+  assertApprox(cut.cost_eur, 30.00, 'cut qty 2');
+  // Edge top: 2 × 1.0 × 1.5 = 3.00 €
+  assertApprox(em.cost_eur, 3.00, 'edge_material qty 2');
+});
+
+// =================================================================
+// RUNNER
+// =================================================================
+window.addEventListener('DOMContentLoaded', function () {
+  var results = document.getElementById('results');
+  var summary = document.getElementById('summary');
+  var passed = 0, failed = 0;
+  var currentSection = null;
+
+  __tests.forEach(function (t) {
+    if (t.section !== currentSection) {
+      currentSection = t.section;
+      var h = document.createElement('div');
+      h.className = 'section';
+      h.textContent = currentSection;
+      results.appendChild(h);
+    }
+    var el = document.createElement('div');
+    el.className = 'test';
+    try {
+      t.fn();
+      el.classList.add('pass');
+      el.innerHTML = '<span class="test-name">' + escape(t.name) + '</span>';
+      passed++;
+    } catch (err) {
+      el.classList.add('fail');
+      el.innerHTML = '<span class="test-name">' + escape(t.name) + '</span><pre>' + escape(err && err.message || err) + '</pre>';
+      failed++;
+    }
+    results.appendChild(el);
+  });
+
+  if (failed === 0) {
+    summary.className = 'summary ok';
+    summary.textContent = '✓ ' + passed + ' tests passed';
+  } else {
+    summary.className = 'summary fail';
+    summary.textContent = '✗ ' + failed + ' failed · ' + passed + ' passed';
+  }
+});
+
+function escape(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>

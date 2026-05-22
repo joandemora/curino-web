@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proyecto — Carpintería</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+.cp-page{display:grid;grid-template-columns:1fr 360px;gap:1.5rem;align-items:flex-start}
+@media(max-width:1180px){.cp-page{grid-template-columns:1fr}}
+.cp-side{position:sticky;top:96px}
+.cp-hero{margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.cp-hero h1{font-size:22px;font-weight:300;letter-spacing:-.01em;margin-bottom:.2rem}
+.cp-hero .sub{font-size:13px;color:var(--ink-soft)}
+.cp-hero .back{font-size:12px;color:var(--coral);text-decoration:none}
+.cp-section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem}
+.cp-section h2{font-size:14px;font-weight:600;margin-bottom:.55rem;letter-spacing:-.01em}
+.cp-section h3{font-size:13px;font-weight:600;margin:.6rem 0 .35rem}
+.cp-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.cp-btn{padding:.45rem .9rem;font-size:12.5px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;background:var(--ink);color:#fff}
+.cp-btn:hover{background:#333}
+.cp-btn-small{padding:.3rem .65rem;font-size:11px}
+.cp-btn-tiny{padding:.18rem .45rem;font-size:10.5px}
+.cp-btn-outline{background:#fff;color:var(--ink);border-color:var(--border)}
+.cp-btn-outline:hover{border-color:var(--ink)}
+.cp-btn-danger{background:#fff;color:#a83232;border-color:#f0bcbc}
+.cp-btn-danger:hover{background:#fde8e8}
+.cp-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.cp-table th{text-align:left;padding:.4rem .55rem;font-size:9.5px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.cp-table td{padding:.4rem .55rem;border-top:1px solid var(--border);vertical-align:middle}
+.cp-table .col-num{text-align:right;font-variant-numeric:tabular-nums}
+.cp-table .col-actions{white-space:nowrap;text-align:right}
+.cp-row{display:grid;grid-template-columns:repeat(2,1fr);gap:.55rem}
+.cp-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem}
+.cp-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem}
+.cp-row-5{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem}
+.cp-field{margin-bottom:.55rem}
+.cp-field label{display:block;font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:.18rem}
+.cp-input,.cp-select{width:100%;padding:.35rem .5rem;font-size:12.5px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--font);color:var(--ink)}
+.cp-input:focus,.cp-select:focus{outline:none;border-color:var(--ink)}
+.cp-form{background:#fdfcf8;border:1px solid var(--border);border-radius:6px;padding:.75rem .9rem;margin:.4rem 0}
+.cp-form h3{font-size:12px;font-weight:600;margin-bottom:.45rem}
+.cp-form-actions{display:flex;justify-content:flex-end;gap:.4rem;margin-top:.4rem}
+.cp-empty{padding:.8rem;color:var(--mid);font-size:12px;text-align:center}
+.fur-card{border:1px solid var(--border);border-radius:8px;background:#fff;margin-bottom:.85rem}
+.fur-header{padding:.7rem .9rem;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#f6f5ee;border-radius:7px 7px 0 0;border-bottom:1px solid var(--border)}
+.fur-header .code{font-family:'SF Mono',monospace;font-size:11px;background:var(--ink);color:#fff;padding:.15rem .45rem;border-radius:3px;margin-right:.5rem}
+.fur-header .title{font-weight:600;font-size:13px}
+.fur-header .dims{font-size:11px;color:var(--mid);margin-left:.45rem}
+.fur-body{padding:.7rem .9rem}
+.panel-code{font-family:'SF Mono',monospace;font-size:10.5px;background:#eee;padding:.1rem .4rem;border-radius:3px}
+.edges-summary{font-size:10.5px;color:var(--mid)}
+.edge-tag{display:inline-block;background:#fdcdb4;color:#a14a32;border-radius:2px;padding:0 .3rem;margin-right:.15rem;font-size:9px;font-weight:600}
+.ops-count{display:inline-block;background:#eef4ff;color:#1e3a6f;border-radius:3px;padding:.05rem .35rem;font-size:10px;font-weight:600}
+
+/* Sidebar presupuesto */
+.budget-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.2rem}
+.budget-card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);margin-bottom:.7rem;font-weight:600}
+.budget-line{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--ink-soft);padding:.18rem 0}
+.budget-line.heading{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-top:.5rem;padding-top:.45rem;border-top:1px solid var(--border)}
+.budget-total{display:flex;justify-content:space-between;padding:.55rem 0;border-top:1px solid var(--border);margin-top:.5rem}
+.budget-total.subtotal{font-size:13px;font-weight:600;color:var(--ink)}
+.budget-total.vat{font-size:12px;color:var(--ink-soft)}
+.budget-total.final{font-size:15px;font-weight:700;color:var(--ink);border-top:1.5px solid var(--ink);padding-top:.7rem}
+.budget-cost{font-size:11.5px;color:var(--mid);font-style:italic;margin-top:.3rem;border-top:1px dashed var(--border);padding-top:.45rem}
+.budget-status{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;font-size:12px;color:var(--ink-soft)}
+.budget-status .dot{width:6px;height:6px;border-radius:50%;background:#2e7d32}
+
+/* Modal inline para operaciones */
+.ops-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:.35rem}
+.ops-table th{font-size:9px;padding:.3rem .35rem;background:#f6f5ee;color:var(--mid);font-weight:600;text-transform:uppercase}
+.ops-table td{padding:.3rem .35rem;border-top:1px solid var(--border)}
+.ops-table input,.ops-table select{padding:.15rem .3rem;font-size:11.5px;border:1px solid var(--border);border-radius:3px;background:#fff;width:100%}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="cp-hero">
+    <div>
+      <a class="back" href="/admin/proyectos-carpinteria/">← Proyectos</a>
+      <h1 id="projTitle">Cargando…</h1>
+      <div class="sub" id="projSub"></div>
+    </div>
+    <div>
+      <button class="cp-btn cp-btn-outline cp-btn-small" type="button" id="btnEditProj">Editar tarifas</button>
+    </div>
+  </div>
+
+  <div class="cp-page">
+    <div class="cp-main">
+      <div id="projEditForm"></div>
+
+      <div class="cp-section">
+        <div class="cp-toolbar">
+          <h2>Muebles</h2>
+          <button class="cp-btn" type="button" id="btnNewFurniture">+ Mueble</button>
+        </div>
+        <div id="furnitureFormMount"></div>
+        <div id="furnituresMount"><div class="cp-empty">Cargando…</div></div>
+      </div>
+    </div>
+
+    <aside class="cp-side">
+      <div class="budget-card" id="budgetMount">
+        <h2>Presupuesto</h2>
+        <div class="cp-empty">Sin datos aún.</div>
+      </div>
+    </aside>
+  </div>
+</main>
+<div class="ash-toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-data.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-bom.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-budget.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-labels.js"></script>
+<script>
+var projectId = new URLSearchParams(location.search).get('id');
+if (!projectId) location.href = '/admin/proyectos-carpinteria/';
+
+var state = {
+  project: null, furnitures: [],
+  panelsByFurniture: {}, edgesByPanel: {}, opsByPanel: {},
+  furnitureHardwareByFurniture: {},
+  materials: [], panelMaterials: [], edgeMaterials: [], hardware: []
+};
+
+initAdminShell({ activeSection: 'carpinteria-proyectos', title: 'Proyecto Carpintería' }).then(async function () {
+  document.getElementById('btnEditProj').addEventListener('click', toggleEditProj);
+  document.getElementById('btnNewFurniture').addEventListener('click', openNewFurniture);
+  await reloadAll();
+}).catch(function () {});
+
+async function reloadAll() {
+  var r = await CpData.loadFullProject(projectId);
+  if (r.error) { showToast('Error: ' + (r.error.message || r.error), 'error'); return; }
+  Object.assign(state, r.data);
+  state.panelMaterials = state.materials.filter(function (m) { return m.type === 'panel'; });
+  state.edgeMaterials  = state.materials.filter(function (m) { return m.type === 'edge_band'; });
+  renderHeader();
+  renderFurnitures();
+  recomputeBudget();
+}
+
+// ── HEADER + EDIT TARIFAS ─────────────────────────────────────
+function renderHeader() {
+  var p = state.project;
+  document.title = (p.code || 'Proyecto') + ' — Carpintería';
+  document.getElementById('projTitle').textContent = p.code + ' · ' + p.name;
+  document.getElementById('projSub').textContent = (p.client && p.client.name ? 'Cliente: ' + p.client.name + ' · ' : '')
+    + 'Estado: ' + p.status
+    + ' · Margen ' + fmt(p.margin_percent) + '%'
+    + ' · IVA ' + fmt(p.vat_percent) + '%'
+    + ' · €/ml corte ' + fmt(p.rate_cut_per_ml_eur)
+    + ' · €/ml canteado ' + fmt(p.rate_edge_band_per_ml_eur);
+}
+function toggleEditProj() {
+  var mount = document.getElementById('projEditForm');
+  if (mount.dataset.open === '1') { mount.innerHTML = ''; mount.dataset.open = '0'; return; }
+  mount.dataset.open = '1';
+  var p = state.project;
+  mount.innerHTML = ''
+    + '<div class="cp-section">'
+    +   '<h2>Tarifas del proyecto (snapshot, editable)</h2>'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Margen %</label><input class="cp-input" id="pe-margin" type="number" step="0.01" value="' + p.margin_percent + '"></div>'
+    +     '<div class="cp-field"><label>IVA %</label><input class="cp-input" id="pe-vat" type="number" step="0.01" value="' + p.vat_percent + '"></div>'
+    +     '<div class="cp-field"><label>Estado</label><select class="cp-select" id="pe-status">'
+    +       ['draft','quoted','accepted','in_production','delivered','archived'].map(function (s) {
+            return '<option value="' + s + '"' + (p.status === s ? ' selected' : '') + '>' + s + '</option>';
+          }).join('')
+    +     '</select></div>'
+    +   '</div>'
+    +   '<div class="cp-row-4">'
+    +     '<div class="cp-field"><label>Corte €/ml</label><input class="cp-input" id="pe-cut" type="number" step="0.01" value="' + p.rate_cut_per_ml_eur + '"></div>'
+    +     '<div class="cp-field"><label>Canteado €/ml</label><input class="cp-input" id="pe-eb" type="number" step="0.01" value="' + p.rate_edge_band_per_ml_eur + '"></div>'
+    +     '<div class="cp-field"><label>Kerf mm</label><input class="cp-input" id="pe-kerf" type="number" step="0.1" value="' + p.kerf_mm + '"></div>'
+    +     '<div class="cp-field"><label>Trim mm</label><input class="cp-input" id="pe-trim" type="number" step="0.1" value="' + p.border_trim_mm + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="document.getElementById(\'projEditForm\').innerHTML=\'\';document.getElementById(\'projEditForm\').dataset.open=\'0\'">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="saveProjEdit()">Guardar</button>'
+    +   '</div>'
+    + '</div>';
+}
+window.saveProjEdit = async function () {
+  var payload = {
+    margin_percent: Number(val('pe-margin')),
+    vat_percent: Number(val('pe-vat')),
+    status: val('pe-status'),
+    rate_cut_per_ml_eur: Number(val('pe-cut')),
+    rate_edge_band_per_ml_eur: Number(val('pe-eb')),
+    kerf_mm: Number(val('pe-kerf')),
+    border_trim_mm: Number(val('pe-trim'))
+  };
+  try {
+    var r = await CpData.updateProject(projectId, payload);
+    if (r.error) throw r.error;
+    showToast('Proyecto actualizado', 'success');
+    document.getElementById('projEditForm').innerHTML = '';
+    document.getElementById('projEditForm').dataset.open = '0';
+    await reloadAll();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+// ── FURNITURES ────────────────────────────────────────────────
+function openNewFurniture() {
+  var existing = state.furnitures.map(function (f) { return f.code; });
+  renderFurnitureForm({ code: CpLabels.suggestNextFurnitureCode(existing) }, null);
+}
+function renderFurnitureForm(f, editingId) {
+  document.getElementById('furnitureFormMount').innerHTML = ''
+    + '<div class="cp-form">'
+    +   '<h3>' + (editingId ? 'Editar mueble' : 'Nuevo mueble') + '</h3>'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Código <span style="color:#a83232">*</span></label><input class="cp-input" id="f-code" value="' + esc(f.code || '') + '" maxlength="20"></div>'
+    +     '<div class="cp-field"><label>Nombre <span style="color:#a83232">*</span></label><input class="cp-input" id="f-name" value="' + esc(f.name || '') + '"></div>'
+    +     '<div class="cp-field"><label>Descripción</label><input class="cp-input" id="f-desc" value="' + esc(f.description || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Ancho mm</label><input class="cp-input" id="f-w" type="number" step="0.1" value="' + (f.width_mm || '') + '"></div>'
+    +     '<div class="cp-field"><label>Alto mm</label><input class="cp-input" id="f-h" type="number" step="0.1" value="' + (f.height_mm || '') + '"></div>'
+    +     '<div class="cp-field"><label>Fondo mm</label><input class="cp-input" id="f-d" type="number" step="0.1" value="' + (f.depth_mm || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="document.getElementById(\'furnitureFormMount\').innerHTML=\'\'">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="saveFurniture(' + (editingId ? '\'' + editingId + '\'' : 'null') + ')">' + (editingId ? 'Guardar' : 'Crear') + '</button>'
+    +   '</div>'
+    + '</div>';
+}
+window.saveFurniture = async function (editingId) {
+  var payload = {
+    code: val('f-code').trim(), name: val('f-name').trim(), description: val('f-desc').trim() || null,
+    width_mm: numOrNull(val('f-w')), height_mm: numOrNull(val('f-h')), depth_mm: numOrNull(val('f-d')),
+    project_id: projectId
+  };
+  if (!payload.code || !payload.name) { showToast('Código y nombre obligatorios.', 'error'); return; }
+  var existing = state.furnitures.filter(function (x) { return x.id !== editingId; }).map(function (x) { return x.code; });
+  if (existing.indexOf(payload.code) >= 0) { showToast('Código duplicado: ' + payload.code, 'error'); return; }
+  try {
+    var r = editingId ? await CpData.updateFurniture(editingId, payload) : await CpData.createFurniture(payload);
+    if (r.error) throw r.error;
+    showToast('Guardado', 'success');
+    document.getElementById('furnitureFormMount').innerHTML = '';
+    await reloadAll();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+function renderFurnitures() {
+  var mount = document.getElementById('furnituresMount');
+  if (!state.furnitures.length) {
+    mount.innerHTML = '<div class="cp-empty">Sin muebles. Pulsa "+ Mueble" para empezar.</div>';
+    return;
+  }
+  var html = state.furnitures.map(function (f) {
+    var panels = state.panelsByFurniture[f.id] || [];
+    var hws    = state.furnitureHardwareByFurniture[f.id] || [];
+    var dims = [f.width_mm, f.height_mm, f.depth_mm].filter(function (x) { return x; }).join(' × ');
+    return ''
+      + '<div class="fur-card" data-id="' + f.id + '">'
+      +   '<div class="fur-header">'
+      +     '<div>'
+      +       '<span class="code">' + esc(f.code) + '</span>'
+      +       '<span class="title">' + esc(f.name) + '</span>'
+      +       (dims ? '<span class="dims">' + dims + ' mm</span>' : '')
+      +     '</div>'
+      +     '<div>'
+      +       '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="editFurniture(\'' + f.id + '\', event)">Editar</button> '
+      +       '<button class="cp-btn cp-btn-danger cp-btn-small" type="button" onclick="delFurniture(\'' + f.id + '\', \'' + esc(f.code) + '\', event)">Eliminar</button>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div class="fur-body">'
+      +     renderPanelsTable(f, panels)
+      +     '<div id="panel-form-' + f.id + '"></div>'
+      +     renderFurnitureHardware(f, hws)
+      +     '<div id="fh-form-' + f.id + '"></div>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+  mount.innerHTML = html;
+}
+
+window.editFurniture = function (id, e) {
+  if (e) e.stopPropagation();
+  var f = state.furnitures.find(function (x) { return x.id === id; });
+  if (f) renderFurnitureForm(f, id);
+};
+window.delFurniture = async function (id, code, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('Eliminar mueble ' + code + ' y todas sus piezas?')) return;
+  try { var r = await CpData.deleteFurniture(id); if (r.error) throw r.error; showToast('Eliminado', 'success'); await reloadAll(); }
+  catch (er) { showToast('Error: ' + (er.message || er), 'error'); }
+};
+
+// ── PANELS ────────────────────────────────────────────────────
+function renderPanelsTable(f, panels) {
+  var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;margin-bottom:.3rem"><h3 style="margin:0">Piezas</h3>'
+    + '<button class="cp-btn cp-btn-small" type="button" onclick="addPanel(\'' + f.id + '\')">+ Pieza</button></div>';
+  if (!panels.length) return head + '<div class="cp-empty">Sin piezas aún.</div>';
+  var rows = panels.map(function (pn) {
+    var mat = state.materials.find(function (m) { return m.id === pn.material_id; });
+    var edges = state.edgesByPanel[pn.id] || [];
+    var ops = state.opsByPanel[pn.id] || [];
+    var edgesHtml = edges.length === 0 ? '<span style="color:#aaa">—</span>' : edges.map(function (e) {
+      return '<span class="edge-tag" title="' + (state.materials.find(function (m) { return m.id === e.edge_material_id; }) || {}).name + '">' + e.edge.charAt(0).toUpperCase() + '</span>';
+    }).join('');
+    return '<tr>'
+      + '<td><span class="panel-code">' + esc(pn.code) + '</span></td>'
+      + '<td>' + esc(pn.name) + '</td>'
+      + '<td style="font-size:11px;color:#555">' + esc(mat ? mat.name : '—') + '</td>'
+      + '<td class="col-num">' + pn.qty + '</td>'
+      + '<td class="col-num">' + fmt(pn.width_mm) + ' × ' + fmt(pn.height_mm) + ' × ' + fmt(pn.thickness_mm) + '</td>'
+      + '<td><span class="edges-summary">' + edgesHtml + '</span></td>'
+      + '<td>' + (ops.length ? '<span class="ops-count">' + ops.length + '</span>' : '<span style="color:#aaa">—</span>') + '</td>'
+      + '<td class="col-actions">'
+      +   '<button class="cp-btn cp-btn-outline cp-btn-tiny" type="button" onclick="editPanel(\'' + pn.id + '\', \'' + f.id + '\')">Editar</button> '
+      +   '<button class="cp-btn cp-btn-danger cp-btn-tiny" type="button" onclick="delPanel(\'' + pn.id + '\', \'' + esc(pn.code) + '\')">×</button>'
+      + '</td></tr>';
+  }).join('');
+  return head + '<table class="cp-table"><thead><tr><th>Cód.</th><th>Nombre</th><th>Material</th><th>Qty</th><th>w × h × t</th><th>Cantos</th><th>Ops</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+window.addPanel = function (furnitureId) {
+  var existing = (state.panelsByFurniture[furnitureId] || []).map(function (p) { return p.code; });
+  renderPanelForm({
+    furniture_id: furnitureId,
+    code: CpLabels.suggestNextPanelCode(existing),
+    qty: 1
+  }, null, furnitureId);
+};
+window.editPanel = function (id, furnitureId) {
+  var pn = (state.panelsByFurniture[furnitureId] || []).find(function (p) { return p.id === id; });
+  if (pn) renderPanelForm(pn, id, furnitureId);
+};
+function renderPanelForm(pn, editingId, furnitureId) {
+  var matOpts = state.panelMaterials.map(function (m) {
+    return '<option value="' + m.id + '"' + (m.id === pn.material_id ? ' selected' : '') + '>' + esc(m.name) + ' (' + fmt(m.thickness_mm) + 'mm)</option>';
+  }).join('');
+  var edges = state.edgesByPanel[editingId] || [];
+  function edgeSelector(edgeName) {
+    var current = edges.find(function (e) { return e.edge === edgeName; });
+    var opts = '<option value="">— sin canto —</option>' + state.edgeMaterials.map(function (m) {
+      return '<option value="' + m.id + '"' + (current && current.edge_material_id === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>';
+    }).join('');
+    return '<div class="cp-field"><label>Canto ' + edgeName + '</label><select class="cp-select" id="pn-edge-' + edgeName + '">' + opts + '</select></div>';
+  }
+  var ops = state.opsByPanel[editingId] || [];
+  document.getElementById('panel-form-' + furnitureId).innerHTML = ''
+    + '<div class="cp-form">'
+    +   '<h3>' + (editingId ? 'Editar pieza ' + pn.code : 'Nueva pieza') + '</h3>'
+    +   '<div class="cp-row-5">'
+    +     '<div class="cp-field"><label>Cód <span style="color:#a83232">*</span></label><input class="cp-input" id="pn-code" value="' + esc(pn.code || '') + '" maxlength="20"></div>'
+    +     '<div class="cp-field"><label>Nombre <span style="color:#a83232">*</span></label><input class="cp-input" id="pn-name" value="' + esc(pn.name || '') + '"></div>'
+    +     '<div class="cp-field"><label>Material <span style="color:#a83232">*</span></label><select class="cp-select" id="pn-mat"><option value="">—</option>' + matOpts + '</select></div>'
+    +     '<div class="cp-field"><label>Qty</label><input class="cp-input" id="pn-qty" type="number" min="1" step="1" value="' + (pn.qty || 1) + '"></div>'
+    +     '<div class="cp-field"><label>Espesor mm</label><input class="cp-input" id="pn-th" type="number" step="0.1" value="' + (pn.thickness_mm || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-row-4">'
+    +     '<div class="cp-field"><label>Ancho mm <span style="color:#a83232">*</span></label><input class="cp-input" id="pn-w" type="number" step="0.1" value="' + (pn.width_mm || '') + '"></div>'
+    +     '<div class="cp-field"><label>Alto mm <span style="color:#a83232">*</span></label><input class="cp-input" id="pn-h" type="number" step="0.1" value="' + (pn.height_mm || '') + '"></div>'
+    +     '<div class="cp-field"><label>Veta</label><select class="cp-select" id="pn-grain"><option value="any"' + (pn.grain_along==='any'?' selected':'') + '>Cualquiera</option><option value="width"' + (pn.grain_along==='width'?' selected':'') + '>Por ancho</option><option value="height"' + (pn.grain_along==='height'?' selected':'') + '>Por alto</option></select></div>'
+    +     '<div class="cp-field"><label>Notas</label><input class="cp-input" id="pn-notes" value="' + esc(pn.notes || '') + '"></div>'
+    +   '</div>'
+    +   '<h3>Cantos por borde</h3>'
+    +   '<div class="cp-row-4">'
+    +     edgeSelector('top')
+    +     edgeSelector('right')
+    +     edgeSelector('bottom')
+    +     edgeSelector('left')
+    +   '</div>'
+    +   '<h3>Mecanizados <button class="cp-btn cp-btn-outline cp-btn-tiny" type="button" onclick="addOpRow(\'' + (editingId || 'NEW') + '\')" ' + (editingId ? '' : 'disabled title="Guarda primero la pieza"') + '>+ Op</button></h3>'
+    +   '<div id="opsList">'
+    +     (editingId ? renderOpsList(editingId, ops) : '<div class="cp-empty">Guarda la pieza antes de añadir mecanizados.</div>')
+    +   '</div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="document.getElementById(\'panel-form-' + furnitureId + '\').innerHTML=\'\'">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="savePanel(' + (editingId ? '\'' + editingId + '\'' : 'null') + ', \'' + furnitureId + '\')">' + (editingId ? 'Guardar' : 'Crear pieza') + '</button>'
+    +   '</div>'
+    + '</div>';
+}
+
+window.savePanel = async function (editingId, furnitureId) {
+  var material_id = val('pn-mat');
+  var mat = state.materials.find(function (m) { return m.id === material_id; });
+  var payload = {
+    furniture_id: furnitureId,
+    material_id: material_id,
+    code: val('pn-code').trim(),
+    name: val('pn-name').trim(),
+    qty: Math.max(1, Math.round(Number(val('pn-qty')) || 1)),
+    width_mm: Number(val('pn-w')),
+    height_mm: Number(val('pn-h')),
+    thickness_mm: Number(val('pn-th') || (mat && mat.thickness_mm) || 0),
+    grain_along: val('pn-grain') || 'any',
+    notes: val('pn-notes').trim() || null
+  };
+  if (!payload.code || !payload.name || !payload.material_id || !payload.width_mm || !payload.height_mm) {
+    showToast('Código, nombre, material, ancho y alto son obligatorios.', 'error'); return;
+  }
+  var existing = (state.panelsByFurniture[furnitureId] || []).filter(function (p) { return p.id !== editingId; }).map(function (p) { return p.code; });
+  if (existing.indexOf(payload.code) >= 0) { showToast('Código duplicado en el mueble: ' + payload.code, 'error'); return; }
+
+  try {
+    var r = editingId ? await CpData.updatePanel(editingId, payload) : await CpData.createPanel(payload);
+    if (r.error) throw r.error;
+    var panelId = r.data.id;
+
+    // Cantos: upsert los que tienen valor, eliminar los que NO
+    var edgesPayload = ['top','right','bottom','left'].map(function (e) {
+      return { edge: e, value: val('pn-edge-' + e) };
+    });
+    for (var i = 0; i < edgesPayload.length; i++) {
+      var ep = edgesPayload[i];
+      if (ep.value) {
+        var er = await CpData.upsertEdge({ panel_id: panelId, edge: ep.edge, edge_material_id: ep.value });
+        if (er.error) throw er.error;
+      } else {
+        await CpData.deleteEdge(panelId, ep.edge);
+      }
+    }
+
+    showToast('Pieza guardada', 'success');
+    document.getElementById('panel-form-' + furnitureId).innerHTML = '';
+    await reloadAll();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+window.delPanel = async function (id, code) {
+  if (!confirm('Eliminar pieza ' + code + '?')) return;
+  try { var r = await CpData.deletePanel(id); if (r.error) throw r.error; showToast('Eliminada', 'success'); await reloadAll(); }
+  catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+// ── OPS (mecanizados inline) ──────────────────────────────────
+function renderOpsList(panelId, ops) {
+  if (!ops || !ops.length) return '<div class="cp-empty">Sin mecanizados.</div>';
+  var hwOpts = '<option value="">—</option>' + state.hardware.map(function (h) { return '<option value="' + h.id + '">' + esc(h.name) + '</option>'; }).join('');
+  var typeOpts = ['drill_through','drill_blind','hinge_cup','groove','pocket','router'].map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
+  var rows = ops.map(function (o) {
+    return '<tr data-op-id="' + o.id + '">'
+      + '<td>' + esc(o.type) + '</td>'
+      + '<td class="col-num">' + fmt(o.x_mm) + ', ' + fmt(o.y_mm) + '</td>'
+      + '<td class="col-num">' + (o.diameter_mm != null ? '⌀ ' + o.diameter_mm : '') + (o.depth_mm != null ? ' d ' + o.depth_mm : '') + (o.length_mm != null ? ' L ' + o.length_mm : '') + '</td>'
+      + '<td>' + (o.hardware_id ? (state.hardware.find(function (h) { return h.id === o.hardware_id; }) || {}).name : '—') + '</td>'
+      + '<td class="col-actions"><button class="cp-btn cp-btn-danger cp-btn-tiny" type="button" onclick="delOp(\'' + o.id + '\')">×</button></td>'
+      + '</tr>';
+  }).join('');
+  return '<table class="ops-table"><thead><tr><th>Tipo</th><th>x,y mm</th><th>Dims</th><th>Hardware</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+window.addOpRow = function (panelId) {
+  if (panelId === 'NEW') return;
+  var hwOpts = '<option value="">—</option>' + state.hardware.map(function (h) { return '<option value="' + h.id + '">' + esc(h.name) + '</option>'; }).join('');
+  var formHtml = ''
+    + '<div class="cp-form" style="margin-top:.4rem">'
+    +   '<h3>Nuevo mecanizado</h3>'
+    +   '<div class="cp-row-5">'
+    +     '<div class="cp-field"><label>Tipo</label><select class="cp-select" id="op-type">'
+    +       ['drill_through','drill_blind','hinge_cup','groove','pocket','router'].map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('')
+    +     '</select></div>'
+    +     '<div class="cp-field"><label>x mm</label><input class="cp-input" id="op-x" type="number" step="0.1"></div>'
+    +     '<div class="cp-field"><label>y mm</label><input class="cp-input" id="op-y" type="number" step="0.1"></div>'
+    +     '<div class="cp-field"><label>⌀ mm</label><input class="cp-input" id="op-d" type="number" step="0.1"></div>'
+    +     '<div class="cp-field"><label>prof mm</label><input class="cp-input" id="op-p" type="number" step="0.1"></div>'
+    +   '</div>'
+    +   '<div class="cp-row-4">'
+    +     '<div class="cp-field"><label>length mm</label><input class="cp-input" id="op-L" type="number" step="0.1"></div>'
+    +     '<div class="cp-field"><label>width mm</label><input class="cp-input" id="op-W" type="number" step="0.1"></div>'
+    +     '<div class="cp-field"><label>ángulo °</label><input class="cp-input" id="op-a" type="number" step="0.1" value="0"></div>'
+    +     '<div class="cp-field"><label>Hardware</label><select class="cp-select" id="op-hw">' + hwOpts + '</select></div>'
+    +   '</div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="document.getElementById(\'opsList\').nextSibling && document.getElementById(\'opsList\').nextSibling.remove(); var f=document.querySelector(\'#opsList + .cp-form\'); if(f) f.remove();">Cancelar</button>'
+    +     '<button class="cp-btn cp-btn-small" type="button" onclick="saveOpNew(\'' + panelId + '\')">Crear</button>'
+    +   '</div>'
+    + '</div>';
+  document.getElementById('opsList').insertAdjacentHTML('afterend', formHtml);
+};
+
+window.saveOpNew = async function (panelId) {
+  var payload = {
+    panel_id: panelId,
+    type: val('op-type'),
+    x_mm: Number(val('op-x') || 0),
+    y_mm: Number(val('op-y') || 0),
+    diameter_mm: numOrNull(val('op-d')),
+    depth_mm: numOrNull(val('op-p')),
+    length_mm: numOrNull(val('op-L')),
+    width_op_mm: numOrNull(val('op-W')),
+    angle_deg: Number(val('op-a') || 0),
+    hardware_id: val('op-hw') || null
+  };
+  try {
+    var r = await CpData.createOp(payload);
+    if (r.error) throw r.error;
+    showToast('Op creada', 'success');
+    await reloadAll();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+window.delOp = async function (id) {
+  if (!confirm('Eliminar mecanizado?')) return;
+  try { var r = await CpData.deleteOp(id); if (r.error) throw r.error; showToast('Eliminado', 'success'); await reloadAll(); }
+  catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+// ── FURNITURE HARDWARE ────────────────────────────────────────
+function renderFurnitureHardware(f, list) {
+  var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;margin-bottom:.3rem"><h3 style="margin:0">Herrajes del mueble</h3>'
+    + '<button class="cp-btn cp-btn-small" type="button" onclick="addFurnitureHardware(\'' + f.id + '\')">+ Herraje</button></div>';
+  if (!list.length) return head + '<div class="cp-empty">Sin herrajes.</div>';
+  var rows = list.map(function (row) {
+    var hw = state.hardware.find(function (h) { return h.id === row.hardware_id; });
+    return '<tr>'
+      + '<td>' + esc(hw ? hw.name : '—') + '</td>'
+      + '<td style="font-size:11px;color:#888">' + esc((hw && hw.reference) || '') + '</td>'
+      + '<td class="col-num">' + row.qty + '</td>'
+      + '<td class="col-actions"><button class="cp-btn cp-btn-danger cp-btn-tiny" type="button" onclick="delFurnitureHardware(\'' + row.id + '\')">×</button></td>'
+      + '</tr>';
+  }).join('');
+  return head + '<table class="cp-table"><thead><tr><th>Nombre</th><th>Ref</th><th>Qty</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+window.addFurnitureHardware = function (furnitureId) {
+  var hwOpts = '<option value="">— elige —</option>' + state.hardware.map(function (h) { return '<option value="' + h.id + '">' + esc(h.name) + ' · ' + Number(h.cost_eur).toFixed(2) + '€</option>'; }).join('');
+  document.getElementById('fh-form-' + furnitureId).innerHTML = ''
+    + '<div class="cp-form" style="margin-top:.3rem">'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Herraje</label><select class="cp-select" id="fh-hw">' + hwOpts + '</select></div>'
+    +     '<div class="cp-field"><label>Cantidad</label><input class="cp-input" id="fh-qty" type="number" min="1" step="1" value="1"></div>'
+    +     '<div class="cp-field" style="display:flex;align-items:flex-end;gap:.3rem">'
+    +       '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="document.getElementById(\'fh-form-' + furnitureId + '\').innerHTML=\'\'">Cancelar</button>'
+    +       '<button class="cp-btn cp-btn-small" type="button" onclick="saveFurnitureHardware(\'' + furnitureId + '\')">Añadir</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>';
+};
+window.saveFurnitureHardware = async function (furnitureId) {
+  var hwId = val('fh-hw');
+  var qty = Math.max(1, Math.round(Number(val('fh-qty')) || 1));
+  if (!hwId) { showToast('Elige un herraje', 'error'); return; }
+  try {
+    var r = await CpData.upsertFurnitureHardware({ furniture_id: furnitureId, hardware_id: hwId, qty: qty });
+    if (r.error) throw r.error;
+    showToast('Añadido', 'success'); await reloadAll();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+window.delFurnitureHardware = async function (id) {
+  if (!confirm('Quitar herraje?')) return;
+  try { var r = await CpData.deleteFurnitureHardware(id); if (r.error) throw r.error; await reloadAll(); }
+  catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+// ── PRESUPUESTO en vivo ───────────────────────────────────────
+function recomputeBudget() {
+  var bomInput = {
+    project: state.project,
+    furnitures: state.furnitures,
+    panelsByFurniture: state.panelsByFurniture,
+    edgesByPanel: state.edgesByPanel,
+    opsByPanel: state.opsByPanel,
+    furnitureHardwareByFurniture: state.furnitureHardwareByFurniture,
+    materials: state.materials,
+    hardware: state.hardware
+  };
+  var bom = CpBom.compute(bomInput);
+  var matsById = {}; state.materials.forEach(function (m) { matsById[m.id] = m; });
+  var hwsById = {}; state.hardware.forEach(function (h) { hwsById[h.id] = h; });
+  var bud = CpBudget.build(bom, { project: state.project, materialsById: matsById, hardwareById: hwsById });
+  renderBudget(bud);
+}
+
+function renderBudget(bud) {
+  var mount = document.getElementById('budgetMount');
+  if (!bud.furnitures.length) {
+    mount.innerHTML = '<h2>Presupuesto</h2><div class="cp-empty">Añade muebles y piezas para calcular.</div>';
+    return;
+  }
+  var perFur = bud.furnitures.map(function (f) {
+    return '<div class="budget-line"><span>' + esc(f.code) + ' · ' + esc(f.name) + '</span><strong>' + CpBudget._format(f.sale_eur) + '</strong></div>';
+  }).join('');
+  var extras = (bud.extras || []).map(function (e) {
+    return '<div class="budget-line"><span>' + esc(e.label) + '</span><strong>' + CpBudget._format(e.amount_eur) + '</strong></div>';
+  }).join('');
+  mount.innerHTML = ''
+    + '<h2>Presupuesto en vivo</h2>'
+    + '<div class="budget-status"><span class="dot"></span> Recalculado desde BOM</div>'
+    + '<div class="budget-line heading">Por mueble (PVP)</div>'
+    + perFur
+    + (extras ? '<div class="budget-line heading">Extras</div>' + extras : '')
+    + '<div class="budget-total subtotal"><span>Base imponible</span><span>' + CpBudget._format(bud.totals.sale_subtotal_eur) + '</span></div>'
+    + '<div class="budget-total vat"><span>IVA (' + fmt(bud.totals.vat_percent) + '%)</span><span>' + CpBudget._format(bud.totals.vat_eur) + '</span></div>'
+    + '<div class="budget-total final"><span>Total cliente</span><span>' + CpBudget._format(bud.totals.total_with_vat_eur) + '</span></div>'
+    + '<div class="budget-cost">Coste interno: ' + CpBudget._format(bud.totals.cost_eur) + ' · Margen ' + fmt(bud.totals.margin_percent) + '%</div>';
+}
+
+// ── helpers ───────────────────────────────────────────────────
+function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+function fmt(v) { if (v == null || v === '') return '—'; var n = Number(v); if (!isFinite(n)) return '—'; return n.toString(); }
+function numOrNull(v) { if (v === '' || v == null) return null; var n = Number(v); return isFinite(n) ? n : null; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+function showToast(msg, kind) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'ash-toast ' + (kind || '') + ' visible';
+  setTimeout(function () { t.classList.remove('visible'); }, 3500);
+}
+</script>
+</body>
+</html>

@@ -44,6 +44,15 @@
         { id: 'revista-moderacion', label: 'Moderación', href: '/admin/revista/moderacion/' },
         { id: 'revista-generador', label: 'Generador IA', href: '/admin/revista/generador/' }
       ]
+    },
+    {
+      group: 'Carpintería',
+      items: [
+        { id: 'carpinteria-proyectos',  label: 'Proyectos',     href: '/admin/proyectos-carpinteria/' },
+        { id: 'carpinteria-materiales', label: 'Materiales',    href: '/admin/proyectos-carpinteria/catalogo/materiales/' },
+        { id: 'carpinteria-herrajes',   label: 'Herrajes',      href: '/admin/proyectos-carpinteria/catalogo/herrajes/' },
+        { id: 'carpinteria-config',     label: 'Configuración', href: '/admin/proyectos-carpinteria/config/' }
+      ]
     }
   ];
 

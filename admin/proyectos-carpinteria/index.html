@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carpintería — Proyectos</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+.cp-hero{margin-bottom:1.25rem}
+.cp-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.cp-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+.cp-tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.cp-tab{padding:.7rem 1.1rem;font-size:13px;font-weight:600;color:var(--mid);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font)}
+.cp-tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+.cp-section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem}
+.cp-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.cp-toolbar h2{font-size:15px;font-weight:600}
+.cp-btn{padding:.5rem 1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;background:var(--ink);color:#fff}
+.cp-btn:hover{background:#333}
+.cp-btn-small{padding:.35rem .7rem;font-size:11.5px}
+.cp-btn-outline{background:#fff;color:var(--ink);border-color:var(--border)}
+.cp-btn-danger{background:#fff;color:#a83232;border-color:#f0bcbc}
+.cp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cp-table th{text-align:left;padding:.55rem .7rem;font-size:10px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.cp-table td{padding:.55rem .7rem;border-top:1px solid var(--border);vertical-align:middle}
+.cp-table .col-actions{white-space:nowrap;text-align:right}
+.cp-row{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+.cp-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.cp-field{margin-bottom:.65rem}
+.cp-field label{display:block;font-size:10.5px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:.2rem}
+.cp-input,.cp-select{width:100%;padding:.4rem .55rem;font-size:13px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--font);color:var(--ink)}
+.cp-input:focus,.cp-select:focus{outline:none;border-color:var(--ink)}
+.cp-form{background:#fdfcf8;border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:.5rem}
+.cp-form h3{font-size:13px;font-weight:600;margin-bottom:.7rem}
+.cp-form-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
+.cp-empty{text-align:center;padding:2rem;color:var(--mid);font-size:13px}
+.cp-status{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.cp-status-draft{background:#eceff1;color:#546e7a}
+.cp-status-quoted{background:#eef4ff;color:#1e3a6f}
+.cp-status-accepted{background:#fff4e0;color:#8a5a1c}
+.cp-status-in_production{background:#fde8e2;color:#a14a32}
+.cp-status-delivered{background:#eaf5ee;color:#1d6f3d}
+.cp-status-archived{background:#f5e8f8;color:#6a1b8a}
+.proj-link{font-weight:600;text-decoration:none;color:var(--ink)}
+.proj-link:hover{color:var(--coral)}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="cp-hero">
+    <h1>Carpintería — Proyectos</h1>
+    <p>Encargos por cliente. Cada proyecto agrupa los muebles + presupuesto.</p>
+  </div>
+
+  <div class="cp-tabs">
+    <button type="button" class="cp-tab active" data-tab="projects">Proyectos</button>
+    <button type="button" class="cp-tab" data-tab="clients">Clientes</button>
+  </div>
+
+  <div class="cp-section">
+    <div class="cp-toolbar">
+      <h2 id="listTitle">Proyectos</h2>
+      <button class="cp-btn" type="button" id="btnNew">+ Nuevo proyecto</button>
+    </div>
+    <div id="formMount"></div>
+    <div id="listMount"></div>
+  </div>
+</main>
+<div class="ash-toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-data.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-labels.js"></script>
+<script>
+var currentTab = 'projects';
+var projects = [];
+var clients = [];
+var editingId = null;
+var STATUS_LABEL = {draft:'Borrador',quoted:'Presupuestado',accepted:'Aceptado',in_production:'En producción',delivered:'Entregado',archived:'Archivado'};
+
+initAdminShell({ activeSection: 'carpinteria-proyectos', title: 'Carpintería — Proyectos' }).then(async function () {
+  document.querySelectorAll('.cp-tab').forEach(function (t) {
+    t.addEventListener('click', function () { setTab(t.dataset.tab); });
+  });
+  document.getElementById('btnNew').addEventListener('click', openNew);
+  await loadAll();
+}).catch(function () {});
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.cp-tab').forEach(function (t) { t.classList.toggle('active', t.dataset.tab === tab); });
+  document.getElementById('listTitle').textContent = tab === 'projects' ? 'Proyectos' : 'Clientes';
+  document.getElementById('btnNew').textContent = tab === 'projects' ? '+ Nuevo proyecto' : '+ Nuevo cliente';
+  document.getElementById('formMount').innerHTML = '';
+  editingId = null;
+  render();
+}
+async function loadAll() {
+  var [pr, cr] = await Promise.all([CpData.listProjects(), CpData.listClients()]);
+  projects = pr.data || [];
+  clients = cr.data || [];
+  render();
+}
+function render() {
+  if (currentTab === 'projects') renderProjects(); else renderClients();
+}
+function renderProjects() {
+  var mount = document.getElementById('listMount');
+  if (!projects.length) { mount.innerHTML = '<div class="cp-empty">No hay proyectos. Pulsa "+ Nuevo proyecto" para empezar.</div>'; return; }
+  var rows = projects.map(function (p) {
+    var clientName = (p.client && p.client.name) || '—';
+    var status = '<span class="cp-status cp-status-' + p.status + '">' + esc(STATUS_LABEL[p.status] || p.status) + '</span>';
+    var date = p.created_at ? new Date(p.created_at).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'2-digit'}) : '';
+    return '<tr>'
+      + '<td><strong>' + esc(p.code) + '</strong></td>'
+      + '<td><a class="proj-link" href="proyecto/?id=' + encodeURIComponent(p.id) + '">' + esc(p.name) + '</a></td>'
+      + '<td style="font-size:12px;color:#555">' + esc(clientName) + '</td>'
+      + '<td>' + status + '</td>'
+      + '<td style="font-size:12px;color:#888">' + esc(date) + '</td>'
+      + '<td class="col-actions">'
+      +   '<a class="cp-btn cp-btn-outline cp-btn-small" href="proyecto/?id=' + encodeURIComponent(p.id) + '">Abrir</a> '
+      +   '<button class="cp-btn cp-btn-danger cp-btn-small" type="button" onclick="delProject(\'' + p.id + '\', \'' + esc(p.code) + '\')">Eliminar</button>'
+      + '</td></tr>';
+  }).join('');
+  mount.innerHTML = '<table class="cp-table"><thead><tr><th>Código</th><th>Nombre</th><th>Cliente</th><th>Estado</th><th>Creado</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+function renderClients() {
+  var mount = document.getElementById('listMount');
+  if (!clients.length) { mount.innerHTML = '<div class="cp-empty">No hay clientes. Crea uno antes de empezar un proyecto.</div>'; return; }
+  var rows = clients.map(function (c) {
+    return '<tr>'
+      + '<td><strong>' + esc(c.name) + '</strong></td>'
+      + '<td style="font-size:12px;color:#555">' + esc(c.email || '—') + '</td>'
+      + '<td style="font-size:12px;color:#555">' + esc(c.phone || '—') + '</td>'
+      + '<td style="font-size:12px;color:#555">' + esc(c.address || '—') + '</td>'
+      + '<td class="col-actions">'
+      +   '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="openEditClient(\'' + c.id + '\')">Editar</button> '
+      +   '<button class="cp-btn cp-btn-danger cp-btn-small" type="button" onclick="delClient(\'' + c.id + '\', \'' + esc(c.name) + '\')">Eliminar</button>'
+      + '</td></tr>';
+  }).join('');
+  mount.innerHTML = '<table class="cp-table"><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function openNew() {
+  if (currentTab === 'projects') {
+    if (!clients.length) { showToast('Crea un cliente antes (pestaña Clientes).', 'error'); return; }
+    editingId = null; renderProjectForm({});
+  } else {
+    editingId = null; renderClientForm({});
+  }
+}
+
+function renderProjectForm(p) {
+  var existingCodes = projects.map(function (x) { return x.code; });
+  var suggestedCode = p.code || CpLabels.suggestNextProjectCode(
+    (clients[0] && clients[0].name) || '', existingCodes
+  );
+  var clientOpts = clients.map(function (c) {
+    return '<option value="' + esc(c.id) + '"' + (p.client_id === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  }).join('');
+  document.getElementById('formMount').innerHTML = ''
+    + '<div class="cp-form">'
+    +   '<h3>' + (editingId ? 'Editar' : 'Nuevo') + ' proyecto</h3>'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Código <span style="color:#a83232">*</span></label><input class="cp-input" id="p-code" type="text" value="' + esc(suggestedCode) + '" maxlength="40"></div>'
+    +     '<div class="cp-field"><label>Nombre <span style="color:#a83232">*</span></label><input class="cp-input" id="p-name" type="text" value="' + esc(p.name || '') + '"></div>'
+    +     '<div class="cp-field"><label>Cliente <span style="color:#a83232">*</span></label><select class="cp-select" id="p-client"><option value="">— Selecciona —</option>' + clientOpts + '</select></div>'
+    +   '</div>'
+    +   '<div class="cp-field"><label>Notas</label><input class="cp-input" id="p-notes" type="text" value="' + esc(p.notes || '') + '"></div>'
+    +   '<div style="font-size:11.5px;color:#888;margin-top:.5rem">Al crear, se snapshotean automáticamente las tarifas y margen actuales de Configuración (margen, IVA, €/ml, kerf). Se pueden editar después.</div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="closeForm()">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="saveProject()">' + (editingId ? 'Guardar' : 'Crear') + '</button>'
+    +   '</div>'
+    + '</div>';
+}
+function renderClientForm(c) {
+  document.getElementById('formMount').innerHTML = ''
+    + '<div class="cp-form">'
+    +   '<h3>' + (editingId ? 'Editar' : 'Nuevo') + ' cliente</h3>'
+    +   '<div class="cp-row">'
+    +     '<div class="cp-field"><label>Nombre <span style="color:#a83232">*</span></label><input class="cp-input" id="c-name" type="text" value="' + esc(c.name || '') + '"></div>'
+    +     '<div class="cp-field"><label>Email</label><input class="cp-input" id="c-email" type="email" value="' + esc(c.email || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-row">'
+    +     '<div class="cp-field"><label>Teléfono</label><input class="cp-input" id="c-phone" type="tel" value="' + esc(c.phone || '') + '"></div>'
+    +     '<div class="cp-field"><label>Dirección</label><input class="cp-input" id="c-address" type="text" value="' + esc(c.address || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-field"><label>Notas</label><input class="cp-input" id="c-notes" type="text" value="' + esc(c.notes || '') + '"></div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="closeForm()">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="saveClient()">' + (editingId ? 'Guardar' : 'Crear') + '</button>'
+    +   '</div>'
+    + '</div>';
+}
+
+window.closeForm = function () { document.getElementById('formMount').innerHTML = ''; editingId = null; };
+
+window.openEditClient = function (id) {
+  var c = clients.find(function (x) { return x.id === id; });
+  if (!c) return;
+  editingId = id; renderClientForm(c);
+};
+
+window.saveProject = async function () {
+  var code = val('p-code').trim();
+  var name = val('p-name').trim();
+  var client_id = val('p-client');
+  if (!code || !name || !client_id) { showToast('Código, nombre y cliente obligatorios.', 'error'); return; }
+  if (CpLabels.isCodeUnique(code, projects.map(function (x) { return {id:x.id,code:x.code}; }), editingId) === false) {
+    showToast('Código duplicado: ' + code, 'error'); return;
+  }
+  try {
+    var payload = { code: code, name: name, client_id: client_id, notes: val('p-notes').trim() || null };
+    var r = editingId ? await CpData.updateProject(editingId, payload) : await CpData.createProject(payload);
+    if (r.error) throw r.error;
+    showToast('Proyecto guardado', 'success');
+    closeForm();
+    await loadAll();
+    if (!editingId && r.data) {
+      // Navegar directamente al detalle al crear
+      window.location.href = 'proyecto/?id=' + encodeURIComponent(r.data.id) + '&fresh=1';
+    }
+  } catch (e) {
+    showToast('Error: ' + (e.message || e), 'error');
+  }
+};
+window.saveClient = async function () {
+  var payload = {
+    name: val('c-name').trim(),
+    email: val('c-email').trim() || null,
+    phone: val('c-phone').trim() || null,
+    address: val('c-address').trim() || null,
+    notes: val('c-notes').trim() || null
+  };
+  if (!payload.name) { showToast('Nombre obligatorio', 'error'); return; }
+  try {
+    var r = editingId ? await CpData.updateClient(editingId, payload) : await CpData.createClient(payload);
+    if (r.error) throw r.error;
+    showToast('Cliente guardado', 'success'); closeForm(); await loadAll();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+window.delProject = async function (id, code) {
+  if (!confirm('Eliminar proyecto "' + code + '" y todos sus muebles/piezas? Esto es irreversible.')) return;
+  try { var r = await CpData.deleteProject(id); if (r.error) throw r.error; showToast('Eliminado', 'success'); await loadAll(); }
+  catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+window.delClient = async function (id, name) {
+  if (!confirm('Eliminar cliente "' + name + '"? Los proyectos asociados perderán el vínculo.')) return;
+  try { var r = await CpData.deleteClient(id); if (r.error) throw r.error; showToast('Eliminado', 'success'); await loadAll(); }
+  catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+function val(id) { return document.getElementById(id).value; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+function showToast(msg, kind) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'ash-toast ' + (kind || '') + ' visible';
+  setTimeout(function () { t.classList.remove('visible'); }, 3500);
+}
+</script>
+</body>
+</html>

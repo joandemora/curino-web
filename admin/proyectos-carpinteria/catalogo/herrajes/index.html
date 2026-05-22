@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carpintería — Herrajes</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+.cp-hero{margin-bottom:1.25rem}
+.cp-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.cp-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+.cp-section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem}
+.cp-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.cp-toolbar h2{font-size:15px;font-weight:600}
+.cp-btn{padding:.5rem 1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;background:var(--ink);color:#fff}
+.cp-btn:hover{background:#333}
+.cp-btn-small{padding:.35rem .7rem;font-size:11.5px}
+.cp-btn-outline{background:#fff;color:var(--ink);border-color:var(--border)}
+.cp-btn-danger{background:#fff;color:#a83232;border-color:#f0bcbc}
+.cp-btn-danger:hover{background:#fde8e8}
+.cp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cp-table th{text-align:left;padding:.55rem .7rem;font-size:10px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.cp-table td{padding:.55rem .7rem;border-top:1px solid var(--border);vertical-align:middle}
+.cp-table .col-num{text-align:right;font-variant-numeric:tabular-nums}
+.cp-table .col-actions{white-space:nowrap;text-align:right}
+.cp-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.cp-row{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+.cp-field{margin-bottom:.65rem}
+.cp-field label{display:block;font-size:10.5px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:.2rem}
+.cp-input{width:100%;padding:.4rem .55rem;font-size:13px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--font);color:var(--ink)}
+.cp-input:focus{outline:none;border-color:var(--ink)}
+.cp-form{background:#fdfcf8;border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:.5rem}
+.cp-form h3{font-size:13px;font-weight:600;margin-bottom:.7rem}
+.cp-form-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
+.cp-empty{text-align:center;padding:2rem;color:var(--mid);font-size:13px}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="cp-hero">
+    <h1>Herrajes</h1>
+    <p>Bisagras, tornillos, guías, tiradores… coste por unidad + PVP opcional con override.</p>
+  </div>
+
+  <div class="cp-section">
+    <div class="cp-toolbar">
+      <h2>Catálogo</h2>
+      <button class="cp-btn" type="button" id="btnNew">+ Nuevo</button>
+    </div>
+    <div id="formMount"></div>
+    <div id="listMount"></div>
+  </div>
+</main>
+<div class="ash-toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-data.js"></script>
+<script>
+var items = []; var editingId = null;
+
+initAdminShell({ activeSection: 'carpinteria-herrajes', title: 'Herrajes — Carpintería' }).then(async function () {
+  document.getElementById('btnNew').addEventListener('click', openNew);
+  await loadList();
+}).catch(function () {});
+
+async function loadList() {
+  var r = await CpData.listHardware({ activeOnly: false });
+  if (r.error) { document.getElementById('listMount').innerHTML = err(r.error); return; }
+  items = r.data || [];
+  render();
+}
+function render() {
+  var mount = document.getElementById('listMount');
+  if (!items.length) { mount.innerHTML = '<div class="cp-empty">Sin herrajes. Pulsa "Nuevo" para empezar.</div>'; return; }
+  var rows = items.map(function (h) {
+    var sale = h.sale_eur != null ? num(h.sale_eur) + ' <span style="color:#cc785c">·ovrd</span>' : '<span style="color:#888">margen</span>';
+    return '<tr>'
+      + '<td><strong>' + esc(h.name) + '</strong>' + (h.reference ? ' <span style="color:#888;font-size:11px">' + esc(h.reference) + '</span>' : '') + '</td>'
+      + '<td style="font-size:12px;color:#555">' + esc(h.category || '—') + '</td>'
+      + '<td class="col-num">' + num(h.cost_eur) + '</td>'
+      + '<td class="col-num">' + sale + '</td>'
+      + '<td style="font-size:12px;color:#555">' + esc(h.supplier || '—') + '</td>'
+      + '<td style="font-size:12px">' + (h.active ? '✓' : '<span style="color:#a83232">✗</span>') + '</td>'
+      + '<td class="col-actions">'
+      +   '<button class="cp-btn cp-btn-outline cp-btn-small" type="button" onclick="openEdit(\'' + h.id + '\')">Editar</button> '
+      +   '<button class="cp-btn cp-btn-danger cp-btn-small" type="button" onclick="del(\'' + h.id + '\', \'' + esc(h.name) + '\')">Eliminar</button>'
+      + '</td></tr>';
+  }).join('');
+  mount.innerHTML = '<table class="cp-table"><thead><tr><th>Nombre</th><th>Categoría</th><th class="col-num">Coste €/ud</th><th class="col-num">PVP €/ud</th><th>Proveedor</th><th>Activo</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+function openNew() { editingId = null; renderForm({}); }
+window.openEdit = function (id) {
+  var h = items.find(function (x) { return x.id === id; });
+  if (!h) return;
+  editingId = id; renderForm(h);
+};
+function renderForm(h) {
+  document.getElementById('formMount').innerHTML = ''
+    + '<div class="cp-form">'
+    +   '<h3>' + (editingId ? 'Editar' : 'Nuevo') + ' herraje</h3>'
+    +   '<div class="cp-row">'
+    +     '<div class="cp-field"><label>Nombre <span style="color:#a83232">*</span></label><input class="cp-input" id="h-name" type="text" value="' + esc(h.name || '') + '"></div>'
+    +     '<div class="cp-field"><label>Referencia</label><input class="cp-input" id="h-ref" type="text" value="' + esc(h.reference || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-row-3">'
+    +     '<div class="cp-field"><label>Categoría</label><input class="cp-input" id="h-cat" type="text" value="' + esc(h.category || '') + '" placeholder="bisagra, tornillo, guía…"></div>'
+    +     '<div class="cp-field"><label>Coste €/ud <span style="color:#a83232">*</span></label><input class="cp-input" id="h-cost" type="number" step="0.001" min="0" value="' + (h.cost_eur != null ? h.cost_eur : '') + '"></div>'
+    +     '<div class="cp-field"><label>PVP €/ud (override)</label><input class="cp-input" id="h-sale" type="number" step="0.001" min="0" value="' + (h.sale_eur != null ? h.sale_eur : '') + '" placeholder="vacío = margen"></div>'
+    +   '</div>'
+    +   '<div class="cp-row">'
+    +     '<div class="cp-field"><label>Proveedor</label><input class="cp-input" id="h-sup" type="text" value="' + esc(h.supplier || '') + '"></div>'
+    +     '<div class="cp-field"><label>Notas</label><input class="cp-input" id="h-notes" type="text" value="' + esc(h.notes || '') + '"></div>'
+    +   '</div>'
+    +   '<div class="cp-field"><label><input type="checkbox" id="h-active" ' + (h.active === false ? '' : 'checked') + '> Activo</label></div>'
+    +   '<div class="cp-form-actions">'
+    +     '<button class="cp-btn cp-btn-outline" type="button" onclick="closeForm()">Cancelar</button>'
+    +     '<button class="cp-btn" type="button" onclick="save()">' + (editingId ? 'Guardar' : 'Crear') + '</button>'
+    +   '</div>'
+    + '</div>';
+}
+window.closeForm = function () { document.getElementById('formMount').innerHTML = ''; editingId = null; };
+window.save = async function () {
+  var payload = {
+    name: val('h-name').trim(),
+    reference: val('h-ref').trim() || null,
+    category: val('h-cat').trim() || null,
+    cost_eur: Number(val('h-cost')),
+    sale_eur: val('h-sale') === '' ? null : Number(val('h-sale')),
+    supplier: val('h-sup').trim() || null,
+    notes: val('h-notes').trim() || null,
+    active: document.getElementById('h-active').checked
+  };
+  if (!payload.name || !payload.cost_eur && payload.cost_eur !== 0) { showToast('Nombre y coste obligatorios', 'error'); return; }
+  try {
+    var r = editingId ? await CpData.updateHardware(editingId, payload) : await CpData.createHardware(payload);
+    if (r.error) throw r.error;
+    showToast('Guardado', 'success'); closeForm(); await loadList();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+window.del = async function (id, name) {
+  if (!confirm('Eliminar "' + name + '"?')) return;
+  try {
+    var r = await CpData.deleteHardware(id);
+    if (r.error) throw r.error;
+    showToast('Eliminado', 'success'); await loadList();
+  } catch (e) { showToast('Error: ' + (e.message || e), 'error'); }
+};
+
+function val(id) { return document.getElementById(id).value; }
+function num(v) { return Number(v).toFixed(2); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+function err(e) { return '<div style="color:#a83232;font-size:13px;padding:1rem">Error: ' + esc(e.message || e) + '</div>'; }
+function showToast(msg, kind) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'ash-toast ' + (kind || '') + ' visible';
+  setTimeout(function () { t.classList.remove('visible'); }, 3500);
+}
+</script>
+</body>
+</html>

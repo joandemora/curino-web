@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carpintería — Configuración</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/logo-solo-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--coral:#cc785c;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--bg:#fafaf7;--font:'Open Sans',system-ui,sans-serif}
+.cp-hero{margin-bottom:1.5rem}
+.cp-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.3rem}
+.cp-hero p{color:var(--ink-soft);font-size:13.5px;margin:0}
+.cp-section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.5rem 1.75rem;margin-bottom:1.25rem;max-width:780px}
+.cp-section h2{font-size:15px;font-weight:600;margin-bottom:.4rem;color:var(--ink)}
+.cp-section .desc{font-size:12.5px;color:var(--ink-soft);margin-bottom:1rem;line-height:1.55}
+.cp-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:720px){.cp-row{grid-template-columns:1fr}}
+.cp-field{margin-bottom:1rem}
+.cp-field label{display:block;font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:.3rem}
+.cp-input,.cp-textarea,.cp-select{width:100%;padding:.55rem .7rem;font-size:13px;font-family:var(--font);color:var(--ink);border:1px solid var(--border);border-radius:5px;background:#fff}
+.cp-input:focus,.cp-textarea:focus,.cp-select:focus{outline:none;border-color:var(--ink)}
+.cp-textarea{min-height:200px;resize:vertical;font-family:'SF Mono',monospace;font-size:12px}
+.cp-help{font-size:11.5px;color:var(--mid);margin-top:.25rem;line-height:1.4}
+.cp-actions{display:flex;justify-content:flex-end;gap:.7rem;margin-top:1rem;max-width:780px}
+.cp-btn{padding:.6rem 1.3rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent}
+.cp-btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cp-btn-primary:hover{background:#333}
+.cp-btn-secondary{background:#fff;color:var(--ink);border-color:var(--border)}
+.cp-btn-secondary:hover{border-color:var(--ink)}
+.cp-btn:disabled{opacity:.55;cursor:not-allowed}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="cp-hero">
+    <h1>Configuración Carpintería</h1>
+    <p>Tarifas por defecto que se snapshotean al crear cada proyecto. Cambiar aquí no afecta proyectos existentes.</p>
+  </div>
+
+  <form id="cfgForm">
+    <section class="cp-section">
+      <h2>Tarifas y margen</h2>
+      <p class="desc">Valores que se aplican a proyectos nuevos. Cada proyecto puede sobreescribirlos individualmente.</p>
+      <div class="cp-row">
+        <div class="cp-field">
+          <label for="cfg-margin">Margen por defecto (%)</label>
+          <input class="cp-input" id="cfg-margin" type="number" step="0.01" min="0" max="500">
+        </div>
+        <div class="cp-field">
+          <label for="cfg-vat">IVA por defecto (%)</label>
+          <input class="cp-input" id="cfg-vat" type="number" step="0.01" min="0" max="100">
+        </div>
+      </div>
+      <div class="cp-row">
+        <div class="cp-field">
+          <label for="cfg-cut">Corte MO (€/ml)</label>
+          <input class="cp-input" id="cfg-cut" type="number" step="0.01" min="0">
+        </div>
+        <div class="cp-field">
+          <label for="cfg-eb">Canteado MO (€/ml)</label>
+          <input class="cp-input" id="cfg-eb" type="number" step="0.01" min="0">
+        </div>
+      </div>
+    </section>
+
+    <section class="cp-section">
+      <h2>Parámetros de nesting (preview Fase 2)</h2>
+      <p class="desc">Sin uso en Fase 1. Se snapshotean igual al crear el proyecto para no exigir migración cuando llegue el nesting.</p>
+      <div class="cp-row">
+        <div class="cp-field">
+          <label for="cfg-kerf">Kerf (mm)</label>
+          <input class="cp-input" id="cfg-kerf" type="number" step="0.1" min="0">
+          <div class="cp-help">Ancho de la sierra que se sacrifica entre piezas.</div>
+        </div>
+        <div class="cp-field">
+          <label for="cfg-trim">Descarte perimetral (mm)</label>
+          <input class="cp-input" id="cfg-trim" type="number" step="0.1" min="0">
+          <div class="cp-help">Margen interior del tablero que no se usa.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cp-section">
+      <h2>Mapa de capas DXF (preview Fase 3)</h2>
+      <p class="desc">Sin uso en Fase 1. JSON con la correspondencia tipo de operación → nombre de capa en el DXF exportado. Si tu postprocesador exige convenciones específicas (CORTE_INT, BISAGRA_45, …), cámbialos aquí sin tocar código.</p>
+      <div class="cp-field">
+        <label for="cfg-layers">dxf_layer_map (JSON)</label>
+        <textarea class="cp-textarea" id="cfg-layers"></textarea>
+        <div class="cp-help">Claves: panel_outline, drill_through, drill_blind, hinge_cup, groove, pocket, router, panel_label.</div>
+      </div>
+    </section>
+
+    <div class="cp-actions">
+      <button class="cp-btn cp-btn-secondary" type="button" id="cfg-reset">Descartar cambios</button>
+      <button class="cp-btn cp-btn-primary" type="submit" id="cfg-save">Guardar</button>
+    </div>
+  </form>
+</main>
+<div class="ash-toast" id="cfg-toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/proyectos-carpinteria/lib/cp-data.js"></script>
+<script>
+initAdminShell({ activeSection: 'carpinteria-config', title: 'Configuración Carpintería' }).then(async function () {
+  await load();
+  document.getElementById('cfgForm').addEventListener('submit', save);
+  document.getElementById('cfg-reset').addEventListener('click', load);
+}).catch(function () {});
+
+async function load() {
+  var r = await CpData.getCostConfig();
+  var c = r.data || {};
+  document.getElementById('cfg-margin').value = c.default_margin_percent != null ? c.default_margin_percent : 30.00;
+  document.getElementById('cfg-vat').value    = c.default_vat_percent != null ? c.default_vat_percent : 21.00;
+  document.getElementById('cfg-cut').value    = c.default_rate_cut_per_ml_eur != null ? c.default_rate_cut_per_ml_eur : 0.00;
+  document.getElementById('cfg-eb').value     = c.default_rate_edge_band_per_ml_eur != null ? c.default_rate_edge_band_per_ml_eur : 0.00;
+  document.getElementById('cfg-kerf').value   = c.default_kerf_mm != null ? c.default_kerf_mm : 4.0;
+  document.getElementById('cfg-trim').value   = c.default_border_trim_mm != null ? c.default_border_trim_mm : 10.0;
+  var layers = c.dxf_layer_map || {
+    panel_outline: 'CORTE', drill_through: 'TALADRO_PASANTE', drill_blind: 'TALADRO_CIEGO',
+    hinge_cup: 'BISAGRA', groove: 'RANURA', pocket: 'CAJEADO', router: 'FRESADO', panel_label: 'ETIQUETA'
+  };
+  document.getElementById('cfg-layers').value = JSON.stringify(layers, null, 2);
+}
+
+async function save(e) {
+  e.preventDefault();
+  var btn = document.getElementById('cfg-save');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    var layers;
+    try {
+      layers = JSON.parse(document.getElementById('cfg-layers').value);
+    } catch (err) {
+      showToast('JSON de capas inválido: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Guardar';
+      return;
+    }
+    var payload = {
+      default_margin_percent:            Number(document.getElementById('cfg-margin').value),
+      default_vat_percent:               Number(document.getElementById('cfg-vat').value),
+      default_rate_cut_per_ml_eur:       Number(document.getElementById('cfg-cut').value),
+      default_rate_edge_band_per_ml_eur: Number(document.getElementById('cfg-eb').value),
+      default_kerf_mm:                   Number(document.getElementById('cfg-kerf').value),
+      default_border_trim_mm:            Number(document.getElementById('cfg-trim').value),
+      dxf_layer_map:                     layers
+    };
+    var r = await CpData.saveCostConfig(payload);
+    if (r.error) throw r.error;
+    showToast('Configuración guardada', 'success');
+  } catch (err) {
+    console.error('save cfg', err);
+    showToast('Error al guardar: ' + (err.message || err), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
+
+function showToast(msg, kind) {
+  var t = document.getElementById('cfg-toast');
+  t.textContent = msg; t.className = 'ash-toast ' + (kind || '') + ' visible';
+  setTimeout(function () { t.classList.remove('visible'); }, 3500);
+}
+</script>
+</body>
+</html>
