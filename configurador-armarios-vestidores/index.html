@@ -338,32 +338,32 @@ body{min-height:100vh;font-family:var(--font);color:var(--black);background:var(
 @media(max-width:1200px){.p3s{padding:.8rem 1.5rem}.p3rg{grid-template-columns:repeat(4,1fr)}}
 
 /* ── SITE NAV (from landing) ── */
-.site-nav{position:fixed;top:0;left:0;right:0;z-index:200;
+#nav{position:fixed;top:0;left:0;right:0;z-index:200;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 32px;height:60px;
   background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
-.site-nav .nav-logo{text-decoration:none;display:flex;align-items:center}
-.site-nav .nav-logo img{height:24px;width:auto;display:block}
-.site-nav .nav-right{display:flex;align-items:center;gap:1.8rem}
-.site-nav .nav-links{display:flex;gap:1.8rem;align-items:center}
-.site-nav .nav-links a{font-size:11px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s;position:relative}
-.site-nav .nav-links a:hover{color:#999}
-.site-nav .nav-icons{display:flex;gap:1.2rem;align-items:center}
-.site-nav .nav-icons a{font-size:11px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
-.site-nav .nav-icons a:hover{color:#999}
-.site-nav .nav-icons svg{width:14px;height:14px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
-.site-nav .nav-mobile-right{display:none}
-.site-nav .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
-.site-nav .nav-hamburger span{display:block;width:22px;height:1px;background:#000;transition:all .3s;transform-origin:center}
-.site-nav .nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
-.site-nav .nav-hamburger.open span:nth-child(2){opacity:0}
-.site-nav .nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+#nav .nav-logo{text-decoration:none;display:flex;align-items:center}
+#nav .nav-logo img{height:24px;width:auto;display:block}
+#nav .nav-right{display:flex;align-items:center;gap:1.8rem}
+#nav .nav-links{display:flex;gap:1.8rem;align-items:center}
+#nav .nav-links a{font-size:11px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s;position:relative}
+#nav .nav-links a:hover{color:#999}
+#nav .nav-icons{display:flex;gap:1.2rem;align-items:center}
+#nav .nav-icons a{font-size:11px;letter-spacing:0.24px;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;transition:color .2s}
+#nav .nav-icons a:hover{color:#999}
+#nav .nav-icons svg{width:14px;height:14px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+#nav .nav-mobile-right{display:none}
+#nav .nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem}
+#nav .nav-hamburger span{display:block;width:22px;height:1px;background:#000;transition:all .3s;transform-origin:center}
+#nav .nav-hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+#nav .nav-hamburger.open span:nth-child(2){opacity:0}
+#nav .nav-hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 
 /* Site mobile menu */
-.site-mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:#fff;padding:1.5rem 2rem;z-index:199;flex-direction:column;gap:0;overflow-y:auto}
-.site-mobile-menu.open{display:flex}
-.site-mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:#fff;padding:1.5rem 2rem;z-index:199;flex-direction:column;gap:0;overflow-y:auto}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;font-weight:400;padding:.8rem 0;border-bottom:1px solid var(--border)}
 
 /* Megamenu */
 .mega-trigger{position:relative}
@@ -433,10 +433,10 @@ footer{
 .footer-links{display:block}
 
 @media(max-width:1200px){
-  .site-nav .nav-right{display:none}
-  .site-nav .nav-mobile-right{display:flex;align-items:center;gap:1rem}
-  .site-nav .nav-mobile-right .nav-hamburger{display:flex}
-  .site-nav{padding:0 16px}
+  #nav .nav-right{display:none}
+  #nav .nav-mobile-right{display:flex;align-items:center;gap:1rem}
+  #nav .nav-mobile-right .nav-hamburger{display:flex}
+  #nav{padding:0 16px}
   .megamenu{display:none!important}
   .footer-bottom{padding:1.2rem 16px}
   .main,.viewer,.config-panel,.wardrobe-img-wrap,.wardrobe-img-wrap img{max-width:100vw!important;box-sizing:border-box}
@@ -510,119 +510,9 @@ footer{
 </head>
 <body>
 
-<nav id="siteNav" class="site-nav">
-  <a href="/" class="nav-logo"><img src="../assets/imagenes/logo-curino.svg" alt="Curino" height="28"></a>
-  <div class="nav-right">
-  <div class="nav-links">
-    <div class="mega-trigger">
-      <a href="#">Alta Carpinteria</a>
-      <div class="megamenu">
-        <div class="mega-col">
-          <div class="mega-col-title">Sistemas</div>
-          <a href="#">Maestro</a>
-          <a href="#">Fina</a>
-          <a href="#">Autor</a>
-        </div>
-        <div class="mega-col">
-          <div class="mega-col-title">Estancias</div>
-          <a href="#">Dormitorio</a>
-          <a href="#">Cocina</a>
-          <a href="#">Salon</a>
-          <a href="#">Comedor</a>
-          <a href="#">Bano</a>
-        </div>
-        <div class="mega-col">
-          <div class="mega-col-title">Productos</div>
-          <a href="#">Armarios</a>
-          <a href="#">Vestidores</a>
-          <a href="#">Puertas</a>
-          <a href="#">Paneles</a>
-          <a href="#">Cocinas</a>
-        </div>
-        <div class="mega-col">
-          <div class="mega-col-title">Proyectos Integrales</div>
-          <a href="#">Residencial</a>
-          <a href="#">Contract</a>
-          <a href="#">Couture</a>
-        </div>
-        <div class="mega-imgs">
-          <div class="mega-img"><a href="./"><img src="../assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="./">Proyecto a medida</a></div>
-          <div class="mega-img"><a href="./"><img src="../assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="./">Configurador</a></div>
-        </div>
-      </div>
-    </div>
-    <a href="#">Diseñadores</a>
-    <a href="#">Lab Work</a>
-    <a href="#">Materiales</a>
-    <a href="#">Estudio</a>
-    <div class="mega-trigger">
-      <a href="/revista/">Revista</a>
-      <div class="megamenu">
-        <div class="mega-col"><div class="mega-col-title">Secciones</div><a href="/revista/proyectos/">Proyectos</a><a href="/revista/materiales/">Materiales</a><a href="/revista/articulos/">Artículos</a><a href="/revista/noticias/">Noticias</a><a href="/revista/entrevistas/">Entrevistas</a></div>
-        <div class="mega-col"><div class="mega-col-title">Publicar</div><a href="/mi-cuenta/revista/">Mis publicaciones</a><a href="/mi-cuenta/revista/perfil/">Perfil de revista</a></div>
-      </div>
-    </div>
-    <a href="#">Partners</a>
-    <a href="#">Contacto</a>
-  </div>
-  <div class="nav-icons">
-    <a href="#">ES</a>
-    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <a href="/login/" class="user-icon-link" id="userIconLink">
-      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </a>
-    <div class="cart-icon" onclick="toggleCart()">
-      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-      <div class="cart-badge" id="cartBadge">0</div>
-    </div>
-  </div>
-  </div>
-  <div class="nav-mobile-right">
-    <a href="/login/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
-    <div class="cart-icon" onclick="toggleCart()"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><div class="cart-badge cart-badge-mob" id="cartBadgeMob">0</div></div>
-    <div class="nav-hamburger" onclick="toggleSiteMenu()" id="siteHamburger">
-      <span></span><span></span><span></span>
-    </div>
-  </div>
-</nav>
-<div class="site-mobile-menu" id="siteMobileMenu">
-  <div class="mobile-accordion" id="mobileAccordion">
-    <div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div>
-    <div class="mobile-accordion-body">
-      <div class="mobile-sub-title">Sistemas</div>
-      <a href="#">Maestro</a>
-      <a href="#">Fina</a>
-      <a href="#">Autor</a>
-      <div class="mobile-sub-title">Estancias</div>
-      <a href="#">Dormitorio</a>
-      <a href="#">Cocina</a>
-      <a href="#">Salon</a>
-      <a href="#">Comedor</a>
-      <a href="#">Bano</a>
-      <div class="mobile-sub-title">Productos</div>
-      <a href="#">Armarios</a>
-      <a href="#">Vestidores</a>
-      <a href="#">Puertas</a>
-      <a href="#">Paneles</a>
-      <a href="#">Cocinas</a>
-      <div class="mobile-sub-title">Proyectos Integrales</div>
-      <a href="#">Residencial</a>
-      <a href="#">Contract</a>
-      <a href="#">Couture</a>
-    </div>
-  </div>
-  <a href="#" onclick="toggleSiteMenu()">Diseñadores</a>
-  <a href="#" onclick="toggleSiteMenu()">Lab Work</a>
-  <a href="#" onclick="toggleSiteMenu()">Materiales</a>
-  <a href="#" onclick="toggleSiteMenu()">Estudio</a>
-  <a href="/revista/" onclick="toggleSiteMenu()">Revista</a>
-  <a href="#" onclick="toggleSiteMenu()">Partners</a>
-  <a href="#" onclick="toggleSiteMenu()">Contacto</a>
-  <div class="mobile-imgs">
-    <div class="mega-img"><a href="./"><video autoplay muted loop playsinline style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"><source src="../assets/video/fina-hero.mp4" type="video/mp4"></video></a><a href="./">Proyecto a medida</a></div>
-    <div class="mega-img"><a href="./"><img src="../assets/imagenes/landing/hero mega config armarios.png" alt="Configurador" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a><a href="./">Configurador</a></div>
-  </div>
-</div>
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
 <div class="main">
 
   <!-- VIEWER -->
@@ -2197,9 +2087,7 @@ function p3DrawLisaOpen(ctx, x, y, doorW, doorH, color, ap){
 // END PASO 3
 </script>
 
-<script>
-function toggleSiteMenu(){var m=document.getElementById("siteMobileMenu");var h=document.getElementById("siteHamburger");m.classList.toggle("open");h.classList.toggle("open");}
-</script>
+<!-- Mobile menu: lógica vive en /assets/js/main-nav.js (toggleSiteMenu eliminado) -->
 
 <!-- CART DRAWER -->
 <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>

@@ -149,53 +149,9 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <a href="/" class="nav-logo"><img src="/assets/imagenes/logo-curino.svg" alt="Curino"></a>
-  <div class="nav-right">
-  <div class="nav-links">
-    <div class="mega-trigger">
-      <a href="#">Alta Carpinteria</a>
-      <div class="megamenu">
-        <div class="mega-col"><div class="mega-col-title">Sistemas</div><a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a></div>
-        <div class="mega-col"><div class="mega-col-title">Estancias</div><a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a></div>
-        <div class="mega-col"><div class="mega-col-title">Productos</div><a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a></div>
-        <div class="mega-col"><div class="mega-col-title">Proyectos Integrales</div><a href="#">Residencial</a><a href="#">Contract</a><a href="#">Couture</a></div>
-        <div class="mega-imgs">
-          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida"></a><a href="/configurador-armarios-vestidores/">Proyecto a medida</a></div>
-          <div class="mega-img"><a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configurador"></a><a href="/configurador-armarios-vestidores/">Configurador</a></div>
-        </div>
-      </div>
-    </div>
-    <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="/revista/">Revista</a><a href="#">Partners</a><a href="#">Contacto</a>
-  </div>
-  <div class="nav-icons">
-    <a href="#">ES</a>
-    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <a href="/login/" class="user-icon-link" id="userIconLink"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
-  </div>
-  </div>
-  <div class="nav-mobile-right">
-    <a href="/login/" class="user-icon-link" id="userIconLinkMob"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
-    <div class="nav-hamburger" onclick="toggleMenu()" id="hamburger">
-      <span></span><span></span><span></span>
-    </div>
-  </div>
-</nav>
-<div class="mobile-menu" id="mobileMenu">
-  <div class="mobile-accordion">
-    <div class="mobile-accordion-title" onclick="this.parentElement.classList.toggle('open')">Alta Carpinteria</div>
-    <div class="mobile-accordion-body">
-      <div class="mobile-sub-title">Sistemas</div>
-      <a href="#">Maestro</a><a href="#">Fina</a><a href="#">Autor</a>
-      <div class="mobile-sub-title">Estancias</div>
-      <a href="#">Dormitorio</a><a href="#">Cocina</a><a href="#">Salon</a><a href="#">Comedor</a><a href="#">Bano</a>
-      <div class="mobile-sub-title">Productos</div>
-      <a href="#">Armarios</a><a href="#">Vestidores</a><a href="#">Puertas</a><a href="#">Paneles</a><a href="#">Cocinas</a>
-    </div>
-  </div>
-  <a href="#">Disenadores</a><a href="#">Lab Work</a><a href="#">Materiales</a><a href="#">Estudio</a><a href="/revista/">Revista</a><a href="#">Partners</a><a href="#">Contacto</a>
-</div>
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
 
 <!-- LOGIN — OTP-only flow (link + código) + Google OAuth -->
 <div class="login-wrap">
@@ -277,10 +233,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 </div>
 
 <script>
-function toggleMenu(){
-  document.getElementById('mobileMenu').classList.toggle('open');
-  document.getElementById('hamburger').classList.toggle('open');
-}
+/* Mobile menu: lógica vive en /assets/js/main-nav.js */
 
 var supabase;
 var _redirect=new URLSearchParams(window.location.search).get('redirect')||'/mi-cuenta/';
