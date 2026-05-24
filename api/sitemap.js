@@ -41,12 +41,38 @@ export default async function handler() {
   }
 
   const staticUrls = [
+    // Páginas raíz públicas
+    { loc: 'https://casacurino.com/', changefreq: 'weekly' },
+    { loc: 'https://casacurino.com/proyecto-a-medida/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/configurador-armarios-vestidores/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/configurador-2d/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/estudio/', changefreq: 'monthly' },
+
+    // Revista
     { loc: 'https://casacurino.com/revista/', changefreq: 'daily' },
     { loc: 'https://casacurino.com/revista/proyectos/', changefreq: 'weekly' },
     { loc: 'https://casacurino.com/revista/materiales/', changefreq: 'weekly' },
     { loc: 'https://casacurino.com/revista/articulos/', changefreq: 'weekly' },
     { loc: 'https://casacurino.com/revista/noticias/', changefreq: 'weekly' },
-    { loc: 'https://casacurino.com/revista/entrevistas/', changefreq: 'weekly' }
+    { loc: 'https://casacurino.com/revista/entrevistas/', changefreq: 'weekly' },
+
+    // Productos
+    { loc: 'https://casacurino.com/armarios-vestidores/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/cocinas/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/banos/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/puertas/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/paneles/', changefreq: 'monthly' },
+
+    // Estancias
+    { loc: 'https://casacurino.com/dormitorio/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/salon/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/comedor/', changefreq: 'monthly' },
+
+    // Proyectos integrales
+    { loc: 'https://casacurino.com/residencial/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/contract/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/couture/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/nautica/', changefreq: 'monthly' }
   ];
 
   const articleEntries = (articles || []).map((a) => {
