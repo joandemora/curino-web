@@ -161,3 +161,142 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .sec-cta{padding:3rem 16px}
   .sec-related{padding:3rem 16px}
 }
+
+/* ============================================================
+ * Maquetación editorial variada (.sx-*) — usada por las 12
+ * páginas de sección (rediseño feat/seccion-pages-redesign).
+ *
+ * Sx-prefix para no chocar con .sec-* legacy. La idea: bloques
+ * combinables con personalidad propia por página.
+ * ============================================================ */
+.sx-page{padding-top:80px}
+
+/* Hero full-bleed con imagen de fondo y texto sobre overlay */
+.sx-hero-full{position:relative;height:80vh;min-height:520px;max-height:760px;background:#0a0a0a;overflow:hidden}
+.sx-hero-full img,.sx-hero-full .sx-placeholder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sx-hero-full::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1) 0%,rgba(0,0,0,.55) 100%)}
+.sx-hero-full .sx-hero-text{position:absolute;left:0;right:0;bottom:0;padding:3rem 32px;color:#fff;z-index:1;max-width:1100px;margin:0 auto}
+.sx-hero-full .sx-eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:1rem}
+.sx-hero-full h1{font-size:clamp(38px,6vw,72px);font-weight:300;line-height:1.05;letter-spacing:-.02em;margin-bottom:1rem;color:#fff;max-width:900px}
+.sx-hero-full .sx-lead{font-size:clamp(15px,1.4vw,18px);line-height:1.6;color:rgba(255,255,255,.9);max-width:620px}
+
+/* Hero "editorial": eyebrow + h1 grande + lead, fondo blanco */
+.sx-hero-edit{padding:6rem 32px 3rem;max-width:1100px;margin:0 auto}
+.sx-hero-edit .sx-eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-bottom:1.5rem}
+.sx-hero-edit h1{font-size:clamp(42px,6.5vw,76px);font-weight:300;line-height:1.05;letter-spacing:-.02em;color:var(--black);margin-bottom:1.25rem;max-width:900px}
+.sx-hero-edit .sx-lead{font-size:clamp(17px,1.7vw,21px);line-height:1.55;color:var(--mid);max-width:680px}
+
+/* Hero "two-col": texto izq + foto der (o reverse) */
+.sx-hero-2col{display:grid;grid-template-columns:1fr 1fr;min-height:75vh;max-height:760px}
+.sx-hero-2col.reverse{direction:rtl}
+.sx-hero-2col.reverse>*{direction:ltr}
+.sx-hero-2col .sx-hero-text{display:flex;flex-direction:column;justify-content:center;padding:3rem 4rem;background:var(--white)}
+.sx-hero-2col .sx-hero-text .sx-eyebrow{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-bottom:1.25rem}
+.sx-hero-2col h1{font-size:clamp(34px,4.5vw,52px);font-weight:300;line-height:1.1;letter-spacing:-.01em;color:var(--black);margin-bottom:1.25rem}
+.sx-hero-2col .sx-lead{font-size:clamp(15px,1.4vw,17px);line-height:1.65;color:var(--mid);max-width:520px}
+.sx-hero-2col .sx-hero-img,.sx-hero-2col .sx-placeholder{position:relative;background:#0a0a0a;overflow:hidden}
+.sx-hero-2col .sx-hero-img img,.sx-hero-2col .sx-hero-img .sx-placeholder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* Split: dos columnas foto + texto (alterna izq/der) */
+.sx-split{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1400px;margin:0 auto;padding:5rem 32px;align-items:center}
+.sx-split.bleed{max-width:none;padding:0}
+.sx-split.bleed .sx-split-text{padding:5rem 6rem}
+.sx-split.reverse{direction:rtl}
+.sx-split.reverse>*{direction:ltr}
+.sx-split-img{position:relative;aspect-ratio:4/5;overflow:hidden;background:#0a0a0a}
+.sx-split-img img,.sx-split-img .sx-placeholder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sx-split-text{padding:0 3rem}
+.sx-split-text .sx-eyebrow{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-bottom:1rem}
+.sx-split-text h2{font-size:clamp(26px,3.2vw,38px);font-weight:300;line-height:1.15;letter-spacing:-.01em;color:var(--black);margin-bottom:1.25rem}
+.sx-split-text p{font-size:16px;line-height:1.7;color:#333;margin-bottom:1rem}
+.sx-split-text ul{margin:.5rem 0 1rem;padding-left:1.4rem}
+.sx-split-text li{font-size:15px;line-height:1.7;color:#333;margin-bottom:.45rem}
+
+/* Banner full-bleed (foto entera ocupando todo el ancho, sin texto) */
+.sx-banner{width:100%;aspect-ratio:21/9;max-height:640px;overflow:hidden;background:#0a0a0a;position:relative}
+.sx-banner img,.sx-banner .sx-placeholder{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Grid de 3 columnas con imágenes + caption */
+.sx-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:1500px;margin:0 auto;padding:3rem 0}
+.sx-grid3 figure{position:relative;aspect-ratio:3/4;overflow:hidden;background:#0a0a0a;margin:0}
+.sx-grid3 figure img,.sx-grid3 figure .sx-placeholder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sx-grid3 figcaption{position:absolute;bottom:1rem;left:1rem;right:1rem;color:#fff;font-size:11px;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+/* Grid asimétrico 2 cols: 1 grande izq + 2 pequeñas apiladas der */
+.sx-grid-asym{display:grid;grid-template-columns:2fr 1fr;gap:8px;max-width:1400px;margin:0 auto;padding:3rem 0}
+.sx-grid-asym .sx-asym-big{grid-row:span 2;position:relative;aspect-ratio:4/5;overflow:hidden;background:#0a0a0a}
+.sx-grid-asym .sx-asym-small{position:relative;aspect-ratio:4/3;overflow:hidden;background:#0a0a0a}
+.sx-grid-asym img,.sx-grid-asym .sx-placeholder{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* Bloque de texto centrado (intermedio entre splits) */
+.sx-text-block{max-width:760px;margin:0 auto;padding:5rem 32px;text-align:left}
+.sx-text-block .sx-eyebrow{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-bottom:1rem;text-align:center}
+.sx-text-block h2{font-size:clamp(26px,3.2vw,38px);font-weight:300;line-height:1.15;letter-spacing:-.01em;color:var(--black);margin-bottom:1.5rem;text-align:center}
+.sx-text-block p{font-size:16px;line-height:1.75;color:#333;margin-bottom:1.1rem}
+.sx-text-block ul,.sx-text-block ol{margin:.5rem 0 1.4rem;padding-left:1.6rem}
+.sx-text-block li{font-size:16px;line-height:1.75;color:#333;margin-bottom:.5rem}
+.sx-text-block strong{font-weight:600;color:var(--black)}
+.sx-text-block a{color:var(--black);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+
+/* Quote / cita destacada */
+.sx-quote{max-width:900px;margin:0 auto;padding:5rem 32px;text-align:center}
+.sx-quote blockquote{font-family:Georgia,serif;font-size:clamp(22px,3vw,34px);font-weight:400;line-height:1.45;font-style:italic;color:var(--black);margin:0;letter-spacing:-.005em}
+.sx-quote cite{display:block;margin-top:1.5rem;font-style:normal;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mid)}
+
+/* Data destacado: cuatro métricas/datos en fila */
+.sx-data{background:var(--bg);padding:4rem 32px}
+.sx-data-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;text-align:center}
+.sx-data-item .sx-data-num{font-size:clamp(32px,4.5vw,56px);font-weight:300;line-height:1;color:var(--black);margin-bottom:.5rem;letter-spacing:-.02em}
+.sx-data-item .sx-data-label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);line-height:1.4}
+
+/* CTA editorial: bloque oscuro full-bleed con CTA */
+.sx-cta-dark{background:var(--black);color:#fff;padding:5rem 32px;text-align:center}
+.sx-cta-dark h2{font-size:clamp(26px,3.5vw,42px);font-weight:300;color:#fff;line-height:1.2;letter-spacing:-.01em;margin-bottom:1rem;max-width:760px;margin-left:auto;margin-right:auto}
+.sx-cta-dark p{font-size:16px;color:rgba(255,255,255,.7);margin-bottom:2rem;max-width:560px;margin-left:auto;margin-right:auto}
+.sx-cta-dark .btn-main{background:#fff;color:var(--black)}
+.sx-cta-dark .btn-main:hover{background:#ddd}
+
+/* CTA suave: fondo crema (variante clara) */
+.sx-cta-soft{background:var(--bg);text-align:center;padding:5rem 32px}
+.sx-cta-soft h2{font-size:clamp(26px,3.5vw,42px);font-weight:300;letter-spacing:-.01em;color:var(--black);margin-bottom:.75rem;max-width:760px;margin-left:auto;margin-right:auto}
+.sx-cta-soft p{font-size:16px;color:var(--mid);margin-bottom:2rem;max-width:560px;margin-left:auto;margin-right:auto}
+
+/* Enlaces internos relacionados (variante visual nueva) */
+.sx-related{max-width:1400px;margin:0 auto;padding:5rem 32px 3rem;border-top:1px solid var(--border)}
+.sx-related-title{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-bottom:2rem;text-align:center}
+.sx-related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border)}
+.sx-related-grid a{display:block;background:var(--white);padding:1.75rem 1.5rem;text-decoration:none;color:var(--black);transition:background .2s;text-align:center;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.sx-related-grid a:hover{background:var(--bg)}
+.sx-related-grid a small{display:block;font-size:10px;color:var(--mid);letter-spacing:.12em;margin-bottom:.4rem;text-transform:uppercase}
+
+/* Placeholder visual (cuando no hay imagen real) */
+.sx-placeholder{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e8e6de 0%,#d4d0c0 100%);color:rgba(0,0,0,.25);font-size:13px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;font-family:var(--font);text-align:center;padding:1rem}
+.sx-placeholder::before{content:'■';font-size:48px;display:block;margin-bottom:.5rem;opacity:.4}
+
+/* Responsive maquetación variada */
+@media(max-width:1024px){
+  .sx-hero-2col{grid-template-columns:1fr;min-height:auto}
+  .sx-hero-2col .sx-hero-img{height:55vh;min-height:380px}
+  .sx-hero-2col .sx-hero-text{padding:3rem 2rem}
+  .sx-split{grid-template-columns:1fr;padding:3rem 16px}
+  .sx-split.bleed .sx-split-text{padding:3rem 1.5rem}
+  .sx-split-img{aspect-ratio:16/10}
+  .sx-split-text{padding:2rem 0}
+  .sx-grid3{grid-template-columns:repeat(2,1fr);padding:2rem 16px}
+  .sx-grid-asym{grid-template-columns:1fr;padding:2rem 16px}
+  .sx-grid-asym .sx-asym-big{grid-row:auto;aspect-ratio:4/3}
+  .sx-data-grid{grid-template-columns:repeat(2,1fr);gap:2.5rem}
+  .sx-hero-full{height:70vh;min-height:440px}
+  .sx-hero-full .sx-hero-text{padding:2rem 16px}
+  .sx-hero-edit{padding:4rem 16px 2rem}
+  .sx-text-block{padding:3rem 16px}
+  .sx-quote{padding:3rem 16px}
+  .sx-data,.sx-cta-dark,.sx-cta-soft,.sx-related,.sx-banner{padding-left:16px;padding-right:16px}
+  .sx-banner{aspect-ratio:16/9;padding:0}
+  .sx-related{padding:3rem 16px 2rem}
+}
+@media(max-width:560px){
+  .sx-grid3{grid-template-columns:1fr}
+  .sx-data-grid{grid-template-columns:1fr;gap:1.5rem}
+}
+
