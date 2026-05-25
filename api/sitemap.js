@@ -46,8 +46,8 @@ export default async function handler() {
     { loc: 'https://casacurino.com/sobre-nosotros/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/proyecto-a-medida/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/solicitar-presupuesto/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/pro/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/configurador-armarios-vestidores/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/configurador-2d/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/estudio/', changefreq: 'monthly' },
 
     // Revista
