@@ -75,3 +75,13 @@ entrypoint = "./functions/notify-takedown/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/notify-takedown/*.html" ]
+
+[functions.presupuesto-form-relay]
+enabled = true
+verify_jwt = false
+import_map = "./functions/presupuesto-form-relay/deno.json"
+entrypoint = "./functions/presupuesto-form-relay/index.ts"
+# verify_jwt=false: la función es invocada server-to-server desde Vercel
+# (api/solicitar-presupuesto) con el ANON_KEY como apikey, sin user JWT real.
+# Coherente con magazine-relay-contact (también desplegada con verify_jwt=false
+# aunque no aparezca en este config.toml por ser anterior a la entrada en la CLI).
