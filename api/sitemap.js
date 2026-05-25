@@ -76,7 +76,12 @@ export default async function handler() {
     { loc: 'https://casacurino.com/residencial/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/contract/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/couture/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/nautica/', changefreq: 'monthly' }
+    { loc: 'https://casacurino.com/nautica/', changefreq: 'monthly' },
+
+    // Páginas legales
+    { loc: 'https://casacurino.com/aviso-legal/', changefreq: 'yearly' },
+    { loc: 'https://casacurino.com/privacidad/', changefreq: 'yearly' },
+    { loc: 'https://casacurino.com/cookies/', changefreq: 'yearly' }
   ];
 
   const articleEntries = (articles || []).map((a) => {
