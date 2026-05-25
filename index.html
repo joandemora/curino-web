@@ -311,7 +311,26 @@ nav{
   background:rgba(0,0,0,.05);transition:background .3s;
 }
 .sys-card:hover::after{background:rgba(0,0,0,.20)}
-.sys-card-title,.sys-card-cta{position:relative;z-index:1}
+.sys-card-title,.sys-card-cta{position:relative;z-index:2}
+/* Stretched link: cubre toda la caja para hacer la card entera clicable.
+   z-index:1 le pone sobre la imagen pero bajo el título y el botón visible. */
+.sys-card-stretch{position:absolute;inset:0;z-index:1;text-decoration:none}
+.sys-card-stretch:focus{outline:2px solid #fff;outline-offset:-4px}
+/* Botón CTA grande outline para las cajas (sys-card, video-block). Misma
+   estética que .hero-btn--outline pero posicionado absolute abajo. */
+.card-cta-btn{
+  position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:2;
+  display:inline-block;padding:.95rem 2.4rem;
+  font-family:'Open Sans',system-ui,sans-serif;font-size:12px;font-weight:500;
+  letter-spacing:.22em;text-transform:uppercase;text-decoration:none;
+  border:1px solid #fff;color:#fff;background:transparent;
+  transition:background .2s,color .2s,border-color .2s;
+  white-space:nowrap;
+}
+.card-cta-btn:hover{background:#fff;color:#0a0a0a;border-color:#fff}
+@media(max-width:560px){
+  .card-cta-btn{bottom:24px;padding:.85rem 1.8rem;font-size:11px;letter-spacing:.18em}
+}
 .sys-card-title{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-family:'Cormorant Garamond',Georgia,serif;
@@ -716,7 +735,7 @@ footer{
 <div class="intro" id="intro">
   <h2 class="intro-title">Industria con alma de atelier.</h2>
   <p class="intro-body">Solo los más exigentes saben que el detalle lo cambia todo. Curino existe para ellos — diseñadores, arquitectos y clientes privados de todo el mundo que buscan mobiliario verdaderamente único — con la precisión de una fábrica, la sensibilidad de un taller de autor y materiales que no admiten compromiso. Desde el primer boceto hasta el último detalle instalado.</p>
-  <a href="#" class="link-arrow">Casa Curino</a>
+  <a href="/sobre-nosotros/" class="link-arrow">Casa Curino</a>
 </div>
 
 <!-- TERTIARY CARDS 2 -->
@@ -728,14 +747,14 @@ footer{
       <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">El armario como arquitectura total.</div>
       <div class="sys-card-subtitle">Diseñado con precisión alrededor de cómo la gente realmente vive. Perfiles elegantes, herrajes invisibles y configurabilidad infinita en cada proyecto.</div>
     </div>
-    <a href="configurador-armarios-vestidores/" class="sys-card-cta">Configurar</a>
+    <a href="configurador-armarios-vestidores/" class="card-cta-btn">Configurar</a>
   </div>
   <div class="sys-card" id="partnersCard">
     <div class="sys-card-content">
-      <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">Partners</div>
-      <div class="sys-card-subtitle">Vende proyectos Curino desde cualquier lugar del mundo. Sin stock, sin obra, sin límites. Tú generas el proyecto, nosotros lo fabricamos e instalamos. Tú cobras.</div>
+      <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">Casa Curino</div>
+      <div class="sys-card-subtitle">Un taller, un estudio y una forma de entender la carpintería. Conoce quiénes somos, cómo trabajamos y por qué cada pieza lleva nuestro nombre.</div>
     </div>
-    <a href="#" class="sys-card-cta">Únete</a>
+    <a href="/sobre-nosotros/" class="card-cta-btn">Sobre nosotros</a>
   </div>
 </div>
 
@@ -743,8 +762,9 @@ footer{
 <div class="sys-grid" id="sistemas">
   <div class="sys-col">
     <div class="sys-card" style="background-image:url(assets/imagenes/landing/MAESTRO.jpg)">
-      <div class="sys-card-title">Sistema Maestro</div>
-      <a href="#" class="sys-card-cta">Armarios y vestidores</a>
+      <a href="/armarios-vestidores/" class="sys-card-stretch" aria-label="Armarios y vestidores"></a>
+      <div class="sys-card-title">Armarios y vestidores</div>
+      <a href="/armarios-vestidores/" class="card-cta-btn">Ver más</a>
     </div>
     <div class="sys-text">
       <p>El espacio que siempre imaginaste, por fin existe. Armarios y vestidores diseñados y fabricados al milímetro para tu vida, tu ropa y tu manera de estar en casa.</p>
@@ -752,8 +772,9 @@ footer{
   </div>
   <div class="sys-col">
     <div class="sys-card" style="background-image:url(assets/imagenes/landing/FINA.jpg)">
-      <div class="sys-card-title">Sistema Fina</div>
-      <a href="#" class="sys-card-cta">Puertas y paneles</a>
+      <a href="/puertas/" class="sys-card-stretch" aria-label="Puertas y paneles"></a>
+      <div class="sys-card-title">Puertas y paneles</div>
+      <a href="/puertas/" class="card-cta-btn">Ver más</a>
     </div>
     <div class="sys-text">
       <p>Una puerta no separa estancias — define atmósferas. Puertas y paneles de alta carpintería que transforman cada paso en una experiencia.</p>
@@ -761,8 +782,9 @@ footer{
   </div>
   <div class="sys-col">
     <div class="sys-card" style="background-image:url(assets/imagenes/landing/AUTOR.jpg)">
-      <div class="sys-card-title">Sistema Autor</div>
-      <a href="#" class="sys-card-cta">Cocinas</a>
+      <a href="/cocinas/" class="sys-card-stretch" aria-label="Cocinas"></a>
+      <div class="sys-card-title">Cocinas</div>
+      <a href="/cocinas/" class="card-cta-btn">Ver más</a>
     </div>
     <div class="sys-text">
       <p>La cocina de antes vuelve. Diseñada para quienes cocinan, viven y comparten con la misma exigencia con la que eligen cada detalle de su hogar.</p>
@@ -776,7 +798,8 @@ footer{
     <video class="hero-video" autoplay muted loop playsinline>
       <source src="assets/video/fina-hero.mp4" type="video/mp4">
     </video>
-    <div class="video-title">Siéntete como en casa.<a href="#" class="video-cta">Estudio</a></div>
+    <div class="video-title">Siéntete como en casa.</div>
+    <a href="/estudio/" class="card-cta-btn">Estudio</a>
   </div>
 </div>
 
@@ -793,7 +816,7 @@ footer{
       <source src="assets/video/designers-hero.mp4" type="video/mp4">
     </video>
     <div class="video-title">Para Diseñadores<p class="video-desc">En Curino desarrollamos tecnología propia para que interioristas y arquitectos puedan diseñar mobiliario a medida en minutos y obtener presupuesto inmediato. Sin esperas, sin intermediarios. Del boceto al precio en tiempo real.</p></div>
-    <a href="#" class="video-cta" style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:1">Acceso exclusivo</a>
+    <a href="/pro/" class="card-cta-btn">Acceso exclusivo</a>
   </div>
 </div>
 
@@ -804,14 +827,14 @@ footer{
       <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">Materiales</div>
       <div class="sys-card-subtitle">Solo trabajamos con lo mejor. Maderas nobles, lacados de alta resistencia, textiles de autor y metales de precisión — cada material seleccionado para durar y para sorprender.</div>
     </div>
-    <a href="#" class="sys-card-cta">Descubrir</a>
+    <a href="/materiales/" class="card-cta-btn">Descubrir</a>
   </div>
   <div class="sys-card" style="background-image:url(assets/imagenes/landing/magazine_hero.png)">
     <div class="sys-card-content">
       <div class="sys-card-title" style="position:static;transform:none;margin-bottom:16px">La madera tiene memoria</div>
       <div class="sys-card-subtitle">Proyectos, procesos, materiales y conversaciones con quienes hacen posible cada pieza. El universo Curino en primera persona.</div>
     </div>
-    <a href="/revista/" class="sys-card-cta">Revista</a>
+    <a href="/revista/" class="card-cta-btn">Revista</a>
   </div>
 </div>
 
