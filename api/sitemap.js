@@ -62,6 +62,7 @@ export default async function handler() {
     { loc: 'https://casacurino.com/banos/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/puertas/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/paneles/', changefreq: 'monthly' },
+    { loc: 'https://casacurino.com/escaleras/', changefreq: 'monthly' },
 
     // Estancias
     { loc: 'https://casacurino.com/dormitorio/', changefreq: 'monthly' },
