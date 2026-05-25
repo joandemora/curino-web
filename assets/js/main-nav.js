@@ -43,7 +43,7 @@
       +     '<div class="nav-links">'
       +       megaAltaCarpinteriaDesktop()
       +       '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
-      +       '<a href="/proyecto-a-medida/">Proyecto a medida</a>'
+      +       '<a href="/estudio/">Estudio</a>'
       +       '<a href="/configurador-2d/">Maestro</a>'
       +       megaRevistaDesktop()
       +     '</div>'
@@ -167,7 +167,7 @@
       +     '</div>'
       +   '</div>'
       +   '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
-      +   '<a href="/proyecto-a-medida/">Proyecto a medida</a>'
+      +   '<a href="/estudio/">Estudio</a>'
       +   '<a href="/configurador-2d/">Maestro</a>'
       +   '<a href="/revista/">Revista</a>'
       +   '<div class="mobile-imgs">'
