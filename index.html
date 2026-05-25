@@ -6,7 +6,7 @@
 <title>Curino — Mueble a medida con entrega garantizada</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -153,17 +153,46 @@ nav{
   height:calc(100vh - 80px - 70px);
   max-height:none;
 }
-.hero::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.05);transition:background .3s}
-.hero:hover::after{background:rgba(0,0,0,.20)}
-.hero-cta{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;
-  font-size:12px;font-weight:400;letter-spacing:0.24px;text-transform:uppercase;
-  color:#ffffff;text-decoration:none;
-  border-bottom:1px solid #ffffff;padding-bottom:3px;
-  transition:opacity .2s,transform .4s ease;
+/* Overlay reforzado para garantizar contraste del título serif sobre el vídeo */
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25) 0%,rgba(0,0,0,.45) 100%);transition:background .3s;pointer-events:none}
+.hero:hover::after{background:linear-gradient(180deg,rgba(0,0,0,.30) 0%,rgba(0,0,0,.55) 100%)}
+
+/* Bloque central del hero: título serif + descripción + 2 botones */
+.hero-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:1;text-align:center;color:#fff;
+  max-width:900px;width:calc(100% - 64px);padding:0 16px;
 }
-.hero:hover .hero-cta{transform:translate(-50%,-50%) translateY(-8px)}
-.hero-cta:hover{opacity:.7}
+.hero-center h1{
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:clamp(40px,6vw,84px);font-weight:400;line-height:1.05;
+  letter-spacing:-.02em;color:#fff;margin:0 0 1.25rem;text-transform:none;
+}
+.hero-center p{
+  font-family:'Open Sans',system-ui,sans-serif;
+  font-size:clamp(15px,1.4vw,18px);font-weight:400;line-height:1.55;
+  color:rgba(255,255,255,.95);max-width:640px;margin:0 auto 2.25rem;
+  text-align:center;text-transform:none;letter-spacing:normal;
+}
+.hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.hero-btn{
+  display:inline-block;padding:1.05rem 2.6rem;
+  font-family:'Open Sans',system-ui,sans-serif;font-size:13px;font-weight:500;
+  letter-spacing:.22em;text-transform:uppercase;text-decoration:none;
+  transition:background .2s,color .2s,border-color .2s;cursor:pointer;
+  border:1px solid transparent;min-width:240px;text-align:center;
+}
+.hero-btn--solid{background:#fff;color:#0a0a0a;border-color:#fff}
+.hero-btn--solid:hover{background:#cc785c;color:#fff;border-color:#cc785c}
+.hero-btn--outline{background:transparent;color:#fff;border-color:#fff}
+.hero-btn--outline:hover{background:#fff;color:#0a0a0a}
+
+@media(max-width:560px){
+  .hero-btns{flex-direction:column;gap:.75rem;align-items:stretch}
+  .hero-btn{width:100%;min-width:0;min-height:48px;padding:1rem 1.5rem;font-size:12px}
+  .hero-center{width:calc(100% - 32px);padding:0}
+  .hero-center p{margin-bottom:1.75rem}
+}
 .hero-scroll-arrow{
   display:flex;align-items:center;justify-content:center;
   height:70px;background:var(--white);cursor:pointer;
@@ -667,7 +696,14 @@ footer{
     <video class="hero-video" autoplay muted loop playsinline>
       <source src="assets/video/hero.mp4" type="video/mp4">
     </video>
-    <a href="#intro" class="hero-cta" onclick="event.preventDefault();window.scrollTo({top:document.getElementById('intro').offsetTop-80,behavior:'smooth'})">Descubrir</a>
+    <div class="hero-center">
+      <h1>Carpintería de autor</h1>
+      <p>Diseñamos y fabricamos mobiliario, armarios, cocinas y proyectos integrales con la precisión de una fábrica y la sensibilidad de un taller artesanal.</p>
+      <div class="hero-btns">
+        <a href="/solicitar-presupuesto/" class="hero-btn hero-btn--solid">Pide presupuesto</a>
+        <a href="/estudio/" class="hero-btn hero-btn--outline">Proyecto a medida</a>
+      </div>
+    </div>
   </div>
   <div class="hero-scroll-arrow" onclick="window.scrollTo({top:document.getElementById('intro').offsetTop-80,behavior:'smooth'})">
     <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
