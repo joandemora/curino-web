@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solicitar presupuesto a medida | Curino</title>
+<meta name="description" content="Cuéntanos tu proyecto y recibe un presupuesto a medida de Curino. Mobiliario de alta carpintería: armarios, cocinas, baños, proyectos integrales. Adjunta planos o fotos.">
+<link rel="canonical" href="https://www.casacurino.com/solicitar-presupuesto/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Solicitar presupuesto a medida | Curino">
+<meta property="og:description" content="Cuéntanos tu proyecto y recibe un presupuesto a medida. Adjunta planos o fotos. Visita técnica gratuita.">
+<meta property="og:url" content="https://www.casacurino.com/solicitar-presupuesto/">
+<meta property="og:image" content="https://www.casacurino.com/assets/imagenes/favicon-curino.png">
+<meta property="og:site_name" content="Curino">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Solicitar presupuesto | Curino">
+<meta name="twitter:description" content="Cuéntanos tu proyecto y recibe un presupuesto a medida.">
+<meta name="twitter:image" content="https://www.casacurino.com/assets/imagenes/favicon-curino.png">
+
+<meta name="robots" content="noindex, follow">
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site-shell.css">
+
+<style>
+/* Formulario de presupuesto — estilos específicos de página */
+.sp-wrap{max-width:780px;margin:0 auto;padding:48px 32px 80px}
+.sp-eyebrow{font-family:var(--rv-sans);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--rv-ink-mute);margin-bottom:1rem}
+.sp-h1{font-family:var(--rv-serif);font-size:clamp(34px,5vw,56px);font-weight:400;letter-spacing:-.02em;line-height:1.05;color:var(--rv-ink);margin:0 0 1rem}
+.sp-lead{font-family:var(--rv-sans);font-size:clamp(15px,1.5vw,18px);line-height:1.55;color:var(--rv-ink-soft);margin:0 0 2.5rem;max-width:600px}
+
+.sp-form{display:flex;flex-direction:column;gap:1.5rem}
+.sp-row{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.sp-field{display:flex;flex-direction:column;gap:.5rem}
+.sp-field label{font-family:var(--rv-sans);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--rv-ink);font-weight:600}
+.sp-field label .req{color:var(--rv-coral);margin-left:.15rem}
+.sp-field input,.sp-field select,.sp-field textarea{
+  font-family:var(--rv-sans);font-size:16px;color:var(--rv-ink);
+  padding:.85rem 1rem;border:1px solid var(--rv-line);border-radius:0;
+  background:var(--rv-paper);outline:none;transition:border-color .2s;
+  width:100%;-webkit-appearance:none;appearance:none;
+}
+.sp-field textarea{resize:vertical;min-height:140px;line-height:1.5;font-family:var(--rv-sans)}
+.sp-field input:focus,.sp-field select:focus,.sp-field textarea:focus{border-color:var(--rv-ink)}
+.sp-field .hint{font-size:12px;color:var(--rv-ink-mute);font-weight:400}
+.sp-field.invalid input,.sp-field.invalid select,.sp-field.invalid textarea{border-color:#cc4444}
+.sp-field-error{font-size:12px;color:#cc4444;font-family:var(--rv-sans);min-height:1em}
+
+.sp-file-row{display:flex;flex-direction:column;gap:.5rem}
+.sp-file-input{padding:1rem;border:1px dashed var(--rv-line);background:var(--rv-bg);cursor:pointer}
+.sp-file-input:hover{border-color:var(--rv-ink)}
+.sp-file-list{list-style:none;padding:0;margin:.5rem 0 0;display:flex;flex-direction:column;gap:.3rem}
+.sp-file-list li{font-family:var(--rv-sans);font-size:13px;color:var(--rv-ink-soft);display:flex;align-items:center;gap:.5rem}
+.sp-file-list li .x{cursor:pointer;color:var(--rv-coral);font-weight:600}
+
+.sp-rgpd{display:flex;gap:.75rem;align-items:flex-start;font-family:var(--rv-sans);font-size:14px;line-height:1.5;color:var(--rv-ink-soft)}
+.sp-rgpd input{margin-top:.3rem;flex-shrink:0;width:18px;height:18px;cursor:pointer}
+.sp-rgpd a{color:var(--rv-coral);text-decoration:none;border-bottom:1px solid var(--rv-coral)}
+.sp-rgpd a:hover{color:var(--rv-ink);border-color:var(--rv-ink)}
+
+.sp-submit{align-self:flex-start;background:var(--rv-ink);color:#fff;border:none;padding:1.1rem 3.2rem;font-family:var(--rv-sans);font-size:13px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;font-weight:500;transition:background .2s}
+.sp-submit:hover:not(:disabled){background:var(--rv-coral)}
+.sp-submit:disabled{opacity:.55;cursor:not-allowed}
+
+.sp-status{font-family:var(--rv-sans);font-size:14px;padding:1rem 1.25rem;border-radius:0;display:none}
+.sp-status.is-info{display:block;background:var(--rv-bg);border:1px solid var(--rv-line);color:var(--rv-ink-soft)}
+.sp-status.is-ok{display:block;background:#eef7ee;border:1px solid #b3d8b3;color:#2a5a2a}
+.sp-status.is-error{display:block;background:#fbecec;border:1px solid #f0c0c0;color:#922}
+
+.sp-success{display:none;text-align:center;padding:3rem 0}
+.sp-success h2{font-family:var(--rv-serif);font-size:clamp(28px,3.5vw,42px);font-weight:400;letter-spacing:-.01em;color:var(--rv-ink);margin:0 0 1rem}
+.sp-success p{font-family:var(--rv-sans);font-size:16px;line-height:1.6;color:var(--rv-ink-soft);max-width:540px;margin:0 auto}
+
+@media (max-width:640px){
+  .sp-wrap{padding:32px 16px 56px}
+  .sp-row{grid-template-columns:1fr;gap:1.5rem}
+}
+</style>
+</head>
+<body class="sx-page">
+
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
+
+<section class="sp-wrap">
+  <div class="sp-eyebrow">Casa Curino</div>
+  <h1 class="sp-h1">Solicita tu presupuesto a medida</h1>
+  <p class="sp-lead">Cuéntanos tu proyecto. Visita técnica gratuita y propuesta inicial sin compromiso. Si tienes planos o fotos del espacio, puedes adjuntarlos (opcional).</p>
+
+  <form class="sp-form" id="sp-form" novalidate>
+    <div class="sp-row">
+      <div class="sp-field" data-field="nombre">
+        <label for="sp-nombre">Nombre<span class="req">*</span></label>
+        <input id="sp-nombre" name="nombre" type="text" autocomplete="name" required maxlength="120">
+        <div class="sp-field-error"></div>
+      </div>
+      <div class="sp-field" data-field="email">
+        <label for="sp-email">Email<span class="req">*</span></label>
+        <input id="sp-email" name="email" type="email" autocomplete="email" required maxlength="200">
+        <div class="sp-field-error"></div>
+      </div>
+    </div>
+
+    <div class="sp-row">
+      <div class="sp-field" data-field="telefono">
+        <label for="sp-telefono">Teléfono</label>
+        <input id="sp-telefono" name="telefono" type="tel" autocomplete="tel" maxlength="40">
+        <div class="sp-field-error"></div>
+      </div>
+      <div class="sp-field" data-field="tipo_proyecto">
+        <label for="sp-tipo">Tipo de proyecto</label>
+        <select id="sp-tipo" name="tipo_proyecto">
+          <option value="">— Selecciona una opción —</option>
+          <option value="cocina">Cocina</option>
+          <option value="armarios-vestidores">Armarios y vestidores</option>
+          <option value="bano">Baño</option>
+          <option value="integral">Proyecto integral</option>
+          <option value="otro">Otro</option>
+        </select>
+        <div class="sp-field-error"></div>
+      </div>
+    </div>
+
+    <div class="sp-field" data-field="mensaje">
+      <label for="sp-mensaje">Mensaje</label>
+      <textarea id="sp-mensaje" name="mensaje" maxlength="5000" placeholder="Cuéntanos brevemente qué tienes en mente: tipo de espacio, plazos, presupuesto orientativo, materiales que te interesan…"></textarea>
+      <div class="sp-field-error"></div>
+    </div>
+
+    <div class="sp-field sp-file-row" data-field="adjuntos">
+      <label for="sp-adjuntos">Adjuntos (opcional)</label>
+      <span class="hint">Planos o fotografías. PDF, JPG o PNG. Máx. 5 archivos, 10 MB cada uno.</span>
+      <input class="sp-file-input" id="sp-adjuntos" name="adjuntos" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+      <ul class="sp-file-list" id="sp-file-list"></ul>
+      <div class="sp-field-error"></div>
+    </div>
+
+    <div class="sp-rgpd" data-field="rgpd">
+      <input id="sp-rgpd" name="consentimiento_rgpd" type="checkbox" required>
+      <label for="sp-rgpd">He leído y acepto el <a href="/aviso-legal/">aviso legal</a> y la <a href="/privacidad/">política de privacidad</a>.<span class="req">*</span></label>
+    </div>
+
+    <div class="sp-status" id="sp-status" role="status" aria-live="polite"></div>
+
+    <button class="sp-submit" id="sp-submit" type="submit">Enviar solicitud</button>
+  </form>
+
+  <div class="sp-success" id="sp-success">
+    <h2>Gracias, hemos recibido tu solicitud.</h2>
+    <p>Te hemos enviado un email de confirmación. Nuestro equipo revisará tu proyecto y se pondrá en contacto contigo en los próximos días laborables.</p>
+  </div>
+</section>
+
+<footer>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpintería a medida &mdash; armarios, vestidores, cocinas y puertas con garantía de 25 años.</p>
+  </div>
+  <div class="footer-col" style="grid-area:alta"><h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpintería</h4><div class="footer-links"><a href="/configurador-armarios-vestidores/">Configurador de armarios</a><a href="/proyecto-a-medida/">Proyecto a medida</a><a href="/configurador-2d/">Maestro</a></div></div>
+  <div class="footer-col" style="grid-area:corp"><h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4><div class="footer-links"><a href="/sobre-nosotros/">Sobre nosotros</a><a href="#">I+D e Innovación</a><a href="#">Seguridad en Curino</a></div></div>
+  <div class="footer-col" style="grid-area:empleo"><h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4><div class="footer-links"><a href="#">Únete a Curino</a><a href="#">Curino Partners</a></div></div>
+  <div class="footer-col" style="grid-area:prensa"><h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4><div class="footer-links"><a href="/revista/">Revista</a><a href="#">Contacto Prensa</a></div></div>
+  <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div></div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
+</footer>
+<div class="footer-bottom"><span>&copy; 2026 Curino &middot; Mueble a medida &middot; España &middot; Europa &middot; EEUU</span><div class="footer-legal"><span>Sistema &amp; Curino, S.L.U.</span><span>Términos y Condiciones | Política de Privacidad</span></div><span>casacurino.com</span></div>
+
+<!-- Supabase SDK para subida directa de adjuntos al bucket -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+  var BUCKET = 'presupuesto-adjuntos';
+  var MAX_FILES = 5;
+  var MAX_BYTES = 10 * 1024 * 1024;
+  var ALLOWED_TYPES = ['application/pdf','image/jpeg','image/png'];
+
+  var supa = null; // se inicializa tras cargar /api/config
+
+  // Cargar credenciales Supabase desde el endpoint /api/config (JSON)
+  fetch('/api/config').then(function(r){ return r.json(); }).then(function(cfg){
+    if (window.supabase && cfg && cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      supa = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    } else {
+      console.warn('Supabase config no disponible — el formulario seguirá funcionando solo si no hay adjuntos');
+    }
+  }).catch(function(e){ console.warn('No se pudo cargar /api/config:', e); });
+
+  var $form = document.getElementById('sp-form');
+  var $submit = document.getElementById('sp-submit');
+  var $status = document.getElementById('sp-status');
+  var $success = document.getElementById('sp-success');
+  var $fileInput = document.getElementById('sp-adjuntos');
+  var $fileList = document.getElementById('sp-file-list');
+  var selectedFiles = []; // File[]
+
+  function setStatus(kind, message){
+    $status.className = 'sp-status' + (kind ? ' is-' + kind : '');
+    $status.textContent = message || '';
+  }
+  function setFieldError(name, msg){
+    var f = document.querySelector('.sp-field[data-field="' + name + '"]');
+    if (!f) return;
+    if (msg) { f.classList.add('invalid'); f.querySelector('.sp-field-error').textContent = msg; }
+    else { f.classList.remove('invalid'); var e = f.querySelector('.sp-field-error'); if (e) e.textContent = ''; }
+  }
+  function clearAllErrors(){
+    ['nombre','email','telefono','tipo_proyecto','mensaje','adjuntos','rgpd'].forEach(function(n){ setFieldError(n, ''); });
+  }
+  function renderFileList(){
+    $fileList.innerHTML = '';
+    selectedFiles.forEach(function(f, i){
+      var li = document.createElement('li');
+      var sizeKb = Math.round(f.size / 1024);
+      li.innerHTML = '<span>' + escapeHtml(f.name) + ' <small style="color:#888">(' + sizeKb + ' KB)</small></span> <span class="x" data-idx="' + i + '">✕ quitar</span>';
+      $fileList.appendChild(li);
+    });
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]; }); }
+
+  $fileList.addEventListener('click', function(e){
+    var t = e.target;
+    if (t && t.classList.contains('x')) {
+      var idx = parseInt(t.getAttribute('data-idx'), 10);
+      if (!isNaN(idx)) { selectedFiles.splice(idx, 1); renderFileList(); }
+    }
+  });
+
+  $fileInput.addEventListener('change', function(){
+    var fs = Array.from($fileInput.files || []);
+    var errors = [];
+    var ok = [];
+    fs.forEach(function(f){
+      if (!ALLOWED_TYPES.includes(f.type)) { errors.push('"' + f.name + '" no es PDF/JPG/PNG'); return; }
+      if (f.size > MAX_BYTES) { errors.push('"' + f.name + '" supera 10 MB'); return; }
+      ok.push(f);
+    });
+    selectedFiles = selectedFiles.concat(ok).slice(0, MAX_FILES);
+    if (selectedFiles.length > MAX_FILES) errors.push('Máximo ' + MAX_FILES + ' archivos');
+    renderFileList();
+    setFieldError('adjuntos', errors.join(' · '));
+    $fileInput.value = ''; // reset for re-selection
+  });
+
+  function uuidLike(){
+    // Sufijo único por solicitud (no criptográfico)
+    return (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+  }
+  function sanitizeFilename(name){
+    return String(name).replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'archivo';
+  }
+
+  $form.addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    clearAllErrors();
+    setStatus('', '');
+
+    var nombre = document.getElementById('sp-nombre').value.trim();
+    var email  = document.getElementById('sp-email').value.trim();
+    var telefono = document.getElementById('sp-telefono').value.trim();
+    var tipo_proyecto = document.getElementById('sp-tipo').value;
+    var mensaje = document.getElementById('sp-mensaje').value.trim();
+    var rgpd = document.getElementById('sp-rgpd').checked;
+
+    var bad = false;
+    if (nombre.length < 2) { setFieldError('nombre', 'Introduce tu nombre'); bad = true; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError('email', 'Email no válido'); bad = true; }
+    if (!rgpd) { setFieldError('rgpd', 'Debes aceptar el aviso legal y la política de privacidad'); bad = true; }
+    if (selectedFiles.length > MAX_FILES) { setFieldError('adjuntos', 'Máximo ' + MAX_FILES + ' archivos'); bad = true; }
+    if (bad) { setStatus('error', 'Revisa los campos marcados.'); return; }
+
+    // Si hay archivos pero el cliente Supabase aún no está listo, pedir reintento
+    if (selectedFiles.length > 0 && !supa) {
+      setStatus('error', 'Inicializando subida de archivos. Inténtalo de nuevo en unos segundos, o envía sin adjuntos.');
+      return;
+    }
+
+    $submit.disabled = true;
+    var originalLabel = $submit.textContent;
+
+    // 1) Subir adjuntos directamente al bucket privado (con anon + policy INSERT abierta)
+    var batchPrefix = 'upload/' + uuidLike();
+    var paths = [];
+    if (selectedFiles.length > 0) {
+      setStatus('info', 'Subiendo archivos (' + selectedFiles.length + ')…');
+      for (var i = 0; i < selectedFiles.length; i++) {
+        var file = selectedFiles[i];
+        var safe = sanitizeFilename(file.name);
+        var path = batchPrefix + '/' + (i+1) + '-' + safe;
+        $submit.textContent = 'Subiendo ' + (i+1) + '/' + selectedFiles.length + '…';
+        try {
+          var up = await supa.storage.from(BUCKET).upload(path, file, {
+            upsert: false,
+            contentType: file.type,
+            cacheControl: '3600'
+          });
+          if (up.error) throw up.error;
+          paths.push(path);
+        } catch (e) {
+          setStatus('error', 'No se ha podido subir "' + file.name + '". Inténtalo de nuevo.');
+          $submit.disabled = false;
+          $submit.textContent = originalLabel;
+          return;
+        }
+      }
+    }
+
+    // 2) POST a /api/solicitar-presupuesto con metadata + paths
+    $submit.textContent = 'Enviando…';
+    setStatus('info', 'Enviando solicitud…');
+    try {
+      var res = await fetch('/api/solicitar-presupuesto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre,
+          email: email,
+          telefono: telefono || null,
+          tipo_proyecto: tipo_proyecto || null,
+          mensaje: mensaje || null,
+          archivos_paths: paths,
+          consentimiento_rgpd: true
+        })
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok || !data.ok) {
+        var errMsg = 'No se ha podido enviar tu solicitud.';
+        if (data.error === 'rgpd_required') errMsg = 'Debes aceptar el aviso legal y la política de privacidad.';
+        else if (data.error === 'invalid_email') errMsg = 'Email no válido.';
+        else if (data.error === 'attachment_too_large') errMsg = 'Uno de los archivos supera 10 MB.';
+        else if (data.error === 'attachment_invalid_type') errMsg = 'Uno de los archivos no es PDF/JPG/PNG.';
+        else if (data.error === 'too_many_files') errMsg = 'Máximo 5 archivos.';
+        else if (data.error) errMsg = 'Error: ' + data.error + '.';
+        setStatus('error', errMsg + ' Si persiste, escríbenos a info@casacurino.com');
+        $submit.disabled = false;
+        $submit.textContent = originalLabel;
+        return;
+      }
+      // Éxito
+      $form.style.display = 'none';
+      $success.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (data.warning === 'email_delivery_failed') {
+        // La solicitud se guardó pero el email a info@ falló — el usuario no necesita saberlo,
+        // pero registramos en consola por si el dev lo mira.
+        console.warn('Solicitud guardada (id ' + data.id + ') pero el email de notificación interna falló.');
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus('error', 'Error de conexión. Inténtalo de nuevo o escríbenos a info@casacurino.com');
+      $submit.disabled = false;
+      $submit.textContent = originalLabel;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
