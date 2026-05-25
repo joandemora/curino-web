@@ -368,8 +368,10 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 .sys-card-cta:hover{opacity:.75}
 
 /* Hero variant: gradiente más marcado para garantizar contraste del título.
-   Padding lateral 32px coherente con .sys-grid.tight (no va full-bleed). */
-.sx-cajas-hero{padding:80px 32px 0}
+   Padding lateral 32px coherente con .sys-grid.tight (no va full-bleed).
+   Padding-top 32px = mismo aire arriba que a los lados (el body ya tiene
+   padding-top:80px para clear del nav fijo de 80px). */
+.sx-cajas-hero{padding:32px 32px 0}
 .sx-cajas-hero .sys-card{height:80vh;min-height:520px;max-height:780px}
 .sx-cajas-hero .sys-card::after{background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.55) 100%)}
 
@@ -436,7 +438,7 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .sys-grid.tight{padding:16px;gap:8px}
   .sys-card{height:65vh;min-height:360px}
   .sys-card-content{padding:1.5rem}
-  .sx-cajas-hero{padding:60px 16px 0}
+  .sx-cajas-hero{padding:16px 16px 0}
   .sx-cajas-hero .sys-card{height:72vh;min-height:460px}
   .revista-featured{grid-template-columns:1fr;gap:32px;padding:48px 16px}
   .revista-grid{padding:24px 16px 56px}
