@@ -46,10 +46,10 @@
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO sys-card -->
+<!-- HERO sys-card (founder en orientación corregida) -->
 <section class="sx-cajas-hero">
   <div class="sys-grid flush cols-1">
-    <div class="sys-card" style="background-image:url(/assets/imagenes/nosotros/taller-01.webp)">
+    <div class="sys-card" style="background-image:url(/assets/imagenes/nosotros/founder.webp)">
       <div class="sys-card-content">
         <div class="sys-card-eyebrow">Casa Curino</div>
         <h1 class="sys-card-title">Sobre nosotros</h1>
@@ -59,9 +59,15 @@
   </div>
 </section>
 
-<!-- FEATURED: El fundador y la visión -->
+<!-- FEATURED: El fundador y la visión (vídeo del taller en loop silenciado) -->
 <section class="revista-featured">
-  <div class="revista-featured-img" style="background-image:url(/assets/imagenes/nosotros/founder.webp)" role="img" aria-label="Equipo fundador de Curino"></div>
+  <div class="revista-featured-img" style="overflow:hidden;background:#0a0a0a">
+    <video autoplay muted loop playsinline preload="metadata"
+      style="width:100%;height:100%;object-fit:cover;display:block"
+      aria-label="Vídeo del taller Curino mostrando maquinaria, procesos y oficio">
+      <source src="/assets/video/curino-factory.mp4" type="video/mp4">
+    </video>
+  </div>
   <div class="revista-featured-text">
     <div class="revista-featured-type">El origen</div>
     <h2>Una visión, un oficio.</h2>
@@ -79,7 +85,7 @@
       <p class="sys-card-subtitle">Maquinaria de última generación del sector. Producción propia de extremo a extremo — sin externalizar piezas críticas.</p>
     </div>
   </div>
-  <div class="sys-card">
+  <div class="sys-card" style="background-image:url(/assets/imagenes/nosotros/taller-01.webp)">
     <div class="sys-card-content">
       <div class="sys-card-eyebrow">Capacidades</div>
       <h2 class="sys-card-title sys-card-title--md">Cabina de lacar propia</h2>
