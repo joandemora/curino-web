@@ -20,8 +20,8 @@
 }
 html{scroll-behavior:smooth;overflow-x:hidden}
 body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
-h1,h2,h3{font-size:22px;font-weight:400;letter-spacing:normal;text-align:center;text-transform:uppercase;line-height:1.4;margin:0}
-p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;text-align:center}
+h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(28px,4vw,44px);font-weight:400;letter-spacing:-.01em;line-height:1.15;text-align:center;margin:0}
+p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 
 /* ── NAV ── */
 nav{
@@ -216,8 +216,9 @@ nav{
 .video-block:hover::after{background:rgba(0,0,0,.20)}
 .video-title{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  font-family:var(--font);font-size:22px;font-weight:400;
-  letter-spacing:normal;text-transform:uppercase;color:#ffffff;z-index:1;
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:clamp(32px,4vw,56px);font-weight:400;letter-spacing:-.01em;
+  line-height:1.1;color:#ffffff;z-index:1;
   text-align:center;transition:transform .4s ease;
 }
 .video-block:hover .video-title{transform:translate(-50%,-50%) translateY(-8px)
@@ -313,8 +314,9 @@ nav{
 .sys-card-title,.sys-card-cta{position:relative;z-index:1}
 .sys-card-title{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  font-size:22px;letter-spacing:normal;text-transform:uppercase;
-  color:var(--white);font-weight:400;text-align:center;
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:clamp(28px,3.5vw,46px);font-weight:400;letter-spacing:-.01em;line-height:1.15;
+  color:var(--white);text-align:center;
   transition:transform .4s ease;
 }
 .sys-card:hover .sys-card-title{transform:translate(-50%,-50%) translateY(-8px)}
