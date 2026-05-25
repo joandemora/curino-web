@@ -39,82 +39,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO 2 columnas: texto izq + img der -->
-<section class="sx-hero-2col">
-  <div class="sx-hero-text">
-    <div class="sx-eyebrow">Producto · Estancia</div>
-    <h1>Baños a medida</h1>
-    <p class="sx-lead">Mobiliario, frentes de armario y paneles de revestimiento ejecutados a medida del baño, con materiales preparados para humedad y vapor.</p>
-  </div>
-  <div class="sx-hero-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Baño · Vista principal</div>
-  </div>
-</section>
-
-<!-- SPLIT 1: img izq + el baño que tu casa pide -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Baño · Bajolavabo suspendido</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Diseño</div>
-    <h2>El baño que tu casa pide</h2>
-    <p>Los baños prefabricados nunca aprovechan bien el espacio: un mueble bajolavabo a medida puede ganar un <strong>30-40 % más de almacenamiento útil</strong> para la misma superficie. Diseñamos tomando como punto de partida la posición de los desagües, la altura del marco de espejo y la luz natural disponible.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Producto</div>
+        <h1 class="sys-card-title">Baños a medida</h1>
+        <p class="sys-card-subtitle">Mobiliario de baño en materiales preparados para zonas húmedas. Fenólico, lacado marino, madera tratada. Encimeras de porcelánico o mármol.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- BANNER full-bleed -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Baño · Foto editorial completa</div>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Mueble de baño suspendido con doble lavabo"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Materiales</div>
+    <h2>Carpintería que aguanta el bano.</h2>
+    <p class="revista-featured-desc">El baño somete al mueble a humedad, vapor y limpiezas constantes. Trabajamos con <strong>fenólico marino, lacado 2K resistente a vapor, MDF hidrofugo y madera maciza tratada</strong>. Herrajes inoxidables AISI 316.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Proyecto a medida</a>
+  </div>
 </section>
 
-<!-- TEXT BLOCK centrado: materiales -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Materiales</div>
-  <h2>Materiales para zonas húmedas</h2>
-  <p>El baño es la estancia más exigente con el mobiliario. Solo usamos materiales que soportan vapor y agua puntual sin deformarse:</p>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Tipologia</div>
+      <h2 class="sys-card-title sys-card-title--md">Baño principal</h2>
+      <p class="sys-card-subtitle">Doble lavabo, columnas de almacenaje, integración total con la ducha.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Tipologia</div>
+      <h2 class="sys-card-title sys-card-title--md">Aseo de cortesia</h2>
+      <p class="sys-card-subtitle">Pieza pequeña pero singular. Material noble, lavabo de diseño, espejo a medida.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Detalle de canto sellado en mueble fenólico"><!-- TODO: foto real --></div>
+      <h3>Fenólico marino</h3>
+      <p>Tablero de altisima densidad con cantos sellados. Estable a humedad permanente.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Encimera de mármol Calacatta integrada con lavabo"><!-- TODO: foto real --></div>
+      <h3>Encimera con lavabo</h3>
+      <p>Mármol, porcelánico fino o Corian con lavabo integrado y rebosadero oculto.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Espejo retroiluminado con perfil de aluminio"><!-- TODO: foto real --></div>
+      <h3>Espejo + iluminación</h3>
+      <p>Retroiluminación LED, anti-vaho, perfilería fina de aluminio. Hecho a medida del mueble.</p>
+    </article>
+  </div>
+</section>
+
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Detalle técnico</div>
+  <h2>Lo que cambia en un baño a medida</h2>
+  <p>Un baño de catálogo asume medidas estándar. Los nuestros se proyectan sobre el plaño real: <strong>tomamos medidas tras alicatar</strong>, ajustamos hasta el milimetro y resolvemos encuentros con desagues, registros y radiadores.</p>
+  <p>Coordinamos la carpintería del baño con la del <a href="/dormitorio/">dormitorio</a> contiguo y con las <a href="/puertas/">puertas interiores</a> para que la transición entre espacios no tenga sobresaltos.</p>
   <ul>
-    <li><strong>Fenólico compacto</strong>: el material rey en baño profesional. No absorbe agua, no se hincha y se trabaja con canto integrado a 45°.</li>
-    <li><strong>Madera maciza tratada</strong>: roble o teca con aceite hidrófugo, ideal cuando se busca un acabado cálido.</li>
-    <li><strong>Lacado al horno</strong> sobre alma fenólica para frentes lisos y continuos.</li>
-    <li><strong>Encimeras</strong>: porcelánico de gran formato, mármol natural impermeabilizado, Corian o resina mineral.</li>
+    <li><strong>Herrajes inoxidables AISI 316</strong> resistentes a corrosion</li>
+    <li><strong>Frenos de cierre</strong> en cajones y puertas</li>
+    <li><strong>Garantía 25 años</strong> en mueble</li>
   </ul>
 </section>
 
-<!-- SPLIT 2: img der + tipologías -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Baño · Columna con espejo iluminado</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Tipologías</div>
-    <h2>Qué fabricamos</h2>
-    <p>Muebles bajolavabo suspendidos o de pie, columnas auxiliares, módulos espejo con iluminación LED y demister, paneles continuos de revestimiento para ducha o frente de bañera, armarios de obra revestidos y separaciones tipo doble seno.</p>
-    <p>Si el baño forma parte de una reforma integral lo coordinamos con la obra y con el resto del proyecto (<a href="/residencial/">residencial</a>, <a href="/couture/">couture</a>).</p>
-  </div>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu bano</span>
+  <h2 class="cta-h2">Diseñemos tu bano.</h2>
+  <span class="cta-sub">Visita técnica gratuita y propuesta cerrada.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Solicitar visita</a>
 </section>
 
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Diseñemos tu baño</h2>
-  <p>Visita técnica gratuita. Propuesta con planos y render en 7-10 días.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
-</section>
-
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/cocinas/"><small>Producto</small>Cocinas</a>
-    <a href="/armarios-vestidores/"><small>Producto</small>Armarios y vestidores</a>
-    <a href="/paneles/"><small>Producto</small>Paneles</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/cocinas/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Cocinas</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/armarios-vestidores/" style="background-image:url(/assets/imagenes/armarios-vestidores/armario-05.webp)">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Armarios</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/dormitorio/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Estancia</div>
+      <h2 class="sys-card-title sys-card-title--sm">Dormitorio</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

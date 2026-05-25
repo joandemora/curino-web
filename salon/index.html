@@ -38,86 +38,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO 2col: texto izq + img der -->
-<section class="sx-hero-2col">
-  <div class="sx-hero-text">
-    <div class="sx-eyebrow">Estancia</div>
-    <h1>Salón a medida</h1>
-    <p class="sx-lead">El salón es la estancia más expuesta. Bien resuelto, integra televisión, almacenamiento, exposición de objetos y el carácter de la casa en una sola pieza coherente.</p>
-  </div>
-  <div class="sx-hero-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Salón · Vista principal</div>
-  </div>
-</section>
-
-<!-- BANNER -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Salón · Frente continuo TV-librería</div>
-</section>
-
-<!-- SPLIT 1: img izq + qué hacemos -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Salón · Mueble TV bajo</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Composición</div>
-    <h2>Qué hacemos en el salón</h2>
-    <p>Trabajamos el salón como una composición de <strong>tres elementos que dialogan</strong>: el frente que aloja la televisión y el almacenamiento, la zona de exposición (librería, vitrina, biblioteca cerrada) y los elementos arquitectónicos —paneles, molduras, marcos de puertas— que dan continuidad al conjunto.</p>
-    <ul>
-      <li><strong>Mueble TV bajo</strong> con cajones suspendidos, cableado oculto y soundbar integrado.</li>
-      <li><strong>Frente continuo TV-librería</strong> de pared a pared.</li>
-      <li><strong>Librerías de obra</strong>: módulos abiertos y cerrados combinados, iluminación LED por balda.</li>
-      <li><strong>Vitrinas con cristal</strong> para colecciones.</li>
-      <li><strong>Boiserie</strong> de pared completa. <a href="/paneles/">Más sobre paneles</a>.</li>
-    </ul>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Estancia</div>
+        <h1 class="sys-card-title">Salón a medida</h1>
+        <p class="sys-card-subtitle">La estancia mas expuesta de la casa. Televisión, almacenamiento, exposición y carácter en una sola pieza coherente.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- GRID asimétrico -->
-<section class="sx-grid-asym">
-  <div class="sx-asym-big">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Salón · Librería de pared</div>
-  </div>
-  <div class="sx-asym-small">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Detalle iluminación</div>
-  </div>
-  <div class="sx-asym-small">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Detalle herraje</div>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Frente continuo de salón con TV integrada, balda iluminada y vitrina"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Composición</div>
+    <h2>Tres elementos que dialogan.</h2>
+    <p class="revista-featured-desc">Pensamos el salón como una <strong>composición de frente TV + libreria + boiserie</strong>. Maderas nobles, lacados al horno, cristal templado en vitrinas, LED de baja potencia por balda. Y siempre, dialogo con cocina, comedor y recibidor.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Proyecto a medida</a>
   </div>
 </section>
 
-<!-- TEXT BLOCK: materiales + integración -->
-<section class="sx-text-block">
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Mueble TV bajo</h2>
+      <p class="sys-card-subtitle">Cajones suspendidos, cableado oculto, soundbar integrado. Con o sin frente continuo.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Libreria de pared</h2>
+      <p class="sys-card-subtitle">De suelo a techo. Modulos abiertos y cerrados combinados. LED por balda.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Detalle modulo abierto con balda iluminada"><!-- TODO: foto real --></div>
+      <h3>Modulos abiertos</h3>
+      <p>Para libros, objeto, escultura. Baldas de 25-32 mm sin canteado visible. LED orientable.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Vitrina de cristal templado con iluminación interior"><!-- TODO: foto real --></div>
+      <h3>Vitrinas</h3>
+      <p>Cristal templado transparente o reactivo (bronce, gris, ahumado). Iluminación interior.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Boiserie de pared de salón con moldura sobria"><!-- TODO: foto real --></div>
+      <h3>Boiserie complementaria</h3>
+      <p>Cuando el salón necesita enmarcarse, el panel decorativo de pared cose el conjunto.</p>
+    </article>
+  </div>
+</section>
+
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
   <div class="sx-eyebrow">Materiales · Integración</div>
   <h2>Coherencia de casa</h2>
-  <p>Maderas nobles (roble natural, fresno, nogal, cerezo), lacados al horno mate o satinado, chapados naturales con veta a juego, fenólicos para zonas cercanas a chimenea, herrajes ocultos para puertas push-to-open. Iluminación LED de baja potencia integrada en bordes de balda.</p>
-  <p>El salón comparte materiales con el comedor, la cocina abierta o el recibidor cuando son visibles desde el mismo eje. En proyectos integrales coordinamos todos los acabados para que cuando recorres la casa veas <strong>continuidad de madera, color y textura</strong>.</p>
+  <p>Maderas nobles (roble, fresno, nogal, cerezo), lacados mate o satinado, chapados con veta a juego, fenólicos para zonas de chimenea, herrajes ocultos push-to-open. <a href="/paneles/">Boiserie</a> integrada cuando el salón necesita marco arquitectónico.</p>
+  <p>En proyectos integrales coordinamos todos los acabados para que cuando recorres la casa veas <strong>continuidad de madera, color y textura</strong> entre salón, <a href="/comedor/">comedor</a> y <a href="/cocinas/">cocina abierta</a>.</p>
+  <ul>
+    <li><strong>Cableado oculto</strong> y registros accesibles</li>
+    <li><strong>Soundbar integrado</strong> en mueble TV</li>
+    <li><strong>Iluminación LED 2700K</strong> por balda</li>
+  </ul>
 </section>
 
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Diseña tu salón</h2>
-  <p>Visita técnica gratuita. Propuesta cerrada en 7-10 días.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu salón</span>
+  <h2 class="cta-h2">Diseñemos tu salón.</h2>
+  <span class="cta-sub">Visita técnica gratuita. Propuesta cerrada en 7-10 días.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Solicitar visita</a>
 </section>
 
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/comedor/"><small>Estancia</small>Comedor</a>
-    <a href="/paneles/"><small>Producto</small>Paneles</a>
-    <a href="/residencial/"><small>Proyectos</small>Residencial</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/comedor/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Estancia</div>
+      <h2 class="sys-card-title sys-card-title--sm">Comedor</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/paneles/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Paneles</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/cocinas/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Cocinas</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

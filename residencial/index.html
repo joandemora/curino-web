@@ -39,103 +39,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO FULL-BLEED -->
-<section class="sx-hero-full">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Proyecto residencial · Hero</div>
-  <div class="sx-hero-text">
-    <div class="sx-eyebrow">Proyecto integral</div>
-    <h1>Proyectos residenciales</h1>
-    <p class="sx-lead">Vivienda completa concebida como una sola pieza de carpintería: cocina, armarios, baños y puertas dialogando con un mismo lenguaje material.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Proyectos</div>
+        <h1 class="sys-card-title">Proyectos residenciales</h1>
+        <p class="sys-card-subtitle">Vivienda concebida como una sola pieza de carpintería: cocina, armarios, baños y puertas dialogando con un mismo lenguaje material.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- SPLIT 1: img izq + la casa como conjunto -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Vista cocina + comedor</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Filosofía</div>
-    <h2>La casa como conjunto</h2>
-    <p>El proyecto residencial integral nace cuando el cliente quiere coherencia total: que la madera del comedor sea la del cabecero del dormitorio, que el lacado de la cocina aparezca también en el mueble del baño, que el detalle del tirador integrado se repita en cada armario.</p>
-    <p>Lograr esa coherencia exige <strong>diseñar y fabricar toda la carpintería desde el mismo equipo</strong>.</p>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Vista panoramica de vivienda con carpintería integral coordinada"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Filosofía</div>
+    <h2>La casa como conjunto.</h2>
+    <p class="revista-featured-desc">El proyecto residencial integral nace cuando el cliente quiere coherencia total: que la madera del comedor sea la del cabecero del dormitorio, que el lacado de la cocina aparezca en el mueble del bano. Lograr esa coherencia exige <strong>diseñar y fabricar toda la carpintería desde el mismo equipo</strong>.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Solicitar visita</a>
   </div>
 </section>
 
-<!-- DATA 4 métricas -->
-<section class="sx-data">
-  <div class="sx-data-grid">
-    <div class="sx-data-item"><div class="sx-data-num">8–14</div><div class="sx-data-label">Semanas de fabricación</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">3</div><div class="sx-data-label">Fases de proyecto</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">25</div><div class="sx-data-label">Años de garantía</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">1</div><div class="sx-data-label">Equipo de carpintería</div></div>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Alcance</div>
+      <h2 class="sys-card-title sys-card-title--md">Vivienda completa</h2>
+      <p class="sys-card-subtitle">Cocina, armarios, baños, puertas y paneles diseñados como un solo conjunto.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Alcance</div>
+      <h2 class="sys-card-title sys-card-title--md">Reforma de estancia</h2>
+      <p class="sys-card-subtitle">Solo cocina, solo dormitorio o solo bano. Sin diluir el detalle.</p>
+    </div>
   </div>
 </section>
 
-<!-- BANNER -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Proyecto residencial · Vista panorámica</div>
-</section>
-
-<!-- SPLIT 2: img der + qué incluye -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Vista vestidor + dormitorio</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Alcance</div>
-    <h2>Qué incluye un proyecto residencial</h2>
-    <ul>
-      <li><strong>Cocina completa</strong> con mobiliario, encimera, frente vertical, electrodomésticos. <a href="/cocinas/">Más</a>.</li>
-      <li><strong>Armarios y vestidores</strong>. <a href="/armarios-vestidores/">Más</a>.</li>
-      <li><strong>Mobiliario de baño</strong>. <a href="/banos/">Más</a>.</li>
-      <li><strong>Puertas interiores</strong>. <a href="/puertas/">Más</a>.</li>
-      <li><strong>Paneles decorativos</strong> y boiserie. <a href="/paneles/">Más</a>.</li>
-      <li><strong>Salón y comedor</strong>: aparadores, librerías, frentes TV, vitrinas.</li>
-      <li><strong>Recibidor</strong>: armario zapatero, banco, panel decorativo.</li>
-    </ul>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Diagnóstico: plaños sobre mesa de reunion"><!-- TODO: foto real --></div>
+      <h3>1 · Diagnóstico</h3>
+      <p>Visita de toma de medidas, briefing con cliente y arquitecto. Resultado: alcance preliminar y rango presupuestario.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Proyecto ejecutivo con plaños, alzados y render"><!-- TODO: foto real --></div>
+      <h3>2 · Proyecto ejecutivo</h3>
+      <p>Plaños completos, paleta material, render por estancia, presupuesto cerrado por partida y planning.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Equipo de taller fabricando muebles a medida"><!-- TODO: foto real --></div>
+      <h3>3 · Ejecución</h3>
+      <p>Fabricación escalonada por estancias (8-14 semanas), montaje coordinado con obra, dossier as-built.</p>
+    </article>
   </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«La casa no se nota cuando todo está hecho por el mismo taller. Lo notas al revés: cuando no lo está.»</blockquote>
-  <cite>Taller Curino</cite>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Que incluye</div>
+  <h2>Alcance del proyecto</h2>
+  <p>Un proyecto residencial completo puede incluir <a href="/cocinas/">cocina</a>, <a href="/armarios-vestidores/">armarios y vestidores</a>, <a href="/baños/">mobiliario de bano</a>, <a href="/puertas/">puertas interiores</a>, <a href="/paneles/">paneles decorativos</a>, mobiliario de <a href="/salón/">salón</a>, <a href="/comedor/">comedor</a> y recibidor.</p>
+  <p>También aceptamos proyectos parciales (solo cocina, solo dormitorio) cuando el cliente quiere arrancar por una estancia. Para encargos de mayor escala ver <a href="/contract/">contract</a>; para piezas de autor ver <a href="/couture/">couture</a>.</p>
+  <ul>
+    <li><strong>8-14 semanas</strong> de fabricación</li>
+    <li><strong>25 años</strong> de garantía</li>
+    <li><strong>Un solo equipo</strong> coordinando estancias</li>
+  </ul>
 </section>
 
-<!-- TEXT BLOCK: cómo trabajamos -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Cómo trabajamos</div>
-  <h2>Tres fases claras</h2>
-  <ol>
-    <li><strong>Diagnóstico</strong>: visita de toma de medidas, briefing con cliente y, si procede, con el arquitecto o interiorista. Resultado: alcance preliminar y rango presupuestario.</li>
-    <li><strong>Proyecto ejecutivo</strong>: planos completos (planta, alzados, secciones), paleta material, render por estancia, presupuesto cerrado por partida y planning.</li>
-    <li><strong>Ejecución</strong>: fabricación escalonada por estancias (8-14 semanas), montaje coordinado con la obra, entrega con dossier técnico (planos as-built, garantías, mantenimiento).</li>
-  </ol>
-  <p>Para encargos puntuales de una sola estancia ver <a href="/proyecto-a-medida/">proyecto a medida</a>. Para proyectos de mayor escala (más de una vivienda, contract) ver <a href="/contract/">contract</a>.</p>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu proyecto</span>
+  <h2 class="cta-h2">Proyectemos tu vivienda.</h2>
+  <span class="cta-sub">Visita técnica y propuesta preliminar gratuitas.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Solicitar visita</a>
 </section>
 
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Proyectemos tu vivienda</h2>
-  <p>Visita técnica y propuesta preliminar gratuitas.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
-</section>
-
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/contract/"><small>Proyectos</small>Contract</a>
-    <a href="/couture/"><small>Proyectos</small>Couture</a>
-    <a href="/nautica/"><small>Proyectos</small>Náutica</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/contract/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Contract</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/couture/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Couture</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/náutica/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Náutica</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/proyecto-a-medida/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Servicio</div>
+      <h2 class="sys-card-title sys-card-title--sm">Proyecto a medida</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

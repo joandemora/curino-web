@@ -39,99 +39,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO editorial -->
-<section class="sx-hero-edit">
-  <div class="sx-eyebrow">Producto · Estancia</div>
-  <h1>Cocinas a medida</h1>
-  <p class="sx-lead">Diseñamos cocinas pensadas para vivirse: distribución eficiente, materiales nobles y carpintería ejecutada a medida del espacio y del oficio.</p>
-</section>
-
-<!-- BANNER placeholder -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real de cocina Curino con isla central -->
-  <div class="sx-placeholder">Cocina · Foto principal</div>
-</section>
-
-<!-- SPLIT 1: texto izq + img der (reverse) -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Cocina · Vista frontal</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Distribución</div>
-    <h2>Cocinas que funcionan</h2>
-    <p>Una cocina a medida bien proyectada no se nota: cada cajón abre donde tiene que abrir, cada toma está a mano y los recorridos se reducen al mínimo. Diseñamos partiendo del triángulo de trabajo (cocción, lavado, almacenaje) y de cómo cocina la familia que habitará el espacio.</p>
-    <p>Tipologías habituales en L, U, lineal, doble frente, con isla o península. Casos difíciles: cocinas integradas en salón con frente continuo, cocinas con altillo bajo viga, cocinas-office para casas pequeñas.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Producto</div>
+        <h1 class="sys-card-title">Cocinas a medida</h1>
+        <p class="sys-card-subtitle">La cocina como pieza central de la casa. Encimera continua, electrodomésticos integrados y un frente que dialoga con el salón.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«Una buena cocina no se ve. Se nota cuando todo funciona desde el primer día.»</blockquote>
-  <cite>Taller Curino</cite>
-</section>
-
-<!-- SPLIT 2: img izq + texto der -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Cocina · Detalle materiales</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Materiales</div>
-    <h2>Materiales por zona</h2>
-    <ul>
-      <li><strong>Frentes</strong>: lacado mate al horno, melamina técnica con tirador integrado, madera maciza chapada, fenólico para zonas húmedas.</li>
-      <li><strong>Encimeras</strong>: porcelánico de gran formato (Dekton, Neolith, Laminam), cuarzo compacto, piedra natural o madera tratada.</li>
-      <li><strong>Frente vertical</strong>: cristal lacado, salpicaderos a juego, paneles fenólicos.</li>
-      <li><strong>Interior</strong>: cubertero a medida, gavetas con tope suave, esquinas con bandejas mágicas Blum.</li>
-    </ul>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Cocina con isla de mármol y muebles altos lacados"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Filosofía</div>
+    <h2>La cocina como pieza central de la casa.</h2>
+    <p class="revista-featured-desc">Diseño propio y fabricación artesanal. <strong>Encimeras de porcelánico, mármol o madera maciza</strong>, frentes lacados o en madera natural, electrodomésticos de gama profesional perfectamente integrados.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Solicitar visita</a>
   </div>
 </section>
 
-<!-- DATA 4 métricas -->
-<section class="sx-data">
-  <div class="sx-data-grid">
-    <div class="sx-data-item"><div class="sx-data-num">4–6</div><div class="sx-data-label">Semanas de fabricación</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">3–5</div><div class="sx-data-label">Días de montaje</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">25</div><div class="sx-data-label">Años de garantía</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">40+</div><div class="sx-data-label">Acabados disponibles</div></div>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Tipologia</div>
+      <h2 class="sys-card-title sys-card-title--md">Cocina con isla</h2>
+      <p class="sys-card-subtitle">Isla de trabajo central, perímetro alto, frente continuo.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Tipologia</div>
+      <h2 class="sys-card-title sys-card-title--md">Cocina líneal</h2>
+      <p class="sys-card-subtitle">Frente único, encimera continua, óptima en pisos líneales.</p>
+    </div>
   </div>
 </section>
 
-<!-- SPLIT 3: img der + electrodomésticos (reverse) -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Cocina · Electrodomésticos integrados</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Equipamiento</div>
-    <h2>Electrodomésticos integrados</h2>
-    <p>Trabajamos con marcas de gama media-alta integrables: Bosch, Siemens, Miele, Gaggenau, AEG. Los huecos se fabrican con la holgura exacta de cada modelo; ventilación, tomas eléctricas y desagües se prevén desde el primer plano.</p>
-    <p>Si ya tienes la cocina diseñada con un arquitecto o interiorista, nos encargamos solo de la <a href="/proyecto-a-medida/">fabricación y montaje</a>. Para proyectos integrales ver <a href="/residencial/">residencial</a> o <a href="/couture/">couture</a>.</p>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Encimera de mármol Carrara con pulido mate"><!-- TODO: foto real --></div>
+      <h3>Encimeras nobles</h3>
+      <p>Mármol Carrara, granito, porcelánico de gran formato o madera maciza tratada.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Frente de cocina lacado mate con tirador integrado"><!-- TODO: foto real --></div>
+      <h3>Frentes y tiradores</h3>
+      <p>Lacado al horno (mate o satinado), madera natural o melamina. Tirador integrado o push-to-open.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Electrodoméstico de gama profesional integrado en isla"><!-- TODO: foto real --></div>
+      <h3>Electrodomésticos</h3>
+      <p>Gama profesional integrada: Gaggenau, Miele, Sub-Zero. Encastrado total sin discontinuidad visual.</p>
+    </article>
   </div>
 </section>
 
-<!-- CTA soft -->
-<section class="sx-cta-soft">
-  <h2>Hablemos de tu cocina</h2>
-  <p>Visita técnica gratuita. Te enviamos propuesta y presupuesto cerrado en 7-10 días.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Materiales · Integración</div>
+  <h2>Coherencia material</h2>
+  <p>La cocina rara vez es una estancia aislada: dialoga con el <a href="/salón/">salón</a>, el <a href="/comedor/">comedor</a>, y a veces con el <a href="/baños/">aseo de cortesia</a>. Coordinamos todos los acabados para que el conjunto se lea como uno solo.</p>
+  <p>Trabajamos cocinas abiertas, semi-abiertas y cerradas. Cada tipologia exige decisiones distintas en ventilación, acústica e iluminación — las resolvemos en el proyecto ejecutivo.</p>
+  <ul>
+    <li><strong>Encimera continua</strong> de hasta 4,2 m sin junta</li>
+    <li><strong>Garantía 25 años</strong> en mueble + 5-10 años en encimera</li>
+    <li><strong>Plazo 10-16 semanas</strong> segun complejidad</li>
+  </ul>
 </section>
 
-<!-- RELATED -->
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/banos/"><small>Producto</small>Baños</a>
-    <a href="/comedor/"><small>Estancia</small>Comedor</a>
-    <a href="/residencial/"><small>Proyectos</small>Residencial</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu cocina</span>
+  <h2 class="cta-h2">Proyectemos tu cocina.</h2>
+  <span class="cta-sub">Visita técnica gratuita. Propuesta cerrada en 10-14 días.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Solicitar visita</a>
+</section>
+
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/armarios-vestidores/" style="background-image:url(/assets/imagenes/armarios-vestidores/armario-03.webp)">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Armarios</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/baños/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Baños</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/salón/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Estancia</div>
+      <h2 class="sys-card-title sys-card-title--sm">Salón</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

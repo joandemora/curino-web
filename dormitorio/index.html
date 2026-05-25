@@ -38,82 +38,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO editorial -->
-<section class="sx-hero-edit">
-  <div class="sx-eyebrow">Estancia</div>
-  <h1>Dormitorio a medida</h1>
-  <p class="sx-lead">El dormitorio funciona cuando todo está en su sitio: armario que llega al techo, mesillas que parecen formar parte de la pared y un cabecero que ancla el conjunto.</p>
-</section>
-
-<!-- BANNER full-bleed -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Dormitorio · Vista general</div>
-</section>
-
-<!-- SPLIT 1: img der + proyectos completos -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Dormitorio · Cabecero + mesillas</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Conjunto coherente</div>
-    <h2>Proyectos completos de dormitorio</h2>
-    <p>Abordamos el dormitorio como un conjunto coherente. Un dormitorio bien resuelto a medida suele incluir <strong>tres piezas clave</strong> que conviene diseñar a la vez para que dialoguen entre sí: el armario o vestidor, el cabecero (tapizado o de panel de madera) y las mesillas o estanterías integradas.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Estancia</div>
+        <h1 class="sys-card-title">Dormitorio a medida</h1>
+        <p class="sys-card-subtitle">Armarios empotrados, vestidores, cabeceros tapizados y mesillas integradas. La estancia donde el silencio y la acústica importan.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- SPLIT 2: img izq + tipologías -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Dormitorio · Armario empotrado</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Tipologías</div>
-    <h2>Qué solemos hacer</h2>
-    <ul>
-      <li><strong>Armarios empotrados</strong> hasta techo, abatibles, correderas o walk-in. <a href="/armarios-vestidores/">Más sobre armarios</a>.</li>
-      <li><strong>Cabeceros tapizados</strong> con paneles modulares en lino, terciopelo, bouclé o piel; tomas eléctricas integradas.</li>
-      <li><strong>Mesillas integradas</strong> en el cabecero, suspendidas o flotantes; cajón, hueco abierto y carga inalámbrica.</li>
-      <li><strong>Cómodas</strong> y bancos para el pie de cama, a juego con el armario.</li>
-      <li><strong>Iluminación integrada</strong> en paneles y carpintería: lectura, ambiente y baliza.</li>
-    </ul>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Vestidor abierto con isla y armarios laterales"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Filosofía</div>
+    <h2>Una estancia pensada para el reposo.</h2>
+    <p class="revista-featured-desc">El dormitorio principal pide carpintería que se note menos: <strong>frentes de armario sin tirador visible, puertas con cierre amortiguado, cabecero que integra mesillas y lectura</strong>. Materiales cálidos y herrajes silenciosos.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Proyecto a medida</a>
   </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«El dormitorio bien hecho desaparece. Lo notas al despertar, no antes.»</blockquote>
-  <cite>Taller Curino</cite>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Vestidor walk-in</h2>
+      <p class="sys-card-subtitle">Cuando el espacio lo permite, una estancia textil aparte resuelve mejor que un armario grande.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Cabecero integrado</h2>
+      <p class="sys-card-subtitle">Tapizado, con mesillas suspendidas, lectura LED orientable y enchufes embebidos.</p>
+    </div>
+  </div>
 </section>
 
-<!-- TEXT BLOCK: materiales + proceso -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Materiales</div>
-  <h2>Acabados habituales</h2>
-  <p>Lacado mate al horno para los frentes de armario, chapado natural de roble o nogal para cabeceros y mesillas, tapizados de tejidos técnicos (Kvadrat, Gabriel) o naturales (lino lavado, lana). Herrajes ocultos y cierre amortiguado en todos los movimientos.</p>
-  <p><strong>Proceso:</strong> visita técnica, diseño con render del conjunto, presupuesto cerrado, fabricación (4-6 semanas) y montaje en 1-2 días. Si el dormitorio forma parte de una reforma integral, lo coordinamos con la obra y con el resto de estancias (<a href="/residencial/">residencial</a>, <a href="/couture/">couture</a>).</p>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Armario empotrado con frentes lisos en RAL claro"><!-- TODO: foto real --></div>
+      <h3>Armario empotrado</h3>
+      <p>De suelo a techo. Sin tirador. Push-to-open o tirador integrado horizontal.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Mesilla suspendida con caja única y luz embebida"><!-- TODO: foto real --></div>
+      <h3>Mesilla suspendida</h3>
+      <p>Sin apoyo en suelo. Cajon único, luz embebida en la cara inferior, sin tirador visible.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Detalle tirador integrado horizontal en frente de armario"><!-- TODO: foto real --></div>
+      <h3>Detalle silencioso</h3>
+      <p>Cierre amortiguado en todos los cajones. Bisagra silenciosa Blum o equivalente.</p>
+    </article>
+  </div>
 </section>
 
-<!-- CTA soft -->
-<section class="sx-cta-soft">
-  <h2>Proyectemos tu dormitorio</h2>
-  <p>Visita técnica gratuita y propuesta en 7-10 días.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Acústica · Confort</div>
+  <h2>Por que la acústica importa aquí</h2>
+  <p>El dormitorio principal es la estancia con mayor exigencia acústica de la casa. La <a href="/puertas/">puerta</a> debe aislar (42-52 dB), los frentes de armario no deben rebotar el sonido y el textil del cabecero ayuda a absorber.</p>
+  <p>En el proyecto coordinamos cabecero, armarios y mesillas como una sola pieza. Si hay vestidor anexo, lo planteamos como filtro acústico entre el dormitorio y el bano.</p>
+  <ul>
+    <li><strong>Cierre amortiguado</strong> en todas las puertas y cajones</li>
+    <li><strong>Iluminación 2700K</strong> cálida en armarios y cabecero</li>
+    <li><strong>Tomas USB-C</strong> embebidas en mesilla</li>
+  </ul>
 </section>
 
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/armarios-vestidores/"><small>Producto</small>Armarios y vestidores</a>
-    <a href="/banos/"><small>Producto</small>Baños</a>
-    <a href="/salon/"><small>Estancia</small>Salón</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu dormitorio</span>
+  <h2 class="cta-h2">Diseñemos tu dormitorio.</h2>
+  <span class="cta-sub">Visita técnica gratuita. Propuesta cerrada en 7-10 días.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Solicitar visita</a>
+</section>
+
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/armarios-vestidores/" style="background-image:url(/assets/imagenes/armarios-vestidores/armario-11.webp)">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Armarios</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/baños/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Baños</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/paneles/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Paneles</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 
