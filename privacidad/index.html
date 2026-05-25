@@ -24,10 +24,6 @@
 <link rel="stylesheet" href="/assets/css/site-shell.css">
 
 <style>
-.sl-draft-banner{max-width:880px;margin:1.5rem auto 0;padding:1rem 1.25rem;background:#fff8e1;border:1px solid #f5c842;color:#5a4500;font-family:var(--rv-sans);font-size:14px;line-height:1.5;border-radius:4px}
-.sl-draft-banner strong{display:block;font-weight:600;margin-bottom:.25rem}
-.sl-validate{display:block;margin-top:.4rem;padding:.6rem .8rem;background:#fff8e1;border-left:3px solid #f5c842;color:#5a4500;font-family:var(--rv-sans);font-size:13px;line-height:1.45;border-radius:2px}
-.sl-validate strong{color:#5a4500;font-weight:600}
 .sx-cajas-text h3{font-family:var(--rv-serif);font-size:clamp(20px,2vw,26px);font-weight:400;line-height:1.25;letter-spacing:-.01em;color:var(--rv-ink);margin:2rem 0 1rem;text-transform:none}
 .sx-cajas-text h4{font-family:var(--rv-sans);font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--rv-ink);margin:1.5rem 0 .5rem}
 .sx-cajas-text p,.sx-cajas-text li{font-size:16px}
@@ -44,11 +40,6 @@
 
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
-
-<div class="sl-draft-banner">
-  <strong>⚠️ Borrador pendiente de revisión legal.</strong>
-  Este texto es una plantilla orientativa y debe ser validado por un profesional del derecho antes de su publicación definitiva. Los puntos marcados con <em>[VALIDAR CON ABOGADO]</em> requieren confirmación específica.
-</div>
 
 <section class="sx-cajas-text">
   <div class="sx-eyebrow">Información legal</div>
@@ -110,7 +101,6 @@
     <li><strong>Vercel</strong> — hosting del sitio web y de las funciones serverless que procesan el formulario.</li>
   </ul>
   <p>Algunos de estos proveedores pueden realizar tratamientos en países fuera del Espacio Económico Europeo. En tales casos, las transferencias internacionales se efectúan al amparo de las garantías adecuadas previstas en el RGPD (Cláusulas Contractuales Tipo de la Comisión Europea o, en su caso, una decisión de adecuación).</p>
-  <span class="sl-validate"><strong>[VALIDAR CON ABOGADO]</strong> Confirmar la lista exacta de encargados del tratamiento activos en cada momento, comprobar la existencia de contrato de encargo (DPA) firmado con cada uno, y especificar el régimen exacto de las transferencias internacionales (país de destino, mecanismo de garantía aplicable). Revisar si conviene mencionar Stripe en caso de procesos de pago.</span>
   <p>Curino no comunica los datos personales a terceros ajenos a los encargados anteriores, salvo obligación legal (autoridades, juzgados, organismos competentes).</p>
 
   <h3>5. Plazo de conservación</h3>
@@ -120,7 +110,6 @@
     <li>Solicitudes que derivan en contrato o relación comercial: durante la vigencia de la relación y, posteriormente, durante los plazos legales aplicables (prescripción civil, mercantil y fiscal).</li>
     <li>Archivos adjuntos: las URLs firmadas para acceso a los archivos caducan a los <strong>7 días</strong>; el archivo permanece en el almacenamiento privado durante el plazo general de conservación de la solicitud.</li>
   </ul>
-  <span class="sl-validate"><strong>[VALIDAR CON ABOGADO]</strong> Confirmar plazos exactos de conservación según la actividad concreta y la normativa fiscal/mercantil aplicable.</span>
 
   <h3>6. Derechos del Usuario</h3>
   <p>El Usuario tiene derecho a:</p>
@@ -157,7 +146,7 @@
   <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div></div>
   <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
 </footer>
-<div class="footer-bottom"><span>&copy; 2026 Curino &middot; Mueble a medida &middot; España &middot; Europa &middot; EEUU</span><div class="footer-legal"><span>Sistema &amp; Curino, S.L.U.</span><span>Términos y Condiciones | Política de Privacidad</span></div><span>casacurino.com</span></div>
+<div class="footer-bottom"><span>&copy; 2026 Curino &middot; Mueble a medida &middot; España &middot; Europa &middot; EEUU</span><div class="footer-legal"><span>Sistema &amp; Curino, S.L.U.</span><span><a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a></span></div><span>casacurino.com</span></div>
 
 </body>
 </html>
