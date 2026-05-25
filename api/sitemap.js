@@ -43,6 +43,7 @@ export default async function handler() {
   const staticUrls = [
     // Páginas raíz públicas
     { loc: 'https://casacurino.com/', changefreq: 'weekly' },
+    { loc: 'https://casacurino.com/sobre-nosotros/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/proyecto-a-medida/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/configurador-armarios-vestidores/', changefreq: 'monthly' },
     { loc: 'https://casacurino.com/configurador-2d/', changefreq: 'monthly' },
