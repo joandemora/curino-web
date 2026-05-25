@@ -178,6 +178,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: 'Curino <noreply@casacurino.com>',
           to: [String(email)],
+          reply_to: 'info@casacurino.com',
           subject: 'Hemos recibido tu solicitud — Curino',
           html: confirmHtml
         })
