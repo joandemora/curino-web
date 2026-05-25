@@ -4976,18 +4976,31 @@ function finishInit(){
 
 // Try Supabase auth, fall back to local if unavailable
 (async function(){
+  // ── Guard de sesión: el configurador es PRIVADO ──────────────────────────
+  // Solo accesible para usuarios autenticados desde /mi-cuenta/. Mismo patrón
+  // de redirect que mi-cuenta/index.html.
   try{
     var r=await fetch('/api/config',{redirect:'follow'});
     var c=await r.json();
-    if(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase){
-      _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
-      window.SUPABASE_URL=c.supabaseUrl;
-      if(window.MarketplaceReport) window.MarketplaceReport.init(_supabase);
-      var s=await _supabase.auth.getSession();
-      if(s.data.session) _currentUser=s.data.session.user;
-      if(_currentUser){await loadUserLogo();await loadUserRole();}
+    if(!c.supabaseUrl||!c.supabaseAnonKey||!window.supabase){
+      window.location.href='/login/?redirect=/mi-cuenta/';
+      return;
     }
-  }catch(e){}
+    _supabase=window.supabase.createClient(c.supabaseUrl,c.supabaseAnonKey);
+    window.SUPABASE_URL=c.supabaseUrl;
+    if(window.MarketplaceReport) window.MarketplaceReport.init(_supabase);
+    var s=await _supabase.auth.getSession();
+    if(!s.data.session){
+      window.location.href='/login/?redirect=/mi-cuenta/';
+      return;
+    }
+    _currentUser=s.data.session.user;
+    await loadUserLogo();
+    await loadUserRole();
+  }catch(e){
+    window.location.href='/login/?redirect=/mi-cuenta/';
+    return;
+  }
 
   // Check URL for project ID
   var params=new URLSearchParams(window.location.search);
