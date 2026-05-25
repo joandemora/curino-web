@@ -367,8 +367,9 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 .sys-card-cta{display:inline-block;font-family:var(--rv-sans);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#fff;text-decoration:none;border-bottom:1px solid #fff;padding-bottom:3px;font-weight:500;transition:opacity .2s}
 .sys-card-cta:hover{opacity:.75}
 
-/* Hero variant: gradiente más marcado para garantizar contraste del título */
-.sx-cajas-hero{padding-top:80px}
+/* Hero variant: gradiente más marcado para garantizar contraste del título.
+   Padding lateral 32px coherente con .sys-grid.tight (no va full-bleed). */
+.sx-cajas-hero{padding:80px 32px 0}
 .sx-cajas-hero .sys-card{height:80vh;min-height:520px;max-height:780px}
 .sx-cajas-hero .sys-card::after{background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.55) 100%)}
 
@@ -419,8 +420,9 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 .btn-primary{display:inline-block;background:var(--rv-ink);color:#fff;border:none;padding:1rem 3rem;font-family:var(--rv-sans);font-size:12px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;font-weight:500;text-decoration:none;transition:background .2s}
 .btn-primary:hover{background:var(--rv-coral)}
 
-/* Related: grid de 4 sys-card "short" como cierre */
-.sx-cajas-related{padding:0}
+/* Related: grid de 4 sys-card "short" como cierre.
+   Padding lateral 32px coherente con .sys-grid.tight (no va full-bleed). */
+.sx-cajas-related{padding:0 32px}
 .sx-cajas-related .sys-grid{padding:0;gap:0}
 .sx-cajas-related .sys-card{height:32vh;min-height:220px}
 .sx-cajas-related .sys-card-content{padding:1.25rem}
@@ -434,13 +436,14 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .sys-grid.tight{padding:16px;gap:8px}
   .sys-card{height:65vh;min-height:360px}
   .sys-card-content{padding:1.5rem}
-  .sx-cajas-hero{padding-top:60px}
+  .sx-cajas-hero{padding:60px 16px 0}
   .sx-cajas-hero .sys-card{height:72vh;min-height:460px}
   .revista-featured{grid-template-columns:1fr;gap:32px;padding:48px 16px}
   .revista-grid{padding:24px 16px 56px}
   .revista-grid-row.cols-2,.revista-grid-row.cols-3,.revista-grid-row.cols-4{grid-template-columns:1fr;gap:32px;margin-bottom:32px}
   .sx-cajas-text{padding:48px 16px}
   .cta-section{padding:4.5rem 16px}
+  .sx-cajas-related{padding:0 16px}
   .sx-cajas-related .sys-card{height:38vh;min-height:240px}
 }
 @media(max-width:560px){
