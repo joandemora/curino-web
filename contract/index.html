@@ -39,111 +39,127 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO 2col: texto izq + img der -->
-<section class="sx-hero-2col">
-  <div class="sx-hero-text">
-    <div class="sx-eyebrow">Proyecto integral</div>
-    <h1>Contract</h1>
-    <p class="sx-lead">Hoteles, restaurantes, retail y oficinas. Carpintería de proyecto con producción seriada, plazos estrictos y acabados resistentes al uso intensivo.</p>
-  </div>
-  <div class="sx-hero-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Hotel · Vestíbulo</div>
-  </div>
-</section>
-
-<!-- TEXT BLOCK: qué es contract -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Definición</div>
-  <h2>Qué es un proyecto contract</h2>
-  <p>Llamamos contract a la carpintería destinada a uso profesional: hoteles, restaurantes, tiendas, oficinas, clubs privados. Comparte con el residencial el nivel de detalle y los materiales nobles, pero añade tres exigencias: <strong>producción seriada</strong> (múltiples unidades idénticas o casi), <strong>plazos cerrados</strong> que cuadran con la apertura del establecimiento, y <strong>resistencia al uso intensivo</strong>.</p>
-</section>
-
-<!-- GRID 3 sectores -->
-<section class="sx-grid3">
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Hotel · Habitación</div>
-    <figcaption>Hostelería</figcaption>
-  </figure>
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Restaurante · Barra</div>
-    <figcaption>Restauración</figcaption>
-  </figure>
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Retail · Expositor</div>
-    <figcaption>Retail</figcaption>
-  </figure>
-</section>
-
-<!-- SPLIT 1: img izq + sectores detalle -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Oficina · Sala reuniones revestida</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Sectores</div>
-    <h2>A quién servimos</h2>
-    <ul>
-      <li><strong>Hostelería</strong>: cabeceros y mesillas para habitaciones de hotel, mobiliario de minibar, frentes de armario uniforme, mostrador de recepción.</li>
-      <li><strong>Restauración</strong>: barras, frentes de cocina vista, paneles acústicos, vitrinas refrigeradas, mobiliario de comedor a medida.</li>
-      <li><strong>Retail</strong>: módulos expositores, mostradores, paneles de pared, vitrinas iluminadas, mobiliario de probador.</li>
-      <li><strong>Oficinas y co-working</strong>: cabinas acústicas, recepción, salas de reunión revestidas, kitchenettes integradas.</li>
-    </ul>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Proyectos</div>
+        <h1 class="sys-card-title">Contract</h1>
+        <p class="sys-card-subtitle">Hoteles, restaurantes, retail y oficinas. Carpintería de proyecto con producción seriada, plazos estrictos y acabados resistentes al uso intensivo.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«En contract no hay segundas oportunidades: o la habitación está lista la víspera de la apertura, o el cliente pierde la noche.»</blockquote>
-  <cite>Taller Curino</cite>
-</section>
-
-<!-- DATA 4 -->
-<section class="sx-data">
-  <div class="sx-data-grid">
-    <div class="sx-data-item"><div class="sx-data-num">50k+</div><div class="sx-data-label">Ciclos herraje gama pro</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">B-s1</div><div class="sx-data-label">Clasif. fuego áreas comunes</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">1</div><div class="sx-data-label">Prototipo previo a serie</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">100%</div><div class="sx-data-label">Dossier as-built entregado</div></div>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Habitación de hotel con cabecero y mobiliario a medida"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Definición</div>
+    <h2>Que es un proyecto contract.</h2>
+    <p class="revista-featured-desc">Carpintería destinada a uso profesional. Comparte con el residencial el nivel de detalle y los materiales nobles, pero anade tres exigencias: <strong>producción seriada, plazos cerrados que cuadran con la apertura</strong> del establecimiento, y resistencia al uso intensivo.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Solicitar propuesta</a>
   </div>
 </section>
 
-<!-- SPLIT 2: img der + cómo trabajamos -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Taller · Producción seriada</div>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Sector</div>
+      <h2 class="sys-card-title sys-card-title--md">Hostelería</h2>
+      <p class="sys-card-subtitle">Cabeceros y mesillas para habitaciones, minibar integrado, mostrador de recepción.</p>
+    </div>
   </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Cómo trabajamos</div>
-    <h2>Mock-up, serie, instalación</h2>
-    <p>El proyecto contract típico empieza con un <strong>brief del estudio de interiorismo o cliente final</strong>, incluyendo planos, paleta material y planning. Producimos un prototipo (mock-up) de la unidad tipo para validar dimensiones, herrajes y acabado antes de producir la serie.</p>
-    <p>La producción se planifica para escalonar montajes según el avance de obra. Trabajamos con instaladores propios y dossier técnico completo.</p>
-    <p>Para proyectos de una sola vivienda ver <a href="/residencial/">residencial</a>. Para alto detalle decorativo ver <a href="/couture/">couture</a>. Para embarcaciones ver <a href="/nautica/">náutica</a>.</p>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Sector</div>
+      <h2 class="sys-card-title sys-card-title--md">Retail · Restauración</h2>
+      <p class="sys-card-subtitle">Mostradores, barras, expositores, paneles acústicos, vitrinas iluminadas.</p>
+    </div>
   </div>
 </section>
 
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Hablemos de tu proyecto contract</h2>
-  <p>Envíanos planos y planning; respondemos con propuesta técnica y económica.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Contactar</a>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Habitación de hotel con cabecero tapizado y mesillas integradas"><!-- TODO: foto real --></div>
+      <h3>Hostelería</h3>
+      <p>Cabeceros, mesillas, frente de minibar, armario uniforme. Mock-up previo a serie.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Barra de restaurante con frente de madera maciza"><!-- TODO: foto real --></div>
+      <h3>Restauración</h3>
+      <p>Barras, paneles acústicos, frentes de cocina vista, mobiliario de comedor.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Sala de reuniones revestida en madera de roble"><!-- TODO: foto real --></div>
+      <h3>Oficinas</h3>
+      <p>Cabinas acústicas, recepción, salas de reunion revestidas, kitchenettes integradas.</p>
+    </article>
+  </div>
 </section>
 
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/residencial/"><small>Proyectos</small>Residencial</a>
-    <a href="/couture/"><small>Proyectos</small>Couture</a>
-    <a href="/nautica/"><small>Proyectos</small>Náutica</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Cifras · Proceso</div>
+  <h2>Mock-up, serie, instalación</h2>
+  <p>El proyecto contract empieza con un brief del estudio de interiorismo o cliente final (plaños, paleta, planning). Producimos un <strong>prototipo (mock-up) de la unidad tipo</strong> para validar dimensiones, herrajes y acabado antes de producir la serie.</p>
+  <p>La producción se planifica para escalonar montajes segun el avance de obra. Trabajamos con instaladores propios y dossier técnico completo. Para viviendas individuales ver <a href="/residencial/">residencial</a>; para piezas de autor ver <a href="/couture/">couture</a>.</p>
+  <ul>
+    <li><strong>50.000+ ciclos</strong> en herrajes de gama profesional</li>
+    <li><strong>Clasificación fuego B-s1</strong> en zonas comunes</li>
+    <li><strong>1 mock-up</strong> aprobado antes de serie</li>
+    <li><strong>100% dossier as-built</strong> entregado</li>
+  </ul>
+</section>
+
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu proyecto</span>
+  <h2 class="cta-h2">Hablemos de tu contract.</h2>
+  <span class="cta-sub">Enviaños plaños y planning; respondemos con propuesta técnica y economica.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Contactar</a>
+</section>
+
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/couture/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Couture</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/náutica/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Náutica</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/proyecto-a-medida/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Servicio</div>
+      <h2 class="sys-card-title sys-card-title--sm">A medida</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

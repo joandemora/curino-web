@@ -39,97 +39,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO FULL-BLEED -->
-<section class="sx-hero-full">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Interior de yate · Salón</div>
-  <div class="sx-hero-text">
-    <div class="sx-eyebrow">Proyecto integral</div>
-    <h1>Náutica</h1>
-    <p class="sx-lead">Interior de embarcación a medida. Peso optimizado, materiales estables a la humedad y la sal, y herrajes que aguantan el movimiento permanente.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Proyectos</div>
+        <h1 class="sys-card-title">Náutica</h1>
+        <p class="sys-card-subtitle">Interior de embarcación a medida. Peso optimizado, materiales estables a la humedad y la sal, herrajes que aguantan el movimiento permanente.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- SPLIT 1: img der + por qué la náutica es otra liga -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Detalle teca + bronce</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Por qué es distinta</div>
-    <h2>Otra liga de carpintería</h2>
-    <p>Una embarcación combina tres condiciones que la vivienda no tiene: <strong>humedad y sal constantes</strong>, <strong>movimiento permanente</strong> que somete los herrajes a fatiga acelerada, y un <strong>límite de peso</strong> que afecta al consumo y la línea de flotación. La carpintería interior tiene que responder a las tres a la vez.</p>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Detalle de panel de teca con herraje de bronce naval"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Por que es distinta</div>
+    <h2>Otra liga de carpintería.</h2>
+    <p class="revista-featured-desc">Una embarcación combina tres condiciones que la vivienda no tiene: <strong>humedad y sal constantes</strong>, movimiento permanente que somete los herrajes a fatiga acelerada, y un <strong>límite de peso</strong> que afecta a consumo y línea de flotación. La carpintería tiene que responder a las tres a la vez.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Envía ficha técnica</a>
   </div>
 </section>
 
-<!-- DATA 4 métricas náuticas -->
-<section class="sx-data">
-  <div class="sx-data-grid">
-    <div class="sx-data-item"><div class="sx-data-num">-35%</div><div class="sx-data-label">Peso vs. carpintería estándar</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">316</div><div class="sx-data-label">Inox AISI · todos los herrajes</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">2K</div><div class="sx-data-label">Lacados marinos UV/química</div></div>
-    <div class="sx-data-item"><div class="sx-data-num">0</div><div class="sx-data-label">Tolerancia a juego en cierres</div></div>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Espacio</div>
+      <h2 class="sys-card-title sys-card-title--md">Salón · Camarote</h2>
+      <p class="sys-card-subtitle">Cabeceros, armarios suspendidos, paneles de mamparo en teca o sapeli.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Espacio</div>
+      <h2 class="sys-card-title sys-card-title--md">Galera · Bano</h2>
+      <p class="sys-card-subtitle">Encimera Corian o porcelánico fino. Paneles fenólicos continuos en bano.</p>
+    </div>
   </div>
 </section>
 
-<!-- SPLIT 2: img izq + materiales específicos -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Mamparos + paneles fenólicos</div>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Tablero fenólico marino con cantos sellados"><!-- TODO: foto real --></div>
+      <h3>Materiales marinos</h3>
+      <p>Teca, iroko, sapeli, fenólico marino, nido de abeja. Lacados 2K resistentes a UV y quimica.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Herraje inoxidable AISI 316 con cierre doble"><!-- TODO: foto real --></div>
+      <h3>Inox AISI 316</h3>
+      <p>Todos los herrajes en inox AISI 316 o bronce naval. Cierres con seguro doble para balanceo.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Cinta encolada estructural Sika fijando panel a mamparo"><!-- TODO: foto real --></div>
+      <h3>Fijación estructural</h3>
+      <p>Cinta encolada estructural Sika y tornilleria oculta. Sin tornillos vistos en zonas húmedas.</p>
+    </article>
   </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Materiales</div>
-    <h2>Específicos para el mar</h2>
-    <ul>
-      <li><strong>Madera marina</strong>: teca, iroko, sapeli o roble tratado con barnices oleorresinosos resistentes a la sal.</li>
-      <li><strong>Fenólico marino</strong>: tablero de altísima densidad estable a la humedad, con cantos sellados en taller.</li>
-      <li><strong>Madera nido de abeja</strong>: alma ligera + chapas estructurales para puertas y mamparos sin sumar peso.</li>
-      <li><strong>Lacados marinos 2K</strong>: dos componentes con resistencia UV y química superior a la lacca residencial.</li>
-      <li><strong>Cristal templado</strong> fijado con perfilería de acero inoxidable AISI 316.</li>
-    </ul>
-  </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«En el mar el herraje no falla un día sí y otro no. Aguanta veinte años o no entra en el barco.»</blockquote>
-  <cite>Taller Curino</cite>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Astillero · Coordinación</div>
+  <h2>Como se ejecuta</h2>
+  <p>Trabajamos directamente con astilleros, captains y propietarios. Diseñamos con <strong>plaños de cuadernas y secciones longitudinales en mano</strong> y planificamos la instalación en astillero o muelle, segun el alcance.</p>
+  <p>Para proyectos en tierra ver <a href="/residencial/">residencial</a> y <a href="/couture/">couture</a>. Para hostelería ver <a href="/contract/">contract</a>.</p>
+  <ul>
+    <li><strong>-35% de peso</strong> vs. carpintería estándar (nido de abeja)</li>
+    <li><strong>Lacado 2K marino</strong> con resistencia UV y quimica</li>
+    <li><strong>Cero juego</strong> en cierres con balanceo</li>
+  </ul>
 </section>
 
-<!-- BANNER -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Salón principal · Vista panorámica</div>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu embarcación</span>
+  <h2 class="cta-h2">Hablemos de tu embarcación.</h2>
+  <span class="cta-sub">Cada barco es único. Enviaños plaños o ficha técnica y respondemos con propuesta.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Contactar</a>
 </section>
 
-<!-- TEXT BLOCK: herrajes + tipologías + coordinación astillero -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Herrajes · Tipologías · Astillero</div>
-  <h2>Cómo se ejecuta un interior náutico</h2>
-  <p>Todo el herraje es <strong>inoxidable AISI 316 o bronce naval</strong>. Cierres con seguro doble para que cajones y puertas no se abran con el balanceo. Frenos en correderas, gomas en cantos, topes amortiguados. Fijaciones con cinta encolada estructural Sika + tornillería oculta.</p>
-  <p>Abordamos salones interiores, camarotes con armarios y cabeceros, galeras con encimeras de Corian o porcelánico fino, baños con paneles fenólicos continuos, paneles decorativos en techos y mamparos, y mobiliario de cubierta protegible.</p>
-  <p>Trabajamos directamente con astilleros, captains y propietarios. Diseñamos con <strong>planos de cuadernas y secciones longitudinales en mano</strong> y planificamos la instalación en astillero o muelle. Para proyectos en tierra ver <a href="/residencial/">residencial</a> y <a href="/couture/">couture</a>. Para hostelería ver <a href="/contract/">contract</a>.</p>
-</section>
-
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Hablemos de tu embarcación</h2>
-  <p>Cada barco es único. Envíanos planos o ficha técnica y respondemos con propuesta inicial.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Contactar</a>
-</section>
-
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/residencial/"><small>Proyectos</small>Residencial</a>
-    <a href="/couture/"><small>Proyectos</small>Couture</a>
-    <a href="/contract/"><small>Proyectos</small>Contract</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/couture/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Couture</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/contract/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Contract</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/proyecto-a-medida/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Servicio</div>
+      <h2 class="sys-card-title sys-card-title--sm">A medida</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

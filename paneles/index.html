@@ -39,103 +39,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO 2col reverse: img izq + texto der -->
-<section class="sx-hero-2col reverse">
-  <div class="sx-hero-text">
-    <div class="sx-eyebrow">Producto</div>
-    <h1>Paneles decorativos a medida</h1>
-    <p class="sx-lead">Boiserie clásica, paneles acústicos contemporáneos, revestimientos de pared o techo en madera, lacado o tejido. Pieza arquitectónica fabricada al milímetro.</p>
-  </div>
-  <div class="sx-hero-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Panel · Boiserie continua</div>
-  </div>
-</section>
-
-<!-- SPLIT 1: img izq + cuando la pared es protagonista -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Panel · Boiserie con TV integrada</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Por qué a medida</div>
-    <h2>Cuando la pared es la pieza protagonista</h2>
-    <p>Los paneles decorativos transforman una pared plana en un elemento arquitectónico. Bien diseñados, integran televisión, iluminación, chimenea, almacenamiento oculto o un simple gesto de carpintería que ordena la estancia.</p>
-    <p>En Curino los proyectamos como mobiliario: con planos, sección y plan de montaje propio.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Producto</div>
+        <h1 class="sys-card-title">Paneles decorativos</h1>
+        <p class="sys-card-subtitle">Boiserie, paneles acústicos y revestimientos de pared a medida. En madera, lacado, fenólico o tejido tapizado.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- GRID 3 tipologías -->
-<section class="sx-grid3">
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Boiserie clásica</div>
-    <figcaption>Clásica con molduras</figcaption>
-  </figure>
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Boiserie moderna</div>
-    <figcaption>Moderna junta a sangre</figcaption>
-  </figure>
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Panel acústico</div>
-    <figcaption>Listones acústicos</figcaption>
-  </figure>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Detalle boiserie con moldura horizontal y ojo de tirador integrado"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Filosofía</div>
+    <h2>El muro como pieza de carpintería.</h2>
+    <p class="revista-featured-desc">El panel decorativo no es decoración: es arquitectura interior. Define la escala de la estancia, da soporte a la iluminación, integra puertas y armarios, y resuelve el encuentro con techo y suelo. Diseño propio, fabricación artesanal.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Proyecto a medida</a>
+  </div>
 </section>
 
-<!-- TEXT BLOCK: tipologías y materiales -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Tipologías</div>
-  <h2>Qué fabricamos</h2>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Boiserie</div>
+      <h2 class="sys-card-title sys-card-title--md">Muro continuo</h2>
+      <p class="sys-card-subtitle">Sin junta visible. Integra puertas, armarios y vitrinas como parte del muro.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Acústico</div>
+      <h2 class="sys-card-title sys-card-title--md">Panel absorbente</h2>
+      <p class="sys-card-subtitle">Tejido tapizado o ranurado en madera con alma absorbente. Mejora la inteligibilidad.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Boiserie clásica con molduras y rodapie en madera"><!-- TODO: foto real --></div>
+      <h3>Estilo clásico</h3>
+      <p>Molduras tradicionales, frisos, rodapie integrado. Para proyectos de cardo clásico o renovaciones.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Panel moderno liso en madera con junta a hueso"><!-- TODO: foto real --></div>
+      <h3>Estilo contemporaneo</h3>
+      <p>Geometría limpia, junta a hueso, esquinas a 45 grados. Sin moldura visible.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Panel tapizado en lino color crema en cabecero"><!-- TODO: foto real --></div>
+      <h3>Tapizado</h3>
+      <p>Tela técnica o cuero recuperable. Boton capitone o liso. Frecuente en cabeceros y zonas TV.</p>
+    </article>
+  </div>
+</section>
+
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Aplicaciones</div>
+  <h2>Donde se aplica</h2>
+  <p>Los paneles decorativos aparecen en <a href="/salón/">salónes</a> (boiserie + libreria), <a href="/dormitorio/">dormitorios</a> (cabecero tapizado + revestimiento), <a href="/comedor/">comedores</a> (frente con aparador integrado) y recibidores (panel con armario zapatero).</p>
+  <p>En proyectos <a href="/contract/">contract</a> los usamos para resolver pasillos largos, vestíbulos de hotel y salas de reunion. Cuando hace falta resistencia, trabajamos con fenólico cantos sellados.</p>
   <ul>
-    <li><strong>Boiserie clásica</strong>: paneles cuadrados o rectangulares con molduras.</li>
-    <li><strong>Boiserie moderna</strong>: paneles continuos, junta a sangre o casi imperceptible, sin molduras.</li>
-    <li><strong>Panel acústico</strong>: listones verticales sobre fieltro absorbente; reduce reverberación.</li>
-    <li><strong>Revestimiento de pared completa</strong>: techo a suelo, integrando iluminación, puertas ocultas y conexiones.</li>
-    <li><strong>Cabeceros y testeros tapizados</strong> con paneles modulares.</li>
+    <li><strong>Madera, lacado, fenólico o tejido</strong> — segun uso</li>
+    <li><strong>Iluminación LED</strong> integrada (perfiles ocultos)</li>
+    <li><strong>Integración de puertas</strong> enrasadas y armarios ocultos</li>
   </ul>
-  <p>Materiales: madera maciza (roble, fresno, nogal, cerezo), chapados naturales sobre tablero estable, lacado al horno, melamina técnica de gama alta, fenólico para zonas húmedas, tejido tapizado para acústica. Uniones con cantos a 45° o ingletes ejecutados en taller.</p>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«Un panel bien diseñado ordena la habitación. Mal diseñado, la reduce.»</blockquote>
-  <cite>Taller Curino</cite>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu panel</span>
+  <h2 class="cta-h2">Diseñemos tu boiserie.</h2>
+  <span class="cta-sub">Visita técnica gratuita. Muestrario en obra.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Contactar</a>
 </section>
 
-<!-- SPLIT 2: img der + proceso (reverse) -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Panel · Detalle ensamble</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Proceso</div>
-    <h2>Cómo lo ejecutamos</h2>
-    <p>Toma de medidas (incluida la verticalidad del muro), diseño con planos en planta, alzado y sección, replanteo de tomas eléctricas y de iluminación si las hay, fabricación en taller (4-6 semanas) y montaje con sistemas reversibles para que la pared no quede dañada si en el futuro se cambia.</p>
-    <p>Coordinamos con tu electricista o instalador de TV si el panel integra esos elementos. Para proyectos integrales ver <a href="/residencial/">residencial</a> y <a href="/contract/">contract</a>.</p>
-  </div>
-</section>
-
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Diseña tu pared protagonista</h2>
-  <p>Cada panel es único. Visita técnica y propuesta en 7-10 días.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
-</section>
-
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/salon/"><small>Estancia</small>Salón</a>
-    <a href="/comedor/"><small>Estancia</small>Comedor</a>
-    <a href="/puertas/"><small>Producto</small>Puertas</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/puertas/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Puertas</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/salón/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Estancia</div>
+      <h2 class="sys-card-title sys-card-title--sm">Salón</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/dormitorio/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Estancia</div>
+      <h2 class="sys-card-title sys-card-title--sm">Dormitorio</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/contract/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Contract</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

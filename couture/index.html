@@ -39,98 +39,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO editorial pausado -->
-<section class="sx-hero-edit">
-  <div class="sx-eyebrow">Proyecto integral · Atelier</div>
-  <h1>Couture</h1>
-  <p class="sx-lead">El tramo más alto del oficio. Proyectos únicos donde la carpintería se concibe como pieza de autor: maderas selectas, marquetería, herrajes especiales y tiempos de taller que no admiten atajos.</p>
-</section>
-
-<!-- BANNER full-bleed -->
-<section class="sx-banner">
-  <!-- TODO: sustituir por foto real -->
-  <div class="sx-placeholder">Couture · Pieza de autor</div>
-</section>
-
-<!-- SPLIT 1: img izq + cuando la carpintería es la obra -->
-<section class="sx-split">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Biblioteca con marquetería</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Filosofía</div>
-    <h2>Cuando la carpintería es la obra</h2>
-    <p>Couture es la línea que reservamos para proyectos donde la carpintería deja de ser un soporte para ser el <strong>elemento principal</strong>. Encargos con piezas singulares —un escritorio a medida, una biblioteca de pared completa con marquetería, un bar privado, un walk-in con detalle de joyería— en maderas selectas, herrajes específicos y plazos amplios para resolver el detalle artesanal.</p>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Atelier</div>
+        <h1 class="sys-card-title">Couture</h1>
+        <p class="sys-card-subtitle">El tramo mas alto del oficio. Maderas selectas, marquetería, herrajes especiales y tiempos de taller que no admiten atajos.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«Couture no admite urgencia. El tiempo es parte del valor de la pieza.»</blockquote>
-  <cite>Taller Curino</cite>
-</section>
-
-<!-- SPLIT 2: img der + lo que define couture -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Detalle taracea</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Lo que define couture</div>
-    <h2>Materiales selectos y oficio</h2>
-    <ul>
-      <li><strong>Maderas selectas</strong>: nogal francés, fresno olivado, palo santo, sapeli figurado, raíz de tuya.</li>
-      <li><strong>Marquetería y taracea</strong>: composiciones geométricas o figurativas en chapas finas, con metales o nácares.</li>
-      <li><strong>Acabados artesanales</strong>: barnices al alcohol, encerados a muñeca, lacados con pulido espejo (12+ capas), pátinas a mano.</li>
-      <li><strong>Herrajes especiales</strong>: latón macizo cincelado, bronce patinado, herraje encargado a artesano.</li>
-      <li><strong>Detalle de oficio</strong>: ensamblajes a cola de milano vistos, cantos pulidos a mano, ferrajes ocultos a medida.</li>
-    </ul>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Detalle taracea geométrica en chapa de nogal y nacar"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Filosofía</div>
+    <h2>Cuando la carpintería es la obra.</h2>
+    <p class="revista-featured-desc">Couture es la línea reservada para proyectos donde la carpintería deja de ser soporte para ser el <strong>elemento principal</strong>. Escritorio sobre medida, biblioteca con marquetería, bar privado, walk-in con detalle de joyería. Maderas selectas, herrajes específicos y plazos amplios.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Conversemos</a>
   </div>
 </section>
 
-<!-- GRID asimétrico -->
-<section class="sx-grid-asym">
-  <div class="sx-asym-big">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Vestidor joyería</div>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Biblioteca de autor</h2>
+      <p class="sys-card-subtitle">Madera selecta, marquetería geométrica, iluminación oculta, escalera embarcada.</p>
+    </div>
   </div>
-  <div class="sx-asym-small">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Carro bar</div>
-  </div>
-  <div class="sx-asym-small">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Escritorio singular</div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Vestidor joyería</h2>
+      <p class="sys-card-subtitle">Cajones forrados en cuero, vitrina iluminada para piezas, espejos electronicos.</p>
+    </div>
   </div>
 </section>
 
-<!-- TEXT BLOCK: tipologías + cómo trabajamos -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Tipologías y proceso</div>
-  <h2>Encargos habituales</h2>
-  <p>Bibliotecas y salones a doble altura, vestidores de joyería, barras y carros bar, escritorios singulares, paneles de madera con marquetería, frentes decorativos para salones privados, mobiliario para colecciones de arte o relojería.</p>
-  <p>Los proyectos couture exigen una <strong>fase de diseño extendida</strong>: bocetos a mano, prototipos de detalle, selección de chapas in situ en proveedor, y un planning ajustado a las semanas reales de taller. Para proyectos residenciales convencionales ver <a href="/residencial/">residencial</a>. Para producción seriada profesional ver <a href="/contract/">contract</a>.</p>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Tabla de nogal francés figurado seleccionada en proveedor"><!-- TODO: foto real --></div>
+      <h3>Maderas selectas</h3>
+      <p>Nogal francés, fresno olivado, palo santo, sapeli figurado, raiz de tuya. Selección pieza a pieza.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Detalle taracea en chapa fina con metal embutido"><!-- TODO: foto real --></div>
+      <h3>Marquetería</h3>
+      <p>Composiciónes geométricas o figurativas en chapas finas. Con metales o nacares.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Herraje en laton macizo cincelado a mano"><!-- TODO: foto real --></div>
+      <h3>Herraje especial</h3>
+      <p>Laton macizo cincelado, bronce patinado, herraje encargado al artesaño cuando el catálogo no llega.</p>
+    </article>
+  </div>
 </section>
 
-<!-- CTA dark -->
-<section class="sx-cta-dark">
-  <h2>Hablemos de tu pieza</h2>
-  <p>Los proyectos couture empiezan con una conversación, no con un presupuesto.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Contactar</a>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Tiempos · Proceso</div>
+  <h2>No admite urgencia</h2>
+  <p>Los proyectos couture exigen una <strong>fase de diseño extendida</strong>: bocetos a mano, prototipos de detalle, selección de chapas in situ en proveedor, y un planning ajustado a las semanas reales de taller.</p>
+  <p>Para proyectos residenciales convencionales ver <a href="/residencial/">residencial</a>. Para producción seriada profesional ver <a href="/contract/">contract</a>. Para embarcaciones ver <a href="/náutica/">náutica</a>.</p>
+  <ul>
+    <li><strong>Fase de diseño</strong> extendida (8-16 semanas)</li>
+    <li><strong>Prototipos</strong> de detalle previos a fabricación</li>
+    <li><strong>Acabados artesanales</strong> (barniz al alcohol, encerado a muñeca)</li>
+  </ul>
 </section>
 
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/residencial/"><small>Proyectos</small>Residencial</a>
-    <a href="/contract/"><small>Proyectos</small>Contract</a>
-    <a href="/nautica/"><small>Proyectos</small>Náutica</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu pieza</span>
+  <h2 class="cta-h2">Hablemos de tu pieza.</h2>
+  <span class="cta-sub">Los proyectos couture empiezan con una conversación, no con un presupuesto.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Contactar</a>
+</section>
+
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/contract/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Contract</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/náutica/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Náutica</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/proyecto-a-medida/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Servicio</div>
+      <h2 class="sys-card-title sys-card-title--sm">A medida</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 

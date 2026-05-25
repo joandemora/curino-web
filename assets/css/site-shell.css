@@ -300,3 +300,152 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
   .sx-data-grid{grid-template-columns:1fr;gap:1.5rem}
 }
 
+/* ============================================================
+ * Sistema de cajas .sys-card + tipografía editorial revista.
+ * Replica el lenguaje de la landing principal (cajas oscuras
+ * full-bleed con imagen) y le superpone la familia serif de
+ * /revista/ (Cormorant Garamond) en los títulos.
+ * Usado por las 12 páginas de sección (feat/seccion-pages-cajas).
+ *
+ * Las clases .sys-* duplican intencionadamente la maquetación
+ * de index.html (inline) y .revista-* la de revista.css; cuando
+ * la landing se extraiga a CSS compartido, ambos bloques se
+ * pueden mergear.
+ * ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&display=swap');
+
+:root{
+  --rv-ink:#1a1a1a;
+  --rv-ink-soft:#555;
+  --rv-ink-mute:#888;
+  --rv-line:#e5e5e5;
+  --rv-line-soft:#f1f0ea;
+  --rv-paper:#fff;
+  --rv-bg:#fafaf7;
+  --rv-coral:#cc785c;
+  --rv-serif:'Cormorant Garamond',Georgia,serif;
+  --rv-sans:'Open Sans',system-ui,sans-serif;
+}
+
+/* ── Sys-grid + sys-card (replica de la landing) ──────────── */
+.sys-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;padding:80px 32px 32px}
+.sys-grid.cols-1{grid-template-columns:1fr}
+.sys-grid.cols-2{grid-template-columns:1fr 1fr}
+.sys-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.sys-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+.sys-grid.tight{padding:32px 32px;gap:8px}
+.sys-grid.flush{padding:0;gap:0}
+
+.sys-card{
+  position:relative;overflow:hidden;
+  height:85vh;min-height:380px;
+  background:#0a0a0a center/cover no-repeat;
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;text-decoration:none;color:inherit;
+}
+.sys-card.sys-card--mid{height:60vh;min-height:340px}
+.sys-card.sys-card--short{height:42vh;min-height:240px}
+.sys-card::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.15);transition:background .35s;pointer-events:none;z-index:1}
+.sys-card:hover::after{background:rgba(0,0,0,.32)}
+.sys-card-content{position:relative;z-index:2;text-align:center;padding:2.5rem;max-width:780px;display:flex;flex-direction:column;align-items:center}
+.sys-card-eyebrow{font-family:var(--rv-sans);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.85);font-weight:500;margin-bottom:1.25rem}
+.sys-card-title{
+  font-family:var(--rv-serif);
+  font-size:clamp(34px,5vw,68px);
+  font-weight:400;
+  letter-spacing:-.02em;
+  line-height:1.05;
+  color:#fff;
+  text-align:center;
+  text-transform:none;
+  margin:0;
+}
+.sys-card-title--md{font-size:clamp(28px,3.6vw,46px)}
+.sys-card-title--sm{font-size:clamp(22px,2.4vw,32px);letter-spacing:-.01em;line-height:1.15}
+.sys-card-subtitle{font-family:var(--rv-sans);font-size:clamp(15px,1.35vw,17px);color:rgba(255,255,255,.92);font-weight:400;line-height:1.6;max-width:580px;margin:1.25rem auto 1.5rem}
+.sys-card-cta{display:inline-block;font-family:var(--rv-sans);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#fff;text-decoration:none;border-bottom:1px solid #fff;padding-bottom:3px;font-weight:500;transition:opacity .2s}
+.sys-card-cta:hover{opacity:.75}
+
+/* Hero variant: gradiente más marcado para garantizar contraste del título */
+.sx-cajas-hero{padding-top:80px}
+.sx-cajas-hero .sys-card{height:80vh;min-height:520px;max-height:780px}
+.sx-cajas-hero .sys-card::after{background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.55) 100%)}
+
+/* ── Revista editorial: featured + grid de cards (replica) ── */
+.revista-featured{max-width:1400px;margin:0 auto;padding:80px 32px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+.revista-featured.reverse{direction:rtl}
+.revista-featured.reverse>*{direction:ltr}
+.revista-featured-img{width:100%;aspect-ratio:4/3;background:#f1f0ea center/cover no-repeat}
+.revista-featured-text{display:flex;flex-direction:column;gap:20px}
+.revista-featured-type{font-family:var(--rv-sans);font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:var(--rv-ink-mute);font-weight:500}
+.revista-featured h2{font-family:var(--rv-serif);font-size:clamp(28px,4vw,48px);font-weight:400;line-height:1.15;margin:0;letter-spacing:-.01em;color:var(--rv-ink);text-align:left;text-transform:none}
+.revista-featured-desc{font-family:var(--rv-sans);font-size:17px;line-height:1.6;color:var(--rv-ink-soft);margin:0;text-align:left}
+.revista-featured-desc strong{color:var(--rv-ink);font-weight:600}
+.revista-featured-link{display:inline-block;font-family:var(--rv-sans);font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--rv-ink);text-decoration:none;font-weight:500;border-bottom:1px solid var(--rv-ink);padding-bottom:3px;align-self:flex-start;transition:color .2s,border-color .2s}
+.revista-featured-link:hover{color:var(--rv-coral);border-color:var(--rv-coral)}
+
+.revista-grid{max-width:1400px;margin:0 auto;padding:40px 32px 80px}
+.revista-grid-row{display:grid;gap:40px;margin-bottom:60px}
+.revista-grid-row:last-child{margin-bottom:0}
+.revista-grid-row.cols-2{grid-template-columns:1fr 1fr}
+.revista-grid-row.cols-3{grid-template-columns:1fr 1fr 1fr}
+.revista-grid-row.cols-4{grid-template-columns:repeat(4,1fr)}
+
+.revista-card{display:block;text-decoration:none;color:inherit}
+.revista-card-img{width:100%;aspect-ratio:4/3;background:#f1f0ea center/cover no-repeat;margin-bottom:20px;transition:opacity .3s}
+.revista-card:hover .revista-card-img{opacity:.92}
+.revista-card h3{font-family:var(--rv-serif);font-size:clamp(20px,2vw,28px);font-weight:400;line-height:1.25;margin:0 0 .5rem;letter-spacing:-.01em;color:var(--rv-ink);text-align:left;text-transform:none}
+.revista-card p{font-family:var(--rv-sans);font-size:15px;line-height:1.55;color:var(--rv-ink-soft);margin:0;text-align:left}
+
+/* ── Bloque de texto editorial ────────────────────────────── */
+.sx-cajas-text{max-width:880px;margin:0 auto;padding:80px 32px;background:var(--rv-paper)}
+.sx-cajas-text .sx-eyebrow{font-family:var(--rv-sans);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--rv-ink-mute);margin-bottom:1.25rem;text-align:center}
+.sx-cajas-text h2{font-family:var(--rv-serif);font-size:clamp(28px,3.5vw,44px);font-weight:400;line-height:1.15;letter-spacing:-.01em;color:var(--rv-ink);margin:0 0 1.75rem;text-align:center;text-transform:none}
+.sx-cajas-text p{font-family:var(--rv-sans);font-size:17px;line-height:1.7;color:var(--rv-ink-soft);margin:0 0 1.1rem;text-align:left}
+.sx-cajas-text ul{margin:.5rem 0 1.5rem;padding-left:0;list-style:none}
+.sx-cajas-text li{font-family:var(--rv-sans);font-size:16px;line-height:1.7;color:var(--rv-ink-soft);margin-bottom:.6rem;position:relative;padding-left:1.5rem}
+.sx-cajas-text li::before{content:'';position:absolute;left:0;top:.85em;width:.9rem;height:1px;background:var(--rv-ink-mute)}
+.sx-cajas-text strong{color:var(--rv-ink);font-weight:600}
+.sx-cajas-text a{color:var(--rv-coral);text-decoration:none;border-bottom:1px solid var(--rv-coral);padding-bottom:1px}
+.sx-cajas-text a:hover{color:var(--rv-ink);border-color:var(--rv-ink)}
+
+/* ── CTA editorial (.cta-section reusable de la landing) ──── */
+.cta-section{padding:7rem 32px;text-align:center;background:var(--rv-paper);border-top:1px solid var(--rv-line);border-bottom:1px solid var(--rv-line)}
+.cta-label{display:block;font-family:var(--rv-sans);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-ink-mute);margin-bottom:1.75rem;font-weight:500}
+.cta-h2{font-family:var(--rv-serif);font-size:clamp(32px,4.5vw,56px);font-weight:400;line-height:1.1;letter-spacing:-.02em;color:var(--rv-ink);margin:0 0 1rem;text-transform:none}
+.cta-h2 em{font-style:italic}
+.cta-sub{display:block;font-family:var(--rv-sans);font-size:16px;color:var(--rv-ink-soft);margin:0 auto 2.5rem;font-weight:400;max-width:560px}
+.btn-primary{display:inline-block;background:var(--rv-ink);color:#fff;border:none;padding:1rem 3rem;font-family:var(--rv-sans);font-size:12px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;font-weight:500;text-decoration:none;transition:background .2s}
+.btn-primary:hover{background:var(--rv-coral)}
+
+/* Related: grid de 4 sys-card "short" como cierre */
+.sx-cajas-related{padding:0}
+.sx-cajas-related .sys-grid{padding:0;gap:0}
+.sx-cajas-related .sys-card{height:32vh;min-height:220px}
+.sx-cajas-related .sys-card-content{padding:1.25rem}
+.sx-cajas-related .sys-card-eyebrow{margin-bottom:.5rem}
+.sx-cajas-related .sys-card-title--sm{font-size:clamp(20px,2vw,28px)}
+
+/* Responsive — sistema de cajas + revista */
+@media(max-width:1024px){
+  .sys-grid{grid-template-columns:1fr;padding:48px 16px 16px;gap:16px}
+  .sys-grid.cols-2,.sys-grid.cols-3,.sys-grid.cols-4{grid-template-columns:1fr}
+  .sys-grid.tight{padding:16px;gap:8px}
+  .sys-card{height:65vh;min-height:360px}
+  .sys-card-content{padding:1.5rem}
+  .sx-cajas-hero{padding-top:60px}
+  .sx-cajas-hero .sys-card{height:72vh;min-height:460px}
+  .revista-featured{grid-template-columns:1fr;gap:32px;padding:48px 16px}
+  .revista-grid{padding:24px 16px 56px}
+  .revista-grid-row.cols-2,.revista-grid-row.cols-3,.revista-grid-row.cols-4{grid-template-columns:1fr;gap:32px;margin-bottom:32px}
+  .sx-cajas-text{padding:48px 16px}
+  .cta-section{padding:4.5rem 16px}
+  .sx-cajas-related .sys-card{height:38vh;min-height:240px}
+}
+@media(max-width:560px){
+  .sys-card{height:60vh;min-height:320px}
+  .sys-card-content{padding:1rem}
+  .revista-featured{padding:40px 16px;gap:24px}
+}
+

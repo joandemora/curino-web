@@ -38,83 +38,126 @@
 </head>
 <body class="sx-page">
 
+<!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- HERO editorial -->
-<section class="sx-hero-edit">
-  <div class="sx-eyebrow">Estancia</div>
-  <h1>Comedor a medida</h1>
-  <p class="sx-lead">El comedor pide mobiliario que aloje sin ostentar: aparadores discretos, vitrinas con vajilla seleccionada, una bodega bien climatizada.</p>
-</section>
-
-<!-- GRID 3 -->
-<section class="sx-grid3">
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Aparador</div>
-    <figcaption>Aparador bajo</figcaption>
-  </figure>
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Vitrina con cristal</div>
-    <figcaption>Vitrina iluminada</figcaption>
-  </figure>
-  <figure>
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Bodega refrigerada</div>
-    <figcaption>Bodega integrada</figcaption>
-  </figure>
-</section>
-
-<!-- SPLIT 1: img der + mobiliario que acompaña -->
-<section class="sx-split reverse">
-  <div class="sx-split-img">
-    <!-- TODO: sustituir por foto real -->
-    <div class="sx-placeholder">Comedor · Aparador continuo</div>
-  </div>
-  <div class="sx-split-text">
-    <div class="sx-eyebrow">Pieza intermedia</div>
-    <h2>Mobiliario que acompaña a la mesa</h2>
-    <p>El comedor suele compartir espacio visual con la cocina o el salón. El mobiliario auxiliar (aparadores, vitrinas, bodegas) tiene que dialogar con esos espacios: misma madera, mismo lacado, mismo gesto. Diseñamos el comedor como <strong>pieza intermedia que cose el resto de estancias</strong>.</p>
-    <ul>
-      <li><strong>Aparadores bajos</strong> con frentes lacados o de madera, encimera de mármol o porcelánico.</li>
-      <li><strong>Vitrinas con cristal</strong> e iluminación LED para vajilla, copas o piezas de colección.</li>
-      <li><strong>Vajilleros</strong> con cajones extra-profundos y separadores a medida.</li>
-      <li><strong>Bodegas refrigeradas</strong> con vinotecas integradas (Eurocave, Liebherr).</li>
-      <li><strong>Frente decorativo</strong> tipo boiserie para enmarcar el comedor.</li>
-    </ul>
+<!-- HERO sys-card -->
+<section class="sx-cajas-hero">
+  <!-- TODO: sustituir background-image por foto real (hero) -->
+  <div class="sys-grid flush cols-1">
+    <div class="sys-card">
+      <div class="sys-card-content">
+        <div class="sys-card-eyebrow">Estancia</div>
+        <h1 class="sys-card-title">Comedor a medida</h1>
+        <p class="sys-card-subtitle">Aparadores discretos, vitrinas con iluminación y bodegas climatizadas. Mobiliario que aloja sin ostentar.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- QUOTE -->
-<section class="sx-quote">
-  <blockquote>«El comedor es la estancia que más se ve. Pero pide que el mobiliario se note menos que los invitados.»</blockquote>
-  <cite>Taller Curino</cite>
+<!-- FEATURED editorial -->
+<section class="revista-featured">
+  <div class="revista-featured-img" role="img" aria-label="Aparador bajo continuo con encimera de mármol y frente lacado"><!-- TODO: sustituir por foto real --></div>
+  <div class="revista-featured-text">
+    <div class="revista-featured-type">Pieza intermedia</div>
+    <h2>Mobiliario que acompana a la mesa.</h2>
+    <p class="revista-featured-desc">El comedor suele compartir espacio visual con la <a href="/cocinas/">cocina</a> o el <a href="/salón/">salón</a>. El mobiliario auxiliar tiene que dialogar con esos espacios: <strong>misma madera, mismo lacado, mismo gesto</strong>. Diseñamos el comedor como la pieza que cose el resto de estancias.</p>
+    <a href="/proyecto-a-medida/" class="revista-featured-link">Proyecto a medida</a>
+  </div>
 </section>
 
-<!-- TEXT BLOCK: materiales + diseño integrado -->
-<section class="sx-text-block">
-  <div class="sx-eyebrow">Materiales · Integración</div>
-  <h2>Acabados y coherencia</h2>
-  <p>Madera natural (roble, fresno, nogal, cerezo), lacado al horno mate o satinado, encimeras de mármol, granito, porcelánico de gran formato o madera maciza. Cristal templado transparente o reactivo (efecto bronce, gris, ahumado) en vitrinas.</p>
-  <p>Casi todos los comedores que proyectamos forman parte de un proyecto más amplio que incluye <a href="/cocinas/">cocina</a> o <a href="/salon/">salón</a>. Coordinar los tres a la vez garantiza coherencia material y resuelve mejor las transiciones (encimera continua, frente continuo, iluminación coherente).</p>
+<!-- GRID sys-card 2 cols -->
+<section class="sys-grid cols-2 tight">
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Aparador bajo</h2>
+      <p class="sys-card-subtitle">Cajones grandes, encimera de mármol o porcelánico, frente lacado o en madera.</p>
+    </div>
+  </div>
+  <div class="sys-card">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Pieza</div>
+      <h2 class="sys-card-title sys-card-title--md">Vitrina iluminada</h2>
+      <p class="sys-card-subtitle">Cristal templado e iluminación LED para vajilla, copas o colección.</p>
+    </div>
+  </div>
 </section>
 
-<!-- CTA soft -->
-<section class="sx-cta-soft">
-  <h2>Proyectemos tu comedor</h2>
-  <p>Visita técnica gratuita. Propuesta cerrada en 7-10 días.</p>
-  <a href="/proyecto-a-medida/" class="btn-main">Solicitar visita</a>
+<!-- REVISTA GRID 3 cols -->
+<section class="revista-grid">
+  <div class="revista-grid-row cols-3">
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Cajon vajillero extra-profundo con separadores a medida"><!-- TODO: foto real --></div>
+      <h3>Vajillero</h3>
+      <p>Cajones extra-profundos, separadores a medida para platos, fuentes y copas.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Bodega refrigerada integrada en mueble bajo de comedor"><!-- TODO: foto real --></div>
+      <h3>Bodega integrada</h3>
+      <p>Vinotecas Eurocave o Liebherr integradas en mueble. Doble zona, puerta UV.</p>
+    </article>
+    <article class="revista-card">
+      <div class="revista-card-img" role="img" aria-label="Frente decorativo boiserie enmarcando el comedor"><!-- TODO: foto real --></div>
+      <h3>Frente decorativo</h3>
+      <p>Boiserie que enmarca el comedor o lo separa visualmente del salón.</p>
+    </article>
+  </div>
 </section>
 
-<section class="sx-related">
-  <div class="sx-related-title">También te puede interesar</div>
-  <div class="sx-related-grid">
-    <a href="/cocinas/"><small>Producto</small>Cocinas</a>
-    <a href="/salon/"><small>Estancia</small>Salón</a>
-    <a href="/paneles/"><small>Producto</small>Paneles</a>
-    <a href="/proyecto-a-medida/"><small>Servicio</small>Proyecto a medida</a>
+<!-- TEXT BLOCK editorial (serif h2) -->
+<section class="sx-cajas-text">
+  <div class="sx-eyebrow">Materiales · Coherencia</div>
+  <h2>Acabados que cosen la casa</h2>
+  <p>Madera natural (roble, fresno, nogal, cerezo), lacado al horno, encimeras de mármol, granito, porcelánico o madera maciza. Cristal templado transparente o reactivo (bronce, gris, ahumado) en vitrinas.</p>
+  <p>Casi todos los comedores que proyectamos forman parte de un proyecto mas amplio que incluye <a href="/cocinas/">cocina</a> o <a href="/salón/">salón</a>. Coordinar los tres a la vez garantiza coherencia material y resuelve mejor las transiciones.</p>
+  <ul>
+    <li><strong>Encimera continua</strong> entre cocina y aparador</li>
+    <li><strong>Iluminación LED</strong> en vitrinas y baldas</li>
+    <li><strong>Bodega climatizada</strong> integrada</li>
+  </ul>
+</section>
+
+<!-- CTA editorial -->
+<section class="cta-section">
+  <span class="cta-label">Tu comedor</span>
+  <h2 class="cta-h2">Proyectemos tu comedor.</h2>
+  <span class="cta-sub">Visita técnica gratuita. Propuesta cerrada en 7-10 días.</span>
+  <a href="/proyecto-a-medida/" class="btn-primary">Solicitar visita</a>
+</section>
+
+<!-- RELATED sys-card grid 4 -->
+<section class="sx-cajas-related">
+  <div class="sys-grid flush cols-4">
+    <a class="sys-card" href="/salón/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Estancia</div>
+      <h2 class="sys-card-title sys-card-title--sm">Salón</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/cocinas/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Cocinas</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/paneles/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Producto</div>
+      <h2 class="sys-card-title sys-card-title--sm">Paneles</h2>
+      
+    </div>
+  </a>
+    <a class="sys-card" href="/residencial/">
+    <div class="sys-card-content">
+      <div class="sys-card-eyebrow">Proyectos</div>
+      <h2 class="sys-card-title sys-card-title--sm">Residencial</h2>
+      
+    </div>
+  </a>
   </div>
 </section>
 
