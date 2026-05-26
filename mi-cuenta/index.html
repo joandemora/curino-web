@@ -848,11 +848,11 @@ async function loadProfile(){
   var upgrades = document.getElementById('planUpgrades');
   if(plan==='go'){
     desc.textContent='Plan gratuito con funcionalidades basicas.';
-    upgrades.innerHTML='<div class="plan-upgrade"><div><div class="plan-upgrade-name">Pro</div><div class="plan-upgrade-price">49 \u20AC/mes</div></div><a href="/pro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>'+
-      '<div class="plan-upgrade"><div><div class="plan-upgrade-name">Max</div><div class="plan-upgrade-price">149 \u20AC/mes</div></div><a href="/pro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>';
+    upgrades.innerHTML='<div class="plan-upgrade"><div><div class="plan-upgrade-name">Pro</div><div class="plan-upgrade-price">49 \u20AC/mes</div></div><a href="/maestro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>'+
+      '<div class="plan-upgrade"><div><div class="plan-upgrade-name">Max</div><div class="plan-upgrade-price">149 \u20AC/mes</div></div><a href="/maestro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>';
   }else if(plan==='pro'){
     desc.textContent='Plan profesional con todas las herramientas de diseno.';
-    upgrades.innerHTML='<div class="plan-upgrade"><div><div class="plan-upgrade-name">Max</div><div class="plan-upgrade-price">149 \u20AC/mes</div></div><a href="/pro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>';
+    upgrades.innerHTML='<div class="plan-upgrade"><div><div class="plan-upgrade-name">Max</div><div class="plan-upgrade-price">149 \u20AC/mes</div></div><a href="/maestro/#pricing" class="btn btn-outline btn-small">Upgrade</a></div>';
   }else{
     desc.textContent='Plan maximo activo. Acceso completo a todas las funcionalidades.';
     upgrades.innerHTML='';
