@@ -190,48 +190,91 @@ function renderDetailModal(){
   var c=o.configuracion||{};
   var modal=document.getElementById('vModal');
 
-  var dims=(c.ancho&&c.alto&&c.fondo)?(c.ancho+'×'+c.alto+'×'+c.fondo+' cm'):'—';
-
-  // Detalle de puertas (Fase H8). Si door_tipo no está (pedidos viejos previos
-  // a H8), fallback al string resumido c.puertas.
-  var puertasHtml;
-  if(c.door_tipo){
-    if(c.door_tipo==='Laminadas' || c.door_tipo==='Lacadas'){
-      puertasHtml = escHtml(c.door_tipo) + (c.door_color ? ' &mdash; Color: '+escHtml(c.door_color) : '');
-    } else if(c.door_tipo==='Textiles'){
-      var parts = [];
-      if(c.door_marco)     parts.push('Marco '+c.door_marco);
-      if(c.door_textil)    parts.push('Textil '+c.door_textil);
-      if(c.door_travesano) parts.push(c.door_travesano);
-      puertasHtml = 'Textiles' + (parts.length ? ' &mdash; '+escHtml(parts.join(', ')) : '');
-    } else {
-      puertasHtml = escHtml(c.door_tipo);
+  // Fase H10/2: detectar shape multi-armario.
+  // Si c.items es array no vacío → usar esos items (cart H10 con doorDetail).
+  // Si no → wrap del root como item único (retrocompat pre-H10, shape H8 plano).
+  // El helper cubre los 3 casos: doorDetail anidado / door_tipo plano / puertas string.
+  function normalizeAdminItem(raw){
+    raw = raw || {};
+    var dd = raw.doorDetail || null;
+    var doorTipo = (dd && dd.tipo) || raw.door_tipo || '';
+    var doorColor = (dd && dd.colorRal) || raw.door_color || '';
+    var doorMarco = (dd && dd.marco) || raw.door_marco || '';
+    var doorTextil = (dd && dd.textil) || raw.door_textil || '';
+    var doorTravesano = (dd && dd.travesano) || raw.door_travesano || '';
+    var precioEuros = (typeof raw.precio === 'number' && raw.precio > 0) ? raw.precio : null;
+    var baseCents = precioEuros != null ? Math.round((precioEuros * 100) / 1.21) : null;
+    return {
+      ancho: raw.ancho || '',
+      alto: raw.alto || '',
+      fondo: raw.fondo || '',
+      material: raw.material || '',
+      doorTipo: doorTipo,
+      doorColor: doorColor,
+      doorMarco: doorMarco,
+      doorTextil: doorTextil,
+      doorTravesano: doorTravesano,
+      interior: raw.interior || '',
+      puertasResumen: raw.puertas || '',
+      modules: Array.isArray(raw.moduleDetail) ? raw.moduleDetail
+             : Array.isArray(raw.modules) ? raw.modules : [],
+      baseCents: baseCents
+    };
+  }
+  function renderItemPuertasHtml(it){
+    if(it.doorTipo){
+      if(it.doorTipo==='Textiles'){
+        var parts=[];
+        if(it.doorMarco)     parts.push('Marco '+it.doorMarco);
+        if(it.doorTextil)    parts.push('Textil '+it.doorTextil);
+        if(it.doorTravesano) parts.push(it.doorTravesano);
+        return 'Textiles'+(parts.length?' &mdash; '+escHtml(parts.join(', ')):'');
+      }
+      return escHtml(it.doorTipo)+(it.doorColor?' &mdash; Color: '+escHtml(it.doorColor):'');
     }
-  } else {
-    puertasHtml = escHtml(c.puertas || '—');
+    return escHtml(it.puertasResumen||'—');
   }
 
-  // Desglose por módulo (Fase H8). Array de {width, interior, hojas, apertura, puerta}.
-  // Vacío en pedidos previos a H8 → la sección no aparece.
-  var modulesArr = Array.isArray(c.modules) ? c.modules : [];
-  var modulesHtml = '';
-  if(modulesArr.length){
-    modulesHtml = '<h3>Desglose por módulo</h3>' +
-      '<div class="meta-grid">' +
-      modulesArr.map(function(m, i){
-        var bits = [];
-        if(m.interior) bits.push(m.interior);
-        if(m.puerta)   bits.push(m.puerta);
-        else if(m.hojas) {
-          bits.push(m.hojas + ' hoja' + (m.hojas > 1 ? 's' : ''));
-          if(m.apertura) bits.push('apertura ' + m.apertura);
-        }
-        var label = 'Módulo ' + (i+1) + (m.width ? ' (' + m.width + ' cm)' : '');
-        return '<div class="label">' + escHtml(label) + '</div>' +
-               '<div class="value">' + escHtml(bits.join(' · ') || '—') + '</div>';
-      }).join('') +
-      '</div>';
-  }
+  var itemsRaw = (Array.isArray(c.items) && c.items.length > 0) ? c.items : [c];
+  var items = itemsRaw.map(normalizeAdminItem);
+  var multi = items.length > 1;
+
+  // Construir un bloque HTML por cada armario: cabecera + meta-grid +
+  // desglose por módulo si existe. En multi-armario, encabezado "Armario i de N".
+  var itemsHtml = items.map(function(it, i){
+    var dimsItem = (it.ancho && it.alto && it.fondo) ? (it.ancho+'×'+it.alto+'×'+it.fondo+' cm') : '—';
+    var puertasItemHtml = renderItemPuertasHtml(it);
+    var rows =
+      '<div class="label">Medidas</div><div class="value">'+escHtml(dimsItem)+'</div>'+
+      '<div class="label">Material casco</div><div class="value">'+escHtml(it.material||'—')+'</div>'+
+      '<div class="label">Puertas</div><div class="value">'+puertasItemHtml+'</div>'+
+      '<div class="label">Interior (resumen)</div><div class="value">'+escHtml(it.interior||'—')+'</div>';
+    if(it.baseCents != null){
+      rows += '<div class="label">Importe (base s/IVA)</div><div class="value">'+escHtml(fmtEur(it.baseCents))+'</div>';
+    }
+    var title = multi ? ('Armario '+(i+1)+' de '+items.length) : 'Configuración del armario';
+    var modulesBlock = '';
+    if(it.modules.length){
+      modulesBlock = '<h3>Desglose por módulo'+(multi?' (Armario '+(i+1)+')':'')+'</h3>'+
+        '<div class="meta-grid">'+
+        it.modules.map(function(m, mi){
+          var bits=[];
+          if(m.interior) bits.push(m.interior);
+          if(m.puerta)   bits.push(m.puerta);
+          else if(m.hojas){
+            bits.push(m.hojas+' hoja'+(m.hojas>1?'s':''));
+            if(m.apertura) bits.push('apertura '+m.apertura);
+          }
+          var label='Módulo '+(mi+1)+(m.width?' ('+m.width+' cm)':'');
+          return '<div class="label">'+escHtml(label)+'</div>'+
+                 '<div class="value">'+escHtml(bits.join(' · ')||'—')+'</div>';
+        }).join('')+
+        '</div>';
+    }
+    return '<h3>'+escHtml(title)+'</h3>'+
+           '<div class="meta-grid">'+rows+'</div>'+
+           modulesBlock;
+  }).join('');
 
   // Acciones según estado actual
   var actions=[];
@@ -263,15 +306,7 @@ function renderDetailModal(){
       '<div class="label">ID interno</div><div class="value" style="font-family:monospace;font-size:11px">'+escHtml(o.id)+'</div>'+
     '</div>'+
 
-    '<h3>Configuración del armario</h3>'+
-    '<div class="meta-grid">'+
-      '<div class="label">Medidas</div><div class="value">'+escHtml(dims)+'</div>'+
-      '<div class="label">Material casco</div><div class="value">'+escHtml(c.material||'—')+'</div>'+
-      '<div class="label">Puertas</div><div class="value">'+puertasHtml+'</div>'+
-      '<div class="label">Interior (resumen)</div><div class="value">'+escHtml(c.interior||'—')+'</div>'+
-    '</div>'+
-
-    modulesHtml +
+    itemsHtml +
 
     '<h3>Envío</h3>'+
     '<div class="meta-grid">'+

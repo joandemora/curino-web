@@ -70,10 +70,64 @@ function sanitizeForWinAnsi(text: string): string {
     .replace(/ /g, ' ');          // NBSP → ' '
 }
 
+// Normaliza un item de configuracion.items[] (shape frontend cart) o un
+// objeto plano legacy (configuracion root, shape H8 o pre-H8) a una shape
+// canónica para iterar en el render. Cubre 3 casos:
+//   - cart H10: { doorDetail:{tipo,colorRal,marco,textil,travesano}, moduleDetail, precio }
+//   - root H8 plano: { door_tipo, door_color, door_marco, door_textil, door_travesano, modules }
+//   - root pre-H8: solo `puertas` string resumido
+function normalizeItem(raw: any) {
+  const dd = (raw && raw.doorDetail) || null;
+  const doorTipo = (dd && dd.tipo) || raw.door_tipo || '';
+  const doorColor = (dd && dd.colorRal) || raw.door_color || '';
+  const doorMarco = (dd && dd.marco) || raw.door_marco || '';
+  const doorTextil = (dd && dd.textil) || raw.door_textil || '';
+  const doorTravesano = (dd && dd.travesano) || raw.door_travesano || '';
+  // precio del item del cart viene en euros con IVA incluido (item.precio).
+  // base por línea = round(precio / 1.21 * 100) céntimos. Si no hay precio
+  // individual (legacy root sin items[]) → baseCents=null y el render
+  // muestra el importe del pedido entero para esa fila.
+  const precioEuros = typeof raw.precio === 'number' && raw.precio > 0 ? raw.precio : null;
+  const baseCents = precioEuros != null ? Math.round((precioEuros * 100) / 1.21) : null;
+  return {
+    ancho: raw.ancho ?? '',
+    alto: raw.alto ?? '',
+    fondo: raw.fondo ?? '',
+    material: raw.material || '',
+    doorTipo,
+    doorColor,
+    doorMarco,
+    doorTextil,
+    doorTravesano,
+    interior: raw.interior || '',
+    puertasResumen: raw.puertas || '',
+    modules: Array.isArray(raw.moduleDetail) ? raw.moduleDetail
+           : Array.isArray(raw.modules) ? raw.modules : [],
+    baseCents
+  };
+}
+
+// Render del texto descriptivo de puertas para una línea del PDF / email.
+// Priorita el detalle canónico (doorTipo + doorColor/marco/textil/travesano);
+// si no existe (pre-H8), cae al string resumido `puertas`.
+function renderPuertasText(it: ReturnType<typeof normalizeItem>): string {
+  if (it.doorTipo) {
+    if (it.doorTipo === 'Textiles') {
+      const parts: string[] = [];
+      if (it.doorMarco) parts.push('Marco ' + it.doorMarco);
+      if (it.doorTextil) parts.push('Textil ' + it.doorTextil);
+      if (it.doorTravesano) parts.push(it.doorTravesano);
+      return 'Textiles' + (parts.length ? ' — ' + parts.join(', ') : '');
+    }
+    return it.doorTipo + (it.doorColor ? ' — Color: ' + it.doorColor : '');
+  }
+  return it.puertasResumen || '';
+}
+
 // === Generar PDF de factura para pedido de armario ===
 export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  const page = doc.addPage([595, 842]); // A4
+  let page = doc.addPage([595, 842]); // A4. let porque añadimos páginas si hay muchos items.
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const black = rgb(0, 0, 0);
@@ -129,36 +183,77 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   y -= 18;
 
   // ── CONCEPTO ──
+  // Helper: añade nueva página si y queda demasiado bajo. Mantiene una sola
+  // cabecera (en la primera página) y dibuja "(continúa)" como marca al
+  // inicio de cada página posterior. No repite EMISOR/CLIENTE.
+  const newPageIfNeeded = (threshold: number) => {
+    if (y < threshold) {
+      page = doc.addPage([595, 842]);
+      y = 800;
+      page.drawText('(continúa)', { x: 50, y, font, size: 9, color: gray });
+      y -= 24;
+    }
+  };
+
   page.drawText('CONCEPTO', { x: 50, y, font: fontBold, size: 10 });
   page.drawText('IMPORTE', { x: 480, y, font: fontBold, size: 10 });
   y -= 15;
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
 
-  // Línea principal de concepto: armario a medida + dimensiones + material
-  const c = order.configuracion || {};
-  const dimensiones = (c.ancho && c.alto && c.fondo)
-    ? `${c.ancho}×${c.alto}×${c.fondo} cm`  // × en unicode
-    : '';
-  const conceptMain = dimensiones
-    ? `Armario a medida ${dimensiones}${c.material ? ' — ' + c.material : ''}`
-    : 'Armario a medida Curino';
-  page.drawText(sanitizeForWinAnsi(conceptMain), { x: 50, y, font, size: 10 });
-  page.drawText(fmtEur(order.base_cents), { x: 480, y, font, size: 10 });
-  y -= 14;
+  // Detectar shape: si configuracion.items es array no vacío → multi-armario.
+  // Si no → wrap del objeto root como item único (retrocompat pre-H10).
+  const c = (order.configuracion || {}) as any;
+  const items = (Array.isArray(c.items) && c.items.length > 0
+    ? c.items
+    : [c]).map(normalizeItem);
+  const multi = items.length > 1;
+  // Si es 1 item legacy sin baseCents (no hay precio individual), mostramos
+  // el importe del pedido entero en esa fila (mismo comportamiento que antes).
+  const singleLegacyNoBase = items.length === 1 && items[0].baseCents == null;
 
-  // Detalle del armario (puertas, interior) en líneas adicionales en gris
-  if (c.puertas) {
-    page.drawText(sanitizeForWinAnsi(`Puertas: ${c.puertas}`), { x: 50, y, font, size: 9, color: gray });
-    y -= 11;
-  }
-  if (c.interior) {
-    page.drawText(sanitizeForWinAnsi(`Interior: ${c.interior}`), { x: 50, y, font, size: 9, color: gray });
-    y -= 11;
-  }
+  items.forEach((it, i) => {
+    // Auto-paginación antes de empezar el bloque (cabeza + ~3 líneas detalle)
+    newPageIfNeeded(220);
 
-  // Si hubo descuento aplicado (cupón), línea informativa en gris
+    const dims = (it.ancho && it.alto && it.fondo) ? `${it.ancho}×${it.alto}×${it.fondo} cm` : '';
+    const concept = multi
+      ? `Armario ${i + 1} — ${dims}${it.material ? ' — ' + it.material : ''}`
+      : (dims ? `Armario a medida ${dims}${it.material ? ' — ' + it.material : ''}` : 'Armario a medida Curino');
+
+    page.drawText(sanitizeForWinAnsi(concept), { x: 50, y, font, size: 10 });
+    // Importe de la línea: base individual del item; fallback al base total
+    // del pedido si es legacy single sin precio individual.
+    if (it.baseCents != null) {
+      page.drawText(fmtEur(it.baseCents), { x: 480, y, font, size: 10 });
+    } else if (singleLegacyNoBase) {
+      page.drawText(fmtEur(order.base_cents), { x: 480, y, font, size: 10 });
+    }
+    y -= 14;
+
+    const puertasText = renderPuertasText(it);
+    if (puertasText) {
+      page.drawText(sanitizeForWinAnsi('Puertas: ' + puertasText), { x: 50, y, font, size: 9, color: gray });
+      y -= 11;
+    }
+    if (it.interior) {
+      page.drawText(sanitizeForWinAnsi('Interior: ' + it.interior), { x: 50, y, font, size: 9, color: gray });
+      y -= 11;
+    }
+
+    // Separador visual fino entre items (no en el último)
+    if (multi && i < items.length - 1) {
+      y -= 4;
+      page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.3, color: gray });
+      y -= 10;
+    }
+  });
+
+  // Si hubo descuento aplicado (cupón), línea informativa en gris bajo
+  // la última línea de concepto. El descuento es del pedido entero, no
+  // por línea.
   if (order.amount_discount_cents > 0) {
+    newPageIfNeeded(180);
     y -= 4;
     page.drawText(
       `Descuento aplicado (cupón): -${fmtEur(order.amount_discount_cents)}`,
@@ -170,8 +265,10 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   y -= 24;
 
   // ── DESGLOSE FISCAL ──
-  // El desglose se hace sobre el importe REAL cobrado (post-descuento):
-  // amount_total = base + IVA, ambos en céntimos.
+  // Validez fiscal: SIEMPRE order.base_cents / tax_amount_cents / amount_total_cents
+  // (lo que Stripe cobró realmente). Si suma de bases por línea difiere por
+  // redondeo, manda el desglose del pedido entero — no se reparte el residual.
+  newPageIfNeeded(150);
   page.drawText('Base imponible:', { x: 350, y, font, size: 10 });
   page.drawText(fmtEur(order.base_cents), { x: 490, y, font, size: 10 });
   y -= 15;
@@ -182,6 +279,7 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   page.drawText(fmtEur(order.amount_total_cents), { x: 490, y, font: fontBold, size: 12 });
 
   // ── Pie ──
+  // Posiciones absolutas en la página ACTUAL (la última si hubo paginación).
   page.drawText(sanitizeForWinAnsi(`Comprador: ${order.buyer_email}`), { x: 50, y: 100, font, size: 9, color: gray });
   page.drawText(`ID pedido: ${order.id}`, { x: 50, y: 85, font, size: 9, color: gray });
   page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
@@ -241,23 +339,36 @@ export async function sendArmarioPurchaseEmail(
   const firstName = fullName.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${escapeHtmlSafe(firstName)},` : 'Hola,';
 
-  // Resumen del armario desde configuracion
-  const c = order.configuracion || {};
-  const dimensiones = (c.ancho && c.alto && c.fondo)
-    ? `${c.ancho}×${c.alto}×${c.fondo} cm`
-    : '';
-  const summaryRows: Array<[string, string]> = [];
-  if (dimensiones) summaryRows.push(['Medidas', dimensiones]);
-  if (c.material) summaryRows.push(['Material', String(c.material)]);
-  if (c.puertas) summaryRows.push(['Puertas', String(c.puertas)]);
-  if (c.interior) summaryRows.push(['Interior', String(c.interior)]);
+  // Resumen del armario desde configuracion. Detección de shape (multi-armario
+  // H10 vs root legacy) idéntica a la del PDF para coherencia.
+  const c = (order.configuracion || {}) as any;
+  const items = (Array.isArray(c.items) && c.items.length > 0
+    ? c.items
+    : [c]).map(normalizeItem);
+  const multi = items.length > 1;
 
-  const summaryHtml = summaryRows
-    .map(([k, v]) =>
+  // Cada armario en un bloque, separados por línea fina entre ellos.
+  const summaryHtml = items.map((it, i) => {
+    const dimensiones = (it.ancho && it.alto && it.fondo)
+      ? `${it.ancho}×${it.alto}×${it.fondo} cm`
+      : '';
+    const rows: Array<[string, string]> = [];
+    if (dimensiones) rows.push(['Medidas', dimensiones]);
+    if (it.material) rows.push(['Material', it.material]);
+    const puertasText = renderPuertasText(it);
+    if (puertasText) rows.push(['Puertas', puertasText]);
+    if (it.interior) rows.push(['Interior', it.interior]);
+    const rowsHtml = rows.map(([k, v]) =>
       `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;vertical-align:top">${escapeHtmlSafe(k)}</td>` +
       `<td style="padding:6px 0;font-size:13px;color:#000">${escapeHtmlSafe(v)}</td></tr>`
-    )
-    .join('');
+    ).join('');
+    const label = multi ? `Armario ${i + 1} de ${items.length}` : 'Tu armario';
+    const sep = i > 0 ? 'border-top:1px solid #e5e5e5;margin-top:14px;padding-top:14px;' : '';
+    return `<div style="${sep}">` +
+      `<div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666;margin-bottom:8px">${escapeHtmlSafe(label)}</div>` +
+      (rows.length ? `<table cellpadding="0" cellspacing="0" border="0">${rowsHtml}</table>` : '') +
+      `</div>`;
+  }).join('');
 
   // Dirección de envío
   const shipParts = [
@@ -286,12 +397,9 @@ export async function sendArmarioPurchaseEmail(
     A continuación tienes el resumen.
   </p>
 
-  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5;margin:0 0 28px;padding:18px 0">
-    <tr>
-      <td style="padding:0 0 14px;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666">Tu armario</td>
-    </tr>
-    ${summaryHtml ? `<tr><td><table cellpadding="0" cellspacing="0" border="0">${summaryHtml}</table></td></tr>` : ''}
-  </table>
+  <div style="border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5;margin:0 0 28px;padding:18px 0">
+    ${summaryHtml}
+  </div>
 
   <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px">
     <tr>
