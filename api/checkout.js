@@ -46,7 +46,15 @@ module.exports = async function handler(req, res) {
 
   console.log('Checkout request body:', JSON.stringify(body));
 
-  const stripe = new Stripe((process.env.STRIPE_SECRET_KEY || '').trim());
+  const _k = (process.env.STRIPE_SECRET_KEY || '').trim();
+  console.log('STRIPE KEY DEBUG:', {
+    present: !!_k,
+    length: _k.length,
+    prefix: _k.slice(0, 8),
+    tail: _k.slice(-4),
+    hasWhitespace: /\s/.test(process.env.STRIPE_SECRET_KEY || '')
+  });
+  const stripe = new Stripe(_k);
 
   try {
     const { ancho, alto, fondo, material, interior, puertas, precio, user_id, customer_email,
