@@ -830,8 +830,7 @@ function buildComposite() {
   Promise.all(ids.map(id=>loadImg((curMatId==='mad_wengue'?INT_IMGS_WENGUE:curMatId==='mad_cerezo'?INT_IMGS_CEREZO:curMatId==='lam_negro'?INT_IMGS_NEGRO:curMatId==='mad_roble'?INT_IMGS_ROBLE:curMatId==='lam_aluminio'?INT_IMGS_ALUMINIO:curMatId==='lam_linocoral'?INT_IMGS_LINOCORAL:curMatId==='lam_blanco'?INT_IMGS_BLANCO:INT_IMGS)[id]||INT_IMGS[id]))).then(imgs=>{
     const IMG_H=imgs[0].naturalHeight||800;
     const PX_PER_CM=2.5;
-    const _realCm=ST.w/ST.modules.length;
-    const sw=ST.modules.map((m,i)=>({px:Math.round(m.width*PX_PER_CM),img:imgs[i],cm:_realCm}));
+    const sw=ST.modules.map((m,i)=>({px:Math.round(m.width*PX_PER_CM),img:imgs[i],cm:m.width}));
     const totalPx=sw.reduce((s,x)=>s+x.px,0);
     // Canvas with built-in cota margins
     const TM=72, BM=72, LM=52; // top/bottom/left margins for cotas
