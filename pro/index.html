@@ -9,36 +9,30 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/site-shell.css">
 <style>
-body{line-height:1.5;font-size:16px;padding-top:76px}
-
-/* ── NAV ── */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:24px 0;background:transparent;border-bottom:1px solid transparent;transition:background .3s,box-shadow .3s,border-color .3s}
-nav.scrolled{background:rgba(255,255,255,.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 8px rgba(0,0,0,.08);border-bottom-color:var(--line-soft)}
-nav .inner{display:flex;justify-content:space-between;align-items:center;max-width:1440px;margin:0 auto;padding:0 8px}
-.logo{text-decoration:none;display:flex;align-items:center}
-.logo img{display:block;height:28px;width:auto}
-.nav-right{display:flex;align-items:center;gap:40px}
-nav ul{display:flex;gap:24px;list-style:none}
-nav ul a::after{content:'';display:inline-block;width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin-left:5px;vertical-align:1px;opacity:.5}
-nav a{color:#111;text-decoration:none;font-size:14.5px;font-weight:400;transition:color .2s}
-nav a:hover{color:var(--ink)}
-.nav-ctas{display:flex;gap:8px;align-items:center}
-.nav-ctas .btn{padding:8px 16px;font-size:13px;font-weight:500;border-radius:8px;transition:opacity .2s}
-.nav-ctas .btn-outline{background:transparent}
-.nav-ctas .btn-outline:hover{background:#f3f4f6}
-.nav-ctas .btn-primary{background:#000;color:#fff;border:1px solid #000}
-.nav-ctas .btn-primary:hover{opacity:.8;transform:none;background:#000}
-/* mobile nav */
-.mobile-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);padding:5rem 2rem 2rem;z-index:98;flex-direction:column;gap:0;overflow-y:auto}
-.mobile-menu.open{display:flex}
-.mobile-menu a{font-size:15px;color:var(--ink);text-decoration:none;font-weight:400;padding:1rem 0;border-bottom:1px solid var(--line)}
-.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:.3rem;background:none;border:none}
-.hamburger span{display:block;width:22px;height:1px;background:var(--ink);transition:all .3s;transform-origin:center}
-.hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
-.hamburger.open span:nth-child(2){opacity:0}
-.hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+/* Tokens editoriales: redefiniciones locales que MAPEAN los nombres
+   originales de tokens.css (--ink, --serif, --font, --bg, --coral, --line)
+   a la paleta blanco/negro + Cormorant Garamond + Open Sans del resto de
+   la web pública (site-shell.css). Mantiene compatible todo el CSS
+   propio de la página sin tener que renombrar variables. */
+:root{
+  --bg:#ffffff;
+  --bg-deep:#f8f8f6;
+  --paper:#ffffff;
+  --ink:#0a0a0a;
+  --ink-soft:#555;
+  --ink-mute:#888;
+  --coral:#0a0a0a;        /* coral → negro (paleta blanco/negro editorial) */
+  --coral-deep:#333;
+  --line:#e5e5e5;
+  --line-soft:#f1f0ea;
+  --font:'Open Sans',system-ui,sans-serif;
+  --serif:'Cormorant Garamond',Georgia,serif;
+}
+body{line-height:1.5;font-size:16px;padding-top:80px}
+/* NAV propio eliminado — ahora se usa main-nav.js (menú compartido,
+   estilos en site-shell.css). */
 
 /* ── EDITORIAL ── */
 .serif{font-family:var(--serif);font-feature-settings:"ss01","ss02";letter-spacing:-.02em}
@@ -240,19 +234,12 @@ nav a:hover{color:var(--ink)}
 .final-cta .lead{margin:0 auto 44px;text-align:center}
 .final-cta .hero-meta{display:block;margin-top:16px;margin-left:0}
 
-/* ── FOOTER ── */
-footer{border-top:1px solid var(--line-soft);padding:48px 0 40px;color:var(--ink-mute);font-size:13.5px}
-footer .inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;max-width:1440px;margin:0 auto;padding:0 8px}
-footer .links{display:flex;gap:28px}
-footer a{color:var(--ink-soft);text-decoration:none}
-footer a:hover{color:var(--ink)}
+/* FOOTER propio eliminado — ahora se usa el footer compartido
+   (CSS en site-shell.css). */
 
 /* ── RESPONSIVE ── */
 @media(max-width:900px){
   .container{padding:0 8px}
-  nav .inner{padding:0 8px}
-  .nav-right{display:none}
-  .hamburger{display:flex}
   .pro-hero{padding:0}
   .hero-grid{grid-template-columns:1fr;min-height:auto}
   .hero-left{padding:3rem 0 2rem}
@@ -273,40 +260,15 @@ footer a:hover{color:var(--ink)}
   .pricing-grid{grid-template-columns:1fr;max-width:480px;margin-left:auto;margin-right:auto}
   .plan.featured{transform:none}
   .for-who,.features,.how,.pricing,.testimonial-section,.final-cta{padding:80px 0}
-  footer .inner{padding:0 8px}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="sx-page">
 
-<!-- NAV -->
-<nav id="nav">
-  <div class="container inner">
-    <a href="/pro/" class="logo"><img src="/assets/imagenes/logo-curino.png" alt="Curino" height="28"></a>
-    <div class="nav-right">
-      <ul>
-        <li><a href="#pricing">Planes</a></li>
-        <li><a href="#para-quien">Para qui&eacute;n</a></li>
-        <li><a href="#como">C&oacute;mo funciona</a></li>
-        <li><a href="#features">Producto</a></li>
-        <li><a href="#demo">Configurador</a></li>
-      </ul>
-      <div class="nav-ctas">
-        <a href="mailto:pro@casacurino.com" class="btn btn-outline">Contactar con ventas</a>
-        <a href="#pricing" class="btn btn-primary">Probar Curino</a>
-      </div>
-    </div>
-    <button class="hamburger" onclick="toggleMenu()" id="hamburger"><span></span><span></span><span></span></button>
-  </div>
-</nav>
-<div class="mobile-menu" id="mobileMenu">
-  <a href="#pricing" onclick="toggleMenu()">Planes</a>
-  <a href="#para-quien" onclick="toggleMenu()">Para qui&eacute;n</a>
-  <a href="#como" onclick="toggleMenu()">C&oacute;mo funciona</a>
-  <a href="#features" onclick="toggleMenu()">Producto</a>
-  <a href="#demo" onclick="toggleMenu()">Configurador</a>
-</div>
+<!-- NAV: menú compartido (igual que el resto de la web pública) -->
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
 
 <!-- HERO -->
 <section class="pro-hero" id="demo">
@@ -616,23 +578,23 @@ footer a:hover{color:var(--ink)}
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- FOOTER compartido (mismo que el resto de la web pública) -->
 <footer>
-  <div class="container inner">
-    <span>&copy; 2026 Curino Pro &middot; Sistema & Curino, S.L.U.</span>
-    <div class="links">
-      <a href="#">Privacidad</a>
-      <a href="#">T&eacute;rminos</a>
-      <a href="mailto:pro@casacurino.com">Contacto</a>
-    </div>
+  <div style="grid-area:logo">
+    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
+    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpintería a medida &mdash; armarios, vestidores, cocinas y puertas con garantía de 25 años.</p>
   </div>
+  <div class="footer-col" style="grid-area:alta"><h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpintería</h4><div class="footer-links"><a href="/configurador-armarios-vestidores/">Configurador de armarios</a><a href="/proyecto-a-medida/">Proyecto a medida</a><a href="/pro/">Maestro</a></div></div>
+  <div class="footer-col" style="grid-area:corp"><h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4><div class="footer-links"><a href="/sobre-nosotros/">Sobre nosotros</a><a href="#">I+D e Innovación</a><a href="#">Seguridad en Curino</a></div></div>
+  <div class="footer-col" style="grid-area:empleo"><h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4><div class="footer-links"><a href="#">Únete a Curino</a><a href="#">Curino Partners</a></div></div>
+  <div class="footer-col" style="grid-area:prensa"><h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4><div class="footer-links"><a href="/revista/">Revista</a><a href="#">Contacto Prensa</a></div></div>
+  <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div></div>
+  <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
 </footer>
+<div class="footer-bottom"><span>&copy; 2026 Curino &middot; Mueble a medida &middot; España &middot; Europa &middot; EEUU</span><div class="footer-legal"><span>Sistema &amp; Curino, S.L.U.</span><span><a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a></span></div><span>casacurino.com</span></div>
 
 <script>
-function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');document.getElementById('hamburger').classList.toggle('open');}
-
-// Nav scroll border
-window.addEventListener('scroll',function(){document.getElementById('nav').classList.toggle('scrolled',window.scrollY>10);});
+// (toggleMenu y nav-scrolled eliminados — el menú ahora lo gestiona main-nav.js)
 
 // Scroll reveal (for sections below fold)
 var io=new IntersectionObserver(function(entries){
