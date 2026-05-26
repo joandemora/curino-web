@@ -320,6 +320,17 @@ footer{
       </div>
     </div>
 
+    <!-- Card: Mis armarios (Fase H6 — pedidos del configurador) -->
+    <div class="account-card card-armarios">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="18"/><circle cx="8" cy="12" r=".5"/><circle cx="16" cy="12" r=".5"/></svg>
+        <h2>Mis armarios</h2>
+      </div>
+      <div class="card-body" id="armariosList">
+        <div class="card-empty" id="armariosEmpty">Aún no tienes pedidos de armarios.</div>
+      </div>
+    </div>
+
     <!-- Card 2: Mi Plan -->
     <div class="account-card card-plan">
       <div class="card-header">
@@ -617,6 +628,7 @@ function initAccount(){
   document.getElementById('accountPage').style.display='block';
   loadProfile();
   loadProjects();
+  loadArmarios();
   loadAddresses();
   loadUserLogo();
   loadBrandStatus();
@@ -820,6 +832,70 @@ async function deleteProject(id){
   if(!confirm('Eliminar este proyecto?')) return;
   await _supabase.from('projects').delete().eq('id',id);
   loadProjects();
+}
+
+// ── ARMARIOS (Fase H6) — pedidos del configurador ──
+// Lista los armario_orders del usuario (RLS limita a auth.uid()=user_id).
+// El PDF de factura vive en bucket privado 'invoices', se sirve vía
+// signed URL temporal (60s) al pulsar "Factura".
+async function loadArmarios(){
+  if(!_supabase||!_currentUser) return;
+  var list = document.getElementById('armariosList');
+  var empty = document.getElementById('armariosEmpty');
+  if(!list||!empty) return;
+  try{
+    var result = await _supabase.from('armario_orders')
+      .select('id,invoice_number,configuracion,amount_total_cents,status,created_at,pdf_url')
+      .eq('user_id', _currentUser.id)
+      .order('created_at',{ascending:false});
+    if(result.error||!result.data||result.data.length===0){
+      empty.style.display='block';
+      list.querySelectorAll('.project-item').forEach(function(el){el.remove()});
+      return;
+    }
+    empty.style.display='none';
+    list.innerHTML='';
+    var fmtPrice = function(cents){
+      return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format((cents||0)/100)+' €';
+    };
+    var statusLabel = {paid:'Pagado',en_produccion:'En producción',enviado:'Enviado',cancelado:'Cancelado'};
+    result.data.forEach(function(o){
+      var c = o.configuracion||{};
+      var dims = (c.ancho&&c.alto&&c.fondo) ? c.ancho+'×'+c.alto+'×'+c.fondo+' cm' : 'Armario a medida';
+      var summary = c.material ? dims+' · '+c.material : dims;
+      var date = new Date(o.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+      var status = statusLabel[o.status]||o.status||'';
+      var invoiceBtn = '';
+      if(o.pdf_url){
+        invoiceBtn = '<button onclick="downloadArmarioInvoice(\''+o.pdf_url+'\')">Factura</button>';
+      }
+      var div = document.createElement('div'); div.className='project-item';
+      div.innerHTML =
+        '<div class="project-info">' +
+          '<div class="project-name">'+summary+'</div>' +
+          '<div class="project-date">'+date+' · '+status+' · '+fmtPrice(o.amount_total_cents)+(o.invoice_number?' · '+o.invoice_number:'')+'</div>' +
+        '</div>' +
+        '<div class="project-actions">'+invoiceBtn+'</div>';
+      list.appendChild(div);
+    });
+  }catch(e){
+    console.error('loadArmarios error',e);
+  }
+}
+
+async function downloadArmarioInvoice(pdfPath){
+  if(!_supabase||!pdfPath) return;
+  try{
+    var res = await _supabase.storage.from('invoices').createSignedUrl(pdfPath, 60);
+    if(res.error||!res.data||!res.data.signedUrl){
+      alert('No se pudo abrir la factura. Inténtalo de nuevo en unos segundos o escribe a info@casacurino.com.');
+      return;
+    }
+    window.open(res.data.signedUrl,'_blank');
+  }catch(e){
+    console.error('downloadArmarioInvoice error',e);
+    alert('No se pudo abrir la factura.');
+  }
 }
 
 // ── PROFILE ──
