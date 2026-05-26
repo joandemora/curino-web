@@ -822,14 +822,35 @@ async function handleArmarioCompleted(
     return;
   }
 
-  // 2. Importes (céntimos) y desglose base/IVA al 21%
-  const amountTotalCents = session.amount_total ?? 0;
-  if (amountTotalCents <= 0) {
-    console.error('armario: invalid amount_total for session', session.id);
+  // 2. Importes (céntimos) y desglose base/IVA al 21%.
+  //
+  // Aceptamos amount_total = 0 (cupón 100%): Stripe completa la session
+  // sin cobro y dispara checkout.session.completed con amount_total=0 y
+  // payment_status='no_payment_required'. Es un pedido legítimo y debe
+  // registrarse con su factura a 0€.
+  //
+  // Rechazamos:
+  //   - null/undefined: dato faltante → evento espurio.
+  //   - < 0: imposible en una session válida.
+  //   - payment_status fuera de {paid, no_payment_required}: sesión no
+  //     completada (unpaid, etc.).
+  if (session.amount_total == null) {
+    console.error('armario: missing amount_total for session', session.id);
+    return;
+  }
+  const amountTotalCents = session.amount_total;
+  if (amountTotalCents < 0) {
+    console.error('armario: negative amount_total for session', session.id, amountTotalCents);
+    return;
+  }
+  const paymentStatus = session.payment_status;
+  if (paymentStatus !== 'paid' && paymentStatus !== 'no_payment_required') {
+    console.error('armario: payment_status not settled for session', session.id, paymentStatus);
     return;
   }
   const amountDiscountCents = session.total_details?.amount_discount ?? 0;
   const taxRatePct = 21;
+  // Con amountTotalCents=0 ambos dan 0 (compra 100% descontada).
   const baseCents = Math.round(amountTotalCents / (1 + taxRatePct / 100));
   const taxAmountCents = amountTotalCents - baseCents;
 
