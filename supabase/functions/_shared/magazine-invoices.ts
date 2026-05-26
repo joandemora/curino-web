@@ -17,7 +17,11 @@ const ISSUER = {
   taxId: 'ESB24788580',
   address: 'Carrer de Balmes 252, 5-2',
   city: '08006 Barcelona, España',
-  email: 'noreply@casacurino.com'
+  // Email FISCAL/VISIBLE en el pie del PDF de factura. NO es el remitente
+  // técnico del email (ese sigue siendo 'Curino <noreply@casacurino.com>'
+  // por dominio verificado en Resend). Unificado a info@ en armario,
+  // magazine y marketplace para coherencia fiscal del emisor.
+  email: 'info@casacurino.com'
 };
 
 export interface MagazinePurchaseData {
