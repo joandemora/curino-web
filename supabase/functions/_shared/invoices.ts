@@ -4,6 +4,7 @@
 // (al seller) usando pdf-lib. Sube a Storage y envía emails con Resend.
 
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
+import { fmtEur } from './money.ts'
 
 const ISSUER = {
   name: 'SISTEMA & CURINO SLU',
@@ -76,18 +77,18 @@ export async function generateBuyerInvoicePdf(order: OrderData): Promise<Uint8Ar
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
   page.drawText(order.item_name_snapshot, { x: 50, y, font, size: 10 });
-  page.drawText(`${(order.base_cents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`${fmtEur(order.base_cents)}`, { x: 480, y, font, size: 10 });
   y -= 30;
 
   // Totales
   page.drawText(`Base imponible:`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(order.base_cents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(order.base_cents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`IVA (${order.tax_rate_pct}%):`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(order.tax_amount_cents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(order.tax_amount_cents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`TOTAL:`, { x: 350, y, font: fontBold, size: 12 });
-  page.drawText(`${(order.amount_cents / 100).toFixed(2)} €`, { x: 490, y, font: fontBold, size: 12 });
+  page.drawText(`${fmtEur(order.amount_cents)}`, { x: 490, y, font: fontBold, size: 12 });
 
   // Footer
   page.drawText(`Pieza: ${order.item_name_snapshot}`, { x: 50, y: 100, font, size: 9, color: gray });
@@ -149,21 +150,21 @@ export async function generateSellerInvoicePdf(order: OrderData, seller: SellerD
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
   page.drawText(`Venta de ${order.item_name_snapshot}`, { x: 50, y, font, size: 10 });
-  page.drawText(`${(sellerBaseCents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`${fmtEur(sellerBaseCents)}`, { x: 480, y, font, size: 10 });
   y -= 30;
 
   // Totales
   page.drawText(`Base imponible:`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(sellerBaseCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(sellerBaseCents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`IVA (${order.tax_rate_pct}%):`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(sellerTaxCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(sellerTaxCents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`TOTAL A PAGAR:`, { x: 350, y, font: fontBold, size: 12 });
-  page.drawText(`${(sellerNetCents / 100).toFixed(2)} €`, { x: 490, y, font: fontBold, size: 12 });
+  page.drawText(`${fmtEur(sellerNetCents)}`, { x: 490, y, font: fontBold, size: 12 });
   y -= 30;
 
-  page.drawText(`Comisión Curino: ${(order.commission_cents / 100).toFixed(2)} €`, { x: 50, y, font, size: 9, color: gray });
+  page.drawText(`Comisión Curino: ${fmtEur(order.commission_cents)}`, { x: 50, y, font, size: 9, color: gray });
 
   // Footer
   page.drawText(`ID compra: ${order.id}`, { x: 50, y: 85, font, size: 9, color: gray });
@@ -241,7 +242,7 @@ export function buyerEmailHtml(order: OrderData, configuradorUrl: string): strin
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color: #000;">Tu compra en Curino</h2>
   <p>Hola,</p>
-  <p>Gracias por tu compra de <strong>${order.item_name_snapshot}</strong> por ${(order.amount_cents / 100).toFixed(2)} €.</p>
+  <p>Gracias por tu compra de <strong>${order.item_name_snapshot}</strong> por ${fmtEur(order.amount_cents)}.</p>
   <p>La pieza ya está disponible en tu biblioteca del configurador. Puedes acceder aquí:</p>
   <p><a href="${configuradorUrl}" style="display: inline-block; background: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Ir al configurador</a></p>
   <p>Adjuntamos la factura simplificada (Nº ${order.invoice_simplified_number}).</p>
@@ -259,7 +260,7 @@ export function sellerEmailHtml(order: OrderData): string {
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color: #000;">Has vendido una pieza en Curino</h2>
   <p>Hola,</p>
-  <p>Has vendido <strong>${order.item_name_snapshot}</strong>. Tu importe neto: ${(sellerNetCents / 100).toFixed(2)} € (comisión Curino: ${(order.commission_cents / 100).toFixed(2)} €).</p>
+  <p>Has vendido <strong>${order.item_name_snapshot}</strong>. Tu importe neto: ${fmtEur(sellerNetCents)} (comisión Curino: ${fmtEur(order.commission_cents)}).</p>
   <p>Stripe transferirá el importe a tu cuenta bancaria en los próximos 7 días.</p>
   <p>Adjuntamos la auto-factura (Nº ${order.auto_invoice_number}) emitida en tu nombre.</p>
   <p style="font-size: 12px; color: #888; margin-top: 30px;">SISTEMA & CURINO SLU — Este email es automático, no responder.</p>

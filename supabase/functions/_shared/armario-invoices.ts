@@ -13,6 +13,7 @@
 //   - Bucket: 'invoices' (compartido), prefijo 'armario/'.
 
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
+import { fmtEur } from './money.ts'
 
 const ISSUER = {
   name: 'SISTEMA & CURINO SLU',
@@ -54,17 +55,7 @@ export interface ArmarioOrderData {
   buyer_email: string;
 }
 
-// Formato monetario español: 1234.56 → "1.234,56 €"
-function fmtEur(cents: number): string {
-  const value = cents / 100;
-  const fmt = new Intl.NumberFormat('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
-  return `${fmt} €`;
-}
-
-// === Generar PDF de factura simplificada para pedido de armario ===
+// === Generar PDF de factura para pedido de armario ===
 export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const page = doc.addPage([595, 842]); // A4
@@ -83,7 +74,7 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   let y = 800;
 
   // ── Cabecera ──
-  page.drawText('FACTURA SIMPLIFICADA', { x: 50, y, font: fontBold, size: 18, color: black });
+  page.drawText('FACTURA', { x: 50, y, font: fontBold, size: 18, color: black });
   y -= 30;
   page.drawText(`Nº ${order.invoice_number}`, { x: 50, y, font, size: 10, color: gray });
   page.drawText(`Fecha: ${new Date(order.paid_at).toLocaleDateString('es-ES')}`, { x: 350, y, font, size: 10, color: gray });
