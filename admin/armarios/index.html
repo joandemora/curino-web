@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedidos de armarios — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh;font-size:14px;line-height:1.6}
+body.hidden-until-auth{visibility:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.v-section{padding:2rem 1.5rem 4rem;max-width:1200px;margin:0 auto}
+.v-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+.v-title{font-size:26px;font-weight:300;margin-bottom:.4rem;letter-spacing:-.01em}
+.v-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:1.5rem}
+
+.v-toolbar{display:flex;gap:1rem;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap}
+.v-toolbar label{font-size:12px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em}
+.v-toolbar select{padding:.5rem .7rem;font-size:13px;border:1px solid var(--border);border-radius:5px;background:#fff;font-family:var(--font);color:var(--ink)}
+.v-toolbar select:focus{outline:none;border-color:var(--ink)}
+
+.v-table{width:100%;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;border-collapse:collapse}
+.v-table th{text-align:left;padding:.85rem 1rem;font-size:11px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;background:#f6f5ee;border-bottom:1px solid var(--border)}
+.v-table td{padding:.85rem 1rem;font-size:13px;border-top:1px solid var(--border);vertical-align:top}
+.v-table tr:hover td{background:#fdfcf6;cursor:pointer}
+.v-table .col-date{white-space:nowrap;color:var(--mid);font-size:12px}
+.v-table .col-invoice{font-family:'Courier New',monospace;font-size:12px;color:var(--ink-soft)}
+.v-table .col-buyer{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-table .col-buyer .email{display:block;font-weight:400;color:var(--mid);font-size:11px}
+.v-table .col-summary{font-size:12px;color:var(--ink-soft);max-width:260px}
+.v-table .col-amount{text-align:right;font-weight:600;white-space:nowrap}
+
+.v-empty{text-align:center;padding:3rem 1rem;color:var(--mid);font-size:13.5px;background:#fff;border:1px solid var(--border);border-radius:8px}
+
+.v-status-badge{display:inline-block;padding:.2rem .55rem;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;white-space:nowrap}
+.v-status-badge.paid{background:#fff8e1;color:#8a6d1c}
+.v-status-badge.en_produccion{background:#e3f2fd;color:#1d4f8a}
+.v-status-badge.enviado{background:#eaf5ee;color:#1d6f3d}
+.v-status-badge.cancelado{background:#fde8e8;color:#a83232}
+
+/* Modal de detalle */
+.v-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.v-overlay.open{display:flex}
+.v-modal{background:#fff;border-radius:10px;max-width:900px;width:100%;padding:1.75rem 2rem;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.v-modal h2{font-size:20px;font-weight:600;margin-bottom:.6rem}
+.v-modal h3{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin:1.5rem 0 .5rem}
+.v-modal .meta-grid{display:grid;grid-template-columns:auto 1fr;gap:.4rem 1.2rem;font-size:13px}
+.v-modal .meta-grid .label{color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.v-modal .meta-grid .value{color:var(--ink);word-break:break-word}
+.v-modal .totals{margin-top:.5rem;background:#fafaf3;border:1px solid var(--border);border-radius:6px;padding:1rem 1.2rem}
+.v-modal .totals .totals-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:.35rem}
+.v-modal .totals .totals-row.discount{color:#a83232}
+.v-modal .totals .totals-row.total{font-weight:700;font-size:15px;border-top:1px solid var(--border);padding-top:.5rem;margin-top:.4rem;margin-bottom:0}
+
+.v-modal-actions{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+.v-btn{padding:.6rem 1.1rem;font-size:13px;font-weight:600;border-radius:5px;cursor:pointer;font-family:var(--font);border:1px solid transparent;transition:opacity .15s,background .15s,border-color .15s;text-decoration:none;display:inline-block}
+.v-btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.v-btn-primary:hover{background:#333;border-color:#333;text-decoration:none}
+.v-btn-secondary{background:#fff;color:#1a1a1a;border-color:var(--border)}
+.v-btn-secondary:hover{border-color:#1a1a1a;text-decoration:none}
+.v-btn-success{background:#1d6f3d;color:#fff;border-color:#1d6f3d}
+.v-btn-success:hover{background:#155a30;border-color:#155a30;text-decoration:none}
+.v-btn-info{background:#1d4f8a;color:#fff;border-color:#1d4f8a}
+.v-btn-info:hover{background:#163e6f;border-color:#163e6f;text-decoration:none}
+.v-btn-danger{background:#a83232;color:#fff;border-color:#a83232}
+.v-btn-danger:hover{background:#8a2828;border-color:#8a2828;text-decoration:none}
+.v-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.v-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.85rem 1.25rem;border-radius:6px;font-size:13px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .25s}
+.v-toast.visible{opacity:1}
+.v-toast.success{background:var(--accent)}
+.v-toast.error{background:#a83232}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <h1 class="v-title">Pedidos de armarios</h1>
+  <p class="v-subtitle">Listado de pedidos del configurador. Cambia el estado conforme avanza producción y envío.</p>
+
+  <div class="v-toolbar">
+    <label for="filterStatus">Estado</label>
+    <select id="filterStatus" onchange="loadOrders()">
+      <option value="paid" selected>Pagados</option>
+      <option value="en_produccion">En producción</option>
+      <option value="enviado">Enviados</option>
+      <option value="cancelado">Cancelados</option>
+      <option value="">Todos</option>
+    </select>
+    <button class="v-btn v-btn-secondary" onclick="loadOrders()" style="margin-left:auto">Recargar</button>
+  </div>
+
+  <div id="vList"><div class="v-loading">Cargando…</div></div>
+</main>
+
+<div class="v-overlay" id="vOverlay" onmousedown="onOverlayMouseDown(event)">
+  <div class="v-modal" id="vModal" onmousedown="event.stopPropagation()"></div>
+</div>
+
+<div class="v-toast" id="vToast"></div>
+
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var STATUS_LABELS={paid:'Pagado',en_produccion:'En producción',enviado:'Enviado',cancelado:'Cancelado'};
+
+function fmtEur(cents){
+  var v=(cents==null?0:cents)/100;
+  return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v)+' €';
+}
+function fmtDate(iso){
+  if(!iso) return '—';
+  var d=new Date(iso);
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})+
+    ' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+}
+
+var _supabase=null,_currentUser=null,_orders=[],_currentDetail=null;
+
+initAdminShell({ activeSection: 'armarios', title: 'Pedidos de armarios' }).then(async function(ctx){
+  _supabase = ctx.supabase;
+  _currentUser = ctx.user;
+  await loadOrders();
+}).catch(function(){ /* shell ya redirige */ });
+
+async function loadOrders(){
+  var list=document.getElementById('vList');
+  list.innerHTML='<div class="v-loading">Cargando…</div>';
+
+  var statusFilter=document.getElementById('filterStatus').value;
+  var q=_supabase.from('armario_orders').select(
+    'id,created_at,invoice_number,status,shipping_name,shipping_phone,buyer_email_snapshot,' +
+    'amount_total_cents,amount_discount_cents,base_cents,tax_amount_cents,configuracion,pdf_url,' +
+    'shipping_line,shipping_postal,shipping_city,shipping_province,shipping_nif,' +
+    'billing_name,billing_nif,billing_line,billing_postal,billing_city'
+  ).order('created_at',{ascending:false});
+  if(statusFilter) q=q.eq('status',statusFilter);
+
+  var r=await q;
+  if(r.error){
+    list.innerHTML='<div class="v-empty">Error: '+escHtml(r.error.message)+'</div>';
+    return;
+  }
+  _orders=r.data||[];
+  if(_orders.length===0){
+    list.innerHTML='<div class="v-empty">Sin pedidos'+(statusFilter?' en este estado':'')+'.</div>';
+    return;
+  }
+
+  var rows=_orders.map(function(o){
+    var c=o.configuracion||{};
+    var dims=(c.ancho&&c.alto&&c.fondo)?(c.ancho+'×'+c.alto+'×'+c.fondo+' cm'):'';
+    var summary=dims+(c.material?(dims?' · ':'')+c.material:'');
+    var buyer=o.shipping_name||'(sin nombre)';
+    var email=o.buyer_email_snapshot||'';
+    return '<tr onclick="openOrderDetail(\''+escHtml(o.id)+'\')">'+
+      '<td class="col-date">'+escHtml(fmtDate(o.created_at))+'</td>'+
+      '<td class="col-invoice">'+escHtml(o.invoice_number||'—')+'</td>'+
+      '<td class="col-buyer">'+escHtml(buyer)+(email?'<span class="email">'+escHtml(email)+'</span>':'')+'</td>'+
+      '<td class="col-summary">'+escHtml(summary||'—')+'</td>'+
+      '<td class="col-amount">'+escHtml(fmtEur(o.amount_total_cents))+'</td>'+
+      '<td><span class="v-status-badge '+escHtml(o.status)+'">'+escHtml(STATUS_LABELS[o.status]||o.status)+'</span></td>'+
+    '</tr>';
+  }).join('');
+
+  list.innerHTML='<table class="v-table">'+
+    '<thead><tr><th>Fecha</th><th>Factura</th><th>Comprador</th><th>Armario</th><th style="text-align:right">Importe</th><th>Estado</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
+
+function openOrderDetail(orderId){
+  var o=_orders.find(function(x){return x.id===orderId});
+  if(!o){showToast('Pedido no encontrado','error');return;}
+  _currentDetail=o;
+  renderDetailModal();
+  showOverlay();
+}
+
+function renderDetailModal(){
+  var o=_currentDetail; if(!o) return;
+  var c=o.configuracion||{};
+  var modal=document.getElementById('vModal');
+
+  var dims=(c.ancho&&c.alto&&c.fondo)?(c.ancho+'×'+c.alto+'×'+c.fondo+' cm'):'—';
+
+  // Acciones según estado actual
+  var actions=[];
+  actions.push('<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>');
+  if(o.pdf_url){
+    actions.push('<button class="v-btn v-btn-secondary" onclick="downloadInvoice(this)">Descargar factura</button>');
+  }
+  if(o.status==='paid'){
+    actions.push('<button class="v-btn v-btn-danger" onclick="changeStatus(this,\'cancelado\')">Cancelar pedido</button>');
+    actions.push('<button class="v-btn v-btn-info" onclick="changeStatus(this,\'en_produccion\')">Marcar en producción</button>');
+  } else if(o.status==='en_produccion'){
+    actions.push('<button class="v-btn v-btn-danger" onclick="changeStatus(this,\'cancelado\')">Cancelar pedido</button>');
+    actions.push('<button class="v-btn v-btn-success" onclick="changeStatus(this,\'enviado\')">Marcar enviado</button>');
+  }
+  // enviado y cancelado: solo cerrar + descargar factura
+
+  // Datos de facturación: si vienen vacíos, fallback a shipping
+  var billNameDisp = o.billing_name || o.shipping_name || '—';
+  var billNifDisp  = o.billing_nif  || o.shipping_nif  || '—';
+  var billLineDisp = o.billing_line || o.shipping_line || '—';
+  var billCpCity   = ((o.billing_postal||o.shipping_postal||'')+' '+(o.billing_city||o.shipping_city||'')).trim() || '—';
+  var billDistinta = !!(o.billing_name && o.billing_name !== o.shipping_name);
+
+  modal.innerHTML=''+
+    '<h2>Pedido '+escHtml(o.invoice_number||'(sin factura)')+'</h2>'+
+    '<div class="meta-grid">'+
+      '<div class="label">Fecha</div><div class="value">'+escHtml(fmtDate(o.created_at))+'</div>'+
+      '<div class="label">Estado</div><div class="value"><span class="v-status-badge '+escHtml(o.status)+'">'+escHtml(STATUS_LABELS[o.status]||o.status)+'</span></div>'+
+      '<div class="label">ID interno</div><div class="value" style="font-family:monospace;font-size:11px">'+escHtml(o.id)+'</div>'+
+    '</div>'+
+
+    '<h3>Configuración del armario</h3>'+
+    '<div class="meta-grid">'+
+      '<div class="label">Medidas</div><div class="value">'+escHtml(dims)+'</div>'+
+      '<div class="label">Material</div><div class="value">'+escHtml(c.material||'—')+'</div>'+
+      '<div class="label">Puertas</div><div class="value">'+escHtml(c.puertas||'—')+'</div>'+
+      '<div class="label">Interior</div><div class="value">'+escHtml(c.interior||'—')+'</div>'+
+    '</div>'+
+
+    '<h3>Envío</h3>'+
+    '<div class="meta-grid">'+
+      '<div class="label">Nombre</div><div class="value">'+escHtml(o.shipping_name||'—')+'</div>'+
+      '<div class="label">Email</div><div class="value">'+escHtml(o.buyer_email_snapshot||'—')+'</div>'+
+      '<div class="label">Teléfono</div><div class="value">'+escHtml(o.shipping_phone||'—')+'</div>'+
+      '<div class="label">NIF</div><div class="value">'+escHtml(o.shipping_nif||'—')+'</div>'+
+      '<div class="label">Dirección</div><div class="value">'+escHtml(o.shipping_line||'—')+'</div>'+
+      '<div class="label">CP / Ciudad</div><div class="value">'+escHtml(((o.shipping_postal||'')+' '+(o.shipping_city||'')).trim()||'—')+'</div>'+
+      '<div class="label">Provincia / País</div><div class="value">'+escHtml(((o.shipping_province||'')+' / '+(o.shipping_country||'')).trim().replace(/^\/$/,'').replace(/^\/ /,'').replace(/ \/$/,'')||'—')+'</div>'+
+    '</div>'+
+
+    (billDistinta?
+      '<h3>Facturación (datos distintos al envío)</h3>'+
+      '<div class="meta-grid">'+
+        '<div class="label">Nombre</div><div class="value">'+escHtml(billNameDisp)+'</div>'+
+        '<div class="label">NIF</div><div class="value">'+escHtml(billNifDisp)+'</div>'+
+        '<div class="label">Dirección</div><div class="value">'+escHtml(billLineDisp)+'</div>'+
+        '<div class="label">CP / Ciudad</div><div class="value">'+escHtml(billCpCity)+'</div>'+
+      '</div>'
+      :'')+
+
+    '<h3>Importes</h3>'+
+    '<div class="totals">'+
+      (o.amount_discount_cents>0?'<div class="totals-row discount"><span>Descuento aplicado (cupón)</span><span>-'+escHtml(fmtEur(o.amount_discount_cents))+'</span></div>':'')+
+      '<div class="totals-row"><span>Base imponible</span><span>'+escHtml(fmtEur(o.base_cents))+'</span></div>'+
+      '<div class="totals-row"><span>IVA (21%)</span><span>'+escHtml(fmtEur(o.tax_amount_cents))+'</span></div>'+
+      '<div class="totals-row total"><span>Total cobrado</span><span>'+escHtml(fmtEur(o.amount_total_cents))+'</span></div>'+
+    '</div>'+
+
+    '<div class="v-modal-actions">'+actions.join('')+'</div>';
+}
+
+async function changeStatus(btn,newStatus){
+  if(!_currentDetail) return;
+  var label=STATUS_LABELS[newStatus]||newStatus;
+  if(!confirm('Cambiar estado del pedido a "'+label+'"?')) return;
+  btn.disabled=true; var prev=btn.textContent; btn.textContent='Actualizando…';
+  try{
+    var u=await _supabase.from('armario_orders').update({status:newStatus}).eq('id',_currentDetail.id);
+    if(u.error) throw u.error;
+    hideOverlay();
+    showToast('Pedido actualizado a "'+label+'".','success');
+    await loadOrders();
+  }catch(e){
+    console.error('changeStatus',e);
+    showToast('Error: '+(e.message||e),'error');
+    btn.disabled=false; btn.textContent=prev;
+  }
+}
+
+async function downloadInvoice(btn){
+  if(!_currentDetail||!_currentDetail.pdf_url){
+    showToast('Este pedido no tiene factura PDF asociada.','error');
+    return;
+  }
+  btn.disabled=true; var prev=btn.textContent; btn.textContent='Generando enlace…';
+  try{
+    var res=await _supabase.storage.from('invoices').createSignedUrl(_currentDetail.pdf_url, 60);
+    if(res.error||!res.data||!res.data.signedUrl){
+      throw res.error||new Error('No signed URL');
+    }
+    window.open(res.data.signedUrl,'_blank');
+  }catch(e){
+    console.error('downloadInvoice',e);
+    showToast('No se pudo abrir la factura: '+(e.message||e),'error');
+  }finally{
+    btn.disabled=false; btn.textContent=prev;
+  }
+}
+
+function showOverlay(){document.getElementById('vOverlay').classList.add('open');}
+function hideOverlay(){document.getElementById('vOverlay').classList.remove('open');_currentDetail=null;}
+function onOverlayMouseDown(e){if(e.target.id==='vOverlay') hideOverlay();}
+document.addEventListener('keydown',function(e){if(e.key==='Escape') hideOverlay();});
+
+function showToast(msg,kind){
+  var t=document.getElementById('vToast');
+  t.textContent=msg;
+  t.className='v-toast '+(kind||'')+' visible';
+  setTimeout(function(){t.classList.remove('visible');},3500);
+}
+</script>
+</body>
+</html>

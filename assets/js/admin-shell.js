@@ -30,6 +30,7 @@
 
   var MENU = [
     { id: 'dashboard', label: 'Dashboard', href: '/admin/' },
+    { id: 'armarios', label: 'Armarios', href: '/admin/armarios/' },
     {
       group: 'Marketplace',
       items: [
