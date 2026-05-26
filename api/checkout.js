@@ -53,7 +53,8 @@ module.exports = async function handler(req, res) {
       shipping_name, shipping_line, shipping_city, shipping_postal,
       shipping_province, shipping_country, shipping_phone, shipping_nif,
       billing_name, billing_line, billing_city, billing_postal, billing_nif,
-      door_tipo, door_color, door_marco, door_textil, door_travesano, modules_json } = body;
+      door_tipo, door_color, door_marco, door_textil, door_travesano, modules_json,
+      draft_id } = body;
 
     // Validate required fields
     if (!precio) {
@@ -99,6 +100,11 @@ module.exports = async function handler(req, res) {
       mode: 'payment',
       currency: 'eur',
       customer: customer.id,
+      // Fase H10: el webhook usa client_reference_id para leer el carrito
+      // completo de armario_checkout_drafts. Solo se setea si el frontend
+      // creó draft con éxito; sino, fallback al detalle del primer armario
+      // por metadata (Fase H8).
+      ...(draft_id ? { client_reference_id: String(draft_id) } : {}),
       payment_method_types: ['card', 'klarna'],
       allow_promotion_codes: true,
       line_items: [

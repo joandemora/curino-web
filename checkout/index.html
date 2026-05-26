@@ -658,15 +658,40 @@ async function handlePay(){
   var billFull=billAddr.line+(billAddr.line2?' '+billAddr.line2:'');
 
   try{
+    // Fase H10: persistir el carrito COMPLETO como draft antes de
+    // redirigir a Stripe. El draft_id viajará por client_reference_id.
+    // Si el draft falla, abortamos: sin draft no hay forma de
+    // recuperar el detalle multi-armario en el webhook.
+    var draftId='';
+    try{
+      var draftRes=await _supabase.from('armario_checkout_drafts').insert({
+        items:_cart,
+        user_id:_currentUser?_currentUser.id:null
+      }).select('id').single();
+      if(draftRes.error||!draftRes.data){
+        throw draftRes.error||new Error('No draft id');
+      }
+      draftId=draftRes.data.id;
+    }catch(e){
+      console.error('armario draft insert failed:',e);
+      errEl.textContent='No se pudo preparar tu pedido. Recarga la página e inténtalo de nuevo.';
+      errEl.style.display='block';btn.disabled=false;btn.textContent='Ir al pago';
+      return;
+    }
+
     var res=await fetch('/api/checkout',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
+        // draft_id viaja a Stripe como client_reference_id; el webhook lo
+        // usa para leer el carrito completo de armario_checkout_drafts.
+        draft_id:draftId,
         ancho:_cart[0].ancho,alto:_cart[0].alto,fondo:_cart[0].fondo,
         material:desc,interior:_cart.length+' armario(s)',
         puertas:_cart.map(function(i){return i.puertas}).join(', '),
-        // Detalle del primer item para llegar al webhook (Fase H8).
-        // Limitación: si hay >1 armario en el cart, solo se detalla el [0].
+        // Fallback: detalle del primer item por metadata Stripe (Fase H8).
+        // Solo se usa si el draft no se encuentra en el webhook.
+        // Limitación H8: si hay >1 armario, esto solo describe el [0].
         door_tipo:     _cart[0].doorDetail&&_cart[0].doorDetail.tipo     || '',
         door_color:    _cart[0].doorDetail&&_cart[0].doorDetail.colorRal || '',
         door_marco:    _cart[0].doorDetail&&_cart[0].doorDetail.marco    || '',

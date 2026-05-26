@@ -871,7 +871,31 @@ async function handleArmarioCompleted(
     try { return JSON.parse(s); } catch { return []; }
   }
 
-  const configuracion = {
+  // Fase H10: si la session tiene client_reference_id, leer el carrito
+  // completo persistido en armario_checkout_drafts. Si lo hay, los datos
+  // del primer armario van por metadata (fallback H8) Y además el array
+  // de N armarios va en configuracion.items.
+  // Si no hay draft (cliente legacy, error al insertar, draft borrado por
+  // cron) → configuracion sin .items, solo con el detalle del primer
+  // armario por metadata. Compatible con el admin/factura sin items.
+  const draftId = session.client_reference_id || null;
+  let draftItems: unknown[] | null = null;
+  if (draftId) {
+    const { data: draft, error: draftErr } = await supabase
+      .from('armario_checkout_drafts')
+      .select('items')
+      .eq('id', draftId)
+      .maybeSingle();
+    if (draftErr) {
+      console.error('armario: error reading draft', draftId, draftErr);
+    } else if (draft && Array.isArray(draft.items) && draft.items.length > 0) {
+      draftItems = draft.items as unknown[];
+    } else {
+      console.warn('armario: draft not found or empty for', draftId);
+    }
+  }
+
+  const configuracion: Record<string, unknown> = {
     ancho: meta.ancho ?? '',
     alto: meta.alto ?? '',
     fondo: meta.fondo ?? '',
@@ -887,6 +911,9 @@ async function handleArmarioCompleted(
     door_travesano: meta.door_travesano ?? '',
     modules: safeParseJson(meta.modules_json ?? '')
   };
+  if (draftItems) {
+    configuracion.items = draftItems;
+  }
 
   // 4. Número de factura (serie AR-YYYY-NNNNNN)
   const { data: invoiceNumber, error: invErr } = await supabase.rpc('assign_invoice_number', {
@@ -940,6 +967,19 @@ async function handleArmarioCompleted(
   }
 
   console.log(`armario: order ${order.id} created for session ${session.id} (invoice ${invoiceNumber})`);
+
+  // Borrar el draft tras INSERT exitoso (best-effort). Si falla, el cron
+  // de limpieza (o borrado manual desde Studio) lo recogerá. NO bloquea
+  // el resto del handler (PDF/email).
+  if (draftId) {
+    const { error: delErr } = await supabase
+      .from('armario_checkout_drafts')
+      .delete()
+      .eq('id', draftId);
+    if (delErr) {
+      console.error('armario: failed to delete draft', draftId, delErr);
+    }
+  }
 
   // 6. Factura PDF (best-effort, NO bloquea la compra si falla).
   // Estructura idéntica al patrón de magazine: try/catch externo, errores
