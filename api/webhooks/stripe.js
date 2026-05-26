@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const stripe = new Stripe((process.env.STRIPE_SECRET_KEY || '').trim());
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
