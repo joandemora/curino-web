@@ -754,11 +754,16 @@ let curMatId   = 'mad_wengue'; // default
 let manualMods = false;
 
 function calcModules(w) {
-  // >=160cm: modules 80-130cm, all equal
+  // >=160cm: modules 80-130cm, all equal (mm-precision split: reparte el
+  // sobrante en milímetros, no en cm enteros, para que 181/2 dé 90.5+90.5
+  // en vez de 90+91. La validación de rango (80-130 cm) sigue en cm).
   if(w>=160){
     for(var n=1;n<=12;n++){
       var base=Math.floor(w/n), top=base+(w%n>0?1:0);
-      if(base>=80&&top<=130){ var r=w-base*n; return Array.from({length:n},function(_,i){return base+(i<r?1:0);}); }
+      if(base>=80&&top<=130){
+        var totalMm=Math.round(w*10), baseMm=Math.floor(totalMm/n), remMm=totalMm-baseMm*n;
+        return Array.from({length:n},function(_,i){return (baseMm+(i<remMm?1:0))/10;});
+      }
     }
   }
   // 131-159cm: asymmetric 2:1 → small=A, big=2A, total=3A
@@ -775,8 +780,8 @@ function initModules() {
   if(typeof P3!=="undefined") P3.puertas = [];
   if(manualMods) {
     const n=ST.modules.length;
-    const base=Math.floor(ST.w/n), rem=ST.w-base*n;
-    ST.modules=ST.modules.map((m,i)=>({width:base+(i<rem?1:0),interiorId:m.interiorId}));
+    const totalMm=Math.round(ST.w*10), baseMm=Math.floor(totalMm/n), remMm=totalMm-baseMm*n;
+    ST.modules=ST.modules.map((m,i)=>({width:(baseMm+(i<remMm?1:0))/10,interiorId:m.interiorId}));
   } else {
     const widths=calcModules(ST.w);
     ST.modules=widths.map((w,i)=>({width:w,interiorId:ST.modules[i]?.interiorId||'colgadorlargo'}));
@@ -805,8 +810,8 @@ function changeModules(delta) {
     }
     if(isValidN(ST.w,try_n)){
       manualMods=true;
-      var base=Math.floor(ST.w/try_n),rem=ST.w-base*try_n;
-      ST.modules=Array.from({length:try_n},(_,i)=>({width:base+(i<rem?1:0),interiorId:ST.modules[i]?.interiorId||'colgadorlargo'}));
+      var totalMm=Math.round(ST.w*10), baseMm=Math.floor(totalMm/try_n), remMm=totalMm-baseMm*try_n;
+      ST.modules=Array.from({length:try_n},(_,i)=>({width:(baseMm+(i<remMm?1:0))/10,interiorId:ST.modules[i]?.interiorId||'colgadorlargo'}));
       updateColInfo(); buildComposite(); updatePrice(); updateSummary();
       if(document.getElementById('modulesScroll')?.children.length>0) renderModuleSelector();
       return;
