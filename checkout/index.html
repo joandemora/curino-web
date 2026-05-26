@@ -658,34 +658,16 @@ async function handlePay(){
   var billFull=billAddr.line+(billAddr.line2?' '+billAddr.line2:'');
 
   try{
-    // Fase H10: persistir el carrito COMPLETO como draft antes de
-    // redirigir a Stripe. El draft_id viajará por client_reference_id.
-    // Si el draft falla, abortamos: sin draft no hay forma de
-    // recuperar el detalle multi-armario en el webhook.
-    var draftId='';
-    try{
-      var draftRes=await _supabase.from('armario_checkout_drafts').insert({
-        items:_cart,
-        user_id:_currentUser?_currentUser.id:null
-      }).select('id').single();
-      if(draftRes.error||!draftRes.data){
-        throw draftRes.error||new Error('No draft id');
-      }
-      draftId=draftRes.data.id;
-    }catch(e){
-      console.error('armario draft insert failed:',e);
-      errEl.textContent='No se pudo preparar tu pedido. Recarga la página e inténtalo de nuevo.';
-      errEl.style.display='block';btn.disabled=false;btn.textContent='Ir al pago';
-      return;
-    }
-
     var res=await fetch('/api/checkout',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        // draft_id viaja a Stripe como client_reference_id; el webhook lo
-        // usa para leer el carrito completo de armario_checkout_drafts.
-        draft_id:draftId,
+        // Fase H10 (multi-armario): mandamos el carrito COMPLETO. El backend
+        // (con service_role, que bypasa RLS) lo persiste en
+        // armario_checkout_drafts y pasa el id a Stripe como
+        // client_reference_id. Si el draft falla en el backend, la venta
+        // sigue y el webhook cae al fallback metadata del primer armario.
+        cart_items:_cart,
         ancho:_cart[0].ancho,alto:_cart[0].alto,fondo:_cart[0].fondo,
         material:desc,interior:_cart.length+' armario(s)',
         puertas:_cart.map(function(i){return i.puertas}).join(', '),

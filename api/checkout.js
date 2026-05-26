@@ -1,4 +1,13 @@
 const Stripe = require('stripe');
+const { createClient } = require('@supabase/supabase-js');
+
+// Supabase service_role: para persistir el draft del cart de armarios
+// (armario_checkout_drafts) bypaseando RLS. La service_role key NUNCA
+// se expone al frontend — solo se usa aquí, server-side en Vercel.
+// Acepta SUPABASE_SECRET_KEY o SUPABASE_SERVICE_ROLE_KEY (mismo patrón
+// que el resto de api/* del repo).
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -54,7 +63,7 @@ module.exports = async function handler(req, res) {
       shipping_province, shipping_country, shipping_phone, shipping_nif,
       billing_name, billing_line, billing_city, billing_postal, billing_nif,
       door_tipo, door_color, door_marco, door_textil, door_travesano, modules_json,
-      draft_id } = body;
+      cart_items } = body;
 
     // Validate required fields
     if (!precio) {
@@ -96,15 +105,48 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Fase H10: persistir el cart completo como draft en
+    // armario_checkout_drafts con service_role (bypasa RLS, evita el
+    // 42501 que se daba desde el cliente). El id del draft viajará a
+    // Stripe como client_reference_id y el webhook lo leerá.
+    //
+    // Robustez: si el draft falla por cualquier motivo (Supabase caído,
+    // env vars no configuradas, etc.) la venta NO se aborta. La session
+    // de Stripe se crea SIN client_reference_id y el webhook caerá al
+    // fallback de metadata (detalle del primer armario por H8). Preferimos
+    // vender y registrar al menos el primer armario que perder la venta.
+    let draftId = '';
+    if (Array.isArray(cart_items) && cart_items.length > 0 && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      try {
+        const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        });
+        const draftRes = await supa.from('armario_checkout_drafts').insert({
+          items: cart_items,
+          user_id: user_id || null
+        }).select('id').single();
+        if (draftRes.error || !draftRes.data) {
+          console.error('armario draft insert failed (non-blocking):', draftRes.error || 'no data');
+        } else {
+          draftId = draftRes.data.id;
+        }
+      } catch (e) {
+        console.error('armario draft insert exception (non-blocking):', e && e.message ? e.message : e);
+      }
+    } else if (Array.isArray(cart_items) && cart_items.length > 0) {
+      // cart_items presente pero faltan env vars de Supabase. Log claro
+      // para Vercel, sin abortar.
+      console.error('armario draft skipped: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing in Vercel env');
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       currency: 'eur',
       customer: customer.id,
       // Fase H10: el webhook usa client_reference_id para leer el carrito
-      // completo de armario_checkout_drafts. Solo se setea si el frontend
-      // creó draft con éxito; sino, fallback al detalle del primer armario
-      // por metadata (Fase H8).
-      ...(draft_id ? { client_reference_id: String(draft_id) } : {}),
+      // completo. Solo se setea si el draft se creó con éxito; sino,
+      // fallback al detalle del primer armario por metadata (Fase H8).
+      ...(draftId ? { client_reference_id: String(draftId) } : {}),
       payment_method_types: ['card', 'klarna'],
       allow_promotion_codes: true,
       line_items: [
