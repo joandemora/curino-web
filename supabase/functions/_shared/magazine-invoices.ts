@@ -10,6 +10,7 @@
 //   - Bucket: 'invoices' (compartido con marketplace), prefijo 'magazine/'.
 
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
+import { fmtEur } from './money.ts'
 
 const ISSUER = {
   name: 'SISTEMA & CURINO SLU',
@@ -81,19 +82,19 @@ export async function generateMagazineInvoicePdf(purchase: MagazinePurchaseData)
     ? 'Paquete de 1 publicación en Revista Curino'
     : `Paquete de ${purchase.package_size} publicaciones en Revista Curino`;
   page.drawText(conceptLabel, { x: 50, y, font, size: 10 });
-  page.drawText(`${(baseCents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
   page.drawText('Créditos válidos durante 12 meses desde la compra.', { x: 50, y, font, size: 8, color: gray });
   y -= 30;
 
   page.drawText(`Base imponible:`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(baseCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(baseCents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`IVA (${taxRatePct}%):`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(taxCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(taxCents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`TOTAL:`, { x: 350, y, font: fontBold, size: 12 });
-  page.drawText(`${(purchase.amount_paid_cents / 100).toFixed(2)} €`, { x: 490, y, font: fontBold, size: 12 });
+  page.drawText(`${fmtEur(purchase.amount_paid_cents)}`, { x: 490, y, font: fontBold, size: 12 });
 
   page.drawText(`Comprador: ${purchase.buyer_email}`, { x: 50, y: 100, font, size: 9, color: gray });
   page.drawText(`ID compra: ${purchase.id}`, { x: 50, y: 85, font, size: 9, color: gray });
@@ -156,7 +157,7 @@ export async function generateMagazineBoostInvoicePdf(boost: MagazineBoostInvoic
   y -= 15;
   const concept = `Boost ${typeLabel} en Revista Curino`;
   page.drawText(concept, { x: 50, y, font, size: 10 });
-  page.drawText(`${(baseCents / 100).toFixed(2)} €`, { x: 480, y, font, size: 10 });
+  page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
   const articleSnippet = boost.article_title.length > 80 ? boost.article_title.substring(0, 77) + '...' : boost.article_title;
   page.drawText(`Artículo: ${articleSnippet}`, { x: 50, y, font, size: 9, color: gray });
@@ -165,13 +166,13 @@ export async function generateMagazineBoostInvoicePdf(boost: MagazineBoostInvoic
   y -= 30;
 
   page.drawText('Base imponible:', { x: 350, y, font, size: 10 });
-  page.drawText(`${(baseCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(baseCents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText(`IVA (${taxRatePct}%):`, { x: 350, y, font, size: 10 });
-  page.drawText(`${(taxCents / 100).toFixed(2)} €`, { x: 490, y, font, size: 10 });
+  page.drawText(`${fmtEur(taxCents)}`, { x: 490, y, font, size: 10 });
   y -= 15;
   page.drawText('TOTAL:', { x: 350, y, font: fontBold, size: 12 });
-  page.drawText(`${(boost.amount_paid_cents / 100).toFixed(2)} €`, { x: 490, y, font: fontBold, size: 12 });
+  page.drawText(`${fmtEur(boost.amount_paid_cents)}`, { x: 490, y, font: fontBold, size: 12 });
 
   page.drawText(`Comprador: ${boost.buyer_email}`, { x: 50, y: 100, font, size: 9, color: gray });
   page.drawText(`ID boost: ${boost.boost_id}`, { x: 50, y: 85, font, size: 9, color: gray });
@@ -222,7 +223,7 @@ export async function sendMagazineBoostEmail(
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color: #000;">Tu boost en Curino Revista</h2>
   <p>Hola,</p>
-  <p>Gracias por tu compra del boost <strong>${escapeHtmlSafe(typeLabel)}</strong> para <strong>${escapeHtmlSafe(boost.article_title)}</strong> por ${(boost.amount_paid_cents / 100).toFixed(2)} €.</p>
+  <p>Gracias por tu compra del boost <strong>${escapeHtmlSafe(typeLabel)}</strong> para <strong>${escapeHtmlSafe(boost.article_title)}</strong> por ${fmtEur(boost.amount_paid_cents)}.</p>
   ${statusBlock}
   <p><a href="${magazineUrl}" style="display: inline-block; background: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Ir a Mis publicaciones</a></p>
   <p>Adjuntamos la factura simplificada (Nº ${boost.invoice_number}).</p>
@@ -283,7 +284,7 @@ export async function sendMagazinePurchaseEmail(
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color: #000;">Tu compra en Curino Revista</h2>
   <p>Hola,</p>
-  <p>Gracias por tu compra del <strong>Paquete ${packageLabel}</strong> por ${(purchase.amount_paid_cents / 100).toFixed(2)} €.</p>
+  <p>Gracias por tu compra del <strong>Paquete ${packageLabel}</strong> por ${fmtEur(purchase.amount_paid_cents)}.</p>
   <p>Ya tienes <strong>${purchase.package_size} crédito(s)</strong> disponibles para publicar artículos en la Revista Curino. Caducan a los 12 meses desde hoy.</p>
   <p><a href="${magazineUrl}" style="display: inline-block; background: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Ir a Mis publicaciones</a></p>
   <p>Adjuntamos la factura simplificada (Nº ${purchase.invoice_number}).</p>

@@ -38,6 +38,11 @@ import {
   MagazinePurchaseData,
   MagazineBoostInvoiceData
 } from '../_shared/magazine-invoices.ts'
+import {
+  generateArmarioInvoicePdf,
+  uploadArmarioInvoicePdf,
+  ArmarioOrderData
+} from '../_shared/armario-invoices.ts'
 
 Deno.serve(async (req) => {
   // Stripe siempre manda POST
@@ -896,4 +901,45 @@ async function handleArmarioCompleted(
   }
 
   console.log(`armario: order ${order.id} created for session ${session.id} (invoice ${invoiceNumber})`);
+
+  // 6. Factura PDF (best-effort, NO bloquea la compra si falla).
+  // Estructura idéntica al patrón de magazine: try/catch externo, errores
+  // solo se loguean. El pedido ya está en BD; si el PDF falla, Stripe
+  // tampoco reintenta porque el webhook seguirá devolviendo 200.
+  try {
+    const orderData: ArmarioOrderData = {
+      id: order.id,
+      invoice_number: invoiceNumber || `AR-FALLBACK-${order.id.slice(0, 8)}`,
+      paid_at: new Date().toISOString(),
+      amount_total_cents: amountTotalCents,
+      amount_discount_cents: amountDiscountCents,
+      base_cents: baseCents,
+      tax_amount_cents: taxAmountCents,
+      tax_rate_pct: taxRatePct,
+      configuracion,
+      shipping_name: meta.shipping_name ?? '',
+      shipping_line: meta.shipping_line ?? '',
+      shipping_city: meta.shipping_city ?? '',
+      shipping_postal: meta.shipping_postal ?? '',
+      shipping_nif: meta.shipping_nif ?? '',
+      billing_name: meta.billing_name ?? '',
+      billing_line: meta.billing_line ?? '',
+      billing_city: meta.billing_city ?? '',
+      billing_postal: meta.billing_postal ?? '',
+      billing_nif: meta.billing_nif ?? '',
+      buyer_email: buyerEmail ?? ''
+    };
+
+    const pdfBytes = await generateArmarioInvoicePdf(orderData);
+    const pdfPath = await uploadArmarioInvoicePdf(supabase, order.id, pdfBytes);
+
+    await supabase
+      .from('armario_orders')
+      .update({ pdf_url: pdfPath })
+      .eq('id', order.id);
+
+    console.log(`armario: invoice PDF generated and uploaded for order ${order.id} → ${pdfPath}`);
+  } catch (invoiceError) {
+    console.error(`armario: invoice PDF generation/upload failed for order ${order.id}:`, invoiceError);
+  }
 }
