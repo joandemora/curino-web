@@ -41,6 +41,7 @@ import {
 import {
   generateArmarioInvoicePdf,
   uploadArmarioInvoicePdf,
+  sendArmarioPurchaseEmail,
   ArmarioOrderData
 } from '../_shared/armario-invoices.ts'
 
@@ -939,7 +940,13 @@ async function handleArmarioCompleted(
       .eq('id', order.id);
 
     console.log(`armario: invoice PDF generated and uploaded for order ${order.id} → ${pdfPath}`);
+
+    // Email de confirmación al cliente con la factura adjunta.
+    // Best-effort dentro del mismo try/catch: si Resend falla solo
+    // se loguea (ya hay try interno en sendArmarioPurchaseEmail).
+    // Reutilizamos pdfBytes ya generado, no regeneramos.
+    await sendArmarioPurchaseEmail(orderData, pdfBytes);
   } catch (invoiceError) {
-    console.error(`armario: invoice PDF generation/upload failed for order ${order.id}:`, invoiceError);
+    console.error(`armario: invoice PDF/email failed for order ${order.id}:`, invoiceError);
   }
 }

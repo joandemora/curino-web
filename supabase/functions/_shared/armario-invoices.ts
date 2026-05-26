@@ -187,3 +187,158 @@ export async function uploadArmarioInvoicePdf(
   if (error) throw error;
   return path;
 }
+
+// === Helper interno: escape HTML para inyección segura en email ===
+function escapeHtmlSafe(s: string): string {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// === Enviar email Resend de confirmación con factura adjunta ===
+//
+// Best-effort: si Resend falla, se loguea y se devuelve sin lanzar.
+// El pedido y el PDF ya están guardados; el email es la última capa.
+//
+// Patrón de Resend igual al de _shared/magazine-invoices.ts +
+// reply_to: 'info@casacurino.com' del patrón de presupuesto-form-relay
+// para que el cliente pueda responder y le llegue a info@.
+export async function sendArmarioPurchaseEmail(
+  order: ArmarioOrderData,
+  pdfBytes: Uint8Array
+): Promise<void> {
+  const apiKey = Deno.env.get('RESEND_API_KEY');
+  if (!apiKey) {
+    console.error('armario: RESEND_API_KEY not configured, skipping email');
+    return;
+  }
+  if (!order.buyer_email) {
+    console.error('armario: no buyer_email on order', order.id, '— skipping email');
+    return;
+  }
+
+  // Saludo: nombre del comprador (billing fallback a shipping, primer nombre)
+  const fullName = (order.billing_name && order.billing_name.length > 0
+    ? order.billing_name
+    : order.shipping_name) || '';
+  const firstName = fullName.split(' ')[0] || '';
+  const greeting = firstName ? `Hola ${escapeHtmlSafe(firstName)},` : 'Hola,';
+
+  // Resumen del armario desde configuracion
+  const c = order.configuracion || {};
+  const dimensiones = (c.ancho && c.alto && c.fondo)
+    ? `${c.ancho}×${c.alto}×${c.fondo} cm`
+    : '';
+  const summaryRows: Array<[string, string]> = [];
+  if (dimensiones) summaryRows.push(['Medidas', dimensiones]);
+  if (c.material) summaryRows.push(['Material', String(c.material)]);
+  if (c.puertas) summaryRows.push(['Puertas', String(c.puertas)]);
+  if (c.interior) summaryRows.push(['Interior', String(c.interior)]);
+
+  const summaryHtml = summaryRows
+    .map(([k, v]) =>
+      `<tr><td style="padding:6px 14px 6px 0;color:#666;font-size:13px;vertical-align:top">${escapeHtmlSafe(k)}</td>` +
+      `<td style="padding:6px 0;font-size:13px;color:#000">${escapeHtmlSafe(v)}</td></tr>`
+    )
+    .join('');
+
+  // Dirección de envío
+  const shipParts = [
+    order.shipping_line,
+    order.shipping_postal && order.shipping_city
+      ? `${order.shipping_postal} ${order.shipping_city}`
+      : (order.shipping_postal || order.shipping_city)
+  ].filter(p => p && p.length > 0);
+  const shippingHtml = shipParts.length > 0
+    ? shipParts.map(p => escapeHtmlSafe(p)).join('<br>')
+    : '—';
+
+  const totalFmt = fmtEur(order.amount_total_cents);
+
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Georgia,'Times New Roman',serif;max-width:600px;margin:0 auto;padding:32px 20px;color:#1a1a1a;background:#fff;line-height:1.5">
+
+  <h1 style="font-size:22px;font-weight:400;letter-spacing:0.02em;margin:0 0 24px;color:#000">Hemos recibido tu pedido</h1>
+
+  <p style="font-size:14px;margin:0 0 16px">${greeting}</p>
+  <p style="font-size:14px;margin:0 0 24px">
+    Gracias por tu compra en Curino. Hemos recibido tu pedido y el pago se ha procesado correctamente.
+    A continuación tienes el resumen.
+  </p>
+
+  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5;margin:0 0 28px;padding:18px 0">
+    <tr>
+      <td style="padding:0 0 14px;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666">Tu armario</td>
+    </tr>
+    ${summaryHtml ? `<tr><td><table cellpadding="0" cellspacing="0" border="0">${summaryHtml}</table></td></tr>` : ''}
+  </table>
+
+  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px">
+    <tr>
+      <td style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666;padding-bottom:8px">Importe pagado</td>
+      <td style="text-align:right;font-size:18px;color:#000;padding-bottom:8px">${totalFmt}</td>
+    </tr>
+    <tr>
+      <td style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666">Factura</td>
+      <td style="text-align:right;font-size:13px;color:#000">Nº ${escapeHtmlSafe(order.invoice_number)}</td>
+    </tr>
+  </table>
+
+  <p style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666;margin:0 0 8px">Dirección de envío</p>
+  <p style="font-size:13px;color:#000;margin:0 0 28px">${shippingHtml}</p>
+
+  <p style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#666;margin:0 0 8px">Plazo de entrega</p>
+  <p style="font-size:13px;color:#000;margin:0 0 28px">Fabricación a medida en taller — 4 a 5 semanas desde hoy.</p>
+
+  <p style="font-size:13px;color:#444;margin:0 0 16px">
+    Adjuntamos la factura en PDF (Nº ${escapeHtmlSafe(order.invoice_number)}).
+    Cualquier consulta, puedes responder a este correo y te atenderemos desde
+    <a href="mailto:info@casacurino.com" style="color:#000">info@casacurino.com</a>.
+  </p>
+
+  <p style="font-size:11px;color:#999;margin:28px 0 0;padding-top:18px;border-top:1px solid #e5e5e5;letter-spacing:0.05em">
+    SISTEMA &amp; CURINO SLU — Carrer de Balmes 252, 5-2, 08006 Barcelona<br>
+    NIF ESB24788580
+  </p>
+
+</body>
+</html>`;
+
+  const base64 = btoa(String.fromCharCode(...pdfBytes));
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Curino <noreply@casacurino.com>',
+        to: [order.buyer_email],
+        reply_to: 'info@casacurino.com',
+        subject: `Confirmación de tu pedido — Curino (${order.invoice_number})`,
+        html,
+        attachments: [{
+          filename: `Factura-${order.invoice_number}.pdf`,
+          content: base64
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('armario: Resend error', response.status, text);
+      return;
+    }
+
+    console.log(`armario: confirmation email sent to ${order.buyer_email} for order ${order.id}`);
+  } catch (err) {
+    console.error('armario: Resend fetch failed', err);
+  }
+}
