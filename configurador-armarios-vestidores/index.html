@@ -981,12 +981,23 @@ function buildMatSwatches(){
     });
   });
 }
+var _DOOR_PRICE_M2 = {laminadas:90, lisas:220, molduras:350};
 function calcPrice(){
-  const area=(ST.w/100)*(ST.h/100),base=1200+area*320;
+  const area=(ST.w/100)*(ST.h/100),base=800+area*150;
   const allM=MAT_DATA;
   const matP=allM.find(m=>m.id===curMatId)?.price||0;
   const intP=ST.modules.reduce((s,m)=>s+(INTERIORS.find(x=>x.id===m.interiorId)?.price||0),0);
-  return Math.round(base+matP+intP);
+  // Puertas: superficie = alto × suma(anchos de módulos con puerta). Si _P3.mods
+  // aún no está inicializado (antes de entrar al paso 3), asumir todas con puerta.
+  const dpm2 = _DOOR_PRICE_M2[_P3.gama] || 0;
+  let doorWcm = 0;
+  if(_P3.mods && _P3.mods.length === ST.modules.length){
+    ST.modules.forEach((m,i)=>{ if(_P3.mods[i] && _P3.mods[i].con) doorWcm += m.width; });
+  } else {
+    doorWcm = ST.modules.reduce((s,m)=>s+m.width, 0);
+  }
+  const doorP = (doorWcm/100) * (ST.h/100) * dpm2;
+  return Math.round(base+matP+intP+doorP);
 }
 function updatePrice(){
   const p=calcPrice();
@@ -1170,7 +1181,7 @@ function p3Gama(g){
 
 function p3Bind(){
   document.querySelectorAll('#p3gt .p3tb').forEach(function(b){
-    b.onclick = function(){ p3Gama(b.getAttribute('data-gama')); buildComposite(); };
+    b.onclick = function(){ p3Gama(b.getAttribute('data-gama')); buildComposite(); updatePrice(); };
   });
   // Marco tipo toggle (Madera Natural / Lacado RAL)
   document.querySelectorAll('#p3mt .p3tb').forEach(function(b){
@@ -1240,9 +1251,9 @@ function p3Mods(){
     var bd = document.createElement('div'); bd.className = 'p3mb';
     var st = document.createElement('div'); st.className = 'p3st';
     var bC = document.createElement('button'); bC.className = 'p3sb'+(p.con?' p3ma':''); bC.textContent = 'Con puerta';
-    (function(i){ bC.onclick = function(){ _P3.mods[i].con=true; p3Mods(); buildComposite(); }; })(idx);
+    (function(i){ bC.onclick = function(){ _P3.mods[i].con=true; p3Mods(); buildComposite(); updatePrice(); }; })(idx);
     var bS = document.createElement('button'); bS.className = 'p3sb'+(!p.con?' p3ma':''); bS.textContent = 'Sin puerta';
-    (function(i){ bS.onclick = function(){ _P3.mods[i].con=false; p3Mods(); buildComposite(); }; })(idx);
+    (function(i){ bS.onclick = function(){ _P3.mods[i].con=false; p3Mods(); buildComposite(); updatePrice(); }; })(idx);
     st.appendChild(bC); st.appendChild(bS); bd.appendChild(st);
     if(p.con){
       // Only show apertura selector if 1 door per module
