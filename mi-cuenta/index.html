@@ -562,10 +562,10 @@ function renderCart(){
   var badge = document.getElementById('cartBadge');
   var badgeMob = document.getElementById('cartBadgeMob');
   if(_cart.length > 0){
-    badge.textContent=_cart.length;badge.classList.add('visible');
+    if(badge){badge.textContent=_cart.length;badge.classList.add('visible');}
     if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
   }else{
-    badge.classList.remove('visible');
+    if(badge) badge.classList.remove('visible');
     if(badgeMob) badgeMob.classList.remove('visible');
   }
   if(_cart.length === 0){empty.style.display='block';footer.style.display='none';
@@ -586,6 +586,7 @@ function renderCart(){
   document.getElementById('cartSubtotal').textContent='\u20AC '+new Intl.NumberFormat('es-ES').format(subtotal);
 }
 renderCart();
+document.addEventListener('curino:main-nav-mounted', renderCart);
 
 // ── AUTH & ACCOUNT ──
 var _supabase=null,_currentUser=null;

@@ -2269,10 +2269,10 @@ function renderCart(){
 
   var badgeMob=document.getElementById('cartBadgeMob');
   if(_cart.length > 0){
-    badge.textContent=_cart.length;badge.classList.add('visible');
+    if(badge){badge.textContent=_cart.length;badge.classList.add('visible');}
     if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
   }else{
-    badge.classList.remove('visible');
+    if(badge) badge.classList.remove('visible');
     if(badgeMob) badgeMob.classList.remove('visible');
   }
 
@@ -2308,6 +2308,7 @@ function renderCart(){
 
 // Init cart on load
 renderCart();
+document.addEventListener('curino:main-nav-mounted', renderCart);
 
 // ── EDIT MODE ──
 function setEditModeBtn(){
