@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
 
   console.log('Checkout request body:', JSON.stringify(body));
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const stripe = new Stripe((process.env.STRIPE_SECRET_KEY || '').trim());
 
   try {
     const { ancho, alto, fondo, material, interior, puertas, precio, user_id, customer_email,
