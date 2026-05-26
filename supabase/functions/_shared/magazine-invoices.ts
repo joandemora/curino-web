@@ -243,6 +243,7 @@ export async function sendMagazineBoostEmail(
     body: JSON.stringify({
       from: 'Curino <noreply@casacurino.com>',
       to: [to],
+      reply_to: 'info@casacurino.com',
       subject: `Tu boost en Curino Revista — ${boost.article_title}`,
       html,
       attachments: [{ filename: `factura-${boost.invoice_number}.pdf`, content: base64 }]
@@ -307,6 +308,7 @@ export async function sendMagazinePurchaseEmail(
     body: JSON.stringify({
       from: 'Curino <noreply@casacurino.com>',
       to: [to],
+      reply_to: 'info@casacurino.com',
       subject: `Tu compra en Curino Revista — Paquete ${packageLabel}`,
       html,
       attachments: [{

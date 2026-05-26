@@ -221,6 +221,7 @@ export async function sendInvoiceEmail(
     body: JSON.stringify({
       from: 'Curino <noreply@casacurino.com>',
       to: [to],
+      reply_to: 'info@casacurino.com',
       subject,
       html,
       attachments: [{
