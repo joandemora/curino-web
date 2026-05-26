@@ -862,13 +862,30 @@ async function handleArmarioCompleted(
   const buyerEmail = session.customer_details?.email || session.customer_email || null;
   const currentYear = new Date().getFullYear();
 
+  // safeParseJson: si meta.modules_json viene truncado (límite 500 chars
+  // de Stripe metadata) o malformado, devolvemos [] en vez de romper el
+  // handler. La compra ya está cobrada; perder el desglose por módulo es
+  // aceptable a cambio de no fallar el INSERT.
+  function safeParseJson(s: string): unknown {
+    if (!s) return [];
+    try { return JSON.parse(s); } catch { return []; }
+  }
+
   const configuracion = {
     ancho: meta.ancho ?? '',
     alto: meta.alto ?? '',
     fondo: meta.fondo ?? '',
     material: meta.material ?? '',
     interior: meta.interior ?? '',
-    puertas: meta.puertas ?? ''
+    puertas: meta.puertas ?? '',
+    // Detalle de puertas (Fase H8) — capturado del configurador vía /checkout/.
+    // Vacíos en pedidos previos a H8; el admin tiene fallback al string `puertas`.
+    door_tipo: meta.door_tipo ?? '',
+    door_color: meta.door_color ?? '',
+    door_marco: meta.door_marco ?? '',
+    door_textil: meta.door_textil ?? '',
+    door_travesano: meta.door_travesano ?? '',
+    modules: safeParseJson(meta.modules_json ?? '')
   };
 
   // 4. Número de factura (serie AR-YYYY-NNNNNN)

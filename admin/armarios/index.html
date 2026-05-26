@@ -192,6 +192,47 @@ function renderDetailModal(){
 
   var dims=(c.ancho&&c.alto&&c.fondo)?(c.ancho+'×'+c.alto+'×'+c.fondo+' cm'):'—';
 
+  // Detalle de puertas (Fase H8). Si door_tipo no está (pedidos viejos previos
+  // a H8), fallback al string resumido c.puertas.
+  var puertasHtml;
+  if(c.door_tipo){
+    if(c.door_tipo==='Laminadas' || c.door_tipo==='Lacadas'){
+      puertasHtml = escHtml(c.door_tipo) + (c.door_color ? ' &mdash; Color: '+escHtml(c.door_color) : '');
+    } else if(c.door_tipo==='Textiles'){
+      var parts = [];
+      if(c.door_marco)     parts.push('Marco '+c.door_marco);
+      if(c.door_textil)    parts.push('Textil '+c.door_textil);
+      if(c.door_travesano) parts.push(c.door_travesano);
+      puertasHtml = 'Textiles' + (parts.length ? ' &mdash; '+escHtml(parts.join(', ')) : '');
+    } else {
+      puertasHtml = escHtml(c.door_tipo);
+    }
+  } else {
+    puertasHtml = escHtml(c.puertas || '—');
+  }
+
+  // Desglose por módulo (Fase H8). Array de {width, interior, hojas, apertura, puerta}.
+  // Vacío en pedidos previos a H8 → la sección no aparece.
+  var modulesArr = Array.isArray(c.modules) ? c.modules : [];
+  var modulesHtml = '';
+  if(modulesArr.length){
+    modulesHtml = '<h3>Desglose por módulo</h3>' +
+      '<div class="meta-grid">' +
+      modulesArr.map(function(m, i){
+        var bits = [];
+        if(m.interior) bits.push(m.interior);
+        if(m.puerta)   bits.push(m.puerta);
+        else if(m.hojas) {
+          bits.push(m.hojas + ' hoja' + (m.hojas > 1 ? 's' : ''));
+          if(m.apertura) bits.push('apertura ' + m.apertura);
+        }
+        var label = 'Módulo ' + (i+1) + (m.width ? ' (' + m.width + ' cm)' : '');
+        return '<div class="label">' + escHtml(label) + '</div>' +
+               '<div class="value">' + escHtml(bits.join(' · ') || '—') + '</div>';
+      }).join('') +
+      '</div>';
+  }
+
   // Acciones según estado actual
   var actions=[];
   actions.push('<button class="v-btn v-btn-secondary" onclick="hideOverlay()">Cerrar</button>');
@@ -225,10 +266,12 @@ function renderDetailModal(){
     '<h3>Configuración del armario</h3>'+
     '<div class="meta-grid">'+
       '<div class="label">Medidas</div><div class="value">'+escHtml(dims)+'</div>'+
-      '<div class="label">Material</div><div class="value">'+escHtml(c.material||'—')+'</div>'+
-      '<div class="label">Puertas</div><div class="value">'+escHtml(c.puertas||'—')+'</div>'+
-      '<div class="label">Interior</div><div class="value">'+escHtml(c.interior||'—')+'</div>'+
+      '<div class="label">Material casco</div><div class="value">'+escHtml(c.material||'—')+'</div>'+
+      '<div class="label">Puertas</div><div class="value">'+puertasHtml+'</div>'+
+      '<div class="label">Interior (resumen)</div><div class="value">'+escHtml(c.interior||'—')+'</div>'+
     '</div>'+
+
+    modulesHtml +
 
     '<h3>Envío</h3>'+
     '<div class="meta-grid">'+
