@@ -52,7 +52,8 @@ module.exports = async function handler(req, res) {
     const { ancho, alto, fondo, material, interior, puertas, precio, user_id, customer_email,
       shipping_name, shipping_line, shipping_city, shipping_postal,
       shipping_province, shipping_country, shipping_phone, shipping_nif,
-      billing_name, billing_line, billing_city, billing_postal, billing_nif } = body;
+      billing_name, billing_line, billing_city, billing_postal, billing_nif,
+      door_tipo, door_color, door_marco, door_textil, door_travesano, modules_json } = body;
 
     // Validate required fields
     if (!precio) {
@@ -136,6 +137,12 @@ module.exports = async function handler(req, res) {
         billing_city: billing_city || '',
         billing_postal: billing_postal || '',
         billing_nif: billing_nif || '',
+        door_tipo: door_tipo || '',
+        door_color: door_color || '',
+        door_marco: door_marco || '',
+        door_textil: door_textil || '',
+        door_travesano: door_travesano || '',
+        modules_json: modules_json || '',
       },
       success_url: `${origin}/configurador-armarios-vestidores/confirmacion/?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: body.cancel_url || `${origin}/checkout/`,

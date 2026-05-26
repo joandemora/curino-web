@@ -665,6 +665,16 @@ async function handlePay(){
         ancho:_cart[0].ancho,alto:_cart[0].alto,fondo:_cart[0].fondo,
         material:desc,interior:_cart.length+' armario(s)',
         puertas:_cart.map(function(i){return i.puertas}).join(', '),
+        // Detalle del primer item para llegar al webhook (Fase H8).
+        // Limitación: si hay >1 armario en el cart, solo se detalla el [0].
+        door_tipo:     _cart[0].doorDetail&&_cart[0].doorDetail.tipo     || '',
+        door_color:    _cart[0].doorDetail&&_cart[0].doorDetail.colorRal || '',
+        door_marco:    _cart[0].doorDetail&&_cart[0].doorDetail.marco    || '',
+        door_textil:   _cart[0].doorDetail&&_cart[0].doorDetail.textil   || '',
+        door_travesano:_cart[0].doorDetail&&_cart[0].doorDetail.travesano|| '',
+        // modules_json puede ser largo si hay muchos módulos; truncamos a 480
+        // (límite Stripe metadata 500 chars/value). Armarios típicos caben.
+        modules_json:_cart[0].moduleDetail ? JSON.stringify(_cart[0].moduleDetail).slice(0,480) : '',
         precio:total,user_id:_currentUser?_currentUser.id:'',
         customer_email:d.email||(_currentUser?_currentUser.email:''),
         shipping_name:d.firstName+' '+d.lastName,
