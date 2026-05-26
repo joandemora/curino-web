@@ -73,6 +73,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 /* User/cart icons */
 .user-icon-link{display:flex;align-items:center}
 .user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
+.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
+.cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
+.cart-badge{position:absolute;top:-6px;right:-8px;background:#0a0a0a;color:#fff;
+  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;line-height:1}
+.cart-badge.visible{display:flex}
 
 /* ── AUTH ── */
 .login-wrap{max-width:380px;margin:120px auto 4rem;padding:0 16px}
