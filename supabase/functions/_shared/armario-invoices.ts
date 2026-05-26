@@ -55,6 +55,21 @@ export interface ArmarioOrderData {
   buyer_email: string;
 }
 
+// Sanea strings que se pasan a page.drawText(): pdf-lib usa StandardFonts
+// (Helvetica) con WinAnsiEncoding, que no incluye U+2212 (−), comillas
+// tipográficas, ellipsis, etc. Si llega cualquiera de esos chars, drawText
+// lanza excepción y rompe la generación del PDF (y por cascada el email).
+// Sustituimos por equivalentes ASCII/WinAnsi seguros.
+function sanitizeForWinAnsi(text: string): string {
+  if (text == null) return '';
+  return String(text)
+    .replace(/−/g, '-')           // MINUS SIGN → '-'
+    .replace(/[“”]/g, '"')   // " " → '"'
+    .replace(/[‘’]/g, "'")   // ' ' → "'"
+    .replace(/…/g, '...')         // … → '...'
+    .replace(/ /g, ' ');          // NBSP → ' '
+}
+
 // === Generar PDF de factura para pedido de armario ===
 export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -96,19 +111,19 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   page.drawText('CLIENTE', { x: 50, y, font: fontBold, size: 10 });
   y -= 15;
   if (billName) {
-    page.drawText(billName, { x: 50, y, font, size: 10 });
+    page.drawText(sanitizeForWinAnsi(billName), { x: 50, y, font, size: 10 });
     y -= 12;
   }
   if (billNif) {
-    page.drawText(`NIF: ${billNif}`, { x: 50, y, font, size: 10 });
+    page.drawText(sanitizeForWinAnsi(`NIF: ${billNif}`), { x: 50, y, font, size: 10 });
     y -= 12;
   }
   if (billLine) {
-    page.drawText(billLine, { x: 50, y, font, size: 10 });
+    page.drawText(sanitizeForWinAnsi(billLine), { x: 50, y, font, size: 10 });
     y -= 12;
   }
   if (billPostal || billCity) {
-    page.drawText(`${billPostal} ${billCity}`.trim(), { x: 50, y, font, size: 10 });
+    page.drawText(sanitizeForWinAnsi(`${billPostal} ${billCity}`.trim()), { x: 50, y, font, size: 10 });
     y -= 12;
   }
   y -= 18;
@@ -128,17 +143,17 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   const conceptMain = dimensiones
     ? `Armario a medida ${dimensiones}${c.material ? ' — ' + c.material : ''}`
     : 'Armario a medida Curino';
-  page.drawText(conceptMain, { x: 50, y, font, size: 10 });
+  page.drawText(sanitizeForWinAnsi(conceptMain), { x: 50, y, font, size: 10 });
   page.drawText(fmtEur(order.base_cents), { x: 480, y, font, size: 10 });
   y -= 14;
 
   // Detalle del armario (puertas, interior) en líneas adicionales en gris
   if (c.puertas) {
-    page.drawText(`Puertas: ${c.puertas}`, { x: 50, y, font, size: 9, color: gray });
+    page.drawText(sanitizeForWinAnsi(`Puertas: ${c.puertas}`), { x: 50, y, font, size: 9, color: gray });
     y -= 11;
   }
   if (c.interior) {
-    page.drawText(`Interior: ${c.interior}`, { x: 50, y, font, size: 9, color: gray });
+    page.drawText(sanitizeForWinAnsi(`Interior: ${c.interior}`), { x: 50, y, font, size: 9, color: gray });
     y -= 11;
   }
 
@@ -146,7 +161,7 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   if (order.amount_discount_cents > 0) {
     y -= 4;
     page.drawText(
-      `Descuento aplicado (cupón): −${fmtEur(order.amount_discount_cents)}`,
+      `Descuento aplicado (cupón): -${fmtEur(order.amount_discount_cents)}`,
       { x: 50, y, font, size: 9, color: gray }
     );
     y -= 11;
@@ -167,7 +182,7 @@ export async function generateArmarioInvoicePdf(order: ArmarioOrderData): Promis
   page.drawText(fmtEur(order.amount_total_cents), { x: 490, y, font: fontBold, size: 12 });
 
   // ── Pie ──
-  page.drawText(`Comprador: ${order.buyer_email}`, { x: 50, y: 100, font, size: 9, color: gray });
+  page.drawText(sanitizeForWinAnsi(`Comprador: ${order.buyer_email}`), { x: 50, y: 100, font, size: 9, color: gray });
   page.drawText(`ID pedido: ${order.id}`, { x: 50, y: 85, font, size: 9, color: gray });
   page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
 
