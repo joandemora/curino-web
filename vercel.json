@@ -3,5 +3,10 @@
     { "source": "/revista/:seccion/:slug/", "destination": "/api/revista/:seccion/:slug" },
     { "source": "/revista/:seccion/:slug", "destination": "/api/revista/:seccion/:slug" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" }
+  ],
+  "redirects": [
+    { "source": "/pro", "destination": "/maestro/", "permanent": true },
+    { "source": "/pro/", "destination": "/maestro/", "permanent": true },
+    { "source": "/pro/:path*", "destination": "/maestro/:path*", "permanent": true }
   ]
 }

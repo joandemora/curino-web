@@ -44,7 +44,7 @@
       +       megaAltaCarpinteriaDesktop()
       +       '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +       '<a href="/estudio/">Estudio</a>'
-      +       '<a href="/pro/">Maestro</a>'
+      +       '<a href="/maestro/">Maestro</a>'
       +       megaRevistaDesktop()
       +     '</div>'
       +     navIconsDesktop()
@@ -89,8 +89,8 @@
       +         '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +       '</div>'
       +       '<div class="mega-img">'
-      +         '<a href="/pro/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Maestro"></a>'
-      +         '<a href="/pro/">Maestro</a>'
+      +         '<a href="/maestro/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Maestro"></a>'
+      +         '<a href="/maestro/">Maestro</a>'
       +       '</div>'
       +     '</div>'
       +   '</div>'
@@ -168,7 +168,7 @@
       +   '</div>'
       +   '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +   '<a href="/estudio/">Estudio</a>'
-      +   '<a href="/pro/">Maestro</a>'
+      +   '<a href="/maestro/">Maestro</a>'
       +   '<a href="/revista/">Revista</a>'
       +   '<div class="mobile-imgs">'
       +     '<div class="mega-img">'
@@ -176,8 +176,8 @@
       +       '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +     '</div>'
       +     '<div class="mega-img">'
-      +       '<a href="/pro/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Maestro" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
-      +       '<a href="/pro/">Maestro</a>'
+      +       '<a href="/maestro/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Maestro" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
+      +       '<a href="/maestro/">Maestro</a>'
       +     '</div>'
       +   '</div>'
       + '</div>';
