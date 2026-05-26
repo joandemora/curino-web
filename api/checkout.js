@@ -98,6 +98,7 @@ module.exports = async function handler(req, res) {
       currency: 'eur',
       customer: customer.id,
       payment_method_types: ['card', 'klarna'],
+      allow_promotion_codes: true,
       line_items: [
         {
           price_data: {
