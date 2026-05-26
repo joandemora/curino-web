@@ -131,12 +131,15 @@ Deno.serve(async (req) => {
         // Routing por metadata.purpose:
         //   'magazine_package' → paquete de créditos de Revista (G2)
         //   'magazine_boost'   → boost/promoción de Revista (G4)
+        //   'armario'          → pedido del configurador de armarios (H3)
         //   resto              → marketplace (compatible con Fase D sin purpose)
         const purpose = session.metadata?.purpose;
         if (purpose === 'magazine_package') {
           await handleMagazinePackageCompleted(supabase, session);
         } else if (purpose === 'magazine_boost') {
           await handleMagazineBoostCompleted(supabase, session);
+        } else if (purpose === 'armario') {
+          await handleArmarioCompleted(supabase, session);
         } else {
           await handleCheckoutCompleted(supabase, stripe, session);
         }
@@ -771,4 +774,126 @@ async function handleMagazineBoostCompleted(
   } catch (invoiceError) {
     console.error(`boost: invoice/email failed for ${boost.id}:`, invoiceError);
   }
+}
+
+// ============================================================================
+// ARMARIOS (Fase H3): pedido del configurador armarios-vestidores.
+//
+// metadata esperada en la session:
+//   purpose = 'armario'
+//   ancho, alto, fondo, material, interior, puertas (detalle del armario)
+//   precio_eur (precio bruto enviado por frontend, referencia)
+//   user_id (uuid o '' si invitado)
+//   shipping_name, shipping_line, shipping_city, shipping_postal,
+//   shipping_province, shipping_country, shipping_phone, shipping_nif
+//   billing_name, billing_line, billing_city, billing_postal, billing_nif
+//
+// Acciones:
+//   1. Idempotencia: skip si armario_orders.stripe_session_id ya existe.
+//   2. Calcular base/IVA al 21% sobre session.amount_total.
+//   3. Asignar invoice_number (serie AR-, RPC assign_invoice_number).
+//   4. Insert armario_orders.
+//
+// NO se genera PDF ni email en esta fase (eso es H4/H5). Errores en el
+// INSERT solo se loguean (NO se lanza excepción para evitar reintentos
+// infinitos del webhook por nuestro lado; Stripe ya cobró, perder la
+// fila pero mantener Stripe Dashboard como fuente de verdad es preferible
+// a un retry storm).
+// ============================================================================
+async function handleArmarioCompleted(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  // 1. Idempotencia
+  const { data: existing } = await supabase
+    .from('armario_orders')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`armario: order already exists for session ${session.id}`);
+    return;
+  }
+
+  // 2. Importes (céntimos) y desglose base/IVA al 21%
+  const amountTotalCents = session.amount_total ?? 0;
+  if (amountTotalCents <= 0) {
+    console.error('armario: invalid amount_total for session', session.id);
+    return;
+  }
+  const amountDiscountCents = session.total_details?.amount_discount ?? 0;
+  const taxRatePct = 21;
+  const baseCents = Math.round(amountTotalCents / (1 + taxRatePct / 100));
+  const taxAmountCents = amountTotalCents - baseCents;
+
+  // 3. Metadata: configuración del armario + dirección
+  const meta = session.metadata ?? {};
+  const rawUserId = meta.user_id ?? '';
+  const userId = rawUserId.length > 0 ? rawUserId : null;
+  const precioBrutoEur = parseFloat(meta.precio_eur ?? '') || null;
+  const buyerEmail = session.customer_details?.email || session.customer_email || null;
+  const currentYear = new Date().getFullYear();
+
+  const configuracion = {
+    ancho: meta.ancho ?? '',
+    alto: meta.alto ?? '',
+    fondo: meta.fondo ?? '',
+    material: meta.material ?? '',
+    interior: meta.interior ?? '',
+    puertas: meta.puertas ?? ''
+  };
+
+  // 4. Número de factura (serie AR-YYYY-NNNNNN)
+  const { data: invoiceNumber, error: invErr } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'armario',
+    p_year: currentYear
+  });
+  if (invErr) {
+    console.error('armario: error assigning invoice number:', invErr);
+  }
+
+  // 5. INSERT armario_orders
+  const { data: order, error: orderError } = await supabase
+    .from('armario_orders')
+    .insert({
+      user_id: userId,
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: session.payment_intent,
+      amount_total_cents: amountTotalCents,
+      amount_discount_cents: amountDiscountCents,
+      precio_bruto_eur: precioBrutoEur,
+      base_cents: baseCents,
+      tax_amount_cents: taxAmountCents,
+      tax_rate_pct: taxRatePct,
+      currency: 'eur',
+      status: 'paid',
+      configuracion,
+      shipping_name: meta.shipping_name || null,
+      shipping_line: meta.shipping_line || null,
+      shipping_city: meta.shipping_city || null,
+      shipping_postal: meta.shipping_postal || null,
+      shipping_province: meta.shipping_province || null,
+      shipping_country: meta.shipping_country || null,
+      shipping_phone: meta.shipping_phone || null,
+      shipping_nif: meta.shipping_nif || null,
+      billing_name: meta.billing_name || null,
+      billing_line: meta.billing_line || null,
+      billing_city: meta.billing_city || null,
+      billing_postal: meta.billing_postal || null,
+      billing_nif: meta.billing_nif || null,
+      buyer_email_snapshot: buyerEmail,
+      invoice_number: invoiceNumber,
+      invoice_year: currentYear,
+      paid_at: new Date().toISOString()
+    })
+    .select('id')
+    .single();
+
+  if (orderError || !order) {
+    console.error('armario: error inserting order for session', session.id, orderError);
+    return;
+  }
+
+  console.log(`armario: order ${order.id} created for session ${session.id} (invoice ${invoiceNumber})`);
 }

@@ -114,6 +114,7 @@ module.exports = async function handler(req, res) {
         },
       ],
       metadata: {
+        purpose: 'armario',
         ancho: String(ancho),
         alto: String(alto),
         fondo: String(fondo),
