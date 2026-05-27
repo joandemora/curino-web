@@ -38,12 +38,16 @@ body{font-family:'Open Sans',system-ui,sans-serif;display:flex;align-items:cente
       });
     }
 
-    // Clean the token from the URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    // Determine redirect destination
+    // Determine redirect destination — leer ANTES de limpiar la URL.
+    // replaceState({}, _, location.pathname) borra query + hash; si lo
+    // hiciéramos antes, el ?redirect= se perdería y el login con Google
+    // caería siempre al fallback (bug que afectaba a "Tramitar pedido" →
+    // Google → debía volver a /checkout/ y volvía al fallback).
     var params = new URLSearchParams(window.location.search);
     var redirect = params.get('redirect') || '/configurador-armarios-vestidores/';
+
+    // Clean the token from the URL (después de capturar el redirect)
+    window.history.replaceState({}, document.title, window.location.pathname);
 
     window.location.href = redirect;
 
