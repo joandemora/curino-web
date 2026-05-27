@@ -793,19 +793,6 @@ window.addEventListener('scroll',()=>{});
 
 // Mobile menu: lógica vive en /assets/js/main-nav.js
 
-// Hero slideshow
-let cur=0;
-const slides=document.querySelectorAll('.hero-slide');
-const dots=document.querySelectorAll('.dot');
-function goSlide(n){
-  slides[cur].classList.remove('active');
-  dots[cur].classList.remove('active');
-  cur=n;
-  slides[cur].classList.add('active');
-  dots[cur].classList.add('active');
-}
-setInterval(()=>goSlide((cur+1)%slides.length),5000);
-
 // Reveal on scroll
 const io=new IntersectionObserver((entries)=>{
   entries.forEach((e,i)=>{
