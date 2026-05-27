@@ -255,7 +255,6 @@ body{min-height:100vh;font-family:var(--font);color:var(--black);background:var(
   font-family:var(--font);
 }
 
-
 @media(min-width:1201px){
   .mat-swatch-color{height:72px}
   .mat-swatch{height:80px}
@@ -276,8 +275,6 @@ body{min-height:100vh;font-family:var(--font);color:var(--black);background:var(
 .apertura-btn:hover{border-color:var(--black);color:var(--black)}
 .apertura-btn.active{background:var(--black);border-color:var(--black);color:var(--white)}
 .puerta-dim-info{font-size:.62rem;color:var(--mid);font-weight:300;padding:.3rem 0;border-top:1px solid var(--border);margin-top:.2rem}
-
-
 
 /* ── PASO 3 PUERTAS ── */
 .p3-section{padding:.8rem 2.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
@@ -402,54 +399,6 @@ body{min-height:100vh;font-family:var(--font);color:var(--black);background:var(
 
 /* Site footer */
 /* ── FOOTER ── */
-footer{
-  background:var(--black);color:#ffffff;
-  padding:4rem 32px 3rem;
-  display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem 2rem;
-  grid-template-areas:
-    "logo alta corp empleo contacto"
-    "logo alta corp prensa newsletter";
-  font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px;
-}
-.footer-logo{height:18px;margin-bottom:1.5rem;display:block;filter:invert(1);opacity:.7}
-.footer-tagline{
-  font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#ffffff;text-align:left;
-}
-.footer-col h4{
-  font-size:12px;letter-spacing:0.14px;text-transform:uppercase;
-  color:#ffffff;margin-bottom:1.5rem;font-weight:600;
-}
-.footer-col a{
-  display:block;font-size:12px;color:#ffffff;letter-spacing:0.14px;line-height:19.88px;
-  text-decoration:none;margin-bottom:.6rem;font-weight:400;
-  transition:color .2s;
-}
-.footer-col a:hover{color:#999999}
-.footer-newsletter input{
-  background:transparent;border:none;border-bottom:1px solid #ffffff;
-  color:#ffffff;font-family:var(--font);font-size:12px;font-weight:400;
-  letter-spacing:0.14px;padding:.5rem 0;width:100%;outline:none;
-  margin-bottom:1rem;
-}
-.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
-.footer-newsletter button{
-  background:transparent;border:none;color:#ffffff;
-  font-family:var(--font);font-size:12px;font-weight:400;
-  letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;
-  border-bottom:1px solid #ffffff;padding-bottom:3px;
-  transition:color .2s,border-color .2s;
-}
-.footer-newsletter button:hover{color:#999999;border-color:#999999}
-.footer-links{display:block}
-.footer-bottom{
-  background:var(--black);
-  padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);
-  display:flex;justify-content:space-between;
-  font-size:.55rem;color:#ffffff;
-  font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center;
-}
-.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#ffffff;text-transform:none;letter-spacing:0.14px;font-weight:400}
-.footer-links{display:block}
 
 @media(max-width:1200px){
   #nav .nav-right{display:none}
@@ -616,7 +565,6 @@ const INT_IMGS = {
   'zapatero': '../assets/imagenes/configurador-armarios-vestidores/img_010.png'
 };
 
-
 const THUMBS = {
   'cajoneraaccesorios':'../assets/imagenes/configurador-armarios-vestidores/img_011.png',
   'cajoneraestantes':'../assets/imagenes/configurador-armarios-vestidores/img_012.png',
@@ -626,9 +574,6 @@ const THUMBS = {
   'vacio':'../assets/imagenes/configurador-armarios-vestidores/img_016.png',
   'zapatero':'../assets/imagenes/configurador-armarios-vestidores/img_017.png'
 };
-
-
-
 
 const INT_IMGS_WENGUE = {
   'cajoneraaccesorios': '../assets/imagenes/configurador-armarios-vestidores/img_018.png',
@@ -669,8 +614,6 @@ const INT_IMGS_ROBLE = {
   'vacio': '../assets/imagenes/configurador-armarios-vestidores/img_044.png',
   'zapatero': '../assets/imagenes/configurador-armarios-vestidores/img_045.png',
 };
-
-
 
 const INT_IMGS_ALUMINIO = {
   'cajoneraaccesorios': '../assets/imagenes/configurador-armarios-vestidores/img_060.png',
@@ -1067,13 +1010,9 @@ window.addEventListener('load', function(){
 });
 window.addEventListener('resize',buildComposite);
 
-
-
 // ════════════════════════════════════════════════════════════════════
 // PASO 3 — PUERTAS
 // ════════════════════════════════════════════════════════════════════
-
-
 
 // PASO 3 PUERTAS
 var _P3_DOOR_TEX = {
@@ -1279,7 +1218,6 @@ function p3ToggleTrav(on){
   });
   buildComposite();
 }
-
 
 function p3SetView(v){
   _P3.view = v;
@@ -1659,7 +1597,6 @@ function p3DrawDoorShape(ctx, x, y, doorW, doorH, frameW, matImg, textilColor, t
   ctx.restore();
 }
 
-
 function p3DrawDoors(ctx, totalPx, imgH, LM, TM){
   if(!_P3.mods || !_P3.mods.some(function(p){ return p.con; }))
     return Promise.resolve();
@@ -2035,7 +1972,6 @@ function p3DrawDoorOpen(ctx, x, y, doorW, doorH, frameW, matImg, textilColor, te
   ctx.restore();
 }
 
-
 // Draw frame + textile panels in LOCAL door space
 function p3DrawDoorContents(ctx, x, y, doorW, doorH, frameW, textilColor, textilImg){
   var fw  = frameW;
@@ -2375,69 +2311,7 @@ function loadCartItemConfig(item){
 </script>
 
 <!-- FOOTER -->
-<footer>
-  <div style="grid-area:logo">
-    <img src="../assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
-    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpintería a medida — armarios, vestidores, cocinas y puertas con garantía de 25 años.</p>
-  </div>
-  <div class="footer-col" style="grid-area:alta">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpintería</h4>
-    <div class="footer-links">
-      <a href="./">Configurador de armarios</a>
-      <a href="#">Proyecto a medida en Barcelona</a>
-      <a href="#">Proyecto a medida en Madrid</a>
-      <a href="#">Proyecto a medida en Valencia</a>
-      <a href="#">Proyecto a medida en Marbella</a>
-      <a href="#">Proyecto a medida en Bilbao</a>
-    </div>
-  </div>
-  <div class="footer-col" style="grid-area:corp">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4>
-    <div class="footer-links">
-      <a href="/sobre-nosotros/">Sobre nosotros</a>
-      <a href="#">I+D e Innovación</a>
-      <a href="#">Seguridad en Curino</a>
-      <a href="#">Ética Corporativa</a>
-      <a href="#">Proveedores</a>
-    </div>
-  </div>
-  <div class="footer-col" style="grid-area:empleo">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4>
-    <div class="footer-links">
-      <a href="#">Únete a Curino</a>
-      <a href="#">Curino Partners</a>
-    </div>
-  </div>
-  <div class="footer-col" style="grid-area:prensa">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4>
-    <div class="footer-links">
-      <a href="/revista/">Revista</a>
-      <a href="#">Contacto Prensa</a>
-    </div>
-  </div>
-  <div class="footer-col" style="grid-area:contacto">
-    <h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4>
-    <div class="footer-links">
-      <a href="#">WhatsApp</a>
-      <a href="mailto:info@casacurino.com">info@casacurino.com</a>
-    </div>
-  </div>
-  <div class="footer-col footer-newsletter" style="grid-area:newsletter">
-    <h4>Newsletter</h4>
-    <div class="footer-links">
-      <input type="email" placeholder="Tu email">
-      <button type="button">Suscribirse</button>
-    </div>
-  </div>
-</footer>
-<div class="footer-bottom">
-  <span>© 2026 Curino · Mueble a medida · España · Europa · EEUU</span>
-  <div class="footer-legal">
-    <span>Sistema & Curino, S.L.U.</span>
-    <span><a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a></span>
-  </div>
-  <span>casacurino.com</span>
-</div>
-
+<div id="main-footer-mount"></div>
+<script src="/assets/js/main-footer.js"></script>
 </body>
 </html>

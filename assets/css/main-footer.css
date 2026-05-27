@@ -1,0 +1,189 @@
+/* ============================================================
+ * main-footer.css — Estilos del footer global de Curino
+ *
+ * Cargado automáticamente por main-footer.js (ensureCssLoaded).
+ * Réplica de las reglas footer{...} y .footer-* que viven en
+ * site-shell.css L94-105 + media queries móvil L138-148, hechas
+ * autosuficientes para que el footer funcione en páginas que NO
+ * cargan site-shell.css (landing, configurador, mi-cuenta,
+ * checkout, login, proyecto-a-medida).
+ *
+ * Idempotente con shell.css: mismas propiedades y valores. En
+ * las 22 páginas que cargan ambos, no hay conflicto (cascade
+ * neutra). Carga tarde por inyección JS, por lo que ante
+ * cualquier diferencia futura, este archivo gana.
+ * ============================================================ */
+
+footer {
+  background: #0a0a0a;
+  color: #fff;
+  padding: 4rem 32px 3rem;
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr;
+  gap: 2rem;
+  grid-template-areas:
+    "logo alta corp empleo contacto"
+    "logo alta corp prensa newsletter";
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.14px;
+  line-height: 19.88px;
+}
+
+.footer-tagline {
+  font-size: 12px;
+  line-height: 19.88px;
+  font-weight: 400;
+  max-width: 320px;
+  color: #fff;
+  text-align: left;
+}
+
+.footer-col h4 {
+  font-size: 12px;
+  letter-spacing: 0.14px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.footer-col a {
+  display: block;
+  font-size: 12px;
+  color: #fff;
+  letter-spacing: 0.14px;
+  line-height: 19.88px;
+  text-decoration: none;
+  margin-bottom: .6rem;
+  font-weight: 400;
+  transition: color .2s;
+}
+
+.footer-col a:hover {
+  color: #999;
+}
+
+.footer-newsletter input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #fff;
+  color: #fff;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-size: 12px;
+  padding: .5rem 0;
+  width: 100%;
+  outline: none;
+  margin-bottom: 1rem;
+}
+
+.footer-newsletter input::placeholder {
+  color: rgba(255, 255, 255, .5);
+}
+
+.footer-newsletter button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.24px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-bottom: 1px solid #fff;
+  padding-bottom: 3px;
+  transition: color .2s, border-color .2s;
+}
+
+.footer-newsletter button:hover {
+  color: #999;
+  border-color: #999;
+}
+
+.footer-links {
+  display: block;
+}
+
+.footer-bottom {
+  background: #0a0a0a;
+  padding: 1.2rem 3rem;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  display: flex;
+  justify-content: space-between;
+  font-size: .55rem;
+  color: #fff;
+  font-weight: 300;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  align-items: center;
+}
+
+.footer-legal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #fff;
+  text-transform: none;
+  letter-spacing: 0.14px;
+  font-weight: 400;
+}
+
+/* Mobile: footer en 1 columna con acordeón */
+@media (max-width: 1200px) {
+  footer {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "logo"
+      "alta"
+      "corp"
+      "empleo"
+      "prensa"
+      "contacto"
+      "newsletter";
+    padding: 3rem 1.5rem 2rem;
+    gap: 1.5rem;
+  }
+  .footer-col h4 {
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 0;
+    padding: .7rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .12);
+  }
+  .footer-col h4::after {
+    content: '+';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    line-height: 1;
+  }
+  .footer-col.open h4::after {
+    content: '\2013'; /* en-dash */
+  }
+  .footer-col .footer-links {
+    display: none;
+    padding: .7rem 0;
+  }
+  .footer-col.open .footer-links {
+    display: block;
+  }
+  .footer-newsletter h4 {
+    cursor: default;
+  }
+  .footer-newsletter h4::after {
+    display: none;
+  }
+  .footer-newsletter .footer-links {
+    display: block !important;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    gap: .75rem;
+    padding: 1.2rem 1.5rem;
+    text-align: center;
+  }
+}
