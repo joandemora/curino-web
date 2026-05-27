@@ -184,6 +184,26 @@
     });
   }
 
+  // ── Cart loader ─────────────────────────────────────────────
+  // Carga el carrito global (panel + JS + CSS) en las páginas
+  // que cargan el nav. Idempotente: si ya están en el DOM no
+  // duplica. Las áreas /admin/, /revista/ y /checkout/ no usan
+  // este nav, así que tampoco cargan el cart (intencional —
+  // /checkout/ tiene su propia UI del carrito).
+  function ensureCartLoaded() {
+    if (!document.querySelector('link[href="/assets/css/cart.css"]')) {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/assets/css/cart.css';
+      document.head.appendChild(link);
+    }
+    if (!document.querySelector('script[src="/assets/js/cart.js"]')) {
+      var script = document.createElement('script');
+      script.src = '/assets/js/cart.js';
+      document.body.appendChild(script);
+    }
+  }
+
   // ── Mount ───────────────────────────────────────────────────
   function mount() {
     var slot = document.getElementById('main-nav-mount');
@@ -198,6 +218,10 @@
     // Evento por si alguna página necesita engancharse al user-icon
     // o al cart-badge después del mount.
     document.dispatchEvent(new CustomEvent('curino:main-nav-mounted'));
+    // Carga del componente del carrito global (cart.js + cart.css).
+    // Tras cargarse, cart.js inyecta el panel y refresca el badge
+    // recién montado por el nav.
+    ensureCartLoaded();
   }
 
   if (document.readyState === 'loading') {
