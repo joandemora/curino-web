@@ -86,6 +86,103 @@
   </div>
 </section>
 
+<!-- CATÁLOGO de modelos preconfigurados (atajos al configurador) -->
+<style>
+.preset-catalog{padding:3rem 1.5rem 1rem;max-width:1280px;margin:0 auto}
+.preset-catalog-head{text-align:center;margin-bottom:2.5rem}
+.preset-catalog-eyebrow{font-family:var(--rv-sans);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--rv-ink-mute);margin-bottom:.6rem}
+.preset-catalog-title{font-family:var(--rv-serif);font-size:clamp(28px,3.2vw,40px);font-weight:400;line-height:1.15;letter-spacing:-.01em;color:var(--rv-ink);margin:0 auto .8rem;max-width:720px}
+.preset-catalog-lead{font-family:var(--rv-sans);font-size:15px;line-height:1.6;color:var(--rv-ink-soft);max-width:560px;margin:0 auto}
+.preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem 1.25rem}
+.preset-card{display:flex;flex-direction:column;background:#fff;border:1px solid var(--rv-line-soft,#e5e5e5);text-decoration:none;color:var(--rv-ink);transition:border-color .2s,transform .25s}
+.preset-card:hover{border-color:var(--rv-ink);transform:translateY(-2px)}
+.preset-card-img{aspect-ratio:4/3;background:#fafaf7;border-bottom:1px solid var(--rv-line-soft,#e5e5e5);overflow:hidden}
+.preset-card-img img{width:100%;height:100%;object-fit:contain;display:block}
+.preset-card-body{padding:1.1rem 1.2rem 1.25rem;display:flex;flex-direction:column;flex:1}
+.preset-card-name{font-family:var(--rv-serif);font-size:20px;font-weight:400;line-height:1.2;letter-spacing:-.005em;margin:0 0 .35rem;color:var(--rv-ink)}
+.preset-card-desc{font-family:var(--rv-sans);font-size:13px;line-height:1.55;color:var(--rv-ink-soft);margin:0 0 .9rem;flex:1}
+.preset-card-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--rv-line-soft,#e5e5e5);padding-top:.7rem;margin-top:auto}
+.preset-card-price{font-family:var(--rv-sans);font-size:13px;color:var(--rv-ink)}
+.preset-card-price b{font-weight:600}
+.preset-card-cta{font-family:var(--rv-sans);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--rv-ink)}
+@media (max-width:1100px){.preset-grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:780px){.preset-grid{grid-template-columns:repeat(2,1fr);gap:1.1rem .9rem}}
+@media (max-width:480px){.preset-grid{grid-template-columns:1fr}}
+</style>
+<section class="preset-catalog" id="armarios-modelos">
+  <div class="preset-catalog-head">
+    <div class="preset-catalog-eyebrow">Modelos preconfigurados</div>
+    <h2 class="preset-catalog-title">Empieza desde un modelo. Termina con el tuyo.</h2>
+    <p class="preset-catalog-lead">Ocho puntos de partida pensados por nuestro equipo. Al pulsar, el configurador abre el armario ya cargado y libre para que lo ajustes.</p>
+  </div>
+  <div class="preset-grid">
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=esencial-blanco" aria-label="Modelo Esencial — armario 150×240 cm en wengué con puertas laminadas blancas, desde 2.064 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/esencial-blanco.svg" alt="Vista esquemática del armario Esencial: 150×240 cm con dos puertas laminadas blancas sobre estructura de wengué." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Esencial</h3>
+        <p class="preset-card-desc">Armario a medida de 150 cm en wengué con puertas laminadas blancas. Estancia compacta sin renunciar al volumen interior.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>2.064 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=domestico-marfil" aria-label="Modelo Doméstico — armario empotrado 180×240 cm en roble con puertas laminadas marfil, desde 2.357 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/domestico-marfil.svg" alt="Vista esquemática del armario Doméstico: 180×240 cm con dos puertas laminadas marfil sobre estructura de roble natural." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Doméstico</h3>
+        <p class="preset-card-desc">Armario empotrado de 180 cm en roble natural con interior funcional para uso cotidiano. Cajonera, perchero y doble colgador.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>2.357 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=studio-calcio" aria-label="Modelo Studio — armario 200×240 cm en nogal Valentina con puertas laminadas Calcio, desde 2.212 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/studio-calcio.svg" alt="Vista esquemática del armario Studio: 200×240 cm con dos puertas laminadas Calcio sobre estructura de nogal." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Studio</h3>
+        <p class="preset-card-desc">Armario a medida de 200 cm en nogal Valentina y puertas laminadas Calcio. Diáfano, sereno, pensado para dormitorios principales.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>2.212 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=suite-lacada-9016" aria-label="Modelo Suite — armario lacado RAL 9016 sobre cerezo, 240×260 cm, desde 3.669 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/suite-lacada-9016.svg" alt="Vista esquemática del armario Suite: 240×260 cm con dos puertas lacadas RAL 9016 sobre estructura de cerezo." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Suite</h3>
+        <p class="preset-card-desc">Armario lacado RAL 9016 sobre estructura de cerezo, 240×260 cm. Acabado liso de alta carpintería, sin tiradores visibles.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>3.669 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=atelier-snow" aria-label="Modelo Atelier — vestidor 280×280 cm en blanco mate con puertas textiles Snow y marco de cerezo, desde 5.812 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/atelier-snow.svg" alt="Vista esquemática del vestidor Atelier: 280×280 cm con tres puertas textiles Snow y marco de cerezo." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Atelier</h3>
+        <p class="preset-card-desc">Vestidor en blanco mate de 280 cm con puertas textiles Snow y marco de cerezo. Tres módulos interiores con cajoneras y doble colgador.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>5.812 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=boudoir-antracita" aria-label="Modelo Boudoir — armario 320×260 cm en wengué con puertas lacadas RAL 7016 antracita, desde 4.618 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/boudoir-antracita.svg" alt="Vista esquemática del armario Boudoir: 320×260 cm con tres puertas lacadas en antracita RAL 7016 sobre estructura de wengué." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Boudoir</h3>
+        <p class="preset-card-desc">Armario en wengué con puertas lacadas RAL 7016 antracita. 320 cm con zapatero, cajonera de accesorios y doble colgador. Contraste cálido y dramático.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>4.618 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=galeria-gris" aria-label="Modelo Galería — armario 380×280 cm en gris aluminio con puertas laminadas en gris, desde 3.854 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/galeria-gris.svg" alt="Vista esquemática del armario Galería: 380×280 cm con tres puertas laminadas en gris sobre estructura de aluminio." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Galería</h3>
+        <p class="preset-card-desc">Armario gris aluminio de 380 cm con puertas laminadas en gris claro. Composición arquitectónica de tres cuerpos con dobles colgadores y estantería central.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>3.854 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+    <a class="preset-card" href="/configurador-armarios-vestidores/?preset=vestidor-couture-tobacco" aria-label="Modelo Vestidor Couture — vestidor 450×280 cm en cerezo con puertas textiles Tobacco y marco a juego, desde 8.730 €">
+      <div class="preset-card-img"><img src="/assets/imagenes/armarios-vestidores/presets/vestidor-couture-tobacco.svg" alt="Vista esquemática del vestidor Couture: 450×280 cm con cuatro puertas textiles Tobacco y marco de cerezo." loading="lazy" width="400" height="300"></div>
+      <div class="preset-card-body">
+        <h3 class="preset-card-name">Vestidor Couture</h3>
+        <p class="preset-card-desc">Vestidor a medida de 450×280 cm en cerezo macizo con puertas textiles Tobacco y marco a juego. Cuatro módulos, dos cajoneras de accesorios y dos dobles colgadores.</p>
+        <div class="preset-card-foot"><span class="preset-card-price">desde <b>8.730 €</b></span><span class="preset-card-cta">Configurar →</span></div>
+      </div>
+    </a>
+  </div>
+</section>
+
 <!-- REVISTA GRID 3 cols -->
 <section class="revista-grid">
   <div class="revista-grid-row cols-3">
