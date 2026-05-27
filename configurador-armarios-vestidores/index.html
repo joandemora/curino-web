@@ -903,24 +903,98 @@ function buildMatSwatches(){
     });
   });
 }
-var _DOOR_PRICE_M2 = {laminadas:90, lisas:220, molduras:400};
+// ════════════════════════════════════════════════════════════════
+// PRECIOS — FALLBACK ONLY: la fuente de verdad es la tabla
+// `pricing_config` en Supabase. Estos valores se usan SOLO si el
+// fetch a Supabase falla. NO los modifiques aquí — edita los
+// precios desde /admin/armarios/precios/ (Fase 2).
+// Para regenerar este fallback con los valores actuales de DB:
+//   admin /armarios/precios/ → botón "Exportar como JSON" → pegar.
+// ════════════════════════════════════════════════════════════════
+window.PRICES = {
+  base_fixed: 800,
+  base_per_m2: 150,
+  door:     { laminadas:90, lisas:220, molduras:400 },
+  interior: { cajoneraaccesorios:280, cajoneraestantes:240, zapatero:180,
+              doblecolgador:160, colgadorlargo:140, estantes:120, vacio:80 },
+  material: { mad_wengue:120, mad_cerezo:120, mad_roble:80,
+              lam_aluminio:60, lam_linocoral:60, lam_blanco:60,
+              lam_negro:60, lam_nogal:0 }
+};
+
+// Carga async desde Supabase con cache en sessionStorage (TTL 10 min).
+// Si el fetch falla, queda con los valores hardcoded de window.PRICES.
+(function loadPricesFromSupabase(){
+  var CACHE_KEY = 'curino_prices';
+  var TTL_MS = 10 * 60 * 1000;
+  // 1) Cache hit válida → usar y NO hacer fetch
+  try {
+    var raw = sessionStorage.getItem(CACHE_KEY);
+    if (raw) {
+      var cached = JSON.parse(raw);
+      if (cached && cached.ts && (Date.now() - cached.ts) < TTL_MS && cached.prices) {
+        window.PRICES = cached.prices;
+        return;
+      }
+    }
+  } catch(e) { /* sessionStorage no disponible → continuar al fetch */ }
+  // 2) Sin cache válida: fetch async (no bloquea render)
+  (async function(){
+    try {
+      var cfgResp = await fetch('/api/config', {redirect:'follow'});
+      var cfg = await cfgResp.json();
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return;
+      if (!window.supabase || !window.supabase.createClient) return;
+      var sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      var res = await sb.from('pricing_config').select('key, value');
+      if (res.error || !res.data || !res.data.length) return;
+      // Construir nuevo PRICES partiendo del hardcoded (preserva claves
+      // que la DB no tuviera por algún motivo) y sobrescribiendo con DB.
+      var P = {
+        base_fixed:  window.PRICES.base_fixed,
+        base_per_m2: window.PRICES.base_per_m2,
+        door:        Object.assign({}, window.PRICES.door),
+        interior:    Object.assign({}, window.PRICES.interior),
+        material:    Object.assign({}, window.PRICES.material)
+      };
+      res.data.forEach(function(row){
+        var v = Number(row.value);
+        if (!isFinite(v)) return;
+        if (row.key === 'base_fixed')                P.base_fixed  = v;
+        else if (row.key === 'base_per_m2')          P.base_per_m2 = v;
+        else if (row.key.indexOf('door_')     === 0) P.door[row.key.slice(5)]     = v;
+        else if (row.key.indexOf('interior_') === 0) P.interior[row.key.slice(9)] = v;
+        else if (row.key.indexOf('material_') === 0) P.material[row.key.slice(9)] = v;
+      });
+      window.PRICES = P;
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ts: Date.now(), prices: P})); } catch(e){}
+      // Refrescar display si las funciones ya están definidas
+      if (typeof updatePrice === 'function') updatePrice();
+      if (typeof updateSummary === 'function') updateSummary();
+    } catch (e) {
+      console.warn('[prices] fallback to hardcoded:', e && e.message ? e.message : e);
+    }
+  })();
+})();
+
 function calcPrice(){
-  const area=(ST.w/100)*(ST.h/100),base=800+area*150;
-  const allM=MAT_DATA;
-  const matP=allM.find(m=>m.id===curMatId)?.price||0;
-  const intP=ST.modules.reduce((s,m)=>s+(INTERIORS.find(x=>x.id===m.interiorId)?.price||0),0);
+  const P = window.PRICES;
+  const area = (ST.w/100) * (ST.h/100);
+  const base = P.base_fixed + area * P.base_per_m2;
+  const matP = (P.material[curMatId] != null) ? P.material[curMatId] : 0;
+  const intP = ST.modules.reduce((s,m) => s + ((P.interior[m.interiorId] != null) ? P.interior[m.interiorId] : 0), 0);
   // Puertas: solo se cobran tras visitar el paso 3 (cuando el usuario
   // ha podido elegir gama/módulos con puerta). En pasos 1-2 → doorP=0.
   let doorP = 0;
   if(_P3.visited){
-    const dpm2 = _DOOR_PRICE_M2[_P3.gama] || 0;
+    const dpm2 = P.door[_P3.gama] || 0;
     let doorWcm = 0;
     if(_P3.mods && _P3.mods.length === ST.modules.length){
       ST.modules.forEach((m,i)=>{ if(_P3.mods[i] && _P3.mods[i].con) doorWcm += m.width; });
     }
     doorP = (doorWcm/100) * (ST.h/100) * dpm2;
   }
-  return Math.round(base+matP+intP+doorP);
+  return Math.round(base + matP + intP + doorP);
 }
 function updatePrice(){
   const p=calcPrice();
