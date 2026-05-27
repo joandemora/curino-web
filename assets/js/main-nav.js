@@ -41,11 +41,12 @@
       +   '<a href="/" class="nav-logo"><img src="' + LOGO_SRC + '" alt="Curino" height="28"></a>'
       +   '<div class="nav-right">'
       +     '<div class="nav-links">'
+      +       '<a href="/armarios-vestidores/">Armarios y vestidores</a>'
+      +       '<a href="/cocinas/">Cocinas</a>'
+      +       '<a href="/banos/">Baños</a>'
       +       megaAltaCarpinteriaDesktop()
-      +       '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +       '<a href="/estudio/">Estudio</a>'
       +       '<a href="/maestro/">Maestro</a>'
-      +       megaRevistaDesktop()
       +     '</div>'
       +     navIconsDesktop()
       +   '</div>'
@@ -56,13 +57,10 @@
   function megaAltaCarpinteriaDesktop() {
     return ''
       + '<div class="mega-trigger">'
-      +   '<a href="#">Alta Carpintería</a>'
+      +   '<a href="/sobre-nosotros/">Alta Carpintería</a>'
       +   '<div class="megamenu">'
       +     '<div class="mega-col">'
       +       '<div class="mega-col-title">Por producto</div>'
-      +       '<a href="/armarios-vestidores/" style="font-weight:600">Armarios y vestidores</a>'
-      +       '<a href="/cocinas/" style="font-weight:600">Cocinas</a>'
-      +       '<a href="/banos/" style="font-weight:600">Baños</a>'
       +       '<a href="/puertas/">Puertas</a>'
       +       '<a href="/paneles/">Paneles</a>'
       +       '<a href="/escaleras/">Escaleras</a>'
@@ -97,28 +95,6 @@
       + '</div>';
   }
 
-  function megaRevistaDesktop() {
-    return ''
-      + '<div class="mega-trigger">'
-      +   '<a href="/revista/">Revista</a>'
-      +   '<div class="megamenu">'
-      +     '<div class="mega-col">'
-      +       '<div class="mega-col-title">Secciones</div>'
-      +       '<a href="/revista/proyectos/">Proyectos</a>'
-      +       '<a href="/revista/materiales/">Materiales</a>'
-      +       '<a href="/revista/articulos/">Artículos</a>'
-      +       '<a href="/revista/noticias/">Noticias</a>'
-      +       '<a href="/revista/entrevistas/">Entrevistas</a>'
-      +     '</div>'
-      +     '<div class="mega-col">'
-      +       '<div class="mega-col-title">Publicar</div>'
-      +       '<a href="/mi-cuenta/revista/">Mis publicaciones</a>'
-      +       '<a href="/mi-cuenta/revista/perfil/">Perfil de revista</a>'
-      +     '</div>'
-      +   '</div>'
-      + '</div>';
-  }
-
   function navIconsDesktop() {
     return ''
       + '<div class="nav-icons">'
@@ -142,13 +118,14 @@
   function mobileMenuHtml() {
     return ''
       + '<div class="mobile-menu" id="mobileMenu">'
+      +   '<a href="/armarios-vestidores/">Armarios y vestidores</a>'
+      +   '<a href="/cocinas/">Cocinas</a>'
+      +   '<a href="/banos/">Baños</a>'
       +   '<div class="mobile-accordion" id="mobileAccordion">'
       +     '<div class="mobile-accordion-title" data-mobile-accordion-toggle>Alta Carpintería</div>'
       +     '<div class="mobile-accordion-body">'
+      +       '<a href="/sobre-nosotros/" style="font-weight:600">Sobre nosotros</a>'
       +       '<div class="mobile-sub-title">Por producto</div>'
-      +       '<a href="/armarios-vestidores/" style="font-weight:600">Armarios y vestidores</a>'
-      +       '<a href="/cocinas/" style="font-weight:600">Cocinas</a>'
-      +       '<a href="/banos/" style="font-weight:600">Baños</a>'
       +       '<a href="/puertas/">Puertas</a>'
       +       '<a href="/paneles/">Paneles</a>'
       +       '<a href="/escaleras/">Escaleras</a>'
@@ -166,10 +143,8 @@
       +       '<a href="/nautica/">Náutica</a>'
       +     '</div>'
       +   '</div>'
-      +   '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +   '<a href="/estudio/">Estudio</a>'
       +   '<a href="/maestro/">Maestro</a>'
-      +   '<a href="/revista/">Revista</a>'
       +   '<div class="mobile-imgs">'
       +     '<div class="mega-img">'
       +       '<a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Configura tu armario" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
