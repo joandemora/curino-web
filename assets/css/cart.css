@@ -186,12 +186,17 @@
 .cart-checkout:hover {
   background: #333;
 }
+.cart-checkout:disabled {
+  background: #888;
+  cursor: not-allowed;
+}
 
 /* Icono del carrito (vive en el nav, inyectado por main-nav.js).
    Refuerza site-shell.css con flex layout para alinear el SVG y
    posicionar el badge absoluto encima. */
 .cart-icon {
   position: relative;
+  cursor: pointer;
   display: flex;
   align-items: center;
 }
@@ -221,6 +226,8 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+  padding: 0;
+  min-width: 0;
 }
 .cart-badge.visible {
   display: flex;
