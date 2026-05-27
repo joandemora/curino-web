@@ -195,6 +195,13 @@
   display: flex;
   align-items: center;
 }
+.cart-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: #000;
+  stroke-width: 1.5;
+  fill: none;
+}
 
 /* Badge oculto por defecto: solo visible con clase .visible.
    Sobrescribe site-shell.css que no tenía display:none por defecto
