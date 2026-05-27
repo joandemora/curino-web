@@ -97,39 +97,7 @@ nav{
 .user-icon-link{display:flex;align-items:center}
 .user-icon-link svg{width:16px;height:16px;stroke:var(--ink);stroke-width:1.5;fill:none;cursor:pointer}
 
-/* ── CART ── */
-.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
-.cart-icon svg{width:16px;height:16px;stroke:var(--ink);stroke-width:1.5;fill:none}
-.cart-badge{position:absolute;top:-6px;right:-8px;background:var(--ink);color:#fff;
-  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
-.cart-badge.visible{opacity:1}
-.cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:300}
-.cart-overlay.open{display:block}
-.cart-drawer{position:fixed;top:0;right:-420px;width:420px;max-width:100vw;height:100vh;
-  background:var(--white);z-index:301;display:flex;flex-direction:column;transition:right .3s ease;box-shadow:-2px 0 12px rgba(0,0,0,.08)}
-.cart-drawer.open{right:0}
-.cart-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 2rem;border-bottom:1px solid var(--border)}
-.cart-title{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:400}
-.cart-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--black);line-height:1}
-.cart-items{flex:1;overflow-y:auto;padding:1.5rem 2rem}
-.cart-empty{text-align:center;color:var(--mid);font-size:13px;padding:3rem 0}
-.cart-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border)}
-.cart-item-img{width:80px;height:80px;background:var(--bg);flex-shrink:0;overflow:hidden}
-.cart-item-img img{width:100%;height:100%;object-fit:contain}
-.cart-item-info{flex:1}
-.cart-item-name{font-size:13px;font-weight:600;margin-bottom:.25rem}
-.cart-item-desc{font-size:12px;color:var(--mid);margin-bottom:.25rem}
-.cart-item-price{font-size:13px}
-.cart-item-remove{background:none;border:none;font-size:18px;cursor:pointer;color:var(--mid);padding:0 .25rem;align-self:flex-start}
-.cart-footer{padding:1.5rem 2rem;border-top:1px solid var(--border)}
-.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem}
-.cart-subtotal-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-.cart-subtotal-price{font-size:14px;font-weight:600}
-.cart-checkout{display:block;width:100%;padding:.85rem;background:var(--ink);color:var(--paper);
-  text-align:center;text-decoration:none;font-family:var(--font);font-size:12px;
-  letter-spacing:.1em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:all .2s}
-.cart-checkout:hover{background:var(--coral)}
+/* Carrito (panel, badge, overlay) ahora en /assets/css/cart.css cargado por main-nav.js */
 
 /* ── ACCOUNT GRID ── */
 .account{max-width:1200px;margin:100px auto 4rem;padding:0 32px}
@@ -533,71 +501,12 @@ footer{
   <span>casacurino.com</span>
 </div>
 
-<!-- CART DRAWER -->
-<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
-<div class="cart-drawer" id="cartDrawer">
-  <div class="cart-header">
-    <div class="cart-title">Carrito</div>
-    <button class="cart-close" onclick="toggleCart()">&times;</button>
-  </div>
-  <div class="cart-items" id="cartItems">
-    <div class="cart-empty" id="cartEmpty">Tu carrito esta vacio</div>
-  </div>
-  <div class="cart-footer" id="cartFooter" style="display:none">
-    <div class="cart-subtotal">
-      <span class="cart-subtotal-label">Subtotal</span>
-      <span class="cart-subtotal-price" id="cartSubtotal">&euro; 0</span>
-    </div>
-    <a href="/checkout/" class="cart-checkout" style="display:block;text-align:center;text-decoration:none">Tramitar pedido</a>
-  </div>
-</div>
+<!-- Carrito (panel, JS, estado) ahora globalizado en /assets/js/cart.js
+     + /assets/css/cart.css, cargados por main-nav.js. -->
 
 <script>
 // ── MOBILE MENU: lógica vive en /assets/js/main-nav.js ──
 
-// ── CART ──
-var _cart = JSON.parse(localStorage.getItem('curino_cart') || '[]');
-function toggleCart(){
-  document.getElementById('cartOverlay').classList.toggle('open');
-  document.getElementById('cartDrawer').classList.toggle('open');
-}
-function removeFromCart(id){
-  _cart = _cart.filter(function(item){return item.id !== id});
-  localStorage.setItem('curino_cart', JSON.stringify(_cart));
-  renderCart();
-}
-function renderCart(){
-  var container = document.getElementById('cartItems');
-  var empty = document.getElementById('cartEmpty');
-  var footer = document.getElementById('cartFooter');
-  var badge = document.getElementById('cartBadge');
-  var badgeMob = document.getElementById('cartBadgeMob');
-  if(_cart.length > 0){
-    if(badge){badge.textContent=_cart.length;badge.classList.add('visible');}
-    if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
-  }else{
-    if(badge) badge.classList.remove('visible');
-    if(badgeMob) badgeMob.classList.remove('visible');
-  }
-  if(_cart.length === 0){empty.style.display='block';footer.style.display='none';
-    container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});return;}
-  empty.style.display='none';footer.style.display='block';
-  container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
-  var subtotal=0;
-  _cart.forEach(function(item){
-    subtotal+=item.precio;
-    var div=document.createElement('div');div.className='cart-item';
-    div.innerHTML='<div class="cart-item-img">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
-      '<div class="cart-item-info"><div class="cart-item-name">Armario '+item.ancho+'&times;'+item.alto+'&times;'+item.fondo+' cm</div>'+
-      '<div class="cart-item-desc">'+item.material+' &middot; '+item.puertas+'</div>'+
-      '<div class="cart-item-price">&euro; '+new Intl.NumberFormat('es-ES').format(item.precio)+'</div></div>'+
-      '<button class="cart-item-remove" onclick="removeFromCart('+item.id+')">&times;</button>';
-    container.insertBefore(div,empty);
-  });
-  document.getElementById('cartSubtotal').textContent='\u20AC '+new Intl.NumberFormat('es-ES').format(subtotal);
-}
-renderCart();
-document.addEventListener('curino:main-nav-mounted', renderCart);
 
 // ── AUTH & ACCOUNT ──
 var _supabase=null,_currentUser=null;

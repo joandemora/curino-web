@@ -661,47 +661,9 @@ footer{
 .user-icon-link{display:flex;align-items:center}
 .user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
 
-/* ── CART ── */
-.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
+/* Carrito (panel, overlay, badge, items) ahora en /assets/css/cart.css
+   cargado por main-nav.js. Icono SVG arriba conserva sus estilos. */
 .cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
-.cart-badge{position:absolute;top:-6px;right:-8px;background:#0a0a0a;color:#fff;
-  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
-  display:none;align-items:center;justify-content:center;line-height:1}
-.cart-badge.visible{display:flex}
-.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;
-  opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
-.cart-overlay.open{opacity:1;visibility:visible}
-.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:420px;background:#fff;z-index:301;
-  transform:translateX(100%);transition:transform .35s ease;
-  display:flex;flex-direction:column;overflow:hidden}
-.cart-drawer.open{transform:translateX(0)}
-.cart-header{display:flex;align-items:center;justify-content:space-between;
-  padding:1.5rem 2rem;border-bottom:1px solid #e5e5e5;flex-shrink:0}
-.cart-title{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
-.cart-close{cursor:pointer;font-size:20px;color:#888;background:none;border:none;font-family:var(--font)}
-.cart-close:hover{color:#000}
-.cart-items{flex:1;overflow-y:auto}
-.cart-empty{padding:3rem 2rem;text-align:center;color:#888;font-size:14px}
-.cart-item{display:flex;gap:1rem;padding:1.2rem 2rem;border-bottom:1px solid #e5e5e5}
-.cart-item-img{width:80px;height:80px;background:#f2ede8;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.cart-item-img img{max-width:100%;max-height:100%;object-fit:contain}
-.cart-item-info{flex:1;min-width:0}
-.cart-item-name{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase}
-.cart-item-desc{font-size:11px;color:#888;line-height:1.5}
-.cart-item-price{font-size:14px;font-weight:700;margin-top:6px}
-.cart-item-actions{display:flex;gap:1rem;margin-top:6px}
-.cart-item-actions a,.cart-item-actions button{background:none;border:none;font-family:var(--font);font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:#888;padding:0;text-decoration:none;transition:color .2s}
-.cart-item-actions a:hover,.cart-item-actions button:hover{color:#000}
-.cart-item-remove{background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;font-family:var(--font);flex-shrink:0;align-self:flex-start}
-.cart-item-remove:hover{color:#000}
-.cart-footer{padding:1.5rem 2rem;border-top:1px solid #e5e5e5;flex-shrink:0}
-.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem;font-size:14px}
-.cart-subtotal-label{font-weight:400;text-transform:uppercase;letter-spacing:.05em}
-.cart-subtotal-price{font-weight:700}
-.cart-checkout{width:100%;background:#0a0a0a;color:#fff;border:none;padding:1rem;
-  font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
-.cart-checkout:hover{background:#333}
-@media(max-width:1200px){.cart-drawer{width:100%}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -967,108 +929,10 @@ const io=new IntersectionObserver((entries)=>{
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 </script>
 
-<!-- CART DRAWER -->
-<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
-<div class="cart-drawer" id="cartDrawer">
-  <div class="cart-header">
-    <div class="cart-title">Carrito</div>
-    <button class="cart-close" onclick="toggleCart()">×</button>
-  </div>
-  <div class="cart-items" id="cartItems">
-    <div class="cart-empty" id="cartEmpty">Tu carrito está vacío</div>
-  </div>
-  <div class="cart-footer" id="cartFooter" style="display:none">
-    <div class="cart-subtotal">
-      <span class="cart-subtotal-label">Subtotal</span>
-      <span class="cart-subtotal-price" id="cartSubtotal">€ 0</span>
-    </div>
-    <a href="/checkout/" class="cart-checkout" style="display:block;text-align:center;text-decoration:none">Tramitar pedido</a>
-  </div>
-</div>
+<!-- Carrito (panel, JS, estado) ahora globalizado en /assets/js/cart.js
+     + /assets/css/cart.css, cargados por main-nav.js. -->
 
 <script>
-// ── CART ──
-var _cart = JSON.parse(localStorage.getItem('curino_cart') || '[]');
-
-function toggleCart(){
-  document.getElementById('cartOverlay').classList.toggle('open');
-  document.getElementById('cartDrawer').classList.toggle('open');
-}
-
-function removeFromCart(id){
-  _cart = _cart.filter(function(item){return item.id !== id});
-  localStorage.setItem('curino_cart', JSON.stringify(_cart));
-  renderCart();
-}
-
-function formatPrice(amount){
-  var parts=parseFloat(amount).toFixed(2).split('.');
-  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-  return parts.join(',')+' \u20AC';
-}
-
-function buildCartDesc(item){
-  var d='';
-  if(item.material) d+='Material: '+item.material+'<br>';
-  var dd=item.doorDetail;
-  if(dd&&dd.tipo){
-    var p=[dd.tipo];
-    if(dd.marco) p.push(dd.marco);
-    if(dd.textil) p.push(dd.textil);
-    if(dd.colorRal) p.push(dd.colorRal);
-    if(dd.travesano) p.push(dd.travesano);
-    d+='Puertas: '+p.join(' \u00B7 ')+'<br>';
-  }else if(item.puertas&&item.puertas!=='Sin puertas'){
-    d+='Puertas: '+item.puertas+'<br>';
-  }else if(item.puertas==='Sin puertas'){
-    d+='Sin puertas<br>';
-  }
-  if(item.moduleDetail&&item.moduleDetail.length){
-    item.moduleDetail.forEach(function(md,i){
-      var line='M\u00F3dulo '+(i+1)+' ('+md.width+'cm): ';
-      if(md.puerta) line+=md.puerta;
-      else{line+=md.hojas+' hoja'+(md.hojas>1?'s':'');if(md.apertura) line+=' \u00B7 Ap. '+md.apertura;}
-      if(md.interior) line+=' \u00B7 '+md.interior;
-      d+=line+'<br>';
-    });
-  }else if(item.interior){
-    d+='Interior: '+item.interior+'<br>';
-  }
-  return d;
-}
-
-function renderCart(){
-  var container = document.getElementById('cartItems');
-  var empty = document.getElementById('cartEmpty');
-  var footer = document.getElementById('cartFooter');
-  var badge = document.getElementById('cartBadge');
-  var badgeMob = document.getElementById('cartBadgeMob');
-  if(_cart.length > 0){
-    if(badge){badge.textContent=_cart.length;badge.classList.add('visible');}
-    if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
-  }else{
-    if(badge) badge.classList.remove('visible');
-    if(badgeMob) badgeMob.classList.remove('visible');
-  }
-  if(_cart.length === 0){empty.style.display='block';footer.style.display='none';
-    container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});return;}
-  empty.style.display='none';footer.style.display='block';
-  container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
-  var subtotal=0;
-  _cart.forEach(function(item,idx){
-    subtotal+=item.precio;
-    var div=document.createElement('div');div.className='cart-item';
-    div.innerHTML='<div class="cart-item-img">'+(item.thumb?'<img src="'+item.thumb+'" alt="Armario">':'')+'</div>'+
-      '<div class="cart-item-info"><div class="cart-item-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
-      '<div class="cart-item-desc">'+buildCartDesc(item)+'</div>'+
-      '<div class="cart-item-price">'+formatPrice(item.precio)+'</div>'+
-      '<div class="cart-item-actions"><a href="/configurador-armarios-vestidores/?edit='+idx+'">Editar</a><button onclick="removeFromCart('+item.id+')">Eliminar</button></div></div>';
-    container.insertBefore(div,empty);
-  });
-  document.getElementById('cartSubtotal').textContent=formatPrice(subtotal);
-}
-renderCart();
-document.addEventListener('curino:main-nav-mounted', renderCart);
 
 // ── AUTH ──
 var _supabase=null,_currentUser=null;

@@ -479,52 +479,7 @@ footer{
 .user-icon-link{display:flex;align-items:center}
 .user-icon-link svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none;cursor:pointer}
 
-/* ── CART DRAWER ── */
-.cart-icon{position:relative;cursor:pointer;display:flex;align-items:center}
-.cart-icon svg{width:16px;height:16px;stroke:#000;stroke-width:1.5;fill:none}
-.cart-badge{position:absolute;top:-6px;right:-8px;background:var(--black);color:#fff;
-  font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;
-  display:none;align-items:center;justify-content:center;line-height:1}
-.cart-badge.visible{display:flex}
-.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;
-  opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
-.cart-overlay.open{opacity:1;visibility:visible}
-.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:420px;background:#fff;z-index:301;
-  transform:translateX(100%);transition:transform .35s ease;
-  display:flex;flex-direction:column;overflow:hidden}
-.cart-drawer.open{transform:translateX(0)}
-.cart-header{display:flex;align-items:center;justify-content:space-between;
-  padding:1.5rem 2rem;border-bottom:1px solid var(--border);flex-shrink:0}
-.cart-title{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
-.cart-close{cursor:pointer;font-size:20px;color:var(--mid);transition:color .2s;background:none;border:none;font-family:var(--font)}
-.cart-close:hover{color:#000}
-.cart-items{flex:1;overflow-y:auto;padding:0}
-.cart-empty{padding:3rem 2rem;text-align:center;color:var(--mid);font-size:14px}
-.cart-item{display:flex;gap:1rem;padding:1.2rem 2rem;border-bottom:1px solid var(--border)}
-.cart-item-img{width:80px;height:80px;background:#f2ede8;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.cart-item-img img{max-width:100%;max-height:100%;object-fit:contain}
-.cart-item-info{flex:1;min-width:0}
-.cart-item-name{font-size:13px;font-weight:600;margin-bottom:4px;text-transform:uppercase}
-.cart-item-desc{font-size:11px;color:var(--mid);line-height:1.5}
-.cart-item-price{font-size:14px;font-weight:700;margin-top:6px}
-.cart-item-actions{display:flex;gap:1rem;margin-top:6px}
-.cart-item-actions a,.cart-item-actions button{background:none;border:none;font-family:var(--font);font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:var(--mid);padding:0;text-decoration:none;transition:color .2s}
-.cart-item-actions a:hover,.cart-item-actions button:hover{color:var(--black)}
-.cart-item-remove{background:none;border:none;color:var(--light);cursor:pointer;
-  font-size:18px;font-family:var(--font);transition:color .2s;flex-shrink:0;align-self:flex-start}
-.cart-item-remove:hover{color:#000}
-.cart-footer{padding:1.5rem 2rem;border-top:1px solid var(--border);flex-shrink:0}
-.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1rem;font-size:14px}
-.cart-subtotal-label{font-weight:400;text-transform:uppercase;letter-spacing:.05em}
-.cart-subtotal-price{font-weight:700}
-.cart-checkout{width:100%;background:var(--black);color:#fff;border:none;padding:1rem;
-  font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
-  cursor:pointer;transition:background .2s;font-weight:400}
-.cart-checkout:hover{background:#333}
-.cart-checkout:disabled{background:var(--mid);cursor:not-allowed}
-@media(max-width:1200px){
-  .cart-drawer{width:100%}
-}
+/* Carrito (panel, badge, overlay) ahora en /assets/css/cart.css cargado por main-nav.js */
 </style>
 </head>
 <body>
@@ -2307,38 +2262,19 @@ function p3DrawLisaOpen(ctx, x, y, doorW, doorH, color, ap){
 
 <!-- Mobile menu: lógica vive en /assets/js/main-nav.js (toggleSiteMenu eliminado) -->
 
-<!-- CART DRAWER -->
-<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
-<div class="cart-drawer" id="cartDrawer">
-  <div class="cart-header">
-    <div class="cart-title">Carrito</div>
-    <button class="cart-close" onclick="toggleCart()">×</button>
-  </div>
-  <div class="cart-items" id="cartItems">
-    <div class="cart-empty" id="cartEmpty">Tu carrito está vacío</div>
-  </div>
-  <div class="cart-footer" id="cartFooter" style="display:none">
-    <div class="cart-subtotal">
-      <span class="cart-subtotal-label">Subtotal</span>
-      <span class="cart-subtotal-price" id="cartSubtotal">€ 0</span>
-    </div>
-    <a href="/checkout/" class="cart-checkout" style="display:block;text-align:center;text-decoration:none">Tramitar pedido</a>
-  </div>
-</div>
+<!-- Carrito (panel, JS común) globalizado en /assets/js/cart.js + /assets/css/cart.css.
+     El configurador conserva inline solo addToCart() / editCartItem() / loadCartItemConfig()
+     que son específicos del producto. Llaman al API window.curinoCart. -->
 
 <script>
-// Cart state
-var _cart = JSON.parse(localStorage.getItem('curino_cart') || '[]');
-
-function saveCart(){
-  localStorage.setItem('curino_cart', JSON.stringify(_cart));
-  renderCart();
-}
-
-function toggleCart(){
-  document.getElementById('cartOverlay').classList.toggle('open');
-  document.getElementById('cartDrawer').classList.toggle('open');
-}
+// ──────────────────────────────────────────────────────────────
+// Carrito: estado + lógica común (toggleCart, removeFromCart,
+// formatPrice, buildCartDesc, renderCart) viven en
+// /assets/js/cart.js. Aquí solo se conservan las funciones
+// específicas del configurador, que construyen el item con
+// shape de armario (ancho/alto/fondo/material/doorDetail/
+// moduleDetail/precio/thumb) y manejan el modo edición.
+// ──────────────────────────────────────────────────────────────
 
 function addToCart(){
   var allM = MAT_DATA;
@@ -2347,7 +2283,7 @@ function addToCart(){
     return 'M'+(i+1)+' ('+m.width+'cm): '+(INTERIORS.find(function(x){return x.id===m.interiorId})?.name||m.interiorId);
   }).join(', ');
   var puertaInfo = _P3.gama==='laminadas'?'Laminadas (RAL)':
-    _P3.gama==='molduras'?'Textiles ('+(_P3.trav?'con':'sin')+' travesaño)':'Lacadas (RAL)';
+    _P3.gama==='molduras'?'Textiles ('+(_P3.trav?'con':'sin')+' travesa\u00F1o)':'Lacadas (RAL)';
 
   // Door detail fields
   var doorDetail = {};
@@ -2356,7 +2292,7 @@ function addToCart(){
     var marcoMat = _P3.marcoTipo==='madera'?(MAT_DATA.find(function(m){return m.id===_P3.mat})||{}).name||'Wengue':_P3_RAL[_P3.marcoRal]?_P3_RAL[_P3.marcoRal][0]:'RAL';
     doorDetail.marco = marcoMat;
     doorDetail.textil = _P3_TEXTIL[_P3.tx]?_P3_TEXTIL[_P3.tx][0]:'';
-    doorDetail.travesano = _P3.trav?'Con travesaño':'Sin travesaño';
+    doorDetail.travesano = _P3.trav?'Con travesa\u00F1o':'Sin travesa\u00F1o';
   }
   if(_P3.gama==='lisas'){
     doorDetail.colorRal = _P3_RAL[_P3.ral]?_P3_RAL[_P3.ral][0]:'';
@@ -2393,68 +2329,27 @@ function addToCart(){
     precio: calcPrice(), thumb: thumb
   };
 
-  // Replace if editing, otherwise push new
-  var editIdx=sessionStorage.getItem('curino_edit_idx');
-  if(editIdx!==null){
-    _cart[parseInt(editIdx)]=item;
+  // Replace if editing, otherwise add new (delegado al carrito global)
+  var editIdx = sessionStorage.getItem('curino_edit_idx');
+  if(editIdx !== null){
+    window.curinoCart.update(parseInt(editIdx), item);
     sessionStorage.removeItem('curino_edit_idx');
     sessionStorage.removeItem('curino_edit_item');
     clearEditModeBtn();
-  }else{
-    _cart.push(item);
+    window.curinoCart.toggle();  // abre el panel para confirmaci\u00F3n visual
+  } else {
+    window.curinoCart.add(item);  // add() hace push + save + refresh + toggle
   }
-  saveCart();
-  toggleCart();
-}
-
-function removeFromCart(id){
-  _cart = _cart.filter(function(item){return item.id !== id});
-  saveCart();
-}
-
-function formatPrice(amount){
-  var parts=parseFloat(amount).toFixed(2).split('.');
-  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-  return parts.join(',')+' \u20AC';
-}
-
-function buildCartDesc(item){
-  var d='';
-  if(item.material) d+='Material: '+item.material+'<br>';
-  var dd=item.doorDetail;
-  if(dd&&dd.tipo){
-    var p=[dd.tipo];
-    if(dd.marco) p.push(dd.marco);
-    if(dd.textil) p.push(dd.textil);
-    if(dd.colorRal) p.push(dd.colorRal);
-    if(dd.travesano) p.push(dd.travesano);
-    d+='Puertas: '+p.join(' \u00B7 ')+'<br>';
-  }else if(item.puertas&&item.puertas!=='Sin puertas'){
-    d+='Puertas: '+item.puertas+'<br>';
-  }else if(item.puertas==='Sin puertas'){
-    d+='Sin puertas<br>';
-  }
-  if(item.moduleDetail&&item.moduleDetail.length){
-    item.moduleDetail.forEach(function(md,i){
-      var line='M\u00F3dulo '+(i+1)+' ('+md.width+'cm): ';
-      if(md.puerta) line+=md.puerta;
-      else{line+=md.hojas+' hoja'+(md.hojas>1?'s':'');if(md.apertura) line+=' \u00B7 Ap. '+md.apertura;}
-      if(md.interior) line+=' \u00B7 '+md.interior;
-      d+=line+'<br>';
-    });
-  }else if(item.interior){
-    d+='Interior: '+item.interior+'<br>';
-  }
-  return d;
 }
 
 function editCartItem(idx){
-  var item=_cart[idx];
+  var item = window.curinoCart.items[idx];
   if(!item) return;
-  sessionStorage.setItem('curino_edit_idx',String(idx));
-  sessionStorage.setItem('curino_edit_item',JSON.stringify(item));
-  // Close cart, load config, update button
-  if(document.getElementById('cartDrawer').classList.contains('open')) toggleCart();
+  sessionStorage.setItem('curino_edit_idx', String(idx));
+  sessionStorage.setItem('curino_edit_item', JSON.stringify(item));
+  // Cierra el panel si est\u00E1 abierto y carga el item en el configurador
+  var pn = document.getElementById('cartPanel');
+  if(pn && pn.classList.contains('open')) window.curinoCart.toggle();
   loadCartItemConfig(item);
   setEditModeBtn();
 }
@@ -2477,117 +2372,6 @@ function loadCartItemConfig(item){
   buildComposite();
   goStep(1);
 }
-
-function renderCart(){
-  var container = document.getElementById('cartItems');
-  var empty = document.getElementById('cartEmpty');
-  var footer = document.getElementById('cartFooter');
-  var badge = document.getElementById('cartBadge');
-
-  var badgeMob=document.getElementById('cartBadgeMob');
-  if(_cart.length > 0){
-    if(badge){badge.textContent=_cart.length;badge.classList.add('visible');}
-    if(badgeMob){badgeMob.textContent=_cart.length;badgeMob.classList.add('visible');}
-  }else{
-    if(badge) badge.classList.remove('visible');
-    if(badgeMob) badgeMob.classList.remove('visible');
-  }
-
-  if(_cart.length === 0){
-    empty.style.display = 'block';
-    footer.style.display = 'none';
-    container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
-    return;
-  }
-
-  empty.style.display = 'none';
-  footer.style.display = 'block';
-  container.querySelectorAll('.cart-item').forEach(function(el){el.remove()});
-
-  var subtotal = 0;
-  _cart.forEach(function(item, idx){
-    subtotal += item.precio;
-    var div = document.createElement('div');
-    div.className = 'cart-item';
-    div.innerHTML =
-      '<div class="cart-item-img">'+(item.thumb ? '<img src="'+item.thumb+'" alt="Armario">' : '')+'</div>'+
-      '<div class="cart-item-info">'+
-        '<div class="cart-item-name">Armario '+item.ancho+'\u00D7'+item.alto+'\u00D7'+item.fondo+' cm</div>'+
-        '<div class="cart-item-desc">'+buildCartDesc(item)+'</div>'+
-        '<div class="cart-item-price">'+formatPrice(item.precio)+'</div>'+
-        '<div class="cart-item-actions"><a href="javascript:void(0)" onclick="editCartItem('+idx+')">Editar</a><button onclick="removeFromCart('+item.id+')">Eliminar</button></div>'+
-      '</div>';
-    container.insertBefore(div, empty);
-  });
-
-  document.getElementById('cartSubtotal').textContent = formatPrice(subtotal);
-}
-
-// Init cart on load
-renderCart();
-document.addEventListener('curino:main-nav-mounted', renderCart);
-
-// ── EDIT MODE ──
-function setEditModeBtn(){
-  var btn=document.getElementById('btnAddCart');
-  if(!btn) return;
-  // Only change the text node before the price span
-  var span=btn.querySelector('#ctaPrice');
-  if(span) btn.firstChild.textContent='Actualizar \u00B7 ';
-}
-function clearEditModeBtn(){
-  var btn=document.getElementById('btnAddCart');
-  if(!btn) return;
-  var span=btn.querySelector('#ctaPrice');
-  if(span) btn.firstChild.textContent='A\u00F1adir al carrito \u00B7 ';
-}
-
-// Check on page load for edit mode
-(function(){
-  var params=new URLSearchParams(window.location.search);
-  var editIdx=params.get('edit');
-  if(editIdx!==null&&_cart[parseInt(editIdx)]){
-    sessionStorage.setItem('curino_edit_idx',editIdx);
-    sessionStorage.setItem('curino_edit_item',JSON.stringify(_cart[parseInt(editIdx)]));
-    loadCartItemConfig(_cart[parseInt(editIdx)]);
-    setTimeout(setEditModeBtn,300);
-    window.history.replaceState({},'',window.location.pathname);
-    return;
-  }
-  var editItem=sessionStorage.getItem('curino_edit_item');
-  if(editItem){
-    try{loadCartItemConfig(JSON.parse(editItem));}catch(e){}
-    setTimeout(setEditModeBtn,300);
-  }
-})();
-
-// ── AUTH ──
-var _supabase = null;
-var _currentUser = null;
-(async function(){
-  try{
-    var r = await fetch('/api/config');
-    var c = await r.json();
-    if(c.supabaseUrl && c.supabaseAnonKey && window.supabase){
-      _supabase = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey);
-      checkAuth();
-    }
-  }catch(e){console.warn('Supabase config not available');}
-})();
-
-async function checkAuth(){
-  if(!_supabase) return;
-  var r = await _supabase.auth.getSession();
-  if(r.data.session){
-    _currentUser = r.data.session.user;
-    document.getElementById('userIconLink').href = '/mi-cuenta/';
-    var mob=document.getElementById('userIconLinkMob');if(mob) mob.href='/mi-cuenta/';
-  } else {
-    _currentUser = null;
-    document.getElementById('userIconLink').href = '/login/';
-  }
-}
-
 </script>
 
 <!-- FOOTER -->
