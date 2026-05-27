@@ -201,26 +201,48 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
       </div>
     </div>
 
-    <!-- Shipping method -->
+    <!-- Shipping method (SE COBRA) -->
     <div class="ck-section">
       <div class="ck-section-title">M&eacute;todo de entrega</div>
       <div class="ck-methods">
-        <div class="ck-method selected" id="methodEstandar" onclick="selectMethod('estandar')">
+        <div class="ck-method selected" id="methodEstandar" onclick="selectShipping('estandar')">
           <div class="ck-method-radio"></div>
           <div class="ck-method-head">
             <div class="ck-method-title">Env&iacute;o est&aacute;ndar</div>
-            <div class="ck-method-price">Incluido</div>
+            <div class="ck-method-price" id="estandarPrice">&mdash;</div>
           </div>
-          <div class="ck-method-desc">Entrega con cita previa a pie de calle &middot; <span class="ck-method-time">3 — 4 semanas</span></div>
+          <div class="ck-method-desc">Entrega con cita previa a pie de calle &middot; <span class="ck-method-time">4 — 5 semanas</span></div>
         </div>
-        <div class="ck-method" id="methodMontaje" onclick="selectMethod('montaje')">
+        <div class="ck-method" id="methodPickup" onclick="selectShipping('pickup')">
           <div class="ck-method-radio"></div>
           <div class="ck-method-head">
-            <div class="ck-method-title">Env&iacute;o con montaje</div>
-            <div class="ck-method-price" id="montajePrice"></div>
+            <div class="ck-method-title">Recogida en Barcelona ciudad</div>
+            <div class="ck-method-price" id="pickupPrice">Gratis</div>
           </div>
-          <div class="ck-method-desc">Entrega con cita previa y montaje en el interior de tu domicilio &middot; <span class="ck-method-time">3 — 4 semanas</span></div>
-          <div class="ck-method-note">Nuestro equipo se pondr&aacute; en contacto contigo para coordinar el montaje</div>
+          <div class="ck-method-desc">Recogida en nuestras instalaciones &middot; <span class="ck-method-time">4 — 5 semanas</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assembly (INFORMATIVO, NO SE COBRA) -->
+    <div class="ck-section">
+      <div class="ck-section-title">Montaje</div>
+      <div class="ck-methods">
+        <div class="ck-method selected" id="assemblyTaskrabbit" onclick="selectAssembly('taskrabbit')">
+          <div class="ck-method-radio"></div>
+          <div class="ck-method-head">
+            <div class="ck-method-title">TaskRabbit (recomendado)</div>
+            <div class="ck-method-price" id="taskrabbitPrice">&mdash;</div>
+          </div>
+          <div class="ck-method-desc">Estimaci&oacute;n: <span id="taskrabbitEstimate">&mdash;</span>. NO se cobra aqu&iacute; &mdash; Curino te pone en contacto con un profesional cualificado.</div>
+        </div>
+        <div class="ck-method" id="assemblyDiy" onclick="selectAssembly('diy')">
+          <div class="ck-method-radio"></div>
+          <div class="ck-method-head">
+            <div class="ck-method-title">Montaje por mi cuenta</div>
+            <div class="ck-method-price">Sin coste</div>
+          </div>
+          <div class="ck-method-desc">Incluye instrucciones detalladas y soporte de atenci&oacute;n al cliente.</div>
         </div>
       </div>
     </div>
@@ -324,7 +346,18 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
 <script>
 var _cart=JSON.parse(localStorage.getItem('curino_cart')||'[]');
 var _supabase=null,_currentUser=null;
-var _shipMethod='estandar';
+
+// ── ESTADO DE ENTREGA Y MONTAJE ──
+// _shipping ('estandar' | 'pickup') SE COBRA y se suma al total Stripe.
+// _assembly ('taskrabbit' | 'diy') es INFORMATIVO; NUNCA se suma al total.
+var _shipping='estandar';
+var _assembly='taskrabbit';
+var _shippingCost=0;
+var _taskrabbitEstimate=0;
+
+// Fallback hardcoded de las 3 claves shipping. Se sobrescribe con DB si
+// pricing_config responde. Mismos defaults que el SQL ejecutado.
+var _PRICES={shipping_standard_percent:5,shipping_pickup_barcelona:0,taskrabbit_estimate_percent:5};
 
 // ── AUTH + INIT ──
 var _isGuest=new URLSearchParams(window.location.search).get('guest')==='1';
@@ -343,11 +376,73 @@ var _isGuest=new URLSearchParams(window.location.search).get('guest')==='1';
     if(c.googleMapsApiKey) loadGoogleMaps(c.googleMapsApiKey);
     if(_isGuest) window.history.replaceState({},'','/checkout/');
     initCheckout();
+    // Carga async de los 3 precios shipping desde pricing_config.
+    // No bloquea initCheckout: la UI ya tiene fallback hardcoded; cuando
+    // llegan los reales se repinta. Patrón validado en Fase 1 (configurador)
+    // y Fase A (catálogo).
+    loadShippingPrices();
   }catch(e){
     if(!_isGuest) window.location.href='/checkout/login/';
-    else initCheckout();
+    else { initCheckout(); loadShippingPrices(); }
   }
 })();
+
+// ── CARGA DE PRECIOS SHIPPING (Supabase pricing_config) ──
+// Cache sessionStorage 'curino_prices' compartida con configurador y catálogo
+// (TTL 10 min). Si la cache no contiene las 3 claves shipping (cache vieja
+// previa al SQL), se invalida y se hace re-fetch. Filtramos por kind='shipping'
+// para traer solo las 3 filas que el checkout necesita.
+function loadShippingPrices(){
+  var CACHE_KEY='curino_prices';
+  var TTL_MS=10*60*1000;
+  var REQUIRED=['shipping_standard_percent','shipping_pickup_barcelona','taskrabbit_estimate_percent'];
+
+  // Cache hit con las 3 claves -> usar
+  try{
+    var raw=sessionStorage.getItem(CACHE_KEY);
+    if(raw){
+      var cached=JSON.parse(raw);
+      if(cached&&cached.ts&&(Date.now()-cached.ts)<TTL_MS&&cached.shipping){
+        var hasAll=REQUIRED.every(function(k){return typeof cached.shipping[k]==='number';});
+        if(hasAll){
+          _PRICES=cached.shipping;
+          renderSummary();
+          return;
+        }
+      }
+    }
+  }catch(_e){}
+
+  // Cache miss o incompleta -> fetch
+  (async function(){
+    try{
+      if(!_supabase) return; // sin cliente, queda fallback
+      var res=await _supabase.from('pricing_config').select('key, value').eq('kind','shipping');
+      if(res.error||!res.data||!res.data.length) return;
+      var P={
+        shipping_standard_percent:_PRICES.shipping_standard_percent,
+        shipping_pickup_barcelona:_PRICES.shipping_pickup_barcelona,
+        taskrabbit_estimate_percent:_PRICES.taskrabbit_estimate_percent
+      };
+      res.data.forEach(function(row){
+        var v=Number(row.value);
+        if(!isFinite(v)) return;
+        if(P.hasOwnProperty(row.key)) P[row.key]=v;
+      });
+      _PRICES=P;
+      // Guardar en cache compartida bajo subclave 'shipping' (no choca con
+      // la cache de precios del configurador, que vive en otras subclaves).
+      try{
+        var raw2=sessionStorage.getItem(CACHE_KEY);
+        var obj=raw2?JSON.parse(raw2):{ts:Date.now()};
+        obj.ts=Date.now();
+        obj.shipping=P;
+        sessionStorage.setItem(CACHE_KEY,JSON.stringify(obj));
+      }catch(_e){}
+      renderSummary();
+    }catch(_e){ /* fallback silent */ }
+  })();
+}
 
 function initCheckout(){
   if(_cart.length===0){document.getElementById('checkoutEmpty').style.display='block';return;}
@@ -390,7 +485,6 @@ function formatPrice(amount){
 
 // ── SUMMARY ──
 var _subtotal=0;
-var _montajeCost=0;
 var _itemsHtml='';
 
 function renderSummary(){
@@ -435,19 +529,37 @@ function renderSummary(){
       '<div class="sum-desc">'+details+'</div></div>'+
       '<div class="sum-price">'+formatPrice(item.precio)+'</div></div>';
   });
-  _montajeCost=Math.round(_subtotal*0.07*100)/100;
-  document.getElementById('montajePrice').textContent=formatPrice(_montajeCost);
+  // Coste de envío (SE COBRA): depende del método seleccionado.
+  // Coste estimado de TaskRabbit (INFORMATIVO): nunca afecta al total.
+  _shippingCost=(_shipping==='pickup')
+    ? Number(_PRICES.shipping_pickup_barcelona)||0
+    : Math.round(_subtotal*Number(_PRICES.shipping_standard_percent||0))/100;
+  _taskrabbitEstimate=Math.round(_subtotal*Number(_PRICES.taskrabbit_estimate_percent||0))/100;
+
+  // Precio "Envío estándar" en la tarjeta: dinámico (% del subtotal).
+  document.getElementById('estandarPrice').textContent=
+    formatPrice(Math.round(_subtotal*Number(_PRICES.shipping_standard_percent||0))/100);
+  // Precio "Recogida en Barcelona": "Gratis" si valor = 0, sino dinámico.
+  var pickupVal=Number(_PRICES.shipping_pickup_barcelona)||0;
+  document.getElementById('pickupPrice').textContent=
+    pickupVal===0 ? 'Gratis' : formatPrice(pickupVal);
+  // Precio "TaskRabbit" (informativo) y estimación en la descripción.
+  document.getElementById('taskrabbitPrice').textContent=formatPrice(_taskrabbitEstimate);
+  document.getElementById('taskrabbitEstimate').textContent=formatPrice(_taskrabbitEstimate);
+
   document.getElementById('summaryItems').innerHTML=_itemsHtml;
   document.getElementById('mobSummaryItems').innerHTML=_itemsHtml;
   updateTotals();
 }
 
 function updateTotals(){
-  var shipping=_shipMethod==='montaje'?_montajeCost:0;
+  // CRÍTICO: solo `_shippingCost` se suma. `_taskrabbitEstimate` JAMÁS entra
+  // en este cálculo — TaskRabbit es informativo y no se cobra.
+  var shipping=_shippingCost;
   var total=_subtotal+shipping;
   var fmtSub=formatPrice(_subtotal);
   var fmtTotal=formatPrice(total);
-  var fmtShip=shipping>0?formatPrice(shipping):'Incluido';
+  var fmtShip=shipping>0?formatPrice(shipping):'Gratis';
   var iva=total-total/1.21;
   var taxText='Incluye '+formatPrice(iva)+' de IVA (21%)';
   // Desktop
@@ -467,12 +579,23 @@ function toggleMobSummary(){
   document.getElementById('mobBar').classList.toggle('open');
 }
 
-// ── SHIPPING METHOD ──
-function selectMethod(m){
-  _shipMethod=m;
-  document.getElementById('methodEstandar').classList.toggle('selected',m==='estandar');
-  document.getElementById('methodMontaje').classList.toggle('selected',m==='montaje');
-  updateTotals();
+// ── SHIPPING METHOD (SE COBRA) ──
+// Cambiar de método recalcula _shippingCost y actualiza el total.
+function selectShipping(s){
+  _shipping=s;
+  document.getElementById('methodEstandar').classList.toggle('selected',s==='estandar');
+  document.getElementById('methodPickup').classList.toggle('selected',s==='pickup');
+  renderSummary();
+}
+
+// ── ASSEMBLY (INFORMATIVO, NO SE COBRA) ──
+// CRÍTICO: NO llama a updateTotals/renderSummary. Cambiar entre TaskRabbit y
+// "Montaje por mi cuenta" SOLO actualiza la UI del selector; el total cobrado
+// es invariante respecto a esta elección.
+function selectAssembly(a){
+  _assembly=a;
+  document.getElementById('assemblyTaskrabbit').classList.toggle('selected',a==='taskrabbit');
+  document.getElementById('assemblyDiy').classList.toggle('selected',a==='diy');
 }
 
 // ── BILLING ──
@@ -596,7 +719,10 @@ async function handlePay(){
   var btn=document.getElementById('btnPay');
   btn.disabled=true;btn.textContent='Procesando...';
 
-  var total=_subtotal+(_shipMethod==='montaje'?_montajeCost:0);
+  // CRÍTICO: total = subtotal + envío. _taskrabbitEstimate NUNCA se suma aquí.
+  // Esta es la última línea de defensa antes del backend; cualquier intento
+  // futuro de sumar el coste de montaje al cobro debe detectarse y revertirse.
+  var total=_subtotal+_shippingCost;
   var desc=_cart.map(function(i){return i.ancho+'\u00D7'+i.alto+'\u00D7'+i.fondo+'cm '+i.material}).join(' + ');
   var shipFull=d.line+(d.line2?' '+d.line2:'');
   var billAddr=billing||d;
@@ -635,7 +761,12 @@ async function handlePay(){
         shipping_country:d.country,shipping_phone:d.phone,shipping_nif:d.nif,
         billing_name:(billing?billing.firstName+' '+billing.lastName:d.firstName+' '+d.lastName),
         billing_line:billFull,billing_city:billAddr.city,
-        billing_postal:billAddr.postal,billing_nif:billAddr.nif
+        billing_postal:billAddr.postal,billing_nif:billAddr.nif,
+        // Metadata informativa para el equipo Curino (qué eligió el cliente).
+        // El backend api/checkout.js no lee estas claves hoy; quedan en el JSON
+        // por trazabilidad y para futuro. NO afectan al `precio` ni al cobro.
+        shipping_method:_shipping,    // 'estandar' | 'pickup'
+        assembly_choice:_assembly     // 'taskrabbit' | 'diy'
       })
     });
     var data=await res.json();

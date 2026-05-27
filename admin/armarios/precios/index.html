@@ -122,6 +122,12 @@ a:hover{text-decoration:underline}
         <div class="rows" id="rowsMaterial"></div>
       </div>
 
+      <div class="ash-card price-block" data-kind="shipping">
+        <h2>Env&iacute;o y montaje</h2>
+        <p class="block-desc">Coste de env&iacute;o que se cobra al cliente y estimaci&oacute;n informativa de TaskRabbit (no se cobra).</p>
+        <div class="rows" id="rowsShipping"></div>
+      </div>
+
       <!-- EJEMPLO EN VIVO -->
       <div class="ash-card price-block price-example">
         <h2>Ejemplo de precio en vivo</h2>
@@ -208,7 +214,7 @@ a:hover{text-decoration:underline}
       }
 
       // Agrupar por kind
-      var groups = { base: [], door: [], interior: [], material: [] };
+      var groups = { base: [], door: [], interior: [], material: [], shipping: [] };
       res.data.forEach(function(row){
         if (groups[row.kind]) groups[row.kind].push(row);
       });
@@ -217,6 +223,7 @@ a:hover{text-decoration:underline}
       renderRows('rowsDoor', groups.door);
       renderRows('rowsInterior', groups.interior);
       renderRows('rowsMaterial', groups.material);
+      renderRows('rowsShipping', groups.shipping);
 
       recalcExample();
       updateActionsBar();
@@ -465,7 +472,7 @@ a:hover{text-decoration:underline}
 
       var snap = {
         base_fixed: 0, base_per_m2: 0,
-        door: {}, interior: {}, material: {}
+        door: {}, interior: {}, material: {}, shipping: {}
       };
       res.data.forEach(function(row){
         var v = Number(row.value);
@@ -475,6 +482,10 @@ a:hover{text-decoration:underline}
         else if (row.key.indexOf('door_')     === 0) snap.door[row.key.slice(5)]     = v;
         else if (row.key.indexOf('interior_') === 0) snap.interior[row.key.slice(9)] = v;
         else if (row.key.indexOf('material_') === 0) snap.material[row.key.slice(9)] = v;
+        // Shipping: las 3 claves no comparten prefijo común, las mapeamos por nombre completo.
+        else if (row.key === 'shipping_standard_percent'
+              || row.key === 'shipping_pickup_barcelona'
+              || row.key === 'taskrabbit_estimate_percent') snap.shipping[row.key] = v;
       });
 
       var date = new Date().toISOString().slice(0, 10);
