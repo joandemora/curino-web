@@ -95,16 +95,87 @@
       + '</footer>';
   }
 
-  function footerBottomHtml() {
+  function footerBottomHtml(withCheckoutLinks) {
+    // Solo en /checkout/*: 3 enlaces extra que abren modales (Envíos,
+    // Devoluciones, Montaje). El parámetro lo pasa mount() leyendo isCheckout().
+    var extraLinks = withCheckoutLinks
+      ? '<a href="#" data-modal="modalEnvios" style="color:inherit;text-decoration:none">Envíos</a> · '
+      + '<a href="#" data-modal="modalDevoluciones" style="color:inherit;text-decoration:none">Devoluciones</a> · '
+      + '<a href="#" data-modal="modalMontaje" style="color:inherit;text-decoration:none">Montaje</a> · '
+      : '';
     return ''
       + '<div class="footer-bottom">'
       +   '<span>© 2026 Curino · Mueble a medida · España · Europa · EEUU</span>'
       +   '<div class="footer-legal">'
       +     '<span>Sistema &amp; Curino, S.L.U.</span>'
-      +     '<span><a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a></span>'
+      +     '<span>' + extraLinks + '<a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a></span>'
       +   '</div>'
       +   '<span>casacurino.com</span>'
       + '</div>';
+  }
+
+  // Modales de información rápida visibles solo en /checkout/*. Texto cerrado
+  // (fabricación a medida, plazos, devoluciones, montaje). NO interfiere con
+  // Stripe Elements (que viven en iframes aislados).
+  function checkoutModalsHtml() {
+    return ''
+      + '<div class="checkout-modal" id="modalEnvios" hidden>'
+      +   '<div class="checkout-modal-overlay" data-close></div>'
+      +   '<div class="checkout-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalEnviosTitle">'
+      +     '<button class="checkout-modal-close" data-close aria-label="Cerrar">&times;</button>'
+      +     '<h3 class="checkout-modal-title" id="modalEnviosTitle">Envíos</h3>'
+      +     '<p class="checkout-modal-text">Cada pieza se fabrica a medida en nuestro taller. El plazo de salida de fábrica es de 4–5 semanas desde la confirmación del pedido; a este plazo se le suma el tiempo de transporte hasta tu destino. Te avisaremos para coordinar la entrega una vez tu pedido esté listo. También puedes optar por la recogida en nuestras instalaciones de Barcelona (España) sin coste de envío.</p>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="checkout-modal" id="modalDevoluciones" hidden>'
+      +   '<div class="checkout-modal-overlay" data-close></div>'
+      +   '<div class="checkout-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalDevolucionesTitle">'
+      +     '<button class="checkout-modal-close" data-close aria-label="Cerrar">&times;</button>'
+      +     '<h3 class="checkout-modal-title" id="modalDevolucionesTitle">Devoluciones</h3>'
+      +     '<p class="checkout-modal-text">Nuestros productos se fabrican a medida según tu configuración. Por este motivo, y dado que la compra de los materiales se realiza de forma inmediata para cumplir con los plazos de entrega, no se admiten devoluciones ni cancelaciones una vez confirmado el pedido. Para asegurarnos de que todo es perfecto, nos pondremos en contacto contigo antes de comenzar la fabricación y revisaremos juntos cada detalle de tu pedido.</p>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="checkout-modal" id="modalMontaje" hidden>'
+      +   '<div class="checkout-modal-overlay" data-close></div>'
+      +   '<div class="checkout-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalMontajeTitle">'
+      +     '<button class="checkout-modal-close" data-close aria-label="Cerrar">&times;</button>'
+      +     '<h3 class="checkout-modal-title" id="modalMontajeTitle">Montaje</h3>'
+      +     '<p class="checkout-modal-text">El montaje no está incluido en el precio del pedido. Tienes dos opciones: puedes montarlo tú mismo (cada pedido incluye instrucciones detalladas y cuentas con el soporte de nuestro equipo de atención al cliente para resolver cualquier duda), o recurrir a un profesional a través de TaskRabbit, que te pone en contacto con instaladores cualificados de tu zona, con un coste estimado de aproximadamente el 5% del valor del pedido.</p>'
+      +   '</div>'
+      + '</div>';
+  }
+
+  // Wire de los modales: abrir con clic en [data-modal], cerrar con X / overlay
+  // (cualquier [data-close]) y con tecla Escape. Bloquea scroll del body
+  // mientras hay un modal abierto y lo restaura al cerrar.
+  function wireCheckoutModals() {
+    document.querySelectorAll('[data-modal]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = a.getAttribute('data-modal');
+        var modal = document.getElementById(id);
+        if (modal) {
+          modal.hidden = false;
+          document.body.style.overflow = 'hidden';
+        }
+      });
+    });
+    document.querySelectorAll('.checkout-modal [data-close]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var modal = el.closest('.checkout-modal');
+        if (modal) {
+          modal.hidden = true;
+          document.body.style.overflow = '';
+        }
+      });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('.checkout-modal:not([hidden])').forEach(function (m) {
+        m.hidden = true;
+        document.body.style.overflow = '';
+      });
+    });
   }
 
   // Carga el CSS y espera a que esté aplicado antes de ejecutar callback.
@@ -136,9 +207,14 @@
     }
     ensureCssLoaded(function () {
       if (isCheckout()) {
-        slot.outerHTML = footerBottomHtml();
+        slot.outerHTML = footerBottomHtml(true);
+        // Inyectar modales al final del body y registrar listeners.
+        if (document.body) {
+          document.body.insertAdjacentHTML('beforeend', checkoutModalsHtml());
+          wireCheckoutModals();
+        }
       } else {
-        slot.outerHTML = footerColumnsHtml() + footerBottomHtml();
+        slot.outerHTML = footerColumnsHtml() + footerBottomHtml(false);
       }
       document.dispatchEvent(new CustomEvent('curino:main-footer-mounted'));
     });
