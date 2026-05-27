@@ -7,15 +7,18 @@
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --black:#0a0a0a;--mid:#888;--light:#c0c0c0;--border:#e5e5e5;--bg:#f8f8f6;--white:#fff;
   --font:'Open Sans',system-ui,sans-serif;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --ink:#0a0a0a;--ink-soft:#555;--ink-mute:#888;--line:#e5e5e5;
 }
 html{scroll-behavior:smooth;overflow-x:hidden}
-body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden}
+body{background:var(--white);color:var(--black);font-family:var(--font);font-weight:400;line-height:1.6;overflow-x:hidden;padding-top:80px}
 
 /* ── NAV ── */
 nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:80px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -80,6 +83,40 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   display:none;align-items:center;justify-content:center;line-height:1}
 .cart-badge.visible{display:flex}
 
+/* ── LOGIN SPLIT (estilo /maestro/) ── */
+.serif{font-family:var(--serif);letter-spacing:-.02em}
+.display{font-family:var(--serif);font-size:clamp(48px,6vw,80px);font-weight:300;line-height:1.05;letter-spacing:-.03em;margin-bottom:28px;color:var(--black);max-width:14ch}
+.display em{font-style:italic;font-weight:400;color:#cc785c}
+.pro-hero{padding:0;position:relative;overflow:hidden}
+.container{max-width:1440px;margin:0 auto;padding:0 8px}
+.hero-grid{display:grid;grid-template-columns:9fr 11fr;gap:120px;min-height:calc(100vh - 80px);align-items:center}
+.hero-left{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:3rem 0}
+.hero-right{position:relative;overflow:hidden;margin:0;border-radius:16px;height:80vh;box-shadow:0 8px 40px rgba(31,30,28,.1);max-width:100%}
+.hero-right video{display:block;width:100%;height:100%;object-fit:cover}
+.login-card{background:transparent;border:1px solid #e0e0e0;border-radius:20px;padding:32px;width:100%;max-width:480px;margin-bottom:28px}
+/* Clon visual de la tarjeta de /maestro/ (selectores dentro de .login-card) */
+.login-card .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;background:#fff;border:1px solid #d1d5db;border-radius:8px;font-family:var(--font);font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;transition:background .2s}
+.login-card .btn-google:hover{background:#f3f4f6}
+.login-card .btn-google svg{width:18px;height:18px;flex-shrink:0}
+.login-card .divider{display:flex;align-items:center;gap:16px;margin:20px 0;color:var(--ink-mute);font-size:13px;text-transform:none;letter-spacing:normal}
+.login-card .divider::before,.login-card .divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.login-card .input-email{display:block;width:100%;padding:12px 14px;border:1px solid #d1d5db;border-radius:8px;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;background:#fff}
+.login-card .input-email:focus{border-color:var(--ink)}
+.login-card .input-email::placeholder{color:var(--ink-mute)}
+.login-card .btn-email{display:block;width:100%;padding:12px;margin-top:12px;background:#000;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .2s;text-transform:none;letter-spacing:normal}
+.login-card .btn-email:hover{opacity:.85}
+.login-card .btn-email:disabled{opacity:.5;cursor:not-allowed}
+.login-card .legal{font-size:12px;color:var(--ink-mute);margin-top:16px;line-height:1.5;text-align:center}
+.login-card .legal a{color:var(--ink-soft);text-decoration:underline}
+.login-card .otp-msg{font-size:14px;color:var(--ink);margin-bottom:16px;line-height:1.5;text-align:center}
+.login-card .login-error{font-size:13px;color:#c0392b;margin-top:12px;text-align:center}
+.login-card .input-email.input-otp{font-size:18px;letter-spacing:.4em;text-align:center;font-weight:600;font-family:'Open Sans',monospace}
+.login-card .otp-actions{display:flex;gap:.5rem;justify-content:center;align-items:center;margin-top:1rem;font-size:12px;color:var(--ink-mute)}
+.login-card .otp-actions-sep{color:var(--line)}
+.login-card .otp-link{color:var(--ink-soft);text-decoration:underline;cursor:pointer;transition:color .2s;background:none;border:none;font-family:inherit;font-size:12px;padding:0}
+.login-card .otp-link:hover{color:var(--ink)}
+.login-card .otp-link.disabled{pointer-events:none;opacity:.5;text-decoration:none}
+
 /* ── AUTH ── */
 .login-wrap{max-width:380px;margin:120px auto 4rem;padding:0 16px}
 .auth-tabs{display:flex;align-items:center;margin-bottom:2rem}
@@ -116,9 +153,19 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 /* ── FOOTER ── */
 
+/* ── RESPONSIVE LOGIN SPLIT ── */
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr;gap:0;min-height:calc(100vh - 60px)}
+  .hero-right{display:none}
+  .hero-left{padding:2rem 1rem;width:100%;max-width:480px;margin:0 auto}
+  .display{font-size:clamp(36px,9vw,52px);margin-bottom:20px}
+  .login-card{padding:24px}
+}
+
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
   nav{padding:0 16px;height:60px}
+  body{padding-top:60px}
   .nav-logo img{height:20px}
   .nav-right{display:none}
   .nav-mobile-right{display:flex;align-items:center;gap:1rem}
@@ -147,40 +194,52 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <div id="main-nav-mount"></div>
 <script src="/assets/js/main-nav.js"></script>
 
-<!-- LOGIN — OTP-only flow (link + código) + Google OAuth -->
-<div class="login-wrap">
-  <!-- Paso 1: introducir email -->
-  <div id="authPanelEmail">
-    <h1 class="auth-title">Inicia sesi&oacute;n o crea tu cuenta</h1>
-    <p class="auth-subtitle">Te enviaremos un c&oacute;digo por email.</p>
-    <div class="auth-error" id="authError"></div>
-    <form id="emailForm" onsubmit="handleEmailSubmit(event)">
-      <input type="email" class="auth-input" placeholder="Email" id="authEmail" required autocomplete="email">
-      <button type="submit" class="auth-btn auth-btn-primary" id="btnEmail">Continuar</button>
-    </form>
-    <div class="auth-divider">o</div>
-    <button class="auth-btn auth-btn-social" onclick="loginWithGoogle()">
-      <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-      Continuar con Google
-    </button>
-  </div>
+<!-- LOGIN — split tipo /maestro/, lógica de auth (email OTP + Google OAuth) intacta -->
+<section class="pro-hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <h1 class="display serif">Inicia sesi&oacute;n<br>o crea <em>tu cuenta</em>.</h1>
+        <div class="login-card">
+          <!-- Paso 1: Google + email (orden y estilo de /maestro/) -->
+          <div id="authPanelEmail">
+            <button class="btn-google" type="button" onclick="loginWithGoogle()">
+              <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Continuar con Google
+            </button>
+            <div class="divider">o</div>
+            <form id="emailForm" onsubmit="handleEmailSubmit(event)">
+              <input type="email" class="input-email" placeholder="Introduce tu email" id="authEmail" required autocomplete="email">
+              <button type="submit" class="btn-email" id="btnEmail">Continuar con correo electr&oacute;nico</button>
+            </form>
+            <p class="login-error" id="authError" style="display:none"></p>
+            <p class="legal">Al continuar, reconoces la <a href="/privacidad/">Pol&iacute;tica de Privacidad</a> de Curino.</p>
+          </div>
 
-  <!-- Paso 2: introducir código -->
-  <div id="authPanelOtp" style="display:none">
-    <h1 class="auth-title">Revisa tu email</h1>
-    <p class="auth-subtitle">Hemos enviado un c&oacute;digo a <strong id="otpEmailDisplay"></strong>. Tambi&eacute;n puedes hacer click en el enlace del email.</p>
-    <div class="auth-error" id="authErrorOtp"></div>
-    <form id="otpForm" onsubmit="handleOtpSubmit(event)">
-      <input type="text" class="auth-input auth-input-otp" placeholder="000000" id="authOtp" required inputmode="numeric" autocomplete="one-time-code" maxlength="6">
-      <button type="submit" class="auth-btn auth-btn-primary" id="btnVerify">Verificar</button>
-    </form>
-    <div class="auth-actions">
-      <button type="button" class="auth-link" id="btnResend" onclick="handleResend()">Reenviar c&oacute;digo</button>
-      <span class="auth-actions-sep">&middot;</span>
-      <button type="button" class="auth-link" onclick="backToEmail()">Usar otro email</button>
+          <!-- Paso 2: OTP (mismo estilo de tarjeta) -->
+          <div id="authPanelOtp" style="display:none">
+            <p class="otp-msg">Hemos enviado un c&oacute;digo a <strong id="otpEmailDisplay"></strong>. Tambi&eacute;n puedes hacer click en el enlace del email.</p>
+            <form id="otpForm" onsubmit="handleOtpSubmit(event)">
+              <input type="text" class="input-email input-otp" placeholder="000000" id="authOtp" required inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+              <button type="submit" class="btn-email" id="btnVerify">Verificar</button>
+            </form>
+            <p class="login-error" id="authErrorOtp" style="display:none"></p>
+            <div class="otp-actions">
+              <button type="button" class="otp-link" id="btnResend" onclick="handleResend()">Reenviar c&oacute;digo</button>
+              <span class="otp-actions-sep">&middot;</span>
+              <button type="button" class="otp-link" onclick="backToEmail()">Usar otro email</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <video autoplay muted loop playsinline>
+          <source src="/assets/video/landing-curino-inicio.mp4" type="video/mp4">
+        </video>
+      </div>
     </div>
   </div>
-</div>
+</section>
 
 <!-- FOOTER -->
 <div id="main-footer-mount"></div>
