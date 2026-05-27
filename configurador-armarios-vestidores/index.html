@@ -52,6 +52,24 @@ body{min-height:100vh;font-family:var(--font);color:var(--black);background:var(
   object-fit:contain;
   filter:drop-shadow(0 10px 28px rgba(0,0,0,.15));
 }
+.viewer-loader{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none; z-index:2;
+  background:#f2ede8;
+  transition:opacity .25s ease-out;
+}
+.viewer-loader[hidden]{display:none}
+.viewer-loader::before{
+  content:''; width:32px; height:32px;
+  border:2px solid rgba(0,0,0,.08);
+  border-top-color:rgba(0,0,0,.35);
+  border-radius:50%;
+  animation:viewerSpin .9s linear infinite;
+}
+@keyframes viewerSpin{to{transform:rotate(360deg)}}
+#compositeImg{opacity:0;transition:opacity .25s ease-out}
+#compositeImg[data-ready="1"]{opacity:1}
 .material-badge{
   position:absolute;bottom:-1.8rem;left:50%;transform:translateX(-50%);
   font-size:.52rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
@@ -522,7 +540,8 @@ footer{
       <div class="viewer-dims" id="viewerDims">240 × 150 × 60 cm</div>
     </div>
     <div class="wardrobe-img-wrap" id="wardrobeWrap">
-      <img id="compositeImg" src="" alt="Vista armario">
+      <div class="viewer-loader" id="viewerLoader" aria-hidden="true"></div>
+      <img id="compositeImg" src="" alt="">
 
     </div>
     <div class="viewer-door-toggle" id="viewerDoorToggle" style="display:none"><button class="p3-view-btn p3ma" id="p3BtnClosed" onclick="p3SetView('closed')">Cerradas</button><button class="p3-view-btn" id="p3BtnOpen" onclick="p3SetView('open')">Abiertas</button></div>
@@ -1053,6 +1072,19 @@ function goStep(n){window._curStep=n;
 function saveDesign(){const code=btoa(JSON.stringify({w:ST.w,h:ST.h,d:ST.d,mat:curMatId,mods:ST.modules}));alert('Diseño guardado ✓\nCódigo: CUR-'+code.slice(0,10).toUpperCase());}
 function requestAsesoria(){window.location.href='mailto:info@casacurino.com?subject=Asesor%C3%ADa%20armario';}
 function syncMatStep3(){buildMatSwatches();}
+
+// Loader del visor: oculta el spinner en cuanto el <img> recibe su primer dataURL válido
+(function(){
+  var img = document.getElementById('compositeImg');
+  if (!img) return;
+  img.addEventListener('load', function(){
+    if (img.src && img.src.startsWith('data:image')) {
+      img.setAttribute('data-ready','1');
+      var loader = document.getElementById('viewerLoader');
+      if (loader) loader.hidden = true;
+    }
+  });
+})();
 
 window.addEventListener('load',()=>{
   document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active',b.textContent.startsWith('L')));
