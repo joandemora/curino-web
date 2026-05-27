@@ -285,5 +285,37 @@
 
 <div id="main-footer-mount"></div>
 <script src="/assets/js/main-footer.js"></script>
+
+<!-- Precios de los 8 presets recalculados en runtime con valores de Supabase.
+     Si la red falla o Supabase no responde, los precioAprox hardcoded del HTML
+     siguen visibles (sin regresión). -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/armarios-presets-pricing.js"></script>
+<script>
+(function () {
+  'use strict';
+  var fmt = new Intl.NumberFormat('es-ES', {
+    style: 'currency', currency: 'EUR', maximumFractionDigits: 0
+  });
+  function applyPrices(prices) {
+    if (!prices || !window.ARMARIOS_PRESETS || !window.calcPresetPrice) return;
+    document.querySelectorAll('.preset-card[href*="?preset="]').forEach(function (card) {
+      var href = card.getAttribute('href') || '';
+      var m = href.match(/[?&]preset=([^&]+)/);
+      if (!m) return;
+      var presetId = decodeURIComponent(m[1]);
+      var preset = window.ARMARIOS_PRESETS[presetId];
+      if (!preset) return;
+      var price = window.calcPresetPrice(preset, prices);
+      if (price == null || !isFinite(price)) return;
+      var bEl = card.querySelector('.preset-card-price b');
+      if (bEl) bEl.textContent = fmt.format(price);
+    });
+  }
+  document.addEventListener('curino:armarios-prices-ready', function (ev) {
+    applyPrices(ev.detail && ev.detail.prices);
+  });
+})();
+</script>
 </body>
 </html>
