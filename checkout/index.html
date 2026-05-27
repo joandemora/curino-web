@@ -126,6 +126,10 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
   .ck-side{display:none}
   .ck-main{padding:2rem 16px 160px}
+  /* La .mob-bar fija inferior (~100px) tapa el footer al hacer scroll al fondo.
+     Mismo padding-bottom que .ck-main para que la franja legal del footer
+     (con los modales Envíos/Devoluciones/Montaje) quede visible y clicable. */
+  .footer-bottom{padding-bottom:160px}
   .ck-pay-desktop{display:none}
   .ck-row{grid-template-columns:1fr}
   .ck-row-3{grid-template-columns:1fr}
