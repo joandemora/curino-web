@@ -1066,6 +1066,17 @@ window.addEventListener('load',()=>{
   ST.modules=_initW.map(function(w){return {width:w,interiorId:'colgadorlargo'};});
   buildMatSwatches();updateColInfo();buildComposite();updatePrice();updateSummary();
 });
+// Lector ?preset=<id>: tras el init default, si la URL trae un preset
+// conocido, lo aplica sobreescribiendo el estado. Listener separado para
+// garantizar orden (corre TRAS el init default por estar registrado después).
+// La logica de ?edit=<idx> sigue intacta en otra IIFE más abajo.
+window.addEventListener('load', function(){
+  var params = new URLSearchParams(window.location.search);
+  var presetId = params.get('preset');
+  if (!presetId || typeof PRESETS === 'undefined' || !PRESETS[presetId]) return;
+  applyConfigPreset(PRESETS[presetId]);
+  window.history.replaceState({}, '', window.location.pathname);
+});
 window.addEventListener('resize',buildComposite);
 
 
@@ -1119,6 +1130,150 @@ var _P3_TEXTIL_IMGS = {};
 var _P3_RAL    = [["RAL 9010", "#F4F0E6"], ["RAL 9016", "#F1F0EA"], ["RAL 9003", "#ECECE7"], ["RAL 9001", "#E8E0D0"], ["RAL 1013", "#EDE0C4"], ["RAL 1015", "#E9D8B4"], ["RAL 1014", "#DFD1A0"], ["RAL 1019", "#C4B08C"], ["RAL 7047", "#D6D6D0"], ["RAL 7035", "#C4C4BC"], ["RAL 7044", "#B8B4A8"], ["RAL 7036", "#9C9490"], ["RAL 7039", "#817A72"], ["RAL 7022", "#6C6560"], ["RAL 7016", "#424B4C"], ["RAL 5014", "#6E8FA5"], ["RAL 5024", "#7BAAB9"], ["RAL 5015", "#2A80B9"], ["RAL 6021", "#8DAE9A"], ["RAL 6019", "#B5CEAB"], ["RAL 6011", "#6E8C68"], ["RAL 3012", "#C48070"], ["RAL 3014", "#CF7C72"], ["RAL 3015", "#DEA8A0"], ["RAL 8017", "#58342A"], ["RAL 8014", "#6E4C34"], ["RAL 8019", "#3D302A"], ["RAL 1007", "#E3A020"], ["RAL 2011", "#E06428"], ["RAL 6002", "#3B6230"]];
 var _P3_LAMINADO = [["Blanco", "#F1F0EA"], ["Calcio", "#D6D6D0"], ["Gris", "#C4C4BC"], ["Marfil", "#E8E0D0"], ["Tortora", "#4C4C47"], ["Antracita", "#3B4044"], ["Sahara", "#9E8E70"]];
 var _P3 = {gama:'laminadas', mat:'mad_wengue', marcoTipo:'madera', marcoRal:0, tx:1, ral:0, lamRal:0, mods:[], view:'closed', trav:true, visited:false};
+
+// ── PRESETS (modelos preconfigurados) ──────────────────────────────────────
+// Modelos listos para precargar el configurador desde /armarios-vestidores/
+// vía ?preset=<id>. Cada preset incluye dimensiones, material casco,
+// interiores por módulo, y config completa de puertas (gama + índices).
+// precioAprox se calcula offline con la fórmula real de calcPrice() y
+// se muestra en las tarjetas del catálogo. Sirve también como sanity
+// check al cargar — el precio renderizado debe coincidir.
+var PRESETS = {
+  'esencial-blanco': {
+    label: 'Esencial',
+    ancho: 150, alto: 240, fondo: 60,
+    material: 'mad_wengue',
+    interiores: ['colgadorlargo','colgadorlargo'],
+    puertas: { gama:'laminadas', lamRal: 0 },  // Blanco
+    precioAprox: 2064
+  },
+  'domestico-marfil': {
+    label: 'Doméstico',
+    ancho: 180, alto: 240, fondo: 60,
+    material: 'mad_roble',
+    interiores: ['cajoneraaccesorios','doblecolgador'],
+    puertas: { gama:'laminadas', lamRal: 3 },  // Marfil
+    precioAprox: 2357
+  },
+  'studio-calcio': {
+    label: 'Studio',
+    ancho: 200, alto: 240, fondo: 60,
+    material: 'lam_nogal',
+    interiores: ['colgadorlargo','estantes'],
+    puertas: { gama:'laminadas', lamRal: 1 },  // Calcio
+    precioAprox: 2212
+  },
+  'suite-lacada-9016': {
+    label: 'Suite',
+    ancho: 240, alto: 260, fondo: 60,
+    material: 'mad_cerezo',
+    interiores: ['cajoneraaccesorios','doblecolgador'],
+    puertas: { gama:'lisas', ral: 1 },  // RAL 9016
+    precioAprox: 3669
+  },
+  'atelier-snow': {
+    label: 'Atelier',
+    ancho: 280, alto: 280, fondo: 60,
+    material: 'lam_blanco',
+    interiores: ['cajoneraestantes','cajoneraestantes','doblecolgador'],
+    puertas: { gama:'molduras', marcoTipo:'madera', mat:'mad_cerezo', tx: 0, trav: true },  // Snow textil + marco Cerezo
+    precioAprox: 5812
+  },
+  'boudoir-antracita': {
+    label: 'Boudoir',
+    ancho: 320, alto: 260, fondo: 60,
+    material: 'mad_wengue',
+    interiores: ['zapatero','cajoneraaccesorios','doblecolgador'],
+    puertas: { gama:'lisas', ral: 14 },  // RAL 7016 Antracita
+    precioAprox: 4618
+  },
+  'galeria-gris': {
+    label: 'Galería',
+    ancho: 380, alto: 280, fondo: 60,
+    material: 'lam_aluminio',
+    interiores: ['doblecolgador','estantes','doblecolgador'],
+    puertas: { gama:'laminadas', lamRal: 2 },  // Gris
+    precioAprox: 3854
+  },
+  'vestidor-couture-tobacco': {
+    label: 'Vestidor Couture',
+    ancho: 450, alto: 280, fondo: 65,
+    material: 'mad_cerezo',
+    interiores: ['cajoneraaccesorios','doblecolgador','doblecolgador','cajoneraaccesorios'],
+    puertas: { gama:'molduras', marcoTipo:'madera', mat:'mad_cerezo', tx: 4, trav: true },  // Tobacco textil + marco Cerezo
+    precioAprox: 8730
+  }
+};
+
+// Aplica un preset al estado del configurador y abre directamente el paso 3.
+// Se llama desde la URL ?preset=<id> tras el window 'load' que ya inicializó
+// el default. Idempotente: si se llama dos veces, sobreescribe el estado
+// limpiamente.
+//
+// Pasos (orden crítico):
+//   1. ST.w/h/d + sliders + texto visible
+//   2. curMatId
+//   3. initModules() → genera módulos + RESETEA _P3.mods (cuidado)
+//   4. Sobreescribir ST.modules[i].interiorId con preset.interiores[i]
+//   5. _P3.* (incluido visited=true y mods inicializados POST initModules)
+//   6. buildMatSwatches() refresca grid de materiales (paso 1)
+//   7. buildComposite() + updatePrice() + updateSummary() refrescan visor
+//   8. goStep(3) entra en paso 3 — p3Init() respetará _P3.mods.length===N
+function applyConfigPreset(p){
+  if (!p) return;
+
+  // 1. Dimensiones
+  ST.w = p.ancho; ST.h = p.alto; ST.d = p.fondo;
+  var slW=document.getElementById('sliderW'); if(slW) slW.value=p.ancho;
+  var slH=document.getElementById('sliderH'); if(slH) slH.value=p.alto;
+  var slD=document.getElementById('sliderD'); if(slD) slD.value=p.fondo;
+  var vW=document.getElementById('valW'); if(vW) vW.textContent=p.ancho+' cm';
+  var vH=document.getElementById('valH'); if(vH) vH.textContent=p.alto+' cm';
+  var vD=document.getElementById('valD'); if(vD) vD.textContent=p.fondo+' cm';
+  document.querySelectorAll('.depth-pill').forEach(function(b){
+    b.classList.toggle('active', b.textContent.trim()===p.fondo+' cm');
+  });
+
+  // 2. Material casco
+  curMatId = p.material;
+
+  // 3. Módulos (initModules resetea _P3.mods)
+  manualMods = false;
+  initModules();
+
+  // 4. Sobrescribir interiores por módulo según preset
+  if (Array.isArray(p.interiores)) {
+    ST.modules.forEach(function(m, i){
+      if (p.interiores[i]) m.interiorId = p.interiores[i];
+    });
+  }
+
+  // 5. Estado puertas — sobreescribe SIEMPRE todos los campos relevantes
+  var pp = p.puertas || {};
+  _P3.gama       = pp.gama || 'laminadas';
+  _P3.marcoTipo  = pp.marcoTipo || 'madera';
+  _P3.mat        = pp.mat || 'mad_wengue';
+  _P3.marcoRal   = (typeof pp.marcoRal === 'number') ? pp.marcoRal : 0;
+  _P3.tx         = (typeof pp.tx === 'number')       ? pp.tx       : 0;
+  _P3.ral        = (typeof pp.ral === 'number')      ? pp.ral      : 0;
+  _P3.lamRal     = (typeof pp.lamRal === 'number')   ? pp.lamRal   : 0;
+  _P3.trav       = (pp.trav !== false);
+  _P3.mods       = ST.modules.map(function(){ return {con:true, ap:'der'}; });
+  _P3.visited    = true;  // ← las puertas suman precio desde el inicio
+
+  // 6+7. Refresh visual del paso 1-2
+  buildMatSwatches();
+  buildComposite();
+  updatePrice();
+  updateSummary();
+
+  // 8. Entrar en paso 3 — goStep() llama p3Init() que sincroniza UI con _P3
+  if (typeof goStep === 'function') goStep(3);
+
+  // Asegurar UI del travesaño (p3Init no la fuerza, sigue el estado actual
+  // del DOM que tiene p3ma en el botón "Con travesaño" por default).
+  if (typeof p3ToggleTrav === 'function') p3ToggleTrav(_P3.trav);
+}
 
 function p3Hojas(w){
   // ≤65cm: 1 door, ≥80cm: 2 doors, 66-79: fallback 1 door

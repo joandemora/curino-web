@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Armario Boudoir — 320×260 cm. Wengue · Lacadas RAL 7016">
+  <rect width="400" height="300" fill="#fafaf7"/>
+  <text x="200" y="34" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-weight="400" font-size="22" fill="#1a1a1a" letter-spacing="0.02em">Boudoir</text>
+  <ellipse cx="200" cy="247" rx="120.9" ry="2.5" fill="#000" fill-opacity="0.07"/>
+  <rect x="83.1" y="50" width="233.8" height="190" fill="#424B4C" stroke="#1a1a1a" stroke-width="1.1"/>
+  <line x1="161.0" y1="50" x2="161.0" y2="240" stroke="#ffffff" stroke-width="0.7" stroke-opacity="0.35"/>
+  <line x1="239.0" y1="50" x2="239.0" y2="240" stroke="#ffffff" stroke-width="0.7" stroke-opacity="0.35"/>
+  <text x="200" y="275" text-anchor="middle" font-family="'Open Sans', system-ui, sans-serif" font-weight="500" font-size="9.5" fill="#888" letter-spacing="0.18em">320 × 260 CM</text>
+</svg>
