@@ -191,6 +191,7 @@
    Refuerza site-shell.css con flex layout para alinear el SVG y
    posicionar el badge absoluto encima. */
 .cart-icon {
+  position: relative;
   display: flex;
   align-items: center;
 }
