@@ -188,10 +188,35 @@
     document.body.insertAdjacentHTML('beforeend', PANEL_HTML);
   }
 
+  // Espera a que cart.css esté aplicado antes de ejecutar callback.
+  // main-nav.js dispara la descarga de cart.css en paralelo a cart.js sin
+  // esperar; si cart.js termina antes que el CSS, injectPanel inyectaría
+  // markup sin estilo (mismo FOUC que tenía main-footer.js).
+  // onerror también dispara el callback para no dejar el cart invisible
+  // si el CSS falla.
+  function ensureCssLoaded(callback) {
+    var existing = document.querySelector('link[href="/assets/css/cart.css"]');
+    if (existing) {
+      if (existing.sheet) { callback(); return; }
+      existing.addEventListener('load', callback);
+      existing.addEventListener('error', callback);
+      return;
+    }
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/assets/css/cart.css';
+    link.onload = callback;
+    link.onerror = callback;
+    document.head.appendChild(link);
+  }
+
   function init() {
-    injectPanel();
-    refresh();
-    // Sincronización entre pestañas
+    ensureCssLoaded(function () {
+      injectPanel();
+      refresh();
+    });
+    // Sincronización entre pestañas (independiente del CSS — se puede
+    // registrar siempre, no afecta a la presentación).
     window.addEventListener('storage', function (e) {
       if (e.key === STORAGE_KEY) {
         _items = JSON.parse(e.newValue || '[]');
