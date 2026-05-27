@@ -126,10 +126,6 @@ p{font-size:14px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
   .ck-wrap{grid-template-columns:1fr;min-height:auto}
   .ck-side{display:none}
   .ck-main{padding:2rem 16px 160px}
-  /* La .mob-bar fija inferior (~100px) tapa el footer al hacer scroll al fondo.
-     Mismo padding-bottom que .ck-main para que la franja legal del footer
-     (con los modales Envíos/Devoluciones/Montaje) quede visible y clicable. */
-  .footer-bottom{padding-bottom:160px}
   .ck-pay-desktop{display:none}
   .ck-row{grid-template-columns:1fr}
   .ck-row-3{grid-template-columns:1fr}
@@ -738,11 +734,16 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
 }
 
 // Dock mob-bar above footer
+// El <footer> lo inyecta main-footer.js asincronamente (tras DOMContentLoaded
+// y carga del CSS). Por eso NO se busca al iniciar el IIFE — se hace lazy
+// dentro de updateBarPosition() y reaccionando al evento custom
+// "curino:main-footer-mounted" que dispara main-footer.js al terminar.
 (function(){
   var bar=document.getElementById('mobBar');
+  if(!bar) return;
   var ft=document.querySelector('footer');
-  if(!bar||!ft) return;
   function updateBarPosition(){
+    if(!ft){ ft=document.querySelector('footer'); if(!ft) return; }
     var footerTop=ft.getBoundingClientRect().top;
     var barH=bar.offsetHeight;
     if(footerTop<=window.innerHeight){
@@ -758,6 +759,7 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
   window.addEventListener('scroll',updateBarPosition,{passive:true});
   window.addEventListener('resize',updateBarPosition);
   window.addEventListener('load',updateBarPosition);
+  document.addEventListener('curino:main-footer-mounted',updateBarPosition);
 })();
 </script>
 
