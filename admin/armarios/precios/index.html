@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precios del configurador — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+body{font-family:var(--font);color:var(--black);background:var(--bg);min-height:100vh;font-size:14px;line-height:1.6}
+body.hidden-until-auth{visibility:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ─── Page layout ──────────────────────────────────────────── */
+.v-section{padding:2rem 1.5rem 8rem;max-width:900px;margin:0 auto}
+.v-title{font-size:26px;font-weight:300;margin-bottom:.4rem;letter-spacing:-.01em}
+.v-subtitle{color:var(--ink-soft);font-size:14px;margin-bottom:1.5rem}
+.v-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+.v-error{padding:2rem;background:#fef2f2;color:#a82626;border:1px solid #f5c2c2;border-radius:8px;font-size:14px;line-height:1.55;margin-bottom:1.5rem}
+.v-error button{margin-top:.75rem;padding:.5rem 1rem;background:var(--ink);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:inherit;font-size:13px}
+
+/* ─── Price blocks (cards) ─────────────────────────────────── */
+.price-block{margin-bottom:1.5rem}
+.price-block h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);margin-bottom:1rem;font-weight:600}
+.price-block .block-desc{font-size:12px;color:var(--mid);margin-top:-.7rem;margin-bottom:1rem}
+.price-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+.price-row:last-child{border-bottom:none}
+.price-row label{font-size:14px;color:var(--ink);flex:1;min-width:0}
+.price-input-wrap{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.price-input-wrap input{width:110px;text-align:right;padding:.45rem .65rem;font-size:14px;font-family:var(--font);font-weight:600;color:var(--ink);border:1px solid var(--border);border-radius:5px;background:#fff;transition:border-color .15s,background .15s}
+.price-input-wrap input:focus{outline:none;border-color:var(--ink)}
+.price-input-wrap input.changed{background:#fffbe6;border-left:3px solid #f0c000;padding-left:.45rem}
+.price-input-wrap input.invalid{border-color:#c0392b;background:#fef2f2}
+.price-input-wrap .unit{font-size:12px;color:var(--mid);min-width:50px}
+
+/* ─── Live example ─────────────────────────────────────────── */
+.price-example{background:#fdf6ef;border:1px solid #ebd9c2}
+.price-example h2{color:var(--coral)}
+.example-desc{font-size:13px;color:var(--ink-soft);line-height:1.55;margin-bottom:.75rem}
+.example-total{display:flex;align-items:baseline;gap:1rem;padding-top:.4rem;border-top:1px solid #ebd9c2}
+.example-amount{font-size:32px;font-weight:300;letter-spacing:-.02em;color:var(--ink)}
+.example-note{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em}
+
+/* ─── Actions bar (sticky bottom) ─────────────────────────── */
+.actions-bar{position:fixed;bottom:0;left:240px;right:0;background:#fff;border-top:1px solid var(--border);padding:.85rem 1.5rem;display:flex;justify-content:flex-end;gap:.6rem;z-index:50;box-shadow:0 -4px 16px rgba(0,0,0,.05)}
+@media(max-width:1024px){.actions-bar{left:0}}
+.actions-bar button{padding:.55rem 1.15rem;font-size:13px;font-family:inherit;font-weight:500;border:none;border-radius:5px;cursor:pointer;transition:opacity .15s,background .15s}
+.actions-bar button:disabled{opacity:.5;cursor:not-allowed}
+.actions-bar .btn-primary{background:var(--ink);color:#fff}
+.actions-bar .btn-primary:hover:not(:disabled){background:var(--coral)}
+.actions-bar .btn-outline{background:#fff;color:var(--ink);border:1px solid var(--border)}
+.actions-bar .btn-outline:hover:not(:disabled){border-color:var(--ink)}
+
+/* ─── Confirm modal ────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.modal-overlay[hidden]{display:none}
+.modal-card{background:#fff;border-radius:10px;padding:1.75rem 2rem 1.5rem;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+.modal-card h3{font-size:18px;font-weight:600;margin-bottom:.85rem;color:var(--ink)}
+.diff-table{width:100%;border-collapse:collapse;margin-bottom:1rem;overflow-y:auto;flex:1}
+.diff-table th,.diff-table td{padding:.45rem .6rem;text-align:left;font-size:13px;border-bottom:1px solid var(--border)}
+.diff-table th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);font-weight:600;padding-bottom:.5rem}
+.diff-table td.old{color:var(--mid);text-decoration:line-through}
+.diff-table td.new{font-weight:600;color:var(--coral)}
+.diff-table td.arrow{color:var(--mid);font-size:12px;text-align:center;width:24px}
+.modal-warning{font-size:12px;color:var(--ink-soft);background:#fef9e7;padding:.65rem .85rem;border-radius:5px;border-left:3px solid #f0c000;margin-bottom:1rem;line-height:1.5}
+.modal-actions{display:flex;justify-content:flex-end;gap:.6rem}
+.modal-actions button{padding:.55rem 1.15rem;font-size:13px;font-family:inherit;font-weight:500;border:none;border-radius:5px;cursor:pointer;transition:opacity .15s,background .15s}
+.modal-actions .btn-primary{background:var(--ink);color:#fff}
+.modal-actions .btn-primary:hover{background:var(--coral)}
+.modal-actions .btn-outline{background:#fff;color:var(--ink);border:1px solid var(--border)}
+.modal-actions .btn-outline:hover{border-color:var(--ink)}
+
+/* ─── Mobile actions bar ───────────────────────────────────── */
+@media(max-width:640px){
+  .actions-bar{flex-wrap:wrap;gap:.4rem;padding:.7rem 1rem}
+  .actions-bar button{flex:1;min-width:0;padding:.55rem .6rem;font-size:12px}
+  .v-section{padding-bottom:10rem}
+}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="v-section">
+    <h1 class="v-title">Precios del configurador</h1>
+    <p class="v-subtitle">
+      Edita los precios que el configurador de armarios usa para calcular el total. Los cambios se aplican inmediatamente a futuras compras; los pedidos existentes mantienen su precio original.
+    </p>
+
+    <div class="v-loading" id="loadingState">Cargando precios&hellip;</div>
+    <div class="v-error" id="errorState" style="display:none"></div>
+
+    <div id="content" style="display:none">
+      <!-- 4 BLOQUES (rellenados dinámicamente) -->
+      <div class="ash-card price-block" data-kind="base">
+        <h2>Base</h2>
+        <p class="block-desc">Componente fijo + variable por m² de superficie frontal.</p>
+        <div class="rows" id="rowsBase"></div>
+      </div>
+
+      <div class="ash-card price-block" data-kind="door">
+        <h2>Puertas</h2>
+        <p class="block-desc">Precio por m² de superficie cubierta con puertas.</p>
+        <div class="rows" id="rowsDoor"></div>
+      </div>
+
+      <div class="ash-card price-block" data-kind="interior">
+        <h2>Interiores</h2>
+        <p class="block-desc">Precio fijo por módulo (no escala con el ancho del módulo).</p>
+        <div class="rows" id="rowsInterior"></div>
+      </div>
+
+      <div class="ash-card price-block" data-kind="material">
+        <h2>Materiales del casco</h2>
+        <p class="block-desc">Precio fijo añadido al total según el acabado de la estructura.</p>
+        <div class="rows" id="rowsMaterial"></div>
+      </div>
+
+      <!-- EJEMPLO EN VIVO -->
+      <div class="ash-card price-block price-example">
+        <h2>Ejemplo de precio en vivo</h2>
+        <p class="example-desc">
+          Armario 200&times;240 cm, wengu&eacute;, 2 m&oacute;dulos de cajonera + perchero, puertas laminadas (100% del frente).<br>
+          Se recalcula con los valores actuales del formulario, antes de guardar.
+        </p>
+        <div class="example-total">
+          <span class="example-amount" id="examplePrice">&mdash;</span>
+          <span class="example-note">se actualiza al editar</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CONFIRMACI&Oacute;N -->
+    <div class="modal-overlay" id="confirmModal" hidden>
+      <div class="modal-card">
+        <h3>Confirmar cambios</h3>
+        <table class="diff-table">
+          <thead>
+            <tr><th>Concepto</th><th>Antes</th><th></th><th>Después</th></tr>
+          </thead>
+          <tbody id="diffTableBody"></tbody>
+        </table>
+        <div class="modal-warning">
+          Los cambios se aplican inmediatamente a futuras compras. Los pedidos existentes conservan su precio original.
+        </div>
+        <div class="modal-actions">
+          <button class="btn-outline" data-modal-close>Cancelar</button>
+          <button class="btn-primary" id="btnConfirmSave">Confirmar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ACTIONS BAR (sticky bottom, fuera de .ash-content para que cubra ancho completo) -->
+<div class="actions-bar" id="actionsBar" style="display:none">
+  <button class="btn-outline" id="btnExport">Exportar como JSON</button>
+  <button class="btn-outline" id="btnDiscard" disabled>Descartar cambios</button>
+  <button class="btn-primary" id="btnSave" disabled>Guardar todos los cambios</button>
+</div>
+
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  var supabase = null;
+
+  initAdminShell({ activeSection: 'armarios-precios', title: 'Precios del configurador' })
+    .then(function(ctx){
+      supabase = ctx.supabase;
+      loadPrices();
+      wireActions();
+      wireBeforeUnload();
+    })
+    .catch(function(e){
+      // initAdminShell ya redirige si no es admin; aquí solo logueamos.
+      console.error('Admin shell init failed:', e);
+    });
+
+  // ───────────────────────────────────────────────────────────
+  // Carga inicial de los 20 precios
+  // ───────────────────────────────────────────────────────────
+  async function loadPrices() {
+    var loading = document.getElementById('loadingState');
+    var errorEl = document.getElementById('errorState');
+    var content = document.getElementById('content');
+    var actions = document.getElementById('actionsBar');
+    loading.style.display = 'block';
+    errorEl.style.display = 'none';
+    content.style.display = 'none';
+    actions.style.display = 'none';
+
+    try {
+      var res = await supabase
+        .from('pricing_config')
+        .select('key, value, kind, label, unit, sort_order')
+        .order('sort_order');
+
+      if (res.error || !res.data || res.data.length === 0) {
+        throw new Error(res.error ? res.error.message : 'No se encontraron filas en pricing_config');
+      }
+
+      // Agrupar por kind
+      var groups = { base: [], door: [], interior: [], material: [] };
+      res.data.forEach(function(row){
+        if (groups[row.kind]) groups[row.kind].push(row);
+      });
+
+      renderRows('rowsBase', groups.base);
+      renderRows('rowsDoor', groups.door);
+      renderRows('rowsInterior', groups.interior);
+      renderRows('rowsMaterial', groups.material);
+
+      recalcExample();
+      updateActionsBar();
+
+      loading.style.display = 'none';
+      content.style.display = 'block';
+      actions.style.display = 'flex';
+    } catch (e) {
+      console.error('Failed to load prices:', e);
+      loading.style.display = 'none';
+      errorEl.innerHTML = '<strong>No se pudieron cargar los precios.</strong><br>'
+        + 'Detalle: ' + (e && e.message ? escHtml(e.message) : 'error desconocido')
+        + '<br><button onclick="location.reload()">Reintentar</button>';
+      errorEl.style.display = 'block';
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Renderizar filas de un bloque
+  // ───────────────────────────────────────────────────────────
+  function renderRows(containerId, rows) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = '';
+    rows.forEach(function(row){
+      var div = document.createElement('div');
+      div.className = 'price-row';
+      div.innerHTML =
+        '<label for="input-' + row.key + '">' + escHtml(row.label) + '</label>' +
+        '<div class="price-input-wrap">' +
+          '<input type="number" min="0" step="1"' +
+            ' id="input-' + row.key + '"' +
+            ' data-key="' + escAttr(row.key) + '"' +
+            ' data-original="' + Number(row.value) + '"' +
+            ' data-label="' + escAttr(row.label) + '"' +
+            ' data-unit="' + escAttr(row.unit || '') + '"' +
+            ' value="' + Number(row.value) + '">' +
+          '<span class="unit">' + escHtml(row.unit || '') + '</span>' +
+        '</div>';
+      container.appendChild(div);
+    });
+    // Wire de los inputs recién creados
+    container.querySelectorAll('input').forEach(function(input){
+      input.addEventListener('input', function(){
+        markChanged(input);
+        recalcExample();
+        updateActionsBar();
+      });
+    });
+  }
+
+  function markChanged(input) {
+    var original = input.dataset.original;
+    var newVal = input.value;
+    var n = Number(newVal);
+    var isValid = newVal !== '' && Number.isFinite(n) && n >= 0;
+    input.classList.toggle('changed', String(newVal) !== String(original));
+    input.classList.toggle('invalid', !isValid);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Ejemplo en vivo · MISMA fórmula que calcPrice del configurador
+  //   area = (W/100) * (H/100); base = base_fixed + area * base_per_m2
+  //   matP = material[mat_id]
+  //   intP = N * interior[interior_id]   (suma por módulo)
+  //   doorP = (doorWcm/100) * (H/100) * door[gama]
+  //   total = round(base + matP + intP + doorP)
+  // ───────────────────────────────────────────────────────────
+  function recalcExample() {
+    function v(key) {
+      var el = document.querySelector('input[data-key="' + key + '"]');
+      return el ? Number(el.value) || 0 : 0;
+    }
+    var W = 200, H = 240;
+    var matKey = 'mad_wengue';
+    var interiorKey = 'cajoneraaccesorios';
+    var moduleCount = 2;
+    var doorGama = 'laminadas';
+    var doorCoverageCm = W;  // 100% del frente con puertas
+
+    var area = (W/100) * (H/100);
+    var base = v('base_fixed') + area * v('base_per_m2');
+    var matP = v('material_' + matKey);
+    var intP = moduleCount * v('interior_' + interiorKey);
+    var doorP = (doorCoverageCm/100) * (H/100) * v('door_' + doorGama);
+    var total = Math.round(base + matP + intP + doorP);
+
+    var fmt = new Intl.NumberFormat('es-ES', {
+      style: 'currency', currency: 'EUR', maximumFractionDigits: 0
+    });
+    document.getElementById('examplePrice').textContent = fmt.format(total);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Actions bar — contador + estado de botones
+  // ───────────────────────────────────────────────────────────
+  function updateActionsBar() {
+    var inputs = document.querySelectorAll('.price-input-wrap input');
+    var changedCount = 0;
+    var hasInvalid = false;
+    inputs.forEach(function(i){
+      if (i.classList.contains('changed')) changedCount++;
+      if (i.classList.contains('invalid')) hasInvalid = true;
+    });
+    var btnSave = document.getElementById('btnSave');
+    var btnDiscard = document.getElementById('btnDiscard');
+    btnSave.disabled = changedCount === 0 || hasInvalid;
+    btnSave.textContent = hasInvalid
+      ? 'Corrige errores'
+      : (changedCount === 0
+          ? 'Guardar todos los cambios'
+          : 'Guardar ' + changedCount + ' cambio' + (changedCount > 1 ? 's' : ''));
+    btnDiscard.disabled = changedCount === 0;
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Wire de botones
+  // ───────────────────────────────────────────────────────────
+  function wireActions() {
+    document.getElementById('btnSave').addEventListener('click', onSaveClick);
+    document.getElementById('btnDiscard').addEventListener('click', onDiscard);
+    document.getElementById('btnExport').addEventListener('click', onExport);
+    document.getElementById('btnConfirmSave').addEventListener('click', onConfirmSave);
+
+    // Cerrar modal
+    document.querySelectorAll('[data-modal-close]').forEach(function(el){
+      el.addEventListener('click', closeModal);
+    });
+    document.getElementById('confirmModal').addEventListener('click', function(e){
+      if (e.target.id === 'confirmModal') closeModal();
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') closeModal();
+    });
+  }
+
+  function onSaveClick() {
+    var changes = collectChanges();
+    if (changes.length === 0) return;
+    renderDiffTable(changes);
+    document.getElementById('confirmModal').hidden = false;
+  }
+
+  function collectChanges() {
+    var inputs = document.querySelectorAll('.price-input-wrap input');
+    var changes = [];
+    inputs.forEach(function(input){
+      if (!input.classList.contains('changed')) return;
+      if (input.classList.contains('invalid')) return;
+      changes.push({
+        key: input.dataset.key,
+        label: input.dataset.label,
+        unit: input.dataset.unit || '€',
+        oldVal: Number(input.dataset.original),
+        newVal: Number(input.value)
+      });
+    });
+    return changes;
+  }
+
+  function renderDiffTable(changes) {
+    var body = document.getElementById('diffTableBody');
+    body.innerHTML = '';
+    changes.forEach(function(c){
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escHtml(c.label) + '</td>' +
+        '<td class="old">' + c.oldVal + ' ' + escHtml(c.unit) + '</td>' +
+        '<td class="arrow">→</td>' +
+        '<td class="new">' + c.newVal + ' ' + escHtml(c.unit) + '</td>';
+      body.appendChild(tr);
+    });
+  }
+
+  function closeModal() {
+    document.getElementById('confirmModal').hidden = true;
+  }
+
+  async function onConfirmSave() {
+    var changes = collectChanges();
+    closeModal();
+    if (changes.length === 0) return;
+    var btnSave = document.getElementById('btnSave');
+    btnSave.disabled = true;
+    btnSave.textContent = 'Guardando…';
+
+    var failed = [];
+    for (var i = 0; i < changes.length; i++) {
+      var c = changes[i];
+      var res = await supabase
+        .from('pricing_config')
+        .update({ value: c.newVal })
+        .eq('key', c.key);
+      if (res.error) {
+        failed.push({ key: c.key, label: c.label, error: res.error.message });
+      } else {
+        // Actualizar data-original del input para que deje de estar "changed"
+        var input = document.querySelector('input[data-key="' + c.key + '"]');
+        if (input) {
+          input.dataset.original = String(c.newVal);
+          input.classList.remove('changed');
+        }
+      }
+    }
+
+    if (failed.length === 0) {
+      showToast(changes.length + ' cambio' + (changes.length > 1 ? 's' : '') + ' guardado' + (changes.length > 1 ? 's' : '') + '. Próximas cargas del configurador usarán los nuevos precios.', 'success');
+    } else {
+      var ok = changes.length - failed.length;
+      var firstErr = failed[0].error || '';
+      var isRls = firstErr.toLowerCase().indexOf('row-level') >= 0
+                || firstErr.toLowerCase().indexOf('policy') >= 0
+                || firstErr.toLowerCase().indexOf('permission') >= 0;
+      var msg;
+      if (isRls && ok === 0) {
+        msg = 'Permiso denegado. Recarga la página y verifica que tu sesión admin sigue activa.';
+      } else {
+        msg = ok + ' guardado(s). ' + failed.length + ' falló(aron): '
+            + failed.map(function(f){ return f.label; }).join(', ');
+      }
+      showToast(msg, 'error');
+    }
+
+    updateActionsBar();
+  }
+
+  function onDiscard() {
+    if (!confirm('¿Descartar los cambios sin guardar?')) return;
+    document.querySelectorAll('.price-input-wrap input.changed').forEach(function(input){
+      input.value = input.dataset.original;
+      input.classList.remove('changed', 'invalid');
+    });
+    recalcExample();
+    updateActionsBar();
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Exportar JSON — snapshot DESDE DB (no del form)
+  // Estructura compatible con window.PRICES del configurador
+  // ───────────────────────────────────────────────────────────
+  async function onExport() {
+    try {
+      var res = await supabase
+        .from('pricing_config')
+        .select('key, value');
+      if (res.error || !res.data) throw new Error(res.error ? res.error.message : 'sin datos');
+
+      var snap = {
+        base_fixed: 0, base_per_m2: 0,
+        door: {}, interior: {}, material: {}
+      };
+      res.data.forEach(function(row){
+        var v = Number(row.value);
+        if (!isFinite(v)) return;
+        if (row.key === 'base_fixed')                snap.base_fixed = v;
+        else if (row.key === 'base_per_m2')          snap.base_per_m2 = v;
+        else if (row.key.indexOf('door_')     === 0) snap.door[row.key.slice(5)]     = v;
+        else if (row.key.indexOf('interior_') === 0) snap.interior[row.key.slice(9)] = v;
+        else if (row.key.indexOf('material_') === 0) snap.material[row.key.slice(9)] = v;
+      });
+
+      var date = new Date().toISOString().slice(0, 10);
+      var blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'pricing-snapshot-' + date + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      showToast('Snapshot descargado. Pégalo en window.PRICES del configurador (FALLBACK ONLY).', 'success');
+    } catch (e) {
+      console.error('Export failed:', e);
+      showToast('No se pudo exportar: ' + (e && e.message ? e.message : 'error'), 'error');
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Aviso al cerrar pestaña con cambios sin guardar
+  // ───────────────────────────────────────────────────────────
+  function wireBeforeUnload() {
+    window.addEventListener('beforeunload', function(e){
+      var hasChanges = document.querySelectorAll('.price-input-wrap input.changed').length > 0;
+      if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Toast (reusa .ash-toast del shell)
+  // ───────────────────────────────────────────────────────────
+  function showToast(msg, kind) {
+    var existing = document.getElementById('toast');
+    if (existing) existing.remove();
+    var t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'ash-toast ' + (kind || '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.classList.add('visible'); }, 10);
+    setTimeout(function(){
+      t.classList.remove('visible');
+      setTimeout(function(){ if (t.parentNode) t.remove(); }, 300);
+    }, kind === 'error' ? 6000 : 4000);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // Helpers de escape (defensa básica frente a XSS desde DB labels)
+  // ───────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function escAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+})();
+</script>
+</body>
+</html>

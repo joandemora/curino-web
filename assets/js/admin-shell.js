@@ -30,7 +30,13 @@
 
   var MENU = [
     { id: 'dashboard', label: 'Dashboard', href: '/admin/' },
-    { id: 'armarios', label: 'Armarios', href: '/admin/armarios/' },
+    {
+      group: 'Armarios',
+      items: [
+        { id: 'armarios',         label: 'Pedidos', href: '/admin/armarios/' },
+        { id: 'armarios-precios', label: 'Precios', href: '/admin/armarios/precios/' }
+      ]
+    },
     {
       group: 'Marketplace',
       items: [
