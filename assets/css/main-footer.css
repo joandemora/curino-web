@@ -130,6 +130,90 @@ footer {
   font-weight: 400;
 }
 
+/* ────────────────────────────────────────────────────────────
+   Modales del footer en /checkout/* (Envíos, Devoluciones, Montaje)
+   Visibles solo si main-footer.js inyecta el HTML (isCheckout()).
+   En el resto del sitio NO hay elementos .checkout-modal, así que
+   estas reglas no aplican.
+   ──────────────────────────────────────────────────────────── */
+
+.checkout-modal[hidden] {
+  display: none;
+}
+.checkout-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.checkout-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  cursor: pointer;
+}
+.checkout-modal-card {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  color: #0a0a0a;
+  max-width: 500px;
+  width: 100%;
+  padding: 2rem 2rem 1.75rem;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .25);
+  font-family: 'Open Sans', system-ui, sans-serif;
+}
+.checkout-modal-close {
+  position: absolute;
+  top: .6rem;
+  right: .85rem;
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #888;
+  cursor: pointer;
+  padding: 0 .25rem;
+  font-family: inherit;
+  transition: color .15s;
+}
+.checkout-modal-close:hover {
+  color: #000;
+}
+.checkout-modal-title {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin: 0 0 1rem;
+  color: #0a0a0a;
+}
+.checkout-modal-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #333;
+  margin: 0;
+}
+@media (max-width: 560px) {
+  .checkout-modal {
+    padding: 1rem;
+  }
+  .checkout-modal-card {
+    padding: 1.5rem 1.5rem 1.25rem;
+  }
+  .checkout-modal-title {
+    font-size: 14px;
+  }
+  .checkout-modal-text {
+    font-size: 13px;
+  }
+}
+
 /* Mobile: footer en 1 columna con acordeón */
 @media (max-width: 1200px) {
   footer {
