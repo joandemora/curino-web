@@ -107,13 +107,24 @@
       + '</div>';
   }
 
-  function ensureCssLoaded() {
-    if (!document.querySelector('link[href="/assets/css/main-footer.css"]')) {
-      var link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/assets/css/main-footer.css';
-      document.head.appendChild(link);
+  // Carga el CSS y espera a que esté aplicado antes de ejecutar callback.
+  // Evita FOUC (los enlaces del footer aparecían azul-default unos ms hasta
+  // que el CSS dinámico llegaba). Si el CSS falla en cargar, onerror también
+  // dispara el callback para no dejar el footer invisible.
+  function ensureCssLoaded(callback) {
+    var existing = document.querySelector('link[href="/assets/css/main-footer.css"]');
+    if (existing) {
+      if (existing.sheet) { callback(); return; }
+      existing.addEventListener('load', callback);
+      existing.addEventListener('error', callback);
+      return;
     }
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/assets/css/main-footer.css';
+    link.onload = callback;
+    link.onerror = callback;
+    document.head.appendChild(link);
   }
 
   function mount() {
@@ -123,13 +134,14 @@
       // y cualquier página sin el div quedan a salvo).
       return;
     }
-    ensureCssLoaded();
-    if (isCheckout()) {
-      slot.outerHTML = footerBottomHtml();
-    } else {
-      slot.outerHTML = footerColumnsHtml() + footerBottomHtml();
-    }
-    document.dispatchEvent(new CustomEvent('curino:main-footer-mounted'));
+    ensureCssLoaded(function () {
+      if (isCheckout()) {
+        slot.outerHTML = footerBottomHtml();
+      } else {
+        slot.outerHTML = footerColumnsHtml() + footerBottomHtml();
+      }
+      document.dispatchEvent(new CustomEvent('curino:main-footer-mounted'));
+    });
   }
 
   if (document.readyState === 'loading') {
