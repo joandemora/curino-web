@@ -734,16 +734,18 @@ function initPlacesInput(inputId,ddId,cityId,postalId,provinceId,countryId){
 }
 
 // Dock mob-bar above footer
-// El <footer> lo inyecta main-footer.js asincronamente (tras DOMContentLoaded
-// y carga del CSS). Por eso NO se busca al iniciar el IIFE — se hace lazy
-// dentro de updateBarPosition() y reaccionando al evento custom
+// En /checkout/ NO hay tag <footer> — main-footer.js inyecta solo la franja
+// legal como <div class="footer-bottom"> (ver footerBottomHtml en
+// main-footer.js). Por eso el selector a anclar es ".footer-bottom".
+// Lazy lookup porque main-footer.js inyecta asincronamente (tras
+// DOMContentLoaded + descarga del CSS), reaccionando al evento custom
 // "curino:main-footer-mounted" que dispara main-footer.js al terminar.
 (function(){
   var bar=document.getElementById('mobBar');
   if(!bar) return;
-  var ft=document.querySelector('footer');
+  var ft=document.querySelector('.footer-bottom');
   function updateBarPosition(){
-    if(!ft){ ft=document.querySelector('footer'); if(!ft) return; }
+    if(!ft){ ft=document.querySelector('.footer-bottom'); if(!ft) return; }
     var footerTop=ft.getBoundingClientRect().top;
     var barH=bar.offsetHeight;
     if(footerTop<=window.innerHeight){
