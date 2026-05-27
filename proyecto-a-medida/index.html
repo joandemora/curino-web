@@ -125,18 +125,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .pam-phone-prefix{width:80px;flex-shrink:0}
 
 /* ── FOOTER ── */
-footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;gap:2rem;grid-template-areas:"logo alta corp empleo contacto""logo alta corp prensa newsletter";font-size:12px;font-weight:400;letter-spacing:0.14px;line-height:19.88px}
-.footer-tagline{font-size:12px;line-height:19.88px;font-weight:400;max-width:320px;color:#fff;text-align:left}
-.footer-col h4{font-size:12px;letter-spacing:0.14px;text-transform:uppercase;color:#fff;margin-bottom:1.5rem;font-weight:600}
-.footer-col a{display:block;font-size:12px;color:#fff;letter-spacing:0.14px;line-height:19.88px;text-decoration:none;margin-bottom:.6rem;font-weight:400;transition:color .2s}
-.footer-col a:hover{color:#999}
-.footer-newsletter input{background:transparent;border:none;border-bottom:1px solid #fff;color:#fff;font-family:var(--font);font-size:12px;padding:.5rem 0;width:100%;outline:none;margin-bottom:1rem}
-.footer-newsletter input::placeholder{color:rgba(255,255,255,.5)}
-.footer-newsletter button{background:transparent;border:none;color:#fff;font-family:var(--font);font-size:12px;letter-spacing:0.24px;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #fff;padding-bottom:3px}
-.footer-newsletter button:hover{color:#999;border-color:#999}
-.footer-links{display:block}
-.footer-bottom{background:var(--black);padding:1.2rem 3rem;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;font-size:.55rem;color:#fff;font-weight:300;letter-spacing:.1em;text-transform:uppercase;align-items:center}
-.footer-legal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#fff;text-transform:none;letter-spacing:0.14px;font-weight:400}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){
@@ -277,20 +265,8 @@ footer{background:var(--black);color:#fff;padding:4rem 32px 3rem;display:grid;gr
 </div>
 
 <!-- FOOTER -->
-<footer>
-  <div style="grid-area:logo">
-    <img src="/assets/imagenes/logo-curino-blanco.svg" alt="Curino" style="height:28px;width:auto;display:block;margin-bottom:1.5rem;filter:brightness(0) invert(1)">
-    <p class="footer-tagline">Crea tu espacio ideal. Mobiliario de alta carpinter&iacute;a a medida &mdash; armarios, vestidores, cocinas y puertas con garant&iacute;a de 25 a&ntilde;os.</p>
-  </div>
-  <div class="footer-col" style="grid-area:alta"><h4 onclick="this.parentElement.classList.toggle('open')">Alta Carpinter&iacute;a</h4><div class="footer-links"><a href="/configurador-armarios-vestidores/">Configurador de armarios</a><a href="#">Proyecto a medida en Barcelona</a><a href="#">Proyecto a medida en Madrid</a><a href="#">Proyecto a medida en Valencia</a></div></div>
-  <div class="footer-col" style="grid-area:corp"><h4 onclick="this.parentElement.classList.toggle('open')">Corporativo</h4><div class="footer-links"><a href="/sobre-nosotros/">Sobre nosotros</a><a href="#">I+D e Innovaci&oacute;n</a><a href="#">Seguridad en Curino</a></div></div>
-  <div class="footer-col" style="grid-area:empleo"><h4 onclick="this.parentElement.classList.toggle('open')">Empleo</h4><div class="footer-links"><a href="#">&Uacute;nete a Curino</a><a href="#">Curino Partners</a></div></div>
-  <div class="footer-col" style="grid-area:prensa"><h4 onclick="this.parentElement.classList.toggle('open')">Sala de Prensa</h4><div class="footer-links"><a href="/revista/">Revista</a><a href="#">Contacto Prensa</a></div></div>
-  <div class="footer-col" style="grid-area:contacto"><h4 onclick="this.parentElement.classList.toggle('open')">Contacto</h4><div class="footer-links"><a href="#">WhatsApp</a><a href="mailto:info@casacurino.com">info@casacurino.com</a></div></div>
-  <div class="footer-col footer-newsletter" style="grid-area:newsletter"><h4>Newsletter</h4><div class="footer-links"><input type="email" placeholder="Tu email"><button type="button">Suscribirse</button></div></div>
-</footer>
-<div class="footer-bottom"><span>&copy; 2026 Curino</span><div class="footer-legal"><span>Sistema & Curino, S.L.U.</span></div><span>casacurino.com</span></div>
-
+<div id="main-footer-mount"></div>
+<script src="/assets/js/main-footer.js"></script>
 <script>
 /* Mobile menu: lógica vive en /assets/js/main-nav.js */
 
