@@ -277,8 +277,8 @@
           'Más información en nuestra <a href="/cookies/">Política de cookies</a> y ' +
           '<a href="/privacidad/">Privacidad</a>.</p>' +
         '<div class="cb-actions">' +
-          '<button type="button" class="cb-btn cb-btn-outline" data-cb-open-settings>Ajustes</button>' +
           '<button type="button" class="cb-btn cb-btn-primary" data-cb-accept-all>Estoy de acuerdo</button>' +
+          '<button type="button" class="cb-btn cb-btn-outline" data-cb-open-settings>Ajustes</button>' +
         '</div>' +
       '</div>';
 
@@ -313,8 +313,8 @@
           '</div>' +
         '</div>' +
         '<div class="cb-actions">' +
-          '<button type="button" class="cb-btn cb-btn-outline" data-cb-save>Guardar ajustes</button>' +
           '<button type="button" class="cb-btn cb-btn-primary" data-cb-accept-all>Estoy de acuerdo</button>' +
+          '<button type="button" class="cb-btn cb-btn-outline" data-cb-save>Guardar ajustes</button>' +
         '</div>' +
       '</div>';
 
