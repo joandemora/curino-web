@@ -222,11 +222,12 @@
       '#' + BANNER_ID + ' .cb-toggle.on::after{transform:translateX(16px)}',
       '#' + BANNER_ID + ' .cb-toggle.disabled{opacity:.55;cursor:not-allowed}',
       '#' + BANNER_ID + ' .cb-toggle input{position:absolute;opacity:0;width:100%;height:100%;cursor:inherit;margin:0}',
-      // Mobile
+      // Mobile: modal anclado abajo (no centrado). Backdrop cubre toda
+      // la pantalla incluido el mob-bar del checkout (sin cambios).
       '@media (max-width:640px){',
-      '  #' + BANNER_ID + '-backdrop{padding:8px}',
-      '  #' + BANNER_ID + '{max-width:none;width:100%;max-height:calc(100vh - 16px)}',
-      '  #' + BANNER_ID + ' .cb-view{padding:24px 20px}',
+      '  #' + BANNER_ID + '-backdrop{padding:0;align-items:flex-end}',
+      '  #' + BANNER_ID + '{max-width:none;width:100%;max-height:90vh;border-radius:16px 16px 0 0}',
+      '  #' + BANNER_ID + ' .cb-view{padding:24px 20px 28px}',
       '  #' + BANNER_ID + ' .cb-title{font-size:24px}',
       '  #' + BANNER_ID + ' .cb-actions{flex-direction:column}',
       '  #' + BANNER_ID + ' .cb-btn{flex:initial;width:100%}',
