@@ -121,37 +121,16 @@
       +   '<a href="/armarios-vestidores/">Armarios y vestidores</a>'
       +   '<a href="/cocinas/">Cocinas</a>'
       +   '<a href="/banos/">Baños</a>'
-      +   '<div class="mobile-accordion" id="mobileAccordion">'
-      +     '<div class="mobile-accordion-title" data-mobile-accordion-toggle>Alta Carpintería</div>'
-      +     '<div class="mobile-accordion-body">'
-      +       '<a href="/sobre-nosotros/" style="font-weight:600">Sobre nosotros</a>'
-      +       '<div class="mobile-sub-title">Por producto</div>'
-      +       '<a href="/puertas/">Puertas</a>'
-      +       '<a href="/paneles/">Paneles</a>'
-      +       '<a href="/escaleras/">Escaleras</a>'
-      +       '<a href="/materiales/">Materiales</a>'
-      +       '<div class="mobile-sub-title">Por estancia</div>'
-      +       '<a href="/dormitorio/">Dormitorio</a>'
-      +       '<a href="/cocinas/">Cocina</a>'
-      +       '<a href="/salon/">Salón</a>'
-      +       '<a href="/comedor/">Comedor</a>'
-      +       '<a href="/banos/">Baño</a>'
-      +       '<div class="mobile-sub-title">Proyectos integrales</div>'
-      +       '<a href="/residencial/">Residencial</a>'
-      +       '<a href="/contract/">Contract</a>'
-      +       '<a href="/couture/">Couture</a>'
-      +       '<a href="/nautica/">Náutica</a>'
-      +     '</div>'
-      +   '</div>'
+      +   '<a href="/sobre-nosotros/">Alta Carpintería</a>'
       +   '<a href="/estudio/">Estudio</a>'
       +   '<a href="/maestro/">Maestro</a>'
       +   '<div class="mobile-imgs">'
       +     '<div class="mega-img">'
-      +       '<a href="/estudio/"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
+      +       '<a href="/estudio/" style="display:block;width:100%"><img src="/assets/imagenes/landing/fina-hero.webp" alt="Proyecto a medida" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
       +       '<a href="/estudio/">Proyecto a medida</a>'
       +     '</div>'
       +     '<div class="mega-img">'
-      +       '<a href="/configurador-armarios-vestidores/"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configura tu armario" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
+      +       '<a href="/configurador-armarios-vestidores/" style="display:block;width:100%"><img src="/assets/imagenes/landing/hero mega config armarios.png" alt="Configura tu armario" style="width:100%;height:auto;display:block;aspect-ratio:1/1;object-fit:cover"></a>'
       +       '<a href="/configurador-armarios-vestidores/">Configura tu armario</a>'
       +     '</div>'
       +   '</div>'
@@ -172,14 +151,6 @@
       a.addEventListener('click', function () {
         menu.classList.remove('open');
         ham.classList.remove('open');
-      });
-    });
-  }
-
-  function wireMobileAccordion() {
-    document.querySelectorAll('[data-mobile-accordion-toggle]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        el.parentElement.classList.toggle('open');
       });
     });
   }
@@ -214,7 +185,6 @@
     }
     slot.outerHTML = desktopNavHtml() + mobileMenuHtml();
     wireMobileMenu();
-    wireMobileAccordion();
     // Evento por si alguna página necesita engancharse al user-icon
     // o al cart-badge después del mount.
     document.dispatchEvent(new CustomEvent('curino:main-nav-mounted'));
