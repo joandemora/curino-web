@@ -108,7 +108,7 @@
       +   '<span>© 2026 Curino · Mueble a medida · España · Europa · EEUU</span>'
       +   '<div class="footer-legal">'
       +     '<span>Sistema &amp; Curino, S.L.U.</span>'
-      +     '<span>' + extraLinks + '<a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a></span>'
+      +     '<span>' + extraLinks + '<a href="/aviso-legal/" style="color:inherit;text-decoration:none">Aviso legal</a> | <a href="/privacidad/" style="color:inherit;text-decoration:none">Privacidad</a> | <a href="/cookies/" style="color:inherit;text-decoration:none">Cookies</a> | <a href="#" data-cookie-prefs style="color:inherit;text-decoration:none">Configurar cookies</a></span>'
       +   '</div>'
       +   '<span>casacurino.com</span>'
       + '</div>';
@@ -216,9 +216,22 @@
       } else {
         slot.outerHTML = footerColumnsHtml() + footerBottomHtml(false);
       }
+      // Enlace "Configurar cookies" → reabre el banner de cookies global.
+      // Delegado en document para sobrevivir cualquier re-render del footer.
       document.dispatchEvent(new CustomEvent('curino:main-footer-mounted'));
     });
   }
+
+  // ── Wire del enlace "Configurar cookies" (delegado a document)
+  // Reapertura del banner desde el footer. El componente cookie-banner.js
+  // escucha el evento 'curino:open-cookie-banner' y vuelve a mostrarse
+  // aunque ya haya decisión guardada en localStorage.
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-cookie-prefs]');
+    if (!t) return;
+    e.preventDefault();
+    document.dispatchEvent(new CustomEvent('curino:open-cookie-banner'));
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mount);
