@@ -230,7 +230,7 @@
     var t = e.target.closest && e.target.closest('[data-cookie-prefs]');
     if (!t) return;
     e.preventDefault();
-    document.dispatchEvent(new CustomEvent('curino:open-cookie-banner'));
+    document.dispatchEvent(new CustomEvent('curino:open-cookie-banner', { detail: { view: 'settings' } }));
   });
 
   if (document.readyState === 'loading') {
