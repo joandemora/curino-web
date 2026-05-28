@@ -80,7 +80,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .mobile-accordion.open .mobile-accordion-body{max-height:800px}
 .mobile-accordion-body .mobile-sub-title{font-size:12px;letter-spacing:0.24px;text-transform:uppercase;color:#000;font-weight:600;padding:.6rem 0 .3rem}
 .mobile-accordion-body a{display:block;font-size:14px;color:#000;text-decoration:none;font-weight:400;text-transform:none;padding:.4rem 0 .4rem 12px;border-bottom:none!important}
-.mobile-imgs{display:flex;flex-direction:column;gap:12px;padding-top:1.5rem}
+.mobile-imgs{display:flex;flex-direction:column;gap:32px;padding-top:1.5rem}
 .mobile-imgs .mega-img{position:static}
 .mobile-imgs .mega-img img{width:100%;aspect-ratio:1/1;height:auto;object-fit:cover;display:block}
 
