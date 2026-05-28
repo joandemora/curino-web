@@ -146,13 +146,10 @@
       menu.classList.toggle('open');
       ham.classList.toggle('open');
     });
-    // Cierra el menú al click en cualquier enlace mobile.
-    menu.querySelectorAll('a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        menu.classList.remove('open');
-        ham.classList.remove('open');
-      });
-    });
+    // Los enlaces del drawer navegan a otras páginas; no se intercepta el
+    // click. main-nav.js se re-monta en cada navegación, así que el menú
+    // arranca cerrado en la nueva página. Evita el parpadeo de "menu se
+    // cierra → carga nueva página" que se notaba con cierre manual JS.
   }
 
   // ── Cart loader ─────────────────────────────────────────────
