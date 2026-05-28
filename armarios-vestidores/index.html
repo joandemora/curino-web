@@ -56,8 +56,17 @@
   .hero-btn{width:100%;min-width:0;min-height:48px;padding:1rem 1.5rem;font-size:12px}
 }
 </style>
+<!-- Google Consent Mode v2 + GTM (GTM-NZR7NNTC). Defaults denied; granted solo si el usuario aceptó en visita previa (localStorage.curino_consent==='granted'). El banner /assets/js/cookie-banner.js actualiza el consent en runtime. -->
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});
+try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','update',{ad_storage:'granted',analytics_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});}}catch(_){}
+</script>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-NZR7NNTC');</script>
 </head>
 <body class="sx-page">
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZR7NNTC" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- NAV (inyectado por /assets/js/main-nav.js) -->
 <div id="main-nav-mount"></div>
@@ -317,5 +326,6 @@
   });
 })();
 </script>
+<script src="/assets/js/cookie-banner.js" defer></script>
 </body>
 </html>
