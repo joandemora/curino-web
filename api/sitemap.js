@@ -7,11 +7,17 @@
 //
 // El rewrite /sitemap.xml → /api/sitemap en vercel.json hace que la
 // URL pública sea casacurino.com/sitemap.xml.
+//
+// Dominio canónico del sitemap: el prefijo www-incluído coincide con
+// la propiedad de Search Console y con (futuro) los <link rel=canonical>
+// de las páginas. Centralizado en SITE_BASE para evitar drift.
 
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://fsfminynxnmhsagqenat.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+const SITE_BASE = 'https://www.casacurino.com';
 
 const TYPE_TO_SECCION = {
   proyecto: 'proyectos',
@@ -42,53 +48,53 @@ export default async function handler() {
 
   const staticUrls = [
     // Páginas raíz públicas
-    { loc: 'https://casacurino.com/', changefreq: 'weekly' },
-    { loc: 'https://casacurino.com/sobre-nosotros/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/proyecto-a-medida/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/solicitar-presupuesto/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/maestro/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/configurador-armarios-vestidores/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/estudio/', changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/`, changefreq: 'weekly' },
+    { loc: `${SITE_BASE}/sobre-nosotros/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/proyecto-a-medida/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/solicitar-presupuesto/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/maestro/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/configurador-armarios-vestidores/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/estudio/`, changefreq: 'monthly' },
 
     // Revista
-    { loc: 'https://casacurino.com/revista/', changefreq: 'daily' },
-    { loc: 'https://casacurino.com/revista/proyectos/', changefreq: 'weekly' },
-    { loc: 'https://casacurino.com/revista/materiales/', changefreq: 'weekly' },
-    { loc: 'https://casacurino.com/revista/articulos/', changefreq: 'weekly' },
-    { loc: 'https://casacurino.com/revista/noticias/', changefreq: 'weekly' },
-    { loc: 'https://casacurino.com/revista/entrevistas/', changefreq: 'weekly' },
+    { loc: `${SITE_BASE}/revista/`, changefreq: 'daily' },
+    { loc: `${SITE_BASE}/revista/proyectos/`, changefreq: 'weekly' },
+    { loc: `${SITE_BASE}/revista/materiales/`, changefreq: 'weekly' },
+    { loc: `${SITE_BASE}/revista/articulos/`, changefreq: 'weekly' },
+    { loc: `${SITE_BASE}/revista/noticias/`, changefreq: 'weekly' },
+    { loc: `${SITE_BASE}/revista/entrevistas/`, changefreq: 'weekly' },
 
     // Productos
-    { loc: 'https://casacurino.com/armarios-vestidores/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/cocinas/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/banos/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/puertas/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/paneles/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/escaleras/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/materiales/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/encimeras/', changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/armarios-vestidores/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/cocinas/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/banos/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/puertas/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/paneles/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/escaleras/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/materiales/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/encimeras/`, changefreq: 'monthly' },
 
     // Estancias
-    { loc: 'https://casacurino.com/dormitorio/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/salon/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/comedor/', changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/dormitorio/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/salon/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/comedor/`, changefreq: 'monthly' },
 
     // Proyectos integrales
-    { loc: 'https://casacurino.com/residencial/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/contract/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/couture/', changefreq: 'monthly' },
-    { loc: 'https://casacurino.com/nautica/', changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/residencial/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/contract/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/couture/`, changefreq: 'monthly' },
+    { loc: `${SITE_BASE}/nautica/`, changefreq: 'monthly' },
 
     // Páginas legales
-    { loc: 'https://casacurino.com/aviso-legal/', changefreq: 'yearly' },
-    { loc: 'https://casacurino.com/privacidad/', changefreq: 'yearly' },
-    { loc: 'https://casacurino.com/cookies/', changefreq: 'yearly' }
+    { loc: `${SITE_BASE}/aviso-legal/`, changefreq: 'yearly' },
+    { loc: `${SITE_BASE}/privacidad/`, changefreq: 'yearly' },
+    { loc: `${SITE_BASE}/cookies/`, changefreq: 'yearly' }
   ];
 
   const articleEntries = (articles || []).map((a) => {
     const seccion = TYPE_TO_SECCION[a.type] || 'articulos';
     return {
-      loc: `https://casacurino.com/revista/${seccion}/${encodeURIComponent(a.slug)}/`,
+      loc: `${SITE_BASE}/revista/${seccion}/${encodeURIComponent(a.slug)}/`,
       lastmod: a.published_at || undefined,
       changefreq: 'monthly'
     };
