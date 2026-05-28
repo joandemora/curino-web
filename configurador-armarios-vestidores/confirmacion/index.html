@@ -91,6 +91,32 @@ try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','updat
       '<a href="/" class="confirm-cta confirm-cta-outline">Volver al inicio</a>' +
     '</div>' +
     '<p class="confirm-foot">¿No te ha llegado el email en unos minutos? Revisa tu carpeta de spam o escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>.</p>';
+
+  // Evento GA4 purchase — TRAS pintar la página, sin bloquear el render.
+  // /api/stripe-session verifica la sesión contra Stripe y solo devuelve
+  // datos si payment_status==='paid'. Si no está paid o si la API falla,
+  // no se dispara el evento (silencioso). GA4 deduplica por transaction_id
+  // si el usuario recarga. El push entra al dataLayer; GTM lo enviará a
+  // GA4 solo si analytics_storage está 'granted' (Consent Mode v2).
+  setTimeout(function(){
+    try {
+      fetch('/api/stripe-session?session_id=' + encodeURIComponent(sessionId))
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if (!data || !data.paid) return;
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({
+            event: 'purchase',
+            ecommerce: {
+              transaction_id: data.transaction_id,
+              value: data.amount_total,
+              currency: data.currency
+            }
+          });
+        })
+        .catch(function(){ /* silencioso: la compra ya está procesada server-side */ });
+    } catch(_){}
+  }, 0);
 })();
 </script>
 
