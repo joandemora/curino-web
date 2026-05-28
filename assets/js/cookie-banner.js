@@ -277,7 +277,7 @@
           '<a href="/privacidad/">Privacidad</a>.</p>' +
         '<div class="cb-actions">' +
           '<button type="button" class="cb-btn cb-btn-outline" data-cb-open-settings>Ajustes</button>' +
-          '<button type="button" class="cb-btn cb-btn-primary" data-cb-accept-all>Aceptar todo</button>' +
+          '<button type="button" class="cb-btn cb-btn-primary" data-cb-accept-all>Estoy de acuerdo</button>' +
         '</div>' +
       '</div>';
 
@@ -313,7 +313,7 @@
         '</div>' +
         '<div class="cb-actions">' +
           '<button type="button" class="cb-btn cb-btn-outline" data-cb-save>Guardar ajustes</button>' +
-          '<button type="button" class="cb-btn cb-btn-primary" data-cb-accept-all>Aceptar todo</button>' +
+          '<button type="button" class="cb-btn cb-btn-primary" data-cb-accept-all>Estoy de acuerdo</button>' +
         '</div>' +
       '</div>';
 
