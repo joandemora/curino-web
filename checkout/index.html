@@ -357,6 +357,10 @@ try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','updat
 var _cart=JSON.parse(localStorage.getItem('curino_cart')||'[]');
 var _supabase=null,_currentUser=null;
 
+// Tracking: flag para disparar begin_checkout UNA SOLA VEZ por carga,
+// aunque renderSummary() se llame varias veces (al cambiar shipping, etc.).
+var _beginCheckoutSent=false;
+
 // ── ESTADO DE ENTREGA Y MONTAJE ──
 // _shipping ('estandar' | 'pickup') SE COBRA y se suma al total Stripe.
 // _assembly ('taskrabbit' | 'diy') es INFORMATIVO; NUNCA se suma al total.
@@ -460,6 +464,27 @@ function initCheckout(){
   renderSummary();
   prefillContact();
   prefillAddress();
+  // Tracking: begin_checkout (GA4) / InitiateCheckout (Pixel via GTM).
+  // Solo si hay items (return temprano si _cart vacío arriba ya cubre esto)
+  // y solo una vez por carga (el flag _beginCheckoutSent). Tras setTimeout(0)
+  // para no bloquear el paint del summary. El GTM enviará a GA4/Pixel solo
+  // si analytics_storage/ad_storage están granted (Consent Mode v2).
+  if(!_beginCheckoutSent){
+    _beginCheckoutSent=true;
+    setTimeout(function(){
+      try{
+        window.dataLayer=window.dataLayer||[];
+        window.dataLayer.push({
+          event:'begin_checkout',
+          ecommerce:{
+            value:Number(_subtotal)||0,
+            currency:'EUR',
+            num_items:_cart.length
+          }
+        });
+      }catch(_){}
+    },0);
+  }
 }
 
 // ── PREFILL ──
