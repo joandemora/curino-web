@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /mi-cuenta/
+Disallow: /login/
+Disallow: /checkout/
+Disallow: /configurador-armarios-vestidores/confirmacion/
+Disallow: /landing-draft/
+Disallow: /configurador-2d/
+Disallow: /proyecto-a-medida/pago/
+
+Sitemap: https://www.casacurino.com/sitemap.xml
