@@ -70,6 +70,17 @@ try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','updat
     return;
   }
 
+  // Capturar num_items del carrito ANTES de vaciarlo (para el evento purchase).
+  // Stripe no conoce el num_items real: api/checkout.js envía un único line_item
+  // con quantity:1 sumando los precios en el frontend. localStorage es el único
+  // origen fiable. Edge case raro: si el usuario editó el carrito en otra pestaña
+  // durante el pago en Stripe, este número puede no reflejar exactamente lo pagado.
+  var _purchaseNumItems = 0;
+  try {
+    var _cartSnap = JSON.parse(localStorage.getItem('curino_cart') || '[]');
+    _purchaseNumItems = Array.isArray(_cartSnap) ? _cartSnap.length : 0;
+  } catch(_){}
+
   // Vaciar carrito tras confirmación de pago
   try { localStorage.removeItem('curino_cart'); } catch(_){}
 
@@ -110,7 +121,8 @@ try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','updat
             ecommerce: {
               transaction_id: data.transaction_id,
               value: data.amount_total,
-              currency: data.currency
+              currency: data.currency,
+              num_items: _purchaseNumItems
             }
           });
         })
