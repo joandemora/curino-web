@@ -37,7 +37,33 @@
   'use strict';
 
   var STORAGE_KEY = 'curino_cart';
-  var _items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+  // Defensa en el punto de entrada: localStorage es un canal hostil
+  // (sobrevive entre versiones del código, lo manipulan otras pestañas,
+  // extensiones, DevTools). Items malformados históricos pueden persistir
+  // aunque el bug que los generaba esté arreglado. Filtramos null/no-objeto/
+  // sin precio para garantizar que el resto del cart (refresh, forEach,
+  // subtotal) opera sobre _items siempre limpio.
+  function parseStoredItems(raw) {
+    let arr;
+    try {
+      arr = JSON.parse(raw || '[]');
+    } catch (e) {
+      console.warn('[cart] localStorage corrupto, reseteando carrito:', e);
+      return [];
+    }
+    if (!Array.isArray(arr)) {
+      console.warn('[cart] localStorage no es array, reseteando carrito');
+      return [];
+    }
+    const cleaned = arr.filter(it => it && typeof it === 'object' && typeof it.precio !== 'undefined');
+    if (cleaned.length !== arr.length) {
+      console.warn('[cart] Items invalidos filtrados:', arr.length - cleaned.length);
+    }
+    return cleaned;
+  }
+
+  var _items = parseStoredItems(localStorage.getItem(STORAGE_KEY));
 
   var PANEL_HTML =
     '<div class="cart-overlay" id="cartOverlay" onclick="window.curinoCart.toggle()"></div>' +
@@ -243,7 +269,7 @@
     // registrar siempre, no afecta a la presentación).
     window.addEventListener('storage', function (e) {
       if (e.key === STORAGE_KEY) {
-        _items = JSON.parse(e.newValue || '[]');
+        _items = parseStoredItems(e.newValue);
         refresh();
       }
     });
