@@ -163,6 +163,30 @@
 
   function add(item) {
     _items.push(item);
+    // Tracking: add_to_cart (GA4) / AddToCart (Pixel via GTM).
+    // Solo cuando se AÑADE un item nuevo desde el configurador. NO en
+    // update() (edición), NO en remove(), NO en refresh()/storage event
+    // (sincronización entre pestañas). El push entra al dataLayer; GTM
+    // enviará a GA4/Pixel solo si analytics_storage/ad_storage están
+    // granted (Consent Mode v2). content_id genérico: los armarios son
+    // a medida, no SKU.
+    try {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: 'add_to_cart',
+        ecommerce: {
+          value: Number(item && item.precio) || 0,
+          currency: 'EUR',
+          items: [{
+            item_id: 'armario-medida',
+            item_name: 'Armario ' + ((item && item.ancho) || '?') + '×' + ((item && item.alto) || '?') + '×' + ((item && item.fondo) || '?'),
+            price: Number(item && item.precio) || 0
+          }],
+          content_id: 'armario-medida',
+          content_type: 'product'
+        }
+      });
+    } catch (_e) { /* silencioso: nunca romper el add por tracking */ }
     save();
     refresh();
     toggle();

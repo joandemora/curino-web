@@ -419,6 +419,19 @@ async function submitProject(){
 
   // Store data for payment page
   sessionStorage.setItem('curino_project',JSON.stringify(_data));
+  // Tracking: generate_lead (GA4) / Lead (Pixel via GTM). El lead es
+  // el funnel COMPLETO de 7 pasos. Solo se dispara aquí, al final, tras
+  // el update a Supabase y antes del redirect al pago. CERO PII: ni
+  // email, ni teléfono, ni nombre. has_phone:true como metadato (sabemos
+  // que se recogió teléfono, no cuál).
+  try {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'generate_lead',
+      form_name: 'proyecto-a-medida-funnel',
+      has_phone: true
+    });
+  } catch(_){}
   window.location.href='/proyecto-a-medida/pago/';
 }
 </script>

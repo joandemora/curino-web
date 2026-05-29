@@ -337,6 +337,19 @@ try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','updat
         return;
       }
       // Éxito
+      // Tracking: generate_lead (GA4) / Lead (Pixel via GTM). Solo si la
+      // solicitud se guardó correctamente (res.ok && data.ok — verificado
+      // en el branch que entra a este bloque). CERO PII: ni email, ni
+      // nombre, ni teléfono al dataLayer. Solo metadatos categóricos
+      // (tipo_proyecto del select, o 'sin_especificar' si no eligió).
+      try {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          event: 'generate_lead',
+          form_name: 'solicitar-presupuesto',
+          tipo_proyecto: tipo_proyecto || 'sin_especificar'
+        });
+      } catch (_e) { /* silencioso: nunca romper el flujo de éxito por tracking */ }
       $form.style.display = 'none';
       $success.style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
