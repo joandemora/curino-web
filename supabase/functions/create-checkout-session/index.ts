@@ -122,7 +122,12 @@ Deno.serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient()
     });
 
-    const successUrl = `${siteUrl}/configurador-2d/?purchase_completed=${item_id}`;
+    // {CHECKOUT_SESSION_ID} con llaves literales: Stripe lo reemplaza por el
+    // session_id real al redirigir. Necesario para que el frontend pueda
+    // consultar /api/stripe-session y verificar payment_status='paid' antes
+    // de disparar el evento purchase de analytics (patrón idéntico al
+    // flujo de armarios en /configurador-armarios-vestidores/confirmacion/).
+    const successUrl = `${siteUrl}/configurador-2d/?purchase_completed=${item_id}&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${siteUrl}/configurador-2d/?purchase_cancelled=${item_id}`;
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {

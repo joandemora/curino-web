@@ -5024,7 +5024,41 @@ function finishInit(){
   if(purchaseCompleted){
     showToast('Compra completada. La pieza ya está disponible en tu biblioteca.','success');
     _libraryItems=null;
-    // Limpiar el query param para que un refresh no repita el toast.
+    // Tracking: purchase (GA4) / Purchase (Pixel via GTM). Patrón idéntico al de
+    // /configurador-armarios-vestidores/confirmacion/ del PR #146. Solo si Stripe
+    // confirma payment_status='paid' (verificación server-side anti-falsos
+    // positivos vía /api/stripe-session); solo una vez por carga (sentinel
+    // window-level por defensiva, aunque limpiar la URL ya impide re-disparo en
+    // refresh). No bloquea el resto del flujo: toast/cache/limpieza intactos.
+    var marketplaceSessionId=params.get('session_id');
+    if(marketplaceSessionId && !window._marketplacePurchaseSent){
+      window._marketplacePurchaseSent=true;
+      setTimeout(function(){
+        try{
+          fetch('/api/stripe-session?session_id='+encodeURIComponent(marketplaceSessionId))
+            .then(function(r){return r.json();})
+            .then(function(data){
+              if(!data || !data.paid) return;
+              window.dataLayer=window.dataLayer||[];
+              window.dataLayer.push({
+                event:'purchase',
+                ecommerce:{
+                  transaction_id:data.transaction_id,
+                  value:data.amount_total,
+                  currency:data.currency,
+                  num_items:1,
+                  content_id:'marketplace-pieza',
+                  content_type:'product'
+                }
+              });
+            })
+            .catch(function(){ /* silencioso: compra ya procesada server-side */ });
+        }catch(_){}
+      },0);
+    }
+    // Limpiar el query param para que un refresh no repita el toast (ni el push).
+    // cleanUrl conserva solo ?project=pid si existe; purchase_completed y session_id
+    // quedan descartados.
     var cleanUrl=window.location.pathname+(pid?('?project='+encodeURIComponent(pid)):'');
     window.history.replaceState({},'',cleanUrl);
   }else if(purchaseCancelled){
