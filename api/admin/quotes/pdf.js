@@ -168,9 +168,14 @@ module.exports = async function handler(req, res) {
   }
 
   // --- 4. Puppeteer ---
+  // Usamos @sparticuz/chromium-min (sin binario) + tarball remoto v131.0.1.
+  // La versión del tarball DEBE coincidir EXACTAMENTE con la del paquete
+  // (131.0.1 ↔ v131.0.1). puppeteer-core 23.10.4 trae Chrome 131.0.6778.108
+  // → mismo major Chrome → DevTools protocol compatible.
+  var CHROMIUM_TAR_URL = 'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar';
   var chromium, puppeteer;
   try {
-    chromium = require('@sparticuz/chromium');
+    chromium = require('@sparticuz/chromium-min');
     puppeteer = require('puppeteer-core');
   } catch (e) {
     logErr('puppeteer-require', e);
@@ -179,7 +184,7 @@ module.exports = async function handler(req, res) {
 
   var browser;
   try {
-    var execPath = await chromium.executablePath();
+    var execPath = await chromium.executablePath(CHROMIUM_TAR_URL);
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: { width: 1240, height: 1754, deviceScaleFactor: 1 }, // A4 ~150dpi
