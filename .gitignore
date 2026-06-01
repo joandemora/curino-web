@@ -15,3 +15,11 @@ supabase/.temp/
 
 # npm registry config autogenerado
 **/.npmrc
+
+# Variables de entorno con secretos (.env.example sí se commitea)
+.env
+.env.local
+.env.*.local
+
+# Claude Code: ajustes y estado locales (máquina-específicos)
+.claude/

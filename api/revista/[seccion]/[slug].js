@@ -13,6 +13,12 @@ export const config = { runtime: 'edge' };
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://fsfminynxnmhsagqenat.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 
+// Dominio canónico del sitio: el prefijo www-incluído coincide con la
+// propiedad de Search Console, con el sitemap (api/sitemap.js usa el mismo
+// SITE_BASE) y con los canonical de las 6 páginas estáticas de revista
+// (chore/canonical-og-www-revista). Centralizado para evitar drift.
+const SITE_BASE = 'https://www.casacurino.com';
+
 const VALID_SECCIONES = ['proyectos', 'materiales', 'articulos', 'noticias', 'entrevistas'];
 
 const TYPE_MAP = {
@@ -187,11 +193,11 @@ function buildArticleHtml(article, seccion, related) {
   related = Array.isArray(related) ? related : [];
   const author = ((article.author_first_name || '') + ' ' + (article.author_last_name || '')).trim() || 'Curino';
   const description = article.meta_description || article.title;
-  const canonical = `https://casacurino.com/revista/${seccion}/${article.slug}/`;
+  const canonical = `${SITE_BASE}/revista/${seccion}/${article.slug}/`;
   // og:image: 1200x630 cover (estándar de redes sociales). Aquí pedimos
   // width+height+resize=cover, que recorta al box exacto — no deforma.
   // Original sin tocar para Schema.org Article (Google prefiere alta resolución).
-  const rawOgImage = article.og_image_url || article.cover_image_url || 'https://casacurino.com/assets/imagenes/logo-curino.svg';
+  const rawOgImage = article.og_image_url || article.cover_image_url || `${SITE_BASE}/assets/imagenes/logo-curino.svg`;
   const ogImage = transformImageUrl(rawOgImage, { width: 1200, height: 630, resize: 'cover', quality: 85 });
   const rawCover = article.cover_image_url || '';
   // Portada: servimos el objeto ORIGINAL del bucket sin pasar por Image
@@ -220,7 +226,7 @@ function buildArticleHtml(article, seccion, related) {
     'publisher': {
       '@type': 'Organization',
       'name': 'Curino',
-      'logo': { '@type': 'ImageObject', 'url': 'https://casacurino.com/assets/imagenes/logo-curino.svg' }
+      'logo': { '@type': 'ImageObject', 'url': `${SITE_BASE}/assets/imagenes/logo-curino.svg` }
     },
     'mainEntityOfPage': { '@type': 'WebPage', '@id': canonical },
     'description': description
