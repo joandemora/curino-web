@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presupuestos — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+body.hidden-until-auth{visibility:hidden}
+
+.q-section{padding:2rem 1.5rem;max-width:1200px;margin:0 auto}
+.q-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.q-title{font-size:26px;font-weight:300;letter-spacing:-.01em;margin:0}
+.q-subtitle{color:var(--ink-soft);font-size:14px;margin:.25rem 0 0}
+
+.q-toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.q-search{flex:1;min-width:200px;padding:.5rem .8rem;font-size:14px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:#fff}
+.q-search:focus{outline:none;border-color:var(--ink)}
+.q-filter{padding:.5rem .8rem;font-size:14px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:#fff}
+.q-btn{padding:.55rem 1.05rem;font-size:13px;font-family:inherit;font-weight:500;border:none;border-radius:5px;cursor:pointer;transition:opacity .15s,background .15s;text-decoration:none;display:inline-block}
+.q-btn-primary{background:var(--ink);color:#fff}
+.q-btn-primary:hover{background:var(--coral)}
+.q-btn-outline{background:#fff;color:var(--ink);border:1px solid var(--border)}
+.q-btn-outline:hover{border-color:var(--ink)}
+.q-btn-link{background:none;color:var(--ink);border:none;padding:.3rem .5rem;font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit}
+.q-btn-link:hover{color:var(--coral)}
+
+.q-table-wrap{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.q-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.q-table thead th{background:#fafaf7;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);font-weight:600;padding:.65rem .8rem;text-align:left;border-bottom:1px solid var(--border)}
+.q-table tbody td{padding:.7rem .8rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.q-table tbody tr:last-child td{border-bottom:none}
+.q-table tbody tr:hover{background:#fdf6ef}
+.q-num{font-family:'Open Sans',monospace;font-weight:600;color:var(--ink)}
+.q-cli{color:var(--ink)}
+.q-cli-meta{color:var(--mid);font-size:12px;margin-top:.15rem}
+.q-importe{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+
+.q-estado{display:inline-block;padding:.2rem .55rem;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;border-radius:99px;border:1px solid}
+.q-estado-borrador{color:#888;border-color:#ddd;background:#f5f5f5}
+.q-estado-enviado{color:#2766b7;border-color:#cfe0f7;background:#eaf2fc}
+.q-estado-aceptado{color:#2e7d32;border-color:#cce5cd;background:#eaf6eb}
+.q-estado-rechazado{color:#a83232;border-color:#f0c2c2;background:#fcecec}
+.q-estado-caducado{color:#a07b22;border-color:#ebd9a2;background:#fdf6e1}
+.q-estado-archivado{color:#888;border-color:#ddd;background:#fff;font-style:italic}
+
+.q-empty{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+.q-loading{padding:3rem 1rem;text-align:center;color:var(--mid);font-size:13px}
+.q-error{padding:1rem;background:#fef2f2;color:#a82626;border:1px solid #f5c2c2;border-radius:8px;font-size:14px;margin-bottom:1rem}
+
+.q-actions{display:flex;gap:.2rem;justify-content:flex-end}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="q-section">
+    <div class="q-header">
+      <div>
+        <h1 class="q-title">Presupuestos</h1>
+        <p class="q-subtitle">Lista de presupuestos emitidos a clientes. Crea uno nuevo, duplica, exporta a PDF.</p>
+      </div>
+      <a class="q-btn q-btn-primary" href="/admin/armarios/presupuestos/editor/?id=new">＋ Nuevo presupuesto</a>
+    </div>
+
+    <div class="q-toolbar">
+      <input type="search" class="q-search" id="qSearch" placeholder="Buscar por nº, cliente, proyecto…" autocomplete="off">
+      <select class="q-filter" id="qFilterEstado">
+        <option value="">Todos los estados</option>
+        <option value="borrador">Borrador</option>
+        <option value="enviado">Enviado</option>
+        <option value="aceptado">Aceptado</option>
+        <option value="rechazado">Rechazado</option>
+        <option value="caducado">Caducado</option>
+        <option value="archivado">Archivado</option>
+      </select>
+    </div>
+
+    <div id="qError" class="q-error" style="display:none"></div>
+    <div id="qLoading" class="q-loading">Cargando presupuestos…</div>
+    <div id="qContent" style="display:none">
+      <div class="q-table-wrap">
+        <table class="q-table">
+          <thead><tr>
+            <th>Nº</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Proyecto</th>
+            <th style="text-align:right">Importe</th>
+            <th>Estado</th>
+            <th style="text-align:right">Acciones</th>
+          </tr></thead>
+          <tbody id="qBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/assets/js/presupuestos-format.js"></script>
+<script src="/assets/js/presupuestos-calc.js"></script>
+<script>
+initAdminShell({ activeSection: 'armarios-presupuestos', title: 'Presupuestos' }).then(async function (ctx) {
+  var supa = ctx.supabase;
+  var F = window.PresupuestosFormat;
+  var C = window.PresupuestosCalc;
+
+  var $err = document.getElementById('qError');
+  var $loading = document.getElementById('qLoading');
+  var $content = document.getElementById('qContent');
+  var $body = document.getElementById('qBody');
+  var $search = document.getElementById('qSearch');
+  var $filterEstado = document.getElementById('qFilterEstado');
+
+  var allQuotes = [];   // [{...quote, _importe: 0}]
+  var debounce = null;
+
+  function showError(msg) {
+    $err.textContent = msg;
+    $err.style.display = 'block';
+    $loading.style.display = 'none';
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function estadoBadge(estado) {
+    var cls = 'q-estado q-estado-' + (estado || 'borrador');
+    return '<span class="' + cls + '">' + escapeHtml(estado || 'borrador') + '</span>';
+  }
+
+  function render() {
+    var q = $search.value.trim().toLowerCase();
+    var fEstado = $filterEstado.value;
+    var rows = allQuotes.filter(function (r) {
+      if (fEstado && r.estado !== fEstado) return false;
+      if (!q) return true;
+      var hay = (r.numero || '') + ' ' + (r.cliente_nombre || '') + ' ' + (r.proyecto_nombre || '') + ' ' + (r.proyecto_referencia || '');
+      return hay.toLowerCase().indexOf(q) !== -1;
+    });
+
+    if (rows.length === 0) {
+      $body.innerHTML = '<tr><td colspan="7" class="q-empty">Ningún presupuesto coincide con los filtros.</td></tr>';
+      return;
+    }
+
+    var html = rows.map(function (r) {
+      var verHref = '/admin/armarios/presupuestos/editor/?id=' + encodeURIComponent(r.id);
+      return ''
+        + '<tr>'
+        + '  <td><a class="q-num" href="' + verHref + '">' + escapeHtml(r.numero || '—') + '</a></td>'
+        + '  <td>' + escapeHtml(F.formatDateShort(r.fecha)) + '</td>'
+        + '  <td>'
+        + '    <div class="q-cli">' + escapeHtml(r.cliente_nombre || '—') + '</div>'
+        + '    <div class="q-cli-meta">' + escapeHtml(r.cliente_email || '') + '</div>'
+        + '  </td>'
+        + '  <td>'
+        + '    <div class="q-cli">' + escapeHtml(r.proyecto_nombre || '—') + '</div>'
+        + '    <div class="q-cli-meta">' + escapeHtml(r.proyecto_referencia || '') + '</div>'
+        + '  </td>'
+        + '  <td class="q-importe">' + F.formatEUR(r._importe) + '</td>'
+        + '  <td>' + estadoBadge(r.estado) + '</td>'
+        + '  <td>'
+        + '    <div class="q-actions">'
+        + '      <button class="q-btn-link" data-act="pdf"      data-id="' + r.id + '">PDF</button>'
+        + '      <button class="q-btn-link" data-act="duplicar" data-id="' + r.id + '">Duplicar</button>'
+        + (r.estado === 'archivado'
+            ? '      <button class="q-btn-link" data-act="restaurar" data-id="' + r.id + '">Restaurar</button>'
+            : '      <button class="q-btn-link" data-act="archivar"  data-id="' + r.id + '">Archivar</button>'
+          )
+        + '    </div>'
+        + '  </td>'
+        + '</tr>';
+    }).join('');
+    $body.innerHTML = html;
+  }
+
+  async function load() {
+    try {
+      // Cabecera + líneas en 2 queries; juntamos en cliente para sumar importes.
+      var qRes = await supa.from('quotes')
+        .select('id, numero, fecha, estado, cliente_nombre, cliente_email, proyecto_nombre, proyecto_referencia, dto_global_pct, created_at')
+        .order('created_at', { ascending: false });
+      if (qRes.error) throw qRes.error;
+      var quotes = qRes.data || [];
+
+      var lRes = await supa.from('quote_lines')
+        .select('quote_id, cantidad, precio_unitario, dto_pct');
+      if (lRes.error) throw lRes.error;
+
+      var byQuote = {};
+      (lRes.data || []).forEach(function (l) {
+        (byQuote[l.quote_id] = byQuote[l.quote_id] || []).push(l);
+      });
+      allQuotes = quotes.map(function (q) {
+        var t = C.quoteTotals(byQuote[q.id] || []);
+        q._importe = t.importeTotal;
+        return q;
+      });
+
+      $loading.style.display = 'none';
+      $content.style.display = 'block';
+      render();
+    } catch (e) {
+      console.error('[presupuestos] load error', e);
+      showError('No se pudieron cargar los presupuestos: ' + (e.message || e));
+    }
+  }
+
+  async function duplicar(id) {
+    if (!confirm('¿Duplicar este presupuesto? Se creará una copia en estado borrador.')) return;
+    try {
+      var origRes = await supa.from('quotes').select('*').eq('id', id).single();
+      if (origRes.error) throw origRes.error;
+      var o = origRes.data;
+      // numero=null para que el trigger asigne uno nuevo
+      var newQuote = {
+        numero: null, fecha: new Date().toISOString().slice(0,10), estado: 'borrador',
+        validez_dias: o.validez_dias,
+        cliente_nombre: o.cliente_nombre, cliente_direccion: o.cliente_direccion,
+        cliente_ciudad: o.cliente_ciudad, cliente_email: o.cliente_email, cliente_tel: o.cliente_tel,
+        proyecto_nombre: (o.proyecto_nombre || '') + ' (copia)',
+        proyecto_referencia: o.proyecto_referencia,
+        dto_global_pct: o.dto_global_pct, forma_pago: o.forma_pago,
+        iban: o.iban, notas_internas: o.notas_internas
+      };
+      var insQ = await supa.from('quotes').insert(newQuote).select().single();
+      if (insQ.error) throw insQ.error;
+      var newId = insQ.data.id;
+
+      var linesRes = await supa.from('quote_lines').select('*').eq('quote_id', id);
+      if (linesRes.error) throw linesRes.error;
+      var newLines = (linesRes.data || []).map(function (l) {
+        return {
+          quote_id: newId, seccion: l.seccion, orden: l.orden,
+          cantidad: l.cantidad, producto_titulo: l.producto_titulo,
+          producto_descripcion: l.producto_descripcion, material_grosor: l.material_grosor,
+          ancho: l.ancho, alto: l.alto, fondo: l.fondo,
+          precio_unitario: l.precio_unitario, dto_pct: l.dto_pct,
+          nota: l.nota, imagenes: l.imagenes
+        };
+      });
+      if (newLines.length) {
+        var insL = await supa.from('quote_lines').insert(newLines);
+        if (insL.error) throw insL.error;
+      }
+      location.href = '/admin/armarios/presupuestos/editor/?id=' + encodeURIComponent(newId);
+    } catch (e) {
+      alert('Error duplicando: ' + (e.message || e));
+    }
+  }
+
+  async function setEstado(id, estado) {
+    try {
+      var res = await supa.from('quotes').update({ estado: estado }).eq('id', id);
+      if (res.error) throw res.error;
+      load();
+    } catch (e) {
+      alert('Error: ' + (e.message || e));
+    }
+  }
+
+  async function abrirPdf(id, btn) {
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      var sess = await supa.auth.getSession();
+      var token = sess.data && sess.data.session && sess.data.session.access_token;
+      if (!token) throw new Error('Sesión no encontrada — vuelve a iniciar sesión');
+      var resp = await fetch('/api/admin/quotes/pdf?id=' + encodeURIComponent(id), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!resp.ok) {
+        var msg = 'HTTP ' + resp.status;
+        try { var j = await resp.json(); if (j && j.error) msg += ' — ' + j.error + (j.detail ? ': ' + j.detail : ''); } catch (_) {}
+        throw new Error(msg);
+      }
+      var blob = await resp.blob();
+      var url = URL.createObjectURL(blob);
+      var w = window.open(url, '_blank');
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      if (!w) alert('El navegador bloqueó la apertura del PDF. Permite popups para descargar.');
+    } catch (e) {
+      alert('No se pudo generar el PDF: ' + (e.message || e));
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  }
+
+  $body.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    var act = btn.getAttribute('data-act');
+    if (act === 'pdf') abrirPdf(id, btn);
+    else if (act === 'duplicar') duplicar(id);
+    else if (act === 'archivar') setEstado(id, 'archivado');
+    else if (act === 'restaurar') setEstado(id, 'borrador');
+  });
+
+  $search.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(render, 120);
+  });
+  $filterEstado.addEventListener('change', render);
+
+  load();
+});
+</script>
+</body>
+</html>

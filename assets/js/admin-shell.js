@@ -33,8 +33,9 @@
     {
       group: 'Armarios',
       items: [
-        { id: 'armarios',         label: 'Pedidos', href: '/admin/armarios/' },
-        { id: 'armarios-precios', label: 'Precios', href: '/admin/armarios/precios/' }
+        { id: 'armarios',              label: 'Pedidos',      href: '/admin/armarios/' },
+        { id: 'armarios-presupuestos', label: 'Presupuestos', href: '/admin/armarios/presupuestos/' },
+        { id: 'armarios-precios',      label: 'Precios',      href: '/admin/armarios/precios/' }
       ]
     },
     {
