@@ -434,6 +434,16 @@ a:hover{text-decoration:underline}
       }
     }
 
+    // Cache invalidation cross-tab: si al menos un cambio ha entrado en BD,
+    // dejar un marker en localStorage para que el configurador (y los presets
+    // del catálogo) invaliden su cache de sessionStorage en próximas cargas.
+    // Sin esto, una pestaña del configurador con cache válida (<10min) seguiría
+    // usando los precios viejos hasta que expire el TTL o se cierre la pestaña.
+    if (failed.length < changes.length) {
+      try { localStorage.setItem('curino_prices_last_save', String(Date.now())); } catch(e){}
+      try { sessionStorage.removeItem('curino_prices'); } catch(e){}
+    }
+
     if (failed.length === 0) {
       showToast(changes.length + ' cambio' + (changes.length > 1 ? 's' : '') + ' guardado' + (changes.length > 1 ? 's' : '') + '. Próximas cargas del configurador usarán los nuevos precios.', 'success');
     } else {

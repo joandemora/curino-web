@@ -183,11 +183,17 @@
     var TTL_MS = 10 * 60 * 1000;
 
     // 1) Cache hit válida → usar y disparar evento
+    // Marker localStorage 'curino_prices_last_save' lo escribe el admin al guardar.
+    // Si la cache es más antigua que el último save, se invalida (refetch desde BD).
     try {
       var raw = sessionStorage.getItem(CACHE_KEY);
       if (raw) {
         var cached = JSON.parse(raw);
-        if (cached && cached.ts && (Date.now() - cached.ts) < TTL_MS && cached.prices) {
+        var lastSave = 0;
+        try { lastSave = parseInt(localStorage.getItem('curino_prices_last_save') || '0', 10) || 0; } catch (e) {}
+        if (cached && cached.ts && (Date.now() - cached.ts) < TTL_MS
+            && cached.ts > lastSave    // ← invalida si admin guardó después
+            && cached.prices) {
           window.ARMARIOS_PRICES = cached.prices;
           dispatchReady();
           return;
