@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor de presupuesto — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+:root{--black:#0a0a0a;--ink:#1a1a1a;--ink-soft:#555;--mid:#888;--border:#e5e5e5;--white:#fff;--bg:#fafaf7;--coral:#cc785c;--accent:#2e7d32;--font:'Open Sans',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+body.hidden-until-auth{visibility:hidden}
+
+.e-shell{padding:1.5rem;max-width:1500px;margin:0 auto;padding-bottom:6rem}
+.e-back{font-size:13px;color:var(--ink-soft);text-decoration:none;margin-bottom:.8rem;display:inline-block}
+.e-back:hover{color:var(--coral)}
+.e-loading,.e-error{padding:3rem 1rem;text-align:center;color:var(--mid)}
+.e-error{color:#a82626;background:#fef2f2;border:1px solid #f5c2c2;border-radius:8px}
+
+.e-grid{display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start}
+@media(max-width:1100px){.e-grid{grid-template-columns:1fr}}
+
+.e-main{display:flex;flex-direction:column;gap:1.25rem}
+.e-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:1.1rem 1.2rem}
+.e-card h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);margin:0 0 .9rem;font-weight:600}
+
+.e-row{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem .9rem}
+.e-row.cols-3{grid-template-columns:repeat(3,1fr)}
+.e-row.cols-4{grid-template-columns:repeat(4,1fr)}
+.e-row.cols-1{grid-template-columns:1fr}
+@media(max-width:640px){.e-row,.e-row.cols-3,.e-row.cols-4{grid-template-columns:1fr}}
+
+.e-field{display:flex;flex-direction:column;gap:.25rem}
+.e-field label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);font-weight:600}
+.e-field input,.e-field select,.e-field textarea{padding:.5rem .7rem;font-size:14px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--ink);width:100%}
+.e-field textarea{min-height:64px;resize:vertical;line-height:1.5}
+.e-field input:focus,.e-field select:focus,.e-field textarea:focus{outline:none;border-color:var(--ink)}
+.e-field.changed input,.e-field.changed select,.e-field.changed textarea{background:#fffbe6;border-left:3px solid #f0c000}
+
+/* Líneas */
+.e-lines{display:flex;flex-direction:column;gap:.7rem}
+.e-line{background:#fafaf7;border:1px solid var(--border);border-radius:6px;padding:.85rem .9rem}
+.e-line-hdr{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.7rem}
+.e-line-num{font-size:11px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.05em}
+.e-line-actions{display:flex;gap:.15rem}
+.e-icon-btn{padding:.2rem .45rem;font-size:11px;background:#fff;color:var(--ink-soft);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:inherit}
+.e-icon-btn:hover{border-color:var(--ink);color:var(--ink)}
+.e-icon-btn-danger:hover{border-color:#a82626;color:#a82626}
+
+.e-line-grid{display:grid;grid-template-columns:80px 2fr 1fr 1fr 110px 80px;gap:.6rem;align-items:start}
+@media(max-width:900px){.e-line-grid{grid-template-columns:1fr 1fr;gap:.5rem}}
+.e-line-grid .span-2{grid-column:span 2}
+
+.e-line-totals{display:flex;justify-content:flex-end;gap:1rem;padding-top:.55rem;margin-top:.6rem;border-top:1px dashed var(--border);font-size:12.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.e-line-totals strong{color:var(--ink)}
+
+.e-images{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.45rem}
+.e-image-thumb{width:80px;height:80px;border:1px solid var(--border);border-radius:5px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}
+.e-image-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.e-image-rm{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;cursor:pointer}
+.e-image-add{width:80px;height:80px;border:1px dashed var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mid);font-size:11px;text-align:center;background:#fff}
+.e-image-add:hover{border-color:var(--ink);color:var(--ink)}
+
+.e-add-line{padding:.6rem 1rem;font-size:13px;font-family:inherit;font-weight:500;background:#fff;color:var(--ink);border:1px dashed var(--border);border-radius:5px;cursor:pointer;width:100%}
+.e-add-line:hover{border-color:var(--ink);background:#fdf6ef}
+
+/* Forma de pago */
+.e-pay-line{display:grid;grid-template-columns:1fr 100px 110px 36px;gap:.5rem;align-items:center;margin-bottom:.4rem}
+.e-pay-line input{padding:.4rem .6rem;font-size:13px;border:1px solid var(--border);border-radius:5px;font-family:inherit}
+.e-pay-line input:focus{outline:none;border-color:var(--ink)}
+.e-pay-eur{font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums;text-align:right}
+.e-pay-sum{margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border);font-size:12px;color:var(--mid);display:flex;justify-content:space-between}
+.e-pay-sum.bad{color:#a82626}
+
+/* Aside totales */
+.e-aside{position:sticky;top:1rem}
+.e-totals{background:#fdf6ef;border:1px solid #ebd9c2;border-radius:8px;padding:1.2rem 1.3rem}
+.e-totals h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--coral);margin:0 0 .9rem;font-weight:600}
+.e-tot-row{display:flex;justify-content:space-between;align-items:baseline;padding:.4rem 0;border-bottom:1px solid #ebd9c2;font-size:13.5px;color:var(--ink-soft)}
+.e-tot-row strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.e-tot-row.big{padding:.8rem 0;border-bottom:none}
+.e-tot-row.big span{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--coral);font-weight:600}
+.e-tot-row.big strong{font-size:24px;font-weight:300;letter-spacing:-.01em;color:var(--ink)}
+.e-tot-iva{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;text-align:right;margin-top:.4rem}
+.e-tot-neg strong{color:#2e7d32}
+
+/* Actions bar */
+.actions-bar{position:fixed;bottom:0;left:240px;right:0;background:#fff;border-top:1px solid var(--border);padding:.85rem 1.5rem;display:flex;justify-content:space-between;gap:.6rem;z-index:50;box-shadow:0 -4px 16px rgba(0,0,0,.05);flex-wrap:wrap;align-items:center}
+@media(max-width:1024px){.actions-bar{left:0}}
+.actions-bar-left{display:flex;gap:.6rem;flex-wrap:wrap}
+.actions-bar-right{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.ab-save-state{font-size:12px;color:var(--mid)}
+.ab-save-state.dirty{color:#cc7a00}
+.ab-save-state.saved{color:var(--accent)}
+.ab-save-state.error{color:#a82626}
+.ab-btn{padding:.55rem 1.15rem;font-size:13px;font-family:inherit;font-weight:500;border:none;border-radius:5px;cursor:pointer;transition:opacity .15s,background .15s;text-decoration:none;display:inline-block}
+.ab-btn:disabled{opacity:.5;cursor:not-allowed}
+.ab-btn-primary{background:var(--ink);color:#fff}
+.ab-btn-primary:hover:not(:disabled){background:var(--coral)}
+.ab-btn-outline{background:#fff;color:var(--ink);border:1px solid var(--border)}
+.ab-btn-outline:hover:not(:disabled){border-color:var(--ink)}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="e-shell">
+    <a class="e-back" href="/admin/armarios/presupuestos/">← Todos los presupuestos</a>
+
+    <div id="eLoading" class="e-loading">Cargando…</div>
+    <div id="eError" class="e-error" style="display:none"></div>
+
+    <div id="eContent" style="display:none">
+      <div class="e-grid">
+        <div class="e-main">
+
+          <!-- Cabecera identidad presupuesto -->
+          <div class="e-card">
+            <h2>Cabecera</h2>
+            <div class="e-row cols-4">
+              <div class="e-field">
+                <label>Nº presupuesto</label>
+                <input id="fNumero" type="text" placeholder="Se asigna al guardar">
+              </div>
+              <div class="e-field">
+                <label>Fecha</label>
+                <input id="fFecha" type="date">
+              </div>
+              <div class="e-field">
+                <label>Validez (días)</label>
+                <input id="fValidez" type="number" min="1" step="1">
+              </div>
+              <div class="e-field">
+                <label>Estado</label>
+                <select id="fEstado">
+                  <option value="borrador">Borrador</option>
+                  <option value="enviado">Enviado</option>
+                  <option value="aceptado">Aceptado</option>
+                  <option value="rechazado">Rechazado</option>
+                  <option value="caducado">Caducado</option>
+                  <option value="archivado">Archivado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cliente -->
+          <div class="e-card">
+            <h2>A la atención de</h2>
+            <div class="e-row">
+              <div class="e-field"><label>Nombre / razón social</label><input id="fCliNombre" type="text"></div>
+              <div class="e-field"><label>Email</label><input id="fCliEmail" type="email"></div>
+            </div>
+            <div class="e-row" style="margin-top:.7rem">
+              <div class="e-field"><label>Dirección</label><input id="fCliDireccion" type="text"></div>
+              <div class="e-field"><label>Ciudad</label><input id="fCliCiudad" type="text"></div>
+            </div>
+            <div class="e-row cols-1" style="margin-top:.7rem">
+              <div class="e-field"><label>Teléfono</label><input id="fCliTel" type="tel"></div>
+            </div>
+          </div>
+
+          <!-- Proyecto -->
+          <div class="e-card">
+            <h2>Proyecto</h2>
+            <div class="e-row">
+              <div class="e-field"><label>Nombre del proyecto</label><input id="fProyNombre" type="text" placeholder="Ej. ARMARIOS A MEDIDA"></div>
+              <div class="e-field"><label>Referencia</label><input id="fProyRef" type="text" placeholder="Ej. GOMIS 64"></div>
+            </div>
+            <div class="e-row cols-3" style="margin-top:.7rem">
+              <div class="e-field"><label>Dto. global por defecto (%)</label><input id="fDtoGlobal" type="number" min="0" max="100" step="0.01"></div>
+              <div class="e-field"><label>IBAN</label><input id="fIban" type="text" placeholder="ES.."></div>
+              <div class="e-field"><label>Notas internas (NO van en PDF)</label><input id="fNotasInt" type="text"></div>
+            </div>
+          </div>
+
+          <!-- Líneas -->
+          <div class="e-card">
+            <h2>Líneas — MOBILIARIO A MEDIDA</h2>
+            <div class="e-lines" id="eLines"></div>
+            <button class="e-add-line" id="eAddLine" type="button">＋ Añadir línea</button>
+          </div>
+
+          <!-- Forma de pago -->
+          <div class="e-card">
+            <h2>Forma de pago</h2>
+            <div id="ePayList"></div>
+            <button class="e-add-line" id="eAddPay" type="button" style="margin-top:.5rem">＋ Añadir hito</button>
+            <div class="e-pay-sum" id="ePaySum"></div>
+          </div>
+
+        </div><!-- /.e-main -->
+
+        <!-- Aside totales -->
+        <aside class="e-aside">
+          <div class="e-totals">
+            <h3>Totales en vivo</h3>
+            <div class="e-tot-row"><span>PVP sin IVA</span><strong id="tPvp">0,00 €</strong></div>
+            <div class="e-tot-row e-tot-neg"><span>DTO. profesional</span><strong id="tDto">0,00 €</strong></div>
+            <div class="e-tot-row big"><span>Importe total</span><strong id="tImp">0,00 €</strong></div>
+            <div class="e-tot-iva">IVA NO INCLUIDO</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Sticky actions bar -->
+<div class="actions-bar" id="eActionsBar" style="display:none">
+  <div class="actions-bar-left">
+    <button class="ab-btn ab-btn-outline" id="btnDuplicar" type="button">Duplicar</button>
+  </div>
+  <div class="actions-bar-right">
+    <span class="ab-save-state" id="saveState">Sin cambios</span>
+    <button class="ab-btn ab-btn-outline" id="btnPdf" type="button">Generar PDF</button>
+    <button class="ab-btn ab-btn-primary" id="btnGuardar" type="button">Guardar</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/assets/js/presupuestos-format.js"></script>
+<script src="/assets/js/presupuestos-calc.js"></script>
+<script>
+initAdminShell({ activeSection: 'armarios-presupuestos', title: 'Presupuesto' }).then(async function (ctx) {
+  var supa = ctx.supabase;
+  var F = window.PresupuestosFormat;
+  var C = window.PresupuestosCalc;
+
+  var params  = new URLSearchParams(location.search);
+  var quoteId = params.get('id');     // 'new' | uuid
+  var isNew   = !quoteId || quoteId === 'new';
+
+  // ── Estado local ─────────────────────────────────────────────
+  var state = {
+    quote: {
+      numero: '', fecha: new Date().toISOString().slice(0,10), estado: 'borrador',
+      validez_dias: 30,
+      cliente_nombre: '', cliente_direccion: '', cliente_ciudad: '',
+      cliente_email: '', cliente_tel: '',
+      proyecto_nombre: '', proyecto_referencia: '',
+      dto_global_pct: 10,
+      forma_pago: [
+        { concepto: 'Confirmación presupuesto', pct: 50 },
+        { concepto: 'Entrega materiales', pct: 40 },
+        { concepto: 'Final de obra', pct: 10 }
+      ],
+      iban: '',
+      notas_internas: ''
+    },
+    lines: [],  // [{id?, _localId, cantidad, producto_titulo, ...}]
+    deletedLineIds: [],
+    dirty: false
+  };
+
+  var $err = document.getElementById('eError');
+  var $loading = document.getElementById('eLoading');
+  var $content = document.getElementById('eContent');
+  var $actions = document.getElementById('eActionsBar');
+  var $saveState = document.getElementById('saveState');
+  var $btnGuardar = document.getElementById('btnGuardar');
+  var $btnPdf = document.getElementById('btnPdf');
+  var $btnDuplicar = document.getElementById('btnDuplicar');
+  var $lines = document.getElementById('eLines');
+  var $payList = document.getElementById('ePayList');
+  var $paySum = document.getElementById('ePaySum');
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  function showError(msg) {
+    $err.textContent = msg;
+    $err.style.display = 'block';
+    $loading.style.display = 'none';
+  }
+  function markDirty() {
+    state.dirty = true;
+    $saveState.textContent = 'Cambios sin guardar';
+    $saveState.className = 'ab-save-state dirty';
+  }
+  function markSaved() {
+    state.dirty = false;
+    $saveState.textContent = 'Guardado ✓';
+    $saveState.className = 'ab-save-state saved';
+  }
+  function markError(msg) {
+    $saveState.textContent = msg;
+    $saveState.className = 'ab-save-state error';
+  }
+
+  // Genera ID local para líneas nuevas sin id en BD (sirve para tracking en UI)
+  var localSeq = 0;
+  function nextLocalId() { return 'L' + (++localSeq); }
+
+  // ── Render líneas ────────────────────────────────────────────
+  function renderLines() {
+    if (!state.lines.length) {
+      $lines.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--mid);font-size:13px">Sin líneas. Pulsa "Añadir línea" para empezar.</div>';
+    } else {
+      $lines.innerHTML = state.lines.map(function (l, idx) {
+        var lid = l._localId;
+        var imgsHtml = (l.imagenes || []).map(function (path, i) {
+          var url = l._imageUrls && l._imageUrls[i] || '';
+          return ''
+            + '<div class="e-image-thumb" data-path="' + escapeHtml(path) + '">'
+            + '  <img alt="" src="' + escapeHtml(url) + '">'
+            + '  <button class="e-image-rm" type="button" data-line="' + lid + '" data-idx="' + i + '" title="Quitar">×</button>'
+            + '</div>';
+        }).join('');
+
+        return ''
+          + '<div class="e-line" data-line="' + lid + '">'
+          + '  <div class="e-line-hdr">'
+          + '    <span class="e-line-num">Línea ' + (idx + 1) + '</span>'
+          + '    <div class="e-line-actions">'
+          + '      <button class="e-icon-btn" type="button" data-act="up"   data-line="' + lid + '" title="Subir" '   + (idx === 0 ? 'disabled' : '') + '>↑</button>'
+          + '      <button class="e-icon-btn" type="button" data-act="down" data-line="' + lid + '" title="Bajar" '   + (idx === state.lines.length - 1 ? 'disabled' : '') + '>↓</button>'
+          + '      <button class="e-icon-btn e-icon-btn-danger" type="button" data-act="del" data-line="' + lid + '" title="Eliminar">×</button>'
+          + '    </div>'
+          + '  </div>'
+          + '  <div class="e-line-grid">'
+          + '    <div class="e-field"><label>Cantidad</label><input type="number" min="1" step="1" data-line="' + lid + '" data-field="cantidad" value="' + escapeHtml(l.cantidad) + '"></div>'
+          + '    <div class="e-field span-2"><label>Producto (título)</label><input type="text" data-line="' + lid + '" data-field="producto_titulo" value="' + escapeHtml(l.producto_titulo) + '" placeholder="Ej. Armario corredera 270cm"></div>'
+          + '    <div class="e-field"><label>Material y grosor</label><input type="text" data-line="' + lid + '" data-field="material_grosor" value="' + escapeHtml(l.material_grosor) + '" placeholder="Ej. Chapa roble 19mm"></div>'
+          + '    <div class="e-field"><label>Precio unitario (€)</label><input type="number" min="0" step="0.01" data-line="' + lid + '" data-field="precio_unitario" value="' + escapeHtml(l.precio_unitario) + '"></div>'
+          + '    <div class="e-field"><label>Dto. (%)</label><input type="number" min="0" max="100" step="0.01" data-line="' + lid + '" data-field="dto_pct" value="' + escapeHtml(l.dto_pct) + '"></div>'
+          + '  </div>'
+          + '  <div class="e-line-grid" style="margin-top:.5rem">'
+          + '    <div class="e-field"><label>Ancho (cm)</label><input type="number" min="0" step="0.1" data-line="' + lid + '" data-field="ancho" value="' + escapeHtml(l.ancho == null ? "" : l.ancho) + '"></div>'
+          + '    <div class="e-field"><label>Alto (cm)</label><input type="number" min="0" step="0.1" data-line="' + lid + '" data-field="alto" value="' + escapeHtml(l.alto == null ? "" : l.alto) + '"></div>'
+          + '    <div class="e-field"><label>Fondo (cm)</label><input type="number" min="0" step="0.1" data-line="' + lid + '" data-field="fondo" value="' + escapeHtml(l.fondo == null ? "" : l.fondo) + '"></div>'
+          + '    <div class="e-field span-2" style="grid-column:span 3"><label>Nota</label><input type="text" data-line="' + lid + '" data-field="nota" value="' + escapeHtml(l.nota) + '" placeholder="Ej. EN AMARILLO EN CHAPA DE ROBLE"></div>'
+          + '  </div>'
+          + '  <div class="e-field" style="margin-top:.55rem">'
+          + '    <label>Descripción detallada (multilínea, usa "- " para bullets)</label>'
+          + '    <textarea data-line="' + lid + '" data-field="producto_descripcion" rows="3">' + escapeHtml(l.producto_descripcion) + '</textarea>'
+          + '  </div>'
+          + '  <div>'
+          + '    <label style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);font-weight:600;display:block;margin:.7rem 0 .3rem">Planos / imágenes</label>'
+          + '    <div class="e-images">'
+          + '      ' + imgsHtml
+          + '      <label class="e-image-add" title="Subir plano">+ Subir<input type="file" accept="image/*" multiple data-line="' + lid + '" style="display:none"></label>'
+          + '    </div>'
+          + '  </div>'
+          + '  <div class="e-line-totals" data-tot-line="' + lid + '">'
+          + '    <span>PVP línea: <strong class="t-pvp">' + F.formatEUR(0) + '</strong></span>'
+          + '    <span>Importe: <strong class="t-imp">' + F.formatEUR(0) + '</strong></span>'
+          + '  </div>'
+          + '</div>';
+      }).join('');
+    }
+    recalc();
+  }
+
+  // ── Render forma de pago ─────────────────────────────────────
+  function renderPay() {
+    $payList.innerHTML = state.quote.forma_pago.map(function (p, i) {
+      return ''
+        + '<div class="e-pay-line" data-pay="' + i + '">'
+        + '  <input type="text" data-pay-field="concepto" value="' + escapeHtml(p.concepto) + '" placeholder="Concepto">'
+        + '  <input type="number" min="0" max="100" step="0.01" data-pay-field="pct" value="' + escapeHtml(p.pct) + '">'
+        + '  <span class="e-pay-eur" data-pay-eur="' + i + '">0,00 €</span>'
+        + '  <button class="e-icon-btn e-icon-btn-danger" type="button" data-act="pay-del" data-pay="' + i + '" title="Quitar">×</button>'
+        + '</div>';
+    }).join('');
+    recalc();
+  }
+
+  // ── Recálculo en vivo ────────────────────────────────────────
+  function recalc() {
+    var t = C.quoteTotals(state.lines);
+    document.getElementById('tPvp').textContent = F.formatEUR(t.pvpSinIva);
+    document.getElementById('tDto').textContent = F.formatEURSigned(t.dtoProfesional);
+    document.getElementById('tImp').textContent = F.formatEUR(t.importeTotal);
+
+    // Por línea
+    t.lineas.forEach(function (lt, i) {
+      var l = state.lines[i];
+      if (!l) return;
+      var row = $lines.querySelector('[data-tot-line="' + l._localId + '"]');
+      if (!row) return;
+      row.querySelector('.t-pvp').textContent = F.formatEUR(lt.pvpLinea);
+      row.querySelector('.t-imp').textContent = F.formatEUR(lt.importeLinea);
+    });
+
+    // Hitos de pago
+    var hitos = C.paymentMilestones(state.quote.forma_pago, t.importeTotal);
+    var totalPct = 0;
+    hitos.forEach(function (h, i) {
+      totalPct += h.pct;
+      var el = $payList.querySelector('[data-pay-eur="' + i + '"]');
+      if (el) el.textContent = F.formatEUR(h.eur);
+    });
+    var diff = totalPct - 100;
+    if (Math.abs(diff) < 0.01) {
+      $paySum.textContent = 'Suma de porcentajes: 100% ✓';
+      $paySum.className = 'e-pay-sum';
+    } else {
+      $paySum.textContent = 'Suma de porcentajes: ' + totalPct.toFixed(2) + '% (debe ser 100%)';
+      $paySum.className = 'e-pay-sum bad';
+    }
+  }
+
+  // ── Cargar quote desde BD ────────────────────────────────────
+  async function load() {
+    if (isNew) {
+      // intenta cargar defaults desde quote_settings
+      try {
+        var s = await supa.from('quote_settings').select('key, value').in('key', ['payment_schedule_default','iban_default']);
+        if (s.data) s.data.forEach(function (r) {
+          if (r.key === 'payment_schedule_default' && Array.isArray(r.value)) state.quote.forma_pago = r.value;
+          if (r.key === 'iban_default' && typeof r.value === 'string') state.quote.iban = r.value;
+        });
+      } catch (e) { /* sin bloqueo */ }
+      paintForm();
+      $loading.style.display = 'none';
+      $content.style.display = 'block';
+      $actions.style.display = 'flex';
+      $btnPdf.disabled = true;
+      $btnPdf.title = 'Guarda primero el presupuesto para poder generar el PDF';
+      $btnDuplicar.style.display = 'none';
+      return;
+    }
+
+    try {
+      var qRes = await supa.from('quotes').select('*').eq('id', quoteId).single();
+      if (qRes.error) throw qRes.error;
+      var lRes = await supa.from('quote_lines').select('*').eq('quote_id', quoteId).order('orden', { ascending: true });
+      if (lRes.error) throw lRes.error;
+
+      Object.assign(state.quote, qRes.data);
+      if (!Array.isArray(state.quote.forma_pago)) state.quote.forma_pago = [];
+      state.lines = (lRes.data || []).map(function (l) {
+        l._localId = nextLocalId();
+        l._imageUrls = []; // se rellena async tras crear signed URLs
+        return l;
+      });
+
+      // Signed URLs para las imágenes existentes
+      await refreshAllImageUrls();
+
+      paintForm();
+      renderLines();
+      renderPay();
+      $loading.style.display = 'none';
+      $content.style.display = 'block';
+      $actions.style.display = 'flex';
+      $btnPdf.disabled = false;
+      $btnDuplicar.style.display = 'inline-block';
+      markSaved();
+      $saveState.textContent = 'Sin cambios';
+      $saveState.className = 'ab-save-state';
+    } catch (e) {
+      console.error('[editor] load error', e);
+      showError('No se pudo cargar el presupuesto: ' + (e.message || e));
+    }
+  }
+
+  async function refreshAllImageUrls() {
+    var allPaths = [];
+    state.lines.forEach(function (l) { (l.imagenes || []).forEach(function (p) { allPaths.push(p); }); });
+    if (!allPaths.length) return;
+    try {
+      var res = await supa.storage.from('quote-plans').createSignedUrls(allPaths, 60 * 60);
+      var map = {};
+      (res.data || []).forEach(function (it) { map[it.path] = it.signedUrl; });
+      state.lines.forEach(function (l) {
+        l._imageUrls = (l.imagenes || []).map(function (p) { return map[p] || ''; });
+      });
+    } catch (e) {
+      console.warn('[editor] signed urls failed', e);
+    }
+  }
+
+  function paintForm() {
+    var q = state.quote;
+    document.getElementById('fNumero').value = q.numero || '';
+    document.getElementById('fFecha').value = q.fecha || '';
+    document.getElementById('fValidez').value = q.validez_dias;
+    document.getElementById('fEstado').value = q.estado;
+    document.getElementById('fCliNombre').value = q.cliente_nombre || '';
+    document.getElementById('fCliEmail').value = q.cliente_email || '';
+    document.getElementById('fCliDireccion').value = q.cliente_direccion || '';
+    document.getElementById('fCliCiudad').value = q.cliente_ciudad || '';
+    document.getElementById('fCliTel').value = q.cliente_tel || '';
+    document.getElementById('fProyNombre').value = q.proyecto_nombre || '';
+    document.getElementById('fProyRef').value = q.proyecto_referencia || '';
+    document.getElementById('fDtoGlobal').value = q.dto_global_pct;
+    document.getElementById('fIban').value = q.iban || '';
+    document.getElementById('fNotasInt').value = q.notas_internas || '';
+    renderPay();
+    renderLines();
+  }
+
+  // ── Cambios en cabecera ──────────────────────────────────────
+  function bindHeader() {
+    var map = {
+      fNumero: 'numero', fFecha: 'fecha', fValidez: 'validez_dias', fEstado: 'estado',
+      fCliNombre: 'cliente_nombre', fCliEmail: 'cliente_email', fCliDireccion: 'cliente_direccion',
+      fCliCiudad: 'cliente_ciudad', fCliTel: 'cliente_tel',
+      fProyNombre: 'proyecto_nombre', fProyRef: 'proyecto_referencia',
+      fDtoGlobal: 'dto_global_pct', fIban: 'iban', fNotasInt: 'notas_internas'
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', function () {
+        var v = el.value;
+        if (el.type === 'number') v = v === '' ? null : Number(v);
+        state.quote[map[id]] = v;
+        markDirty();
+      });
+    });
+  }
+
+  // ── Eventos en líneas ────────────────────────────────────────
+  function findLine(localId) {
+    for (var i = 0; i < state.lines.length; i++) if (state.lines[i]._localId === localId) return { line: state.lines[i], idx: i };
+    return null;
+  }
+
+  $lines.addEventListener('input', function (e) {
+    var t = e.target;
+    var lid = t.getAttribute('data-line');
+    var field = t.getAttribute('data-field');
+    if (!lid || !field) return;
+    var f = findLine(lid);
+    if (!f) return;
+    var v = t.value;
+    if (t.type === 'number') v = v === '' ? null : Number(v);
+    f.line[field] = v;
+    markDirty();
+    recalc();
+  });
+
+  $lines.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (btn) {
+      var act = btn.getAttribute('data-act');
+      var lid = btn.getAttribute('data-line');
+      var f = findLine(lid);
+      if (!f) return;
+      if (act === 'del') {
+        if (!confirm('¿Eliminar esta línea?')) return;
+        if (f.line.id) state.deletedLineIds.push(f.line.id);
+        state.lines.splice(f.idx, 1);
+        renderLines();
+        markDirty();
+      } else if (act === 'up' && f.idx > 0) {
+        var [a,b] = [state.lines[f.idx-1], state.lines[f.idx]];
+        state.lines[f.idx-1] = b; state.lines[f.idx] = a;
+        renderLines();
+        markDirty();
+      } else if (act === 'down' && f.idx < state.lines.length - 1) {
+        var [c,d] = [state.lines[f.idx], state.lines[f.idx+1]];
+        state.lines[f.idx] = d; state.lines[f.idx+1] = c;
+        renderLines();
+        markDirty();
+      }
+    }
+    // remove image
+    var rm = e.target.closest('.e-image-rm');
+    if (rm) {
+      var lid2 = rm.getAttribute('data-line');
+      var idx = parseInt(rm.getAttribute('data-idx'), 10);
+      var f2 = findLine(lid2);
+      if (!f2) return;
+      f2.line.imagenes.splice(idx, 1);
+      if (f2.line._imageUrls) f2.line._imageUrls.splice(idx, 1);
+      renderLines();
+      markDirty();
+    }
+  });
+
+  // Upload de imágenes (input type=file en label)
+  $lines.addEventListener('change', async function (e) {
+    var input = e.target.closest('input[type="file"]');
+    if (!input) return;
+    var lid = input.getAttribute('data-line');
+    var f = findLine(lid);
+    if (!f || !input.files || !input.files.length) return;
+    var files = Array.from(input.files);
+    input.value = '';
+    if (isNew && !quoteId) {
+      alert('Guarda primero el presupuesto antes de subir planos.');
+      return;
+    }
+    try {
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        var ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var path = quoteId + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+        var up = await supa.storage.from('quote-plans').upload(path, file, { upsert: false, contentType: file.type });
+        if (up.error) throw up.error;
+        f.line.imagenes = f.line.imagenes || [];
+        f.line.imagenes.push(path);
+        var su = await supa.storage.from('quote-plans').createSignedUrl(path, 60 * 60);
+        f.line._imageUrls = f.line._imageUrls || [];
+        f.line._imageUrls.push(su.data && su.data.signedUrl || '');
+      }
+      renderLines();
+      markDirty();
+    } catch (e2) {
+      alert('Error subiendo imagen: ' + (e2.message || e2));
+    }
+  });
+
+  document.getElementById('eAddLine').addEventListener('click', function () {
+    state.lines.push({
+      _localId: nextLocalId(),
+      seccion: 'MOBILIARIO A MEDIDA',
+      orden: state.lines.length,
+      cantidad: 1,
+      producto_titulo: '',
+      producto_descripcion: '',
+      material_grosor: '',
+      ancho: null, alto: null, fondo: null,
+      precio_unitario: 0,
+      dto_pct: Number(state.quote.dto_global_pct) || 10,
+      nota: '',
+      imagenes: [],
+      _imageUrls: []
+    });
+    renderLines();
+    markDirty();
+  });
+
+  // ── Forma de pago ─────────────────────────────────────────────
+  $payList.addEventListener('input', function (e) {
+    var t = e.target;
+    var field = t.getAttribute('data-pay-field');
+    if (!field) return;
+    var i = parseInt(t.closest('[data-pay]').getAttribute('data-pay'), 10);
+    var v = t.value;
+    if (field === 'pct') v = v === '' ? 0 : Number(v);
+    state.quote.forma_pago[i][field] = v;
+    markDirty();
+    recalc();
+  });
+  $payList.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-act="pay-del"]');
+    if (!btn) return;
+    var i = parseInt(btn.getAttribute('data-pay'), 10);
+    state.quote.forma_pago.splice(i, 1);
+    renderPay();
+    markDirty();
+  });
+  document.getElementById('eAddPay').addEventListener('click', function () {
+    state.quote.forma_pago.push({ concepto: '', pct: 0 });
+    renderPay();
+    markDirty();
+  });
+
+  // ── Guardar ──────────────────────────────────────────────────
+  async function guardar() {
+    $btnGuardar.disabled = true;
+    try {
+      // Sanea estado.quote: numbers
+      var q = state.quote;
+      var payload = {
+        numero: q.numero && q.numero.trim() ? q.numero.trim() : null,
+        fecha: q.fecha, estado: q.estado,
+        validez_dias: Number(q.validez_dias) || 30,
+        cliente_nombre: q.cliente_nombre, cliente_direccion: q.cliente_direccion,
+        cliente_ciudad: q.cliente_ciudad, cliente_email: q.cliente_email, cliente_tel: q.cliente_tel,
+        proyecto_nombre: q.proyecto_nombre, proyecto_referencia: q.proyecto_referencia,
+        dto_global_pct: Number(q.dto_global_pct) || 0,
+        forma_pago: q.forma_pago, iban: q.iban, notas_internas: q.notas_internas
+      };
+      var savedId = quoteId;
+      if (isNew || !quoteId || quoteId === 'new') {
+        var ins = await supa.from('quotes').insert(payload).select().single();
+        if (ins.error) throw ins.error;
+        savedId = ins.data.id;
+        state.quote.numero = ins.data.numero;  // refleja el nº asignado por trigger
+      } else {
+        var upd = await supa.from('quotes').update(payload).eq('id', quoteId);
+        if (upd.error) throw upd.error;
+      }
+
+      // Borrar líneas marcadas
+      if (state.deletedLineIds.length) {
+        var del = await supa.from('quote_lines').delete().in('id', state.deletedLineIds);
+        if (del.error) throw del.error;
+        state.deletedLineIds = [];
+      }
+
+      // Upsert líneas (orden por posición actual)
+      var existing = [];
+      var newOnes = [];
+      state.lines.forEach(function (l, i) {
+        var row = {
+          quote_id: savedId, seccion: l.seccion || 'MOBILIARIO A MEDIDA', orden: i,
+          cantidad: Number(l.cantidad) || 1,
+          producto_titulo: l.producto_titulo, producto_descripcion: l.producto_descripcion,
+          material_grosor: l.material_grosor,
+          ancho: l.ancho == null || l.ancho === '' ? null : Number(l.ancho),
+          alto:  l.alto  == null || l.alto  === '' ? null : Number(l.alto),
+          fondo: l.fondo == null || l.fondo === '' ? null : Number(l.fondo),
+          precio_unitario: Number(l.precio_unitario) || 0,
+          dto_pct: l.dto_pct == null || l.dto_pct === '' ? 0 : Number(l.dto_pct),
+          nota: l.nota,
+          imagenes: l.imagenes || []
+        };
+        if (l.id) { row.id = l.id; existing.push(row); }
+        else newOnes.push(row);
+      });
+      for (var i = 0; i < existing.length; i++) {
+        var r = existing[i];
+        var lid = r.id; delete r.id;
+        var u = await supa.from('quote_lines').update(r).eq('id', lid);
+        if (u.error) throw u.error;
+      }
+      if (newOnes.length) {
+        var insL = await supa.from('quote_lines').insert(newOnes).select();
+        if (insL.error) throw insL.error;
+        // asigna ids a las líneas nuevas en orden
+        var insertedRows = insL.data || [];
+        // Mapeo por orden: el insert respeta el orden del array pasado.
+        var newLineIdx = 0;
+        state.lines.forEach(function (l) {
+          if (!l.id && newLineIdx < insertedRows.length) {
+            l.id = insertedRows[newLineIdx].id;
+            newLineIdx++;
+          }
+        });
+      }
+
+      if (isNew) {
+        // Redirige a la URL canónica con el id real
+        location.href = '/admin/armarios/presupuestos/editor/?id=' + encodeURIComponent(savedId);
+        return;
+      }
+      markSaved();
+      paintForm(); // refresca por si el trigger asignó algo
+    } catch (e) {
+      console.error('[editor] save error', e);
+      markError('Error: ' + (e.message || e));
+    } finally {
+      $btnGuardar.disabled = false;
+    }
+  }
+
+  $btnGuardar.addEventListener('click', guardar);
+
+  // ── Generar PDF ──────────────────────────────────────────────
+  // El endpoint exige Bearer token → no podemos usar un <a>; hacemos
+  // fetch, recibimos el blob y lo abrimos en una pestaña nueva.
+  $btnPdf.addEventListener('click', async function () {
+    if (state.dirty && !confirm('Tienes cambios sin guardar que no se reflejarán en el PDF. ¿Generar igualmente?')) return;
+    $btnPdf.disabled = true;
+    var originalText = $btnPdf.textContent;
+    $btnPdf.textContent = 'Generando…';
+    try {
+      var sess = await supa.auth.getSession();
+      var token = sess.data && sess.data.session && sess.data.session.access_token;
+      if (!token) throw new Error('Sesión no encontrada — vuelve a iniciar sesión');
+      var resp = await fetch('/api/admin/quotes/pdf?id=' + encodeURIComponent(quoteId), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!resp.ok) {
+        var msg = 'HTTP ' + resp.status;
+        try { var j = await resp.json(); if (j && j.error) msg += ' — ' + j.error + (j.detail ? ': ' + j.detail : ''); } catch (_) {}
+        throw new Error(msg);
+      }
+      var blob = await resp.blob();
+      var url = URL.createObjectURL(blob);
+      var w = window.open(url, '_blank');
+      // Libera la URL tras un rato para no acumular memoria
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      if (!w) alert('El navegador bloqueó la apertura del PDF. Permite popups para descargar.');
+    } catch (e) {
+      alert('No se pudo generar el PDF: ' + (e.message || e));
+    } finally {
+      $btnPdf.disabled = false;
+      $btnPdf.textContent = originalText;
+    }
+  });
+
+  $btnDuplicar.addEventListener('click', async function () {
+    if (state.dirty && !confirm('Tienes cambios sin guardar que se perderán. ¿Duplicar igualmente?')) return;
+    try {
+      var origRes = await supa.from('quotes').select('*').eq('id', quoteId).single();
+      if (origRes.error) throw origRes.error;
+      var o = origRes.data;
+      var newQ = Object.assign({}, o, { id: undefined, numero: null,
+        fecha: new Date().toISOString().slice(0,10),
+        estado: 'borrador',
+        proyecto_nombre: (o.proyecto_nombre || '') + ' (copia)',
+        created_at: undefined, updated_at: undefined });
+      delete newQ.id; delete newQ.created_at; delete newQ.updated_at;
+      var ins = await supa.from('quotes').insert(newQ).select().single();
+      if (ins.error) throw ins.error;
+      var newId = ins.data.id;
+      var linesRes = await supa.from('quote_lines').select('*').eq('quote_id', quoteId);
+      if (linesRes.error) throw linesRes.error;
+      var copyLines = (linesRes.data || []).map(function (l) {
+        return { quote_id: newId, seccion: l.seccion, orden: l.orden,
+          cantidad: l.cantidad, producto_titulo: l.producto_titulo,
+          producto_descripcion: l.producto_descripcion, material_grosor: l.material_grosor,
+          ancho: l.ancho, alto: l.alto, fondo: l.fondo,
+          precio_unitario: l.precio_unitario, dto_pct: l.dto_pct,
+          nota: l.nota, imagenes: l.imagenes };
+      });
+      if (copyLines.length) {
+        var i2 = await supa.from('quote_lines').insert(copyLines);
+        if (i2.error) throw i2.error;
+      }
+      location.href = '/admin/armarios/presupuestos/editor/?id=' + encodeURIComponent(newId);
+    } catch (e) {
+      alert('Error duplicando: ' + (e.message || e));
+    }
+  });
+
+  // Aviso antes de salir si hay cambios
+  window.addEventListener('beforeunload', function (e) {
+    if (state.dirty) { e.preventDefault(); e.returnValue = ''; return ''; }
+  });
+
+  bindHeader();
+  load();
+});
+</script>
+</body>
+</html>

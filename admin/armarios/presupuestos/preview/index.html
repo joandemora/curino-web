@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=210mm">
+<title>Presupuesto — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   presupuesto preview — fidelidad al Z2606931
+   - Se usa para el preview en admin (con signed URLs)
+   - Y como target del puppeteer pdf (con base64 inline)
+   ============================================================ */
+@page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  color: #1a1a1a;
+  background: #fafaf7;
+}
+body.is-pdf { background: #fff; }
+
+/* Una "página" simulada en el navegador */
+.page {
+  background: #fff;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 6mm;
+  padding: 16mm 14mm;
+  box-shadow: 0 1px 6px rgba(0,0,0,.08);
+}
+body.is-pdf .page {
+  width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none;
+}
+
+/* Cabecera de marca */
+.brand-bar {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding-bottom: 6mm; border-bottom: 1px solid #1a1a1a; margin-bottom: 7mm;
+}
+.brand-logo {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 30pt; font-weight: 500; letter-spacing: .01em;
+  line-height: 1; color: #1a1a1a;
+}
+.brand-logo .amp { font-style: italic; color: #cc785c; margin-right: 2px; }
+.brand-info {
+  font-size: 7.5pt; line-height: 1.5; color: #555; text-align: right;
+}
+.brand-info strong { color: #1a1a1a; }
+.brand-claim {
+  font-size: 7.5pt; letter-spacing: .18em; text-transform: uppercase;
+  color: #cc785c; margin-top: 1.5mm; text-align: right; font-weight: 600;
+}
+
+/* Cabecera de 4 columnas */
+.head-cols {
+  display: grid; grid-template-columns: 1.4fr 1.4fr 1fr 1fr;
+  gap: 4mm; margin-bottom: 7mm;
+}
+.hc {
+  border-top: 2px solid #1a1a1a; padding-top: 2mm;
+}
+.hc-label {
+  font-size: 6.5pt; text-transform: uppercase; letter-spacing: .13em;
+  color: #888; font-weight: 600; margin-bottom: 1.2mm;
+}
+.hc-body { font-size: 9pt; color: #1a1a1a; line-height: 1.45; }
+.hc-body strong { font-weight: 600; }
+.hc-num { font-size: 12pt; font-weight: 600; letter-spacing: .03em; }
+
+/* Sección "MOBILIARIO A MEDIDA" */
+.section-title {
+  font-size: 8pt; text-transform: uppercase; letter-spacing: .2em;
+  background: #1a1a1a; color: #fff; padding: 1.5mm 3mm;
+  font-weight: 600; margin: 0 0 0; display: block;
+}
+
+/* Tabla de líneas */
+.lines-table { width: 100%; border-collapse: collapse; }
+.lines-table thead th {
+  font-size: 6.5pt; text-transform: uppercase; letter-spacing: .08em;
+  color: #888; font-weight: 600;
+  padding: 2mm 1.5mm; border-bottom: 1px solid #1a1a1a;
+  text-align: left; vertical-align: bottom;
+}
+.lines-table thead th.num  { text-align: right; }
+.lines-table tbody td {
+  padding: 3mm 1.5mm; border-bottom: 1px solid #e5e5e5;
+  vertical-align: top; font-size: 8.5pt; line-height: 1.45;
+}
+.lines-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.col-cant     { width: 12mm; }
+.col-prod     { width: auto; }
+.col-mat      { width: 28mm; color: #555; }
+.col-med      { width: 23mm; color: #555; font-size: 8pt; }
+.col-precio   { width: 18mm; }
+.col-pvp      { width: 19mm; }
+.col-dto      { width: 14mm; color: #555; }
+.col-importe  { width: 22mm; font-weight: 600; }
+
+/* Línea: title + descripción + nota */
+.line-title { font-weight: 600; color: #1a1a1a; margin-bottom: .8mm; }
+.line-desc  { font-size: 8pt; color: #555; white-space: pre-wrap; }
+.line-nota  {
+  font-size: 7.5pt; color: #cc785c; margin-top: 1.5mm;
+  background: #fdf6ef; border-left: 2px solid #cc785c;
+  padding: 1mm 2mm; border-radius: 0 2px 2px 0;
+}
+.line-medidas { font-size: 7.5pt; }
+.line-medidas span { display: block; }
+
+/* Una fila de tabla NO debe partirse a la mitad */
+.lines-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
+
+/* Planos por línea */
+.line-images-row td { padding-top: 0; border-bottom: 1px solid #e5e5e5; }
+.line-images {
+  display: flex; flex-wrap: wrap; gap: 3mm; padding-top: 1mm; padding-bottom: 3mm;
+}
+.line-images img {
+  max-width: 56mm; max-height: 56mm;
+  border: 1px solid #e5e5e5; border-radius: 1mm; background: #fff;
+}
+
+/* Página de totales */
+.page-break { page-break-before: always; break-before: page; }
+.totals-section {
+  margin-top: 8mm; padding-top: 5mm; border-top: 1px solid #1a1a1a;
+  page-break-inside: avoid;
+}
+.totals-grid {
+  display: grid; grid-template-columns: 1fr 80mm; gap: 6mm; align-items: start;
+}
+.totals-table { width: 100%; border-collapse: collapse; }
+.totals-table td { padding: 1.5mm 0; font-size: 9pt; }
+.totals-table td.lbl { color: #555; text-transform: uppercase; letter-spacing: .06em; font-size: 7.5pt; font-weight: 600; }
+.totals-table td.val { text-align: right; font-variant-numeric: tabular-nums; }
+.totals-table tr.total td { border-top: 2px solid #1a1a1a; padding-top: 2.5mm; padding-bottom: 2.5mm; }
+.totals-table tr.total td.lbl { font-size: 9pt; color: #1a1a1a; }
+.totals-table tr.total td.val { font-size: 14pt; font-weight: 600; }
+.totals-table tr.dto td.val { color: #2e7d32; }
+.totals-iva {
+  margin-top: 2.5mm; font-size: 7.5pt; text-align: right;
+  color: #888; letter-spacing: .08em; text-transform: uppercase;
+}
+
+/* Forma de pago */
+.payments h3, .legal h3, .signature h3 {
+  font-size: 7.5pt; text-transform: uppercase; letter-spacing: .15em;
+  color: #1a1a1a; font-weight: 600; margin: 0 0 3mm;
+}
+.payments {
+  margin-top: 8mm; page-break-inside: avoid;
+}
+.pay-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.pay-table th, .pay-table td { padding: 1.6mm 2mm; text-align: left; border-bottom: 1px solid #e5e5e5; }
+.pay-table th {
+  font-size: 6.5pt; text-transform: uppercase; letter-spacing: .08em;
+  color: #888; font-weight: 600;
+}
+.pay-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.iban-row { margin-top: 3mm; font-size: 8.5pt; }
+.iban-row strong { font-weight: 600; }
+
+/* Cláusulas legales */
+.legal { margin-top: 9mm; page-break-inside: avoid; }
+.legal-clause {
+  margin-bottom: 3.5mm; font-size: 7.8pt; line-height: 1.5; color: #555;
+  page-break-inside: avoid;
+}
+.legal-clause strong { color: #1a1a1a; }
+
+/* Firma */
+.signature { margin-top: 10mm; page-break-inside: avoid; }
+.sig-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10mm;
+}
+.sig-block { border-top: 1px solid #1a1a1a; padding-top: 2mm; }
+.sig-label {
+  font-size: 6.5pt; text-transform: uppercase; letter-spacing: .12em;
+  color: #888; font-weight: 600; margin-bottom: 1.5mm;
+}
+.sig-body { font-size: 8.5pt; color: #1a1a1a; line-height: 1.5; }
+.sig-body strong { font-weight: 600; }
+.sig-area { height: 22mm; }
+.sig-date { font-size: 7.5pt; color: #888; margin-top: 7mm; font-style: italic; }
+
+/* Estados vacíos */
+.preview-empty, .preview-error {
+  text-align: center; padding: 4cm 2cm; color: #888;
+}
+.preview-error { color: #a82626; }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="page"><div class="preview-empty">Cargando presupuesto…</div></div>
+</div>
+
+<!-- Cuando puppeteer llega aquí, window.PRESUPUESTO_DATA YA está inyectado.
+     En modo navegador (admin viendo el preview), no existe y se carga vía supabase. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/presupuestos-format.js"></script>
+<script src="/assets/js/presupuestos-calc.js"></script>
+<script>
+(function () {
+  var F = window.PresupuestosFormat;
+  var C = window.PresupuestosCalc;
+  var injected = window.PRESUPUESTO_DATA || null;
+
+  // Marca al body si venimos en modo PDF (puppeteer setea window.IS_PDF antes)
+  if (window.IS_PDF) document.body.classList.add('is-pdf');
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+
+  function nl2br(s) {
+    return escapeHtml(s).replace(/\n/g, '<br>');
+  }
+
+  function dateLong(d) {
+    return F.formatDateLong(d);
+  }
+
+  function renderDescription(desc) {
+    if (!desc) return '';
+    // si hay líneas que empiezan por "- " las pintamos como lista; el resto, texto plano con <br>
+    var lines = String(desc).split(/\n/);
+    var html = '';
+    var bullets = [];
+    function flushBullets() {
+      if (bullets.length) {
+        html += '<ul style="margin:.5mm 0 1mm 4mm;padding:0;list-style:disc">' +
+          bullets.map(function (b) { return '<li style="margin-bottom:.4mm">' + escapeHtml(b) + '</li>'; }).join('') +
+          '</ul>';
+        bullets = [];
+      }
+    }
+    lines.forEach(function (ln) {
+      var m = ln.match(/^\s*-\s+(.*)$/);
+      if (m) bullets.push(m[1]);
+      else { flushBullets(); if (ln.trim()) html += escapeHtml(ln) + '<br>'; }
+    });
+    flushBullets();
+    return html;
+  }
+
+  function buildHeadCol(label, body) {
+    return '<div class="hc"><div class="hc-label">' + escapeHtml(label) + '</div><div class="hc-body">' + body + '</div></div>';
+  }
+
+  function renderQuote(data) {
+    var quote = data.quote;
+    var lines = data.lines || [];
+    var company = data.company || {};
+    var legalClauses = Array.isArray(data.legal_clauses) ? data.legal_clauses : [];
+
+    var totals = C.quoteTotals(lines);
+    var hitos  = C.paymentMilestones(quote.forma_pago || [], totals.importeTotal);
+
+    var validez = (Number(quote.validez_dias) || 30) + ' días';
+    var fechaShort = F.formatDateShort(quote.fecha);
+
+    // ── Cabecera marca ─────────────────────────────────────────
+    var brandBar = ''
+      + '<div class="brand-bar">'
+      + '  <div>'
+      + '    <div class="brand-logo"><span class="amp">&amp;</span> CURINO</div>'
+      + '    <div class="brand-claim">' + escapeHtml(company.lema || 'TAILOR MADE HAUTE FURNITURE') + '</div>'
+      + '  </div>'
+      + '  <div class="brand-info">'
+      + '    <strong>' + escapeHtml(company.razon_social || '') + '</strong>' + (company.nif ? ' · NIF ' + escapeHtml(company.nif) : '') + '<br>'
+      +     escapeHtml(company.direccion || '') + (company.ciudad ? '<br>' + escapeHtml(company.ciudad) : '') + '<br>'
+      +     (company.email    ? escapeHtml(company.email) + ' · ' : '')
+      +     (company.telefono ? escapeHtml(company.telefono) : '')
+      + '  </div>'
+      + '</div>';
+
+    // ── Cabecera 4 columnas ────────────────────────────────────
+    var cliBody = ''
+      + '<strong>' + escapeHtml(quote.cliente_nombre || '') + '</strong>'
+      + (quote.cliente_direccion ? '<br>' + escapeHtml(quote.cliente_direccion) : '')
+      + (quote.cliente_ciudad    ? '<br>' + escapeHtml(quote.cliente_ciudad) : '')
+      + (quote.cliente_email     ? '<br>' + escapeHtml(quote.cliente_email) : '')
+      + (quote.cliente_tel       ? '<br>' + escapeHtml(quote.cliente_tel) : '');
+    var proyBody = ''
+      + '<strong>' + escapeHtml(quote.proyecto_nombre || '') + '</strong>'
+      + (quote.proyecto_referencia ? '<br>' + escapeHtml(quote.proyecto_referencia) : '');
+    var numBody = '<span class="hc-num">' + escapeHtml(quote.numero || '—') + '</span><br>' +
+                  '<span style="font-size:7.5pt;color:#888">' + escapeHtml(fechaShort) + '</span>';
+    var valBody = escapeHtml(validez);
+
+    var headCols = ''
+      + '<div class="head-cols">'
+      +   buildHeadCol('A la atención de', cliBody)
+      +   buildHeadCol('Proyecto', proyBody)
+      +   buildHeadCol('Nº de presupuesto', numBody)
+      +   buildHeadCol('Validez de la oferta', valBody)
+      + '</div>';
+
+    // ── Tabla de líneas ────────────────────────────────────────
+    var rowsHtml = lines.map(function (l, idx) {
+      var lineTotals = C.lineTotals(l);
+      var medidas = '';
+      if (l.ancho != null) medidas += '<span>A ' + (Number(l.ancho) || 0) + ' cm</span>';
+      if (l.alto  != null) medidas += '<span>H ' + (Number(l.alto)  || 0) + ' cm</span>';
+      if (l.fondo != null) medidas += '<span>F ' + (Number(l.fondo) || 0) + ' cm</span>';
+
+      var prodCell = ''
+        + '<div class="line-title">' + escapeHtml(l.producto_titulo || '') + '</div>'
+        + (l.producto_descripcion ? '<div class="line-desc">' + renderDescription(l.producto_descripcion) + '</div>' : '')
+        + (l.nota ? '<div class="line-nota">' + escapeHtml(l.nota) + '</div>' : '');
+
+      var imageUrls = (data.lineImageUrls && data.lineImageUrls[l.id]) || l._embedded_images || [];
+      var imagesRow = imageUrls.length
+        ? '<tr class="line-images-row"><td colspan="8"><div class="line-images">'
+            + imageUrls.map(function (u) { return '<img src="' + escapeHtml(u) + '" alt="">'; }).join('')
+          + '</div></td></tr>'
+        : '';
+
+      return ''
+        + '<tr>'
+        + '  <td class="col-cant num">' + (Number(l.cantidad) || 0) + '</td>'
+        + '  <td class="col-prod">' + prodCell + '</td>'
+        + '  <td class="col-mat">' + escapeHtml(l.material_grosor || '') + '</td>'
+        + '  <td class="col-med line-medidas">' + medidas + '</td>'
+        + '  <td class="col-precio num">' + F.formatEUR(l.precio_unitario || 0) + '</td>'
+        + '  <td class="col-pvp num">' + F.formatEUR(lineTotals.pvpLinea) + '</td>'
+        + '  <td class="col-dto num">' + (Number(l.dto_pct) || 0) + ' %</td>'
+        + '  <td class="col-importe num">' + F.formatEUR(lineTotals.importeLinea) + '</td>'
+        + '</tr>'
+        + imagesRow;
+    }).join('');
+
+    var linesSection = ''
+      + '<div class="section-title">' + escapeHtml((lines[0] && lines[0].seccion) || 'MOBILIARIO A MEDIDA') + '</div>'
+      + '<table class="lines-table"><thead><tr>'
+      + '  <th class="col-cant num">Cant.</th>'
+      + '  <th class="col-prod">Producto</th>'
+      + '  <th class="col-mat">Material y grosor</th>'
+      + '  <th class="col-med">Medidas (cm)</th>'
+      + '  <th class="col-precio num">Precio</th>'
+      + '  <th class="col-pvp num">PVP</th>'
+      + '  <th class="col-dto num">Dto. prof.</th>'
+      + '  <th class="col-importe num">Importe</th>'
+      + '</tr></thead><tbody>'
+      + (rowsHtml || '<tr><td colspan="8" style="padding:6mm;text-align:center;color:#888">Sin líneas</td></tr>')
+      + '</tbody></table>';
+
+    // ── Totales ────────────────────────────────────────────────
+    var totalsSection = ''
+      + '<div class="totals-section">'
+      + '  <div class="totals-grid">'
+      + '    <div></div>'
+      + '    <div>'
+      + '      <table class="totals-table">'
+      + '        <tr><td class="lbl">PVP sin IVA</td><td class="val">' + F.formatEUR(totals.pvpSinIva) + '</td></tr>'
+      + '        <tr class="dto"><td class="lbl">Dto. profesional</td><td class="val">' + F.formatEURSigned(totals.dtoProfesional) + '</td></tr>'
+      + '        <tr class="total"><td class="lbl">Importe total</td><td class="val">' + F.formatEUR(totals.importeTotal) + '</td></tr>'
+      + '      </table>'
+      + '      <div class="totals-iva">Impuestos · IVA NO INCLUIDO</div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+
+    // ── Forma de pago ──────────────────────────────────────────
+    var payRows = hitos.map(function (h) {
+      return '<tr><td>' + escapeHtml(h.concepto) + '</td>'
+           + '<td class="num">' + (h.pct.toFixed ? h.pct.toFixed(2) : h.pct) + ' %</td>'
+           + '<td class="num">' + F.formatEUR(h.eur) + '</td></tr>';
+    }).join('');
+    var paymentsSection = ''
+      + '<div class="payments">'
+      + '  <h3>Forma de pago</h3>'
+      + '  <table class="pay-table">'
+      + '    <thead><tr><th>Concepto</th><th class="num">%</th><th class="num">Importe</th></tr></thead>'
+      + '    <tbody>' + (payRows || '<tr><td colspan="3" style="padding:3mm;text-align:center;color:#888">Sin hitos definidos</td></tr>') + '</tbody>'
+      + '  </table>'
+      + (quote.iban ? '<div class="iban-row">IBAN: <strong>' + escapeHtml(quote.iban) + '</strong></div>' : '')
+      + '</div>';
+
+    // ── Cláusulas legales ──────────────────────────────────────
+    var legalSection = legalClauses.length
+      ? '<div class="legal"><h3>Condiciones</h3>'
+        + legalClauses.map(function (c) {
+            return '<div class="legal-clause"><strong>' + escapeHtml(c.title || '') + '.</strong> ' + escapeHtml(c.body || '') + '</div>';
+          }).join('')
+        + '</div>'
+      : '';
+
+    // ── Firma ──────────────────────────────────────────────────
+    var sigBody = ''
+      + '<strong>' + escapeHtml(company.razon_social || '') + '</strong><br>'
+      + (company.nif ? 'NIF ' + escapeHtml(company.nif) + '<br>' : '')
+      + escapeHtml(company.direccion || '')
+      + (company.ciudad ? ', ' + escapeHtml(company.ciudad) : '');
+    var signatureSection = ''
+      + '<div class="signature">'
+      + '  <div class="sig-grid">'
+      + '    <div class="sig-block">'
+      + '      <div class="sig-label">Cliente</div>'
+      + '      <div class="sig-body"><strong>' + escapeHtml(quote.cliente_nombre || '') + '</strong></div>'
+      + '      <div class="sig-area"></div>'
+      + '    </div>'
+      + '    <div class="sig-block">'
+      + '      <div class="sig-label">' + escapeHtml(company.razon_social || 'Curino') + '</div>'
+      + '      <div class="sig-body">' + sigBody + '</div>'
+      + '      <div class="sig-area"></div>'
+      + '      <div class="sig-body" style="margin-top:-3mm">' + escapeHtml(company.gerente || '') + '<br><span style="font-size:7pt;color:#888">General Manager</span></div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div class="sig-date">' + escapeHtml(dateLong(quote.fecha) || '') + '</div>'
+      + '</div>';
+
+    document.title = 'Presupuesto ' + (quote.numero || '') + ' — Curino';
+
+    document.getElementById('root').innerHTML = ''
+      + '<div class="page">'
+      +   brandBar
+      +   headCols
+      +   linesSection
+      +   totalsSection
+      + '</div>'
+      + '<div class="page">'
+      +   paymentsSection
+      +   legalSection
+      +   signatureSection
+      + '</div>';
+
+    // Marca cuando todas las imágenes están cargadas (útil para puppeteer waitUntil)
+    var imgs = document.querySelectorAll('img');
+    var pending = imgs.length;
+    if (!pending) { window.__previewReady = true; document.body.setAttribute('data-ready', '1'); return; }
+    imgs.forEach(function (img) {
+      var done = function () { pending--; if (pending === 0) { window.__previewReady = true; document.body.setAttribute('data-ready', '1'); } };
+      if (img.complete) done();
+      else { img.addEventListener('load', done); img.addEventListener('error', done); }
+    });
+  }
+
+  function renderError(msg) {
+    document.getElementById('root').innerHTML =
+      '<div class="page"><div class="preview-error">' + escapeHtml(msg) + '</div></div>';
+    window.__previewReady = true;
+    document.body.setAttribute('data-ready', '1');
+  }
+
+  // ── Modo 1: datos inyectados por puppeteer ──────────────────
+  if (injected) {
+    try { renderQuote(injected); }
+    catch (e) { console.error(e); renderError('Error al renderizar: ' + e.message); }
+    return;
+  }
+
+  // ── Modo 2: cargar desde Supabase (admin viendo preview) ────
+  (async function loadFromSupabase() {
+    try {
+      var params = new URLSearchParams(location.search);
+      var quoteId = params.get('id');
+      if (!quoteId) return renderError('Falta parámetro ?id=…');
+
+      var cfgRes = await fetch('/api/config');
+      var cfg = await cfgRes.json();
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return renderError('Configuración Supabase no disponible.');
+      var sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+      // Necesita sesión admin (cookies)
+      var sess = await sb.auth.getSession();
+      if (!sess.data.session) {
+        return renderError('Necesitas iniciar sesión como admin para ver este preview.');
+      }
+
+      var qRes = await sb.from('quotes').select('*').eq('id', quoteId).single();
+      if (qRes.error) throw qRes.error;
+      var lRes = await sb.from('quote_lines').select('*').eq('quote_id', quoteId).order('orden', { ascending: true });
+      if (lRes.error) throw lRes.error;
+      var sRes = await sb.from('quote_settings').select('key, value').in('key', ['company', 'legal_clauses']);
+
+      var company = {};
+      var legal_clauses = [];
+      (sRes.data || []).forEach(function (r) {
+        if (r.key === 'company') company = r.value || {};
+        if (r.key === 'legal_clauses') legal_clauses = Array.isArray(r.value) ? r.value : [];
+      });
+
+      // Signed URLs para las imágenes
+      var allPaths = [];
+      (lRes.data || []).forEach(function (l) { (l.imagenes || []).forEach(function (p) { allPaths.push(p); }); });
+      var lineImageUrls = {};
+      if (allPaths.length) {
+        var su = await sb.storage.from('quote-plans').createSignedUrls(allPaths, 60 * 60);
+        var byPath = {};
+        (su.data || []).forEach(function (it) { byPath[it.path] = it.signedUrl; });
+        (lRes.data || []).forEach(function (l) {
+          lineImageUrls[l.id] = (l.imagenes || []).map(function (p) { return byPath[p]; }).filter(Boolean);
+        });
+      }
+
+      renderQuote({
+        quote: qRes.data,
+        lines: lRes.data || [],
+        company: company,
+        legal_clauses: legal_clauses,
+        lineImageUrls: lineImageUrls
+      });
+    } catch (e) {
+      console.error(e);
+      renderError('No se pudo cargar el presupuesto: ' + (e.message || e));
+    }
+  })();
+})();
+</script>
+</body>
+</html>
