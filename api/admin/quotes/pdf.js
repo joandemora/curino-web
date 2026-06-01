@@ -32,8 +32,10 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-// maxDuration alto para que el cold start de Chromium quepa en plan Pro
-module.exports.config = { maxDuration: 60 };
+// maxDuration: en plan Hobby el cap es 10s (default). El cold start de
+// chromium-min descargando el tarball + render del PDF está al filo del
+// timeout — si vemos timeouts en producción, primera mitigación es
+// consolidar endpoints o pasar a Pro (60s).
 
 function logErr(step, err) {
   console.error('[quotes-pdf]', step, err && (err.stack || err.message || err));
