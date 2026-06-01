@@ -102,6 +102,7 @@
     base_fixed: 800,
     base_per_m2: 150,
     door:     { laminadas: 90, lisas: 220, molduras: 400 },
+    doorUnit: { laminadas: 0,  lisas: 0,   molduras: 0   },
     interior: { cajoneraaccesorios: 280, cajoneraestantes: 240, zapatero: 180,
                 doblecolgador: 160, colgadorlargo: 140, estantes: 120, vacio: 80 },
     material: { mad_wengue: 120, mad_cerezo: 120, mad_roble: 80,
@@ -111,6 +112,34 @@
 
   // Estado inicial: fallback. Se sobrescribe abajo si cache/fetch dan datos.
   window.ARMARIOS_PRICES = window.ARMARIOS_PRICES_FALLBACK;
+
+  // ── Réplicas de calcModules() y p3Hojas() del configurador
+  // (configurador-armarios-vestidores/index.html L1262-L1303). Necesarias
+  // para contar nº de hojas por preset sin depender del DOM del configurador.
+  // Si cambias la lógica allí, sincroniza aquí.
+  function calcModulesLocal(w) {
+    if (w >= 160) {
+      for (var n = 1; n <= 12; n++) {
+        var base = Math.floor(w / n), top = base + (w % n > 0 ? 1 : 0);
+        if (base >= 80 && top <= 130) {
+          var totalMm = Math.round(w * 10), baseMm = Math.floor(totalMm / n), remMm = totalMm - baseMm * n;
+          var widths = [];
+          for (var i = 0; i < n; i++) widths.push((baseMm + (i < remMm ? 1 : 0)) / 10);
+          return widths;
+        }
+      }
+    }
+    if (w >= 131 && w <= 159) {
+      var small = Math.round(w / 3), big = w - small;
+      return [big, small];
+    }
+    return [w];
+  }
+  function p3HojasLocal(w) {
+    if (w <= 65) return 1;
+    if (w >= 80) return 2;
+    return 1; // 66-79 fallback
+  }
 
   // ── Función pura. MISMA fórmula que calcPrice() del configurador
   // (Math.round incluido). Asume 100% del frente cubierto por puerta
@@ -128,8 +157,11 @@
     }, 0);
     var gama = preset.puertas && preset.puertas.gama;
     var dpm2 = (gama && prices.door[gama]) || 0;
+    var dpud = (gama && prices.doorUnit && prices.doorUnit[gama]) || 0;
     var doorWcm = W; // 100% cubierto
-    var doorP = (doorWcm / 100) * (H / 100) * dpm2;
+    var widths = calcModulesLocal(W);
+    var nDoors = widths.reduce(function (s, w) { return s + p3HojasLocal(w); }, 0);
+    var doorP = (doorWcm / 100) * (H / 100) * dpm2 + nDoors * dpud;
     return Math.round(base + matP + intP + doorP);
   };
 
@@ -179,6 +211,7 @@
           base_fixed:  window.ARMARIOS_PRICES_FALLBACK.base_fixed,
           base_per_m2: window.ARMARIOS_PRICES_FALLBACK.base_per_m2,
           door:        Object.assign({}, window.ARMARIOS_PRICES_FALLBACK.door),
+          doorUnit:    Object.assign({}, window.ARMARIOS_PRICES_FALLBACK.doorUnit),
           interior:    Object.assign({}, window.ARMARIOS_PRICES_FALLBACK.interior),
           material:    Object.assign({}, window.ARMARIOS_PRICES_FALLBACK.material)
         };
@@ -187,7 +220,15 @@
           if (!isFinite(v)) return;
           if (row.key === 'base_fixed')                P.base_fixed  = v;
           else if (row.key === 'base_per_m2')          P.base_per_m2 = v;
-          else if (row.key.indexOf('door_')     === 0) P.door[row.key.slice(5)]     = v;
+          else if (row.key.indexOf('door_') === 0) {
+            // door_{gama}_per_unit → P.doorUnit[gama]
+            // door_{gama}          → P.door[gama]
+            if (row.key.lastIndexOf('_per_unit') === row.key.length - 9) {
+              P.doorUnit[row.key.slice(5, -9)] = v;
+            } else {
+              P.door[row.key.slice(5)] = v;
+            }
+          }
           else if (row.key.indexOf('interior_') === 0) P.interior[row.key.slice(9)] = v;
           else if (row.key.indexOf('material_') === 0) P.material[row.key.slice(9)] = v;
         });

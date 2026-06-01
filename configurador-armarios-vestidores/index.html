@@ -935,6 +935,7 @@ window.PRICES = {
   base_fixed: 800,
   base_per_m2: 150,
   door:     { laminadas:90, lisas:220, molduras:400 },
+  doorUnit: { laminadas:0,  lisas:0,   molduras:0   },
   interior: { cajoneraaccesorios:280, cajoneraestantes:240, zapatero:180,
               doblecolgador:160, colgadorlargo:140, estantes:120, vacio:80 },
   material: { mad_wengue:120, mad_cerezo:120, mad_roble:80,
@@ -974,6 +975,7 @@ window.PRICES = {
         base_fixed:  window.PRICES.base_fixed,
         base_per_m2: window.PRICES.base_per_m2,
         door:        Object.assign({}, window.PRICES.door),
+        doorUnit:    Object.assign({}, window.PRICES.doorUnit),
         interior:    Object.assign({}, window.PRICES.interior),
         material:    Object.assign({}, window.PRICES.material)
       };
@@ -982,7 +984,15 @@ window.PRICES = {
         if (!isFinite(v)) return;
         if (row.key === 'base_fixed')                P.base_fixed  = v;
         else if (row.key === 'base_per_m2')          P.base_per_m2 = v;
-        else if (row.key.indexOf('door_')     === 0) P.door[row.key.slice(5)]     = v;
+        else if (row.key.indexOf('door_') === 0) {
+          // door_{gama}_per_unit → P.doorUnit[gama]
+          // door_{gama}          → P.door[gama]
+          if (row.key.lastIndexOf('_per_unit') === row.key.length - 9) {
+            P.doorUnit[row.key.slice(5, -9)] = v;
+          } else {
+            P.door[row.key.slice(5)] = v;
+          }
+        }
         else if (row.key.indexOf('interior_') === 0) P.interior[row.key.slice(9)] = v;
         else if (row.key.indexOf('material_') === 0) P.material[row.key.slice(9)] = v;
       });
@@ -1005,14 +1015,22 @@ function calcPrice(){
   const intP = ST.modules.reduce((s,m) => s + ((P.interior[m.interiorId] != null) ? P.interior[m.interiorId] : 0), 0);
   // Puertas: solo se cobran tras visitar el paso 3 (cuando el usuario
   // ha podido elegir gama/módulos con puerta). En pasos 1-2 → doorP=0.
+  // Fórmula: doorP = (m² cubiertos × €/m²) + (nº hojas × €/ud)
   let doorP = 0;
   if(_P3.visited){
     const dpm2 = P.door[_P3.gama] || 0;
+    const dpud = (P.doorUnit && P.doorUnit[_P3.gama]) || 0;
     let doorWcm = 0;
+    let nDoors = 0;
     if(_P3.mods && _P3.mods.length === ST.modules.length){
-      ST.modules.forEach((m,i)=>{ if(_P3.mods[i] && _P3.mods[i].con) doorWcm += m.width; });
+      ST.modules.forEach((m,i)=>{
+        if(_P3.mods[i] && _P3.mods[i].con){
+          doorWcm += m.width;
+          nDoors  += p3Hojas(m.width).n;
+        }
+      });
     }
-    doorP = (doorWcm/100) * (ST.h/100) * dpm2;
+    doorP = (doorWcm/100) * (ST.h/100) * dpm2 + nDoors * dpud;
   }
   return Math.round(base + matP + intP + doorP);
 }
