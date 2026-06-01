@@ -106,7 +106,7 @@ a:hover{text-decoration:underline}
 
       <div class="ash-card price-block" data-kind="door">
         <h2>Puertas</h2>
-        <p class="block-desc">Precio por m² de superficie cubierta con puertas.</p>
+        <p class="block-desc">Precio por m² de superficie cubierta con puertas + precio por unidad de puerta. Total = (€/m² × m² cubiertos) + (€/ud × nº de hojas).</p>
         <div class="rows" id="rowsDoor"></div>
       </div>
 
@@ -288,8 +288,12 @@ a:hover{text-decoration:underline}
   //   area = (W/100) * (H/100); base = base_fixed + area * base_per_m2
   //   matP = material[mat_id]
   //   intP = N * interior[interior_id]   (suma por módulo)
-  //   doorP = (doorWcm/100) * (H/100) * door[gama]
+  //   doorP = (doorWcm/100) * (H/100) * door[gama]      ← componente €/m²
+  //         + nDoors * door[gama]_per_unit               ← componente €/ud
   //   total = round(base + matP + intP + doorP)
+  //
+  // Ejemplo: armario 200×240cm, 2 módulos de 100cm. Cada módulo ≥80cm
+  // tiene 2 hojas (p3Hojas), 100% cubierto → 4 hojas en total.
   // ───────────────────────────────────────────────────────────
   function recalcExample() {
     function v(key) {
@@ -302,12 +306,14 @@ a:hover{text-decoration:underline}
     var moduleCount = 2;
     var doorGama = 'laminadas';
     var doorCoverageCm = W;  // 100% del frente con puertas
+    var nDoors = 4;          // 2 módulos × 2 hojas (módulos ≥80cm)
 
     var area = (W/100) * (H/100);
     var base = v('base_fixed') + area * v('base_per_m2');
     var matP = v('material_' + matKey);
     var intP = moduleCount * v('interior_' + interiorKey);
-    var doorP = (doorCoverageCm/100) * (H/100) * v('door_' + doorGama);
+    var doorP = (doorCoverageCm/100) * (H/100) * v('door_' + doorGama)
+              + nDoors * v('door_' + doorGama + '_per_unit');
     var total = Math.round(base + matP + intP + doorP);
 
     var fmt = new Intl.NumberFormat('es-ES', {
@@ -472,14 +478,22 @@ a:hover{text-decoration:underline}
 
       var snap = {
         base_fixed: 0, base_per_m2: 0,
-        door: {}, interior: {}, material: {}, shipping: {}
+        door: {}, doorUnit: {}, interior: {}, material: {}, shipping: {}
       };
       res.data.forEach(function(row){
         var v = Number(row.value);
         if (!isFinite(v)) return;
         if (row.key === 'base_fixed')                snap.base_fixed = v;
         else if (row.key === 'base_per_m2')          snap.base_per_m2 = v;
-        else if (row.key.indexOf('door_')     === 0) snap.door[row.key.slice(5)]     = v;
+        else if (row.key.indexOf('door_')     === 0) {
+          // door_{gama}_per_unit → snap.doorUnit[gama]
+          // door_{gama}          → snap.door[gama]
+          if (row.key.lastIndexOf('_per_unit') === row.key.length - 9) {
+            snap.doorUnit[row.key.slice(5, -9)] = v;
+          } else {
+            snap.door[row.key.slice(5)] = v;
+          }
+        }
         else if (row.key.indexOf('interior_') === 0) snap.interior[row.key.slice(9)] = v;
         else if (row.key.indexOf('material_') === 0) snap.material[row.key.slice(9)] = v;
         // Shipping: las 3 claves no comparten prefijo común, las mapeamos por nombre completo.
