@@ -33,13 +33,40 @@ body.hidden-until-auth{visibility:hidden}
 .r-toast.error{background:#a83232}
 .r-footer{margin-top:auto;padding:1.5rem 32px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-mute);text-align:center}
 </style>
-<!-- Google Consent Mode v2 + GTM (GTM-NZR7NNTC). Defaults denied; granted solo si el usuario aceptó en visita previa (localStorage.curino_consent==='granted'). El banner /assets/js/cookie-banner.js actualiza el consent en runtime. -->
+<!-- Google Consent Mode v2 + GTM (GTM-NZR7NNTC). Defaults granted fuera del EEE (opt-out); denied en EEE+UK+CH hasta que el banner promueva via gtag('consent','update'). url_passthrough + ads_data_redaction activos. La promoción runtime la hace /assets/js/cookie-banner.js (cargado abajo, en el head). -->
 <script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('consent','default',{ad_storage:'denied',analytics_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});
-try{if(localStorage.getItem('curino_consent')==='granted'){gtag('consent','update',{ad_storage:'granted',analytics_storage:'granted',ad_user_data:'granted',ad_personalization:'granted'});}}catch(_){}
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+
+  // Global por defecto: granted (fuera del EEE, modelo opt-out)
+  gtag('consent', 'default', {
+    'ad_storage': 'granted',
+    'ad_user_data': 'granted',
+    'ad_personalization': 'granted',
+    'analytics_storage': 'granted'
+  });
+
+  // EEE + UK + CH: denied hasta que el usuario acepte en el banner
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500,
+    'region': ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR',
+      'HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES',
+      'SE','IS','LI','NO','GB','CH']
+  });
+
+  // url_passthrough y ads_data_redaction van con gtag('set',...), nunca como
+  // claves del objeto consent default.
+  gtag('set', 'url_passthrough', true);
+  gtag('set', 'ads_data_redaction', true);
 </script>
+<!-- Banner movido del final del <body> al <head> para que arranque antes
+     que GTM y reduzca el riesgo de que GTM dispare tags con defaults antes
+     de que el banner haya tenido ocasión de actualizar el consent. -->
+<script src="/assets/js/cookie-banner.js" defer></script>
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-NZR7NNTC');</script>
 </head>
 <body class="hidden-until-auth">
@@ -176,7 +203,5 @@ function showToast(msg,kind){
   t.className='r-toast '+(kind||'')+' visible';
   setTimeout(function(){t.classList.remove('visible');},3500);
 }
-</script>
-<script src="/assets/js/cookie-banner.js" defer></script>
-</body>
+</script></body>
 </html>

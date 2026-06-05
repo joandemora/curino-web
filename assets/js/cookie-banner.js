@@ -6,29 +6,45 @@
  * categorías y toggles individuales (Necesarias, Rendimiento,
  * Funcionales, Publicitarias).
  *
+ * BLINDAJE
+ * ========
+ * - TODA la init va envuelta en try/catch — un fallo aquí NUNCA
+ *   debe dejar la página rota.
+ * - TODO acceso a localStorage va dentro de try/catch. En
+ *   webviews con storage particionado/bloqueado (Instagram
+ *   WKWebView en algunos modos, navegación privada, sandboxing),
+ *   `localStorage.getItem` puede lanzar `SecurityError`. Si eso
+ *   pasa: tratamos al usuario como "no decidido" y MOSTRAMOS el
+ *   banner. Nunca asumimos consent silenciosamente.
+ * - No hay API externa de geo: la decisión de mostrar/no mostrar
+ *   banner depende exclusivamente de localStorage. Si no leemos,
+ *   mostramos.
+ *
  * INTEGRACIÓN CON CONSENT MODE V2
  * ===============================
  * El snippet inline del <head> (presente en las 49 páginas con
- * tracking) declara los defaults denied y aplica auto-update a
- * granted SOLO si localStorage.curino_consent === 'granted'
- * (flag binario heredado).
+ * tracking) declara dos `gtag('consent','default',...)`:
+ *   - Global granted (opt-out fuera del EEE).
+ *   - EEE+UK+CH denied con wait_for_update:500ms.
+ * Además activa url_passthrough + ads_data_redaction (Consent
+ * Mode v2 AVANZADO). El banner promueve el consent llamando
+ * `gtag('consent','update',{...})` con los 4 tipos cuando el
+ * usuario interactúa.
  *
  * Persistencia dual-key:
  *   - curino_consent_v2 (JSON granular, autoritativo).
- *   - curino_consent ('granted' | 'denied') flag heredado que
- *     el snippet inline lee en frame 0:
- *       * 'granted' SOLO si TODAS las categorías no-necesarias
- *         están on (escenario "Aceptar todo").
- *       * 'denied' si CUALQUIERA está off (granular o rechazo).
+ *   - curino_consent ('granted' | 'denied') flag heredado que se sigue
+ *     escribiendo por compatibilidad con código que aún lo lea.
  *
- * Esto significa:
- *   - Usuarios que aceptaron TODO: frame 0 aplica todo granted
- *     instantáneamente (sin delay).
- *   - Usuarios granulares: frame 0 aplica defaults (todo denied)
- *     y este componente, cargado con defer, hace un consent
- *     update con los granted que correspondan en ~100-200ms.
- *     El wait_for_update:500 del snippet inline asegura que
- *     GTM no dispara tags hasta tener el update final.
+ * Tras la migración a Consent Mode regional (EEE + UK + CH denied; resto
+ * granted), el snippet inline ya NO hace fast-path de "promover a granted
+ * desde localStorage" en frame 0. Toda la promoción runtime la hace este
+ * componente al ejecutarse (cargado con defer en <head>):
+ *   - Usuarios sin storage / primer visit: muestra banner.
+ *   - Usuarios con preferencia previa: aplica consent vía gtag(update).
+ *   - El wait_for_update:500 del snippet inline (solo aplica al bloque
+ *     regional EEE+UK+CH) da margen al banner para promover antes de que
+ *     GTM dispare tags.
  *
  * MIGRACIÓN DESDE V1
  * ==================
@@ -64,26 +80,40 @@
   var SCHEMA_VERSION     = 2;
 
   // ── Helpers localStorage con try/catch defensivo
+  //
+  // readV2 / readLegacy:
+  //   Devuelven { value, ok:true } si la lectura tuvo éxito (aunque la
+  //   clave esté vacía → value = null/string vacío).
+  //   Devuelven { value:null, ok:false } si el acceso lanzó (storage
+  //   particionado/bloqueado tipo Instagram WKWebView). En ese caso el
+  //   caller fuerza MOSTRAR el banner — nunca asume estado.
   function readV2() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY_V2);
-      if (!raw) return null;
+      if (!raw) return { value: null, ok: true };
       var obj = JSON.parse(raw);
-      if (!obj || typeof obj !== 'object') return null;
+      if (!obj || typeof obj !== 'object') return { value: null, ok: true };
       return {
-        necessary:    true, // siempre true
-        performance:  obj.performance === true,
-        functional:   obj.functional === true,
-        advertising:  obj.advertising === true
+        value: {
+          necessary:    true, // siempre true
+          performance:  obj.performance === true,
+          functional:   obj.functional === true,
+          advertising:  obj.advertising === true
+        },
+        ok: true
       };
-    } catch (_e) { return null; }
+    } catch (_e) {
+      return { value: null, ok: false };
+    }
   }
   function readLegacy() {
-    try { return localStorage.getItem(STORAGE_KEY_LEGACY); }
-    catch (_e) { return null; }
+    try { return { value: localStorage.getItem(STORAGE_KEY_LEGACY), ok: true }; }
+    catch (_e) { return { value: null, ok: false }; }
   }
   function writePrefs(prefs) {
     // Escribe v2 (autoritativo) + legacy (flag binario para snippet inline).
+    // Errores se ignoran: si no se puede persistir, el consent runtime ya se
+    // aplicó vía gtag — al menos esa sesión queda correcta.
     var allOptionalsOn = prefs.performance && prefs.functional && prefs.advertising;
     try {
       localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({
@@ -102,15 +132,19 @@
 
   // ── Migración: si solo existe legacy, traducir a granular y guardar v2.
   // Devuelve los prefs resultantes o null si tampoco hay legacy.
+  // Si la lectura misma falla, devuelve null y el caller mostrará banner.
   function migrateLegacyIfNeeded() {
-    if (readV2()) return readV2(); // ya tenemos v2, nada que migrar
+    var v2 = readV2();
+    if (!v2.ok) return null;            // lectura falló → tratar como "no decidido"
+    if (v2.value) return v2.value;      // ya tenemos v2
     var legacy = readLegacy();
-    if (legacy !== 'granted' && legacy !== 'denied') return null;
+    if (!legacy.ok) return null;
+    if (legacy.value !== 'granted' && legacy.value !== 'denied') return null;
     var migrated = {
       necessary: true,
-      performance: legacy === 'granted',
-      functional:  legacy === 'granted',
-      advertising: legacy === 'granted'
+      performance: legacy.value === 'granted',
+      functional:  legacy.value === 'granted',
+      advertising: legacy.value === 'granted'
     };
     writePrefs(migrated);
     return migrated;
@@ -123,18 +157,24 @@
       window.gtag = function () { window.dataLayer.push(arguments); };
     }
   }
+  // applyConsent SIEMPRE envía los 4 tipos (ad_storage, ad_user_data,
+  // ad_personalization, analytics_storage). Por aceptar y por rechazar.
+  // Envuelto en try/catch para que un fallo aquí no rompa el modal.
   function applyConsent(prefs) {
-    ensureGtag();
-    var updates = {};
-    updates.analytics_storage  = prefs.performance ? 'granted' : 'denied';
-    updates.ad_storage         = prefs.advertising ? 'granted' : 'denied';
-    updates.ad_user_data       = prefs.advertising ? 'granted' : 'denied';
-    updates.ad_personalization = prefs.advertising ? 'granted' : 'denied';
-    // functional: sin mapping activo a Consent Mode v2 estándar.
-    // No bajamos functionality_storage a denied — eso rompería sesión/
-    // carrito/preferencias. Guardamos la elección por si en futuro queremos
-    // cablearlo a algo concreto (ej. modules opcionales, embeds, etc.).
-    window.gtag('consent', 'update', updates);
+    try {
+      ensureGtag();
+      var updates = {
+        analytics_storage:  prefs.performance ? 'granted' : 'denied',
+        ad_storage:         prefs.advertising ? 'granted' : 'denied',
+        ad_user_data:       prefs.advertising ? 'granted' : 'denied',
+        ad_personalization: prefs.advertising ? 'granted' : 'denied'
+      };
+      // functional: sin mapping activo a Consent Mode v2 estándar.
+      // No bajamos functionality_storage a denied — eso rompería sesión/
+      // carrito/preferencias. Guardamos la elección por si en futuro queremos
+      // cablearlo a algo concreto (ej. modules opcionales, embeds, etc.).
+      window.gtag('consent', 'update', updates);
+    } catch (_e) { /* swallow — la UI sigue funcionando */ }
   }
 
   // ── CSS auto-contenido (no depende de site-shell.css)
@@ -363,12 +403,14 @@
     // Backdrop click-fuera y ESC: solo cierran si hay decisión previa
     _backdrop.addEventListener('click', function (e) {
       if (e.target !== _backdrop) return; // click en el modal interno: no cerrar
-      if (readV2()) hide();
+      var v2 = readV2();
+      if (v2.ok && v2.value) hide();
     });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if (!_backdrop.classList.contains('visible')) return;
-      if (readV2()) hide();
+      var v2 = readV2();
+      if (v2.ok && v2.value) hide();
     });
   }
 
@@ -396,8 +438,11 @@
   function show(initialView) {
     injectStyles();
     buildBanner();
-    // Si hay prefs guardadas (reapertura desde footer), reflejarlas en los toggles.
-    var existing = readV2();
+    // Si hay prefs guardadas (reapertura desde footer), reflejarlas en los
+    // toggles. Si la lectura falla, arrancamos con todo OFF (la decisión
+    // del usuario seguirá llegando vía botones).
+    var v2 = readV2();
+    var existing = (v2.ok && v2.value) || null;
     if (existing) {
       _toggleState.performance = !!existing.performance;
       _toggleState.functional  = !!existing.functional;
@@ -439,33 +484,61 @@
   }
 
   // ── Init
-  function init() {
-    // 1. Migrar usuarios de v1 si toca (sin pedir reconsentimiento).
-    //    Al migrar también aplicamos el consent runtime para que GTM se entere.
+  //
+  // Reglas de decisión:
+  //   - Si pude leer el storage y hay una preferencia legacy → migrar,
+  //     aplicar consent, NO mostrar banner.
+  //   - Si pude leer el storage y hay una preferencia v2 → aplicar consent,
+  //     NO mostrar banner.
+  //   - Si pude leer y NO hay nada (primer visit) → mostrar banner.
+  //   - Si NO pude leer (excepción de storage, p.ej. webview Instagram con
+  //     storage particionado): **mostrar banner**. Nunca asumir consent.
+  function initInner() {
     var migrated = migrateLegacyIfNeeded();
     if (migrated) {
       applyConsent(migrated);
-      // No mostramos el banner — el usuario ya decidió en V1.
-    } else {
-      var existing = readV2();
-      if (existing) {
-        // Usuario ya en V2: aplicar consent en runtime (frame 0 del snippet
-        // inline no lo hace para granulares). Si ya está todo on, el snippet
-        // inline ya aplicó granted, este update es idempotente.
-        applyConsent(existing);
-      } else {
-        // Primera visita: mostrar banner en vista principal.
-        show('main');
-      }
+      return;  // ya hay decisión, banner no se muestra
+    }
+    var v2 = readV2();
+    if (!v2.ok) {
+      // Lectura falló (webview con storage bloqueado, navegación privada
+      // restrictiva, etc.). Mostramos el banner — la decisión del usuario es
+      // la única autoridad.
+      show('main');
+      return;
+    }
+    if (v2.value) {
+      // Usuario ya tiene v2 guardado: re-aplica consent runtime (idempotente)
+      // por si el snippet inline regional dejó EEE en denied.
+      applyConsent(v2.value);
+      return;
+    }
+    // Primera visita y storage funcional: mostrar banner.
+    show('main');
+  }
+
+  function init() {
+    // Wrap externo: cualquier fallo aquí NUNCA debe dejar la página rota.
+    // Si algo explota, intentamos mostrar el banner como último recurso.
+    try {
+      initInner();
+    } catch (err) {
+      try { console.warn('[curino-consent] init failed', err); } catch (_) {}
+      try { show('main'); } catch (_) { /* nada que hacer */ }
     }
 
-    // Listener para reapertura desde el footer.
+    // Listener para reapertura desde el footer. También envuelto.
     document.addEventListener('curino:open-cookie-banner', function (ev) {
-      var view = (ev && ev.detail && ev.detail.view === 'settings') ? 'settings' : 'main';
-      show(view);
+      try {
+        var view = (ev && ev.detail && ev.detail.view === 'settings') ? 'settings' : 'main';
+        show(view);
+      } catch (_e) {}
     });
   }
 
+  // Como el <script> está en <head> con defer, la ejecución ocurre tras el
+  // parse completo del HTML pero antes del evento load. Aún así soportamos
+  // ambos casos por si el script termina cargándose vía otra ruta.
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
