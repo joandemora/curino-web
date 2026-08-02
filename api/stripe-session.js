@@ -80,12 +80,21 @@ module.exports = async function handler(req, res) {
 
     // Respuesta mínima — SOLO lo necesario para el evento purchase de GA4.
     // No exponemos: customer_email, customer_details, shipping, payment_intent,
-    // metadata, line_items, ni nada del cliente.
+    // ni nada del cliente. Sí devolvemos metadata.event_id (UUID generado
+    // por la landing) para que la página de gracias pueda deduplicar el
+    // evento purchase con futuros Pixel/CAPI. purpose ayuda al frontend
+    // a saber si viene de /clases (evento con item_id fijo).
+    const eventId = (session.metadata && typeof session.metadata.event_id === 'string')
+      ? session.metadata.event_id : null;
+    const purpose = (session.metadata && typeof session.metadata.purpose === 'string')
+      ? session.metadata.purpose : null;
     return res.status(200).json({
       paid: true,
       transaction_id: session.id,
       amount_total: amountTotalCents / 100,
-      currency: (session.currency || 'eur').toUpperCase()
+      currency: (session.currency || 'eur').toUpperCase(),
+      event_id: eventId,
+      purpose
     });
   } catch (err) {
     // Stripe puede lanzar:
