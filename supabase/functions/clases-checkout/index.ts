@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
         price_data: {
           currency: 'eur',
           product_data: {
-            name: 'Clase Curino: como presupuestar carpinteria a medida',
+            name: 'Clase Curino: vender carpintería a medida sin ser carpintero',
             description: `Plaza en directo — ${claseFechaLegible} (hora peninsular). 2 horas por Google Meet.`
           },
           unit_amount: clase.precio_cents

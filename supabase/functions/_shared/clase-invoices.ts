@@ -47,19 +47,30 @@ function sanitizePdfText(s: string | null | undefined): string {
 // Ej: "jueves 15 de octubre de 2026, 19:00 (hora peninsular)"
 function fmtFechaClase(iso: string): string {
   try {
-    const d = new Date(iso);
-    const fecha = new Intl.DateTimeFormat('es-ES', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-      timeZone: 'Europe/Madrid'
-    }).format(d);
-    const hora = new Intl.DateTimeFormat('es-ES', {
-      hour: '2-digit', minute: '2-digit', hour12: false,
-      timeZone: 'Europe/Madrid'
-    }).format(d);
-    return `${fecha}, ${hora} (hora peninsular)`;
+    return `${fmtFechaSolo(iso)}, ${fmtHoraSolo(iso)} (hora peninsular)`;
   } catch {
     return iso;
   }
+}
+
+// Ej: "jueves 15 de octubre de 2026"
+function fmtFechaSolo(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      timeZone: 'Europe/Madrid'
+    }).format(new Date(iso));
+  } catch { return iso; }
+}
+
+// Ej: "19:00"
+function fmtHoraSolo(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('es-ES', {
+      hour: '2-digit', minute: '2-digit', hour12: false,
+      timeZone: 'Europe/Madrid'
+    }).format(new Date(iso));
+  } catch { return ''; }
 }
 
 function escapeHtml(s: string | null | undefined): string {
@@ -111,7 +122,7 @@ export async function generateClaseInvoicePdf(
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
 
-  page.drawText('Plaza en clase en directo: presupuestar carpinteria a medida', { x: 50, y, font, size: 10 });
+  page.drawText(sanitizePdfText('Clase en directo (2 h): vender carpintería a medida sin ser carpintero'), { x: 50, y, font, size: 10 });
   page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
   page.drawText(sanitizePdfText(`Fecha de la clase: ${fmtFechaClase(inv.clase_fecha)}`), { x: 50, y, font, size: 8, color: gray });
@@ -184,7 +195,8 @@ export async function sendClaseConfirmationEmail(
   pdfBytes: Uint8Array,
   invoiceNumber: string
 ): Promise<void> {
-  const fechaLegible = fmtFechaClase(clase.fecha);
+  const fechaSolo = fmtFechaSolo(clase.fecha);
+  const horaSolo = fmtHoraSolo(clase.fecha);
   const meetHtml = clase.meet_url
     ? `<p><a href="${escapeHtml(clase.meet_url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Unirse a la clase por Google Meet</a></p>
        <p style="font-size:13px;color:#555;">Enlace directo: <a href="${escapeHtml(clase.meet_url)}">${escapeHtml(clase.meet_url)}</a></p>`
@@ -195,19 +207,18 @@ export async function sendClaseConfirmationEmail(
 <html lang="es">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <h2 style="color:#000;margin-top:0;">Tu plaza en la clase esta confirmada</h2>
+  <h2 style="color:#000;margin-top:0;">Tu plaza en la clase está confirmada</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
-  <p>Gracias por reservar tu plaza en la clase <strong>Aprende a presupuestar carpinteria a medida</strong>.</p>
-  <p><strong>Cuando:</strong> ${escapeHtml(fechaLegible)}<br>
-     <strong>Duracion:</strong> ${clase.duracion_min} minutos<br>
-     <strong>Formato:</strong> en directo por Google Meet</p>
+  <p>Tienes tu plaza reservada.</p>
+  <p>Nos vemos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular). Son 2 horas en directo y puedes preguntar lo que quieras durante la clase.</p>
+  <p>Enlace de acceso:</p>
   ${meetHtml}
+  <p>Adjunto la factura (N.º ${escapeHtml(invoiceNumber)}).</p>
   <h3 style="color:#000;margin-top:30px;">Antes de la clase</h3>
-  <p>Si tienes un proyecto real entre manos (una cocina, un armario, un mueble a medida por presupuestar), traelo. Es cuando mas vas a aprender: hacemos ese numero delante de todos, con tus condiciones reales.</p>
-  <p>Si no tienes ninguno todavia, no te preocupes — trabajamos con un caso mio.</p>
-  <p style="margin-top:24px;">Recibiras un recordatorio 24 horas antes y otro 1 hora antes con el enlace.</p>
-  <p>Adjuntamos la factura simplificada (N.o ${escapeHtml(invoiceNumber)}).</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automatico. Puedes responder si necesitas contactar.</p>
+  <p>No necesitas preparar nada ni saber de carpintería. Solo conéctate con papel y boli, y con ganas de preguntar.</p>
+  <p>Si ya tienes algún caso en mente —una cocina, un armario, un cliente potencial—, tráelo y lo vemos.</p>
+  <p style="margin-top:24px;">Recibirás un recordatorio 24 horas antes y otro 1 hora antes con el enlace.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
 </body>
 </html>`;
 
@@ -230,38 +241,50 @@ export async function sendClaseReminderEmail(
   clase: ClaseInfo,
   tipo: '24h' | '1h'
 ): Promise<void> {
-  const fechaLegible = fmtFechaClase(clase.fecha);
-  const subject = tipo === '24h'
-    ? 'Manana tenemos clase — Curino'
-    : 'En 1 hora empezamos — Curino';
-  const intro = tipo === '24h'
-    ? 'Solo un recordatorio: manana tenemos la clase.'
-    : 'Empezamos en aproximadamente 1 hora.';
-
   const meetBlock = clase.meet_url
     ? `<p><a href="${escapeHtml(clase.meet_url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Entrar a la clase (Google Meet)</a></p>
        <p style="font-size:13px;color:#555;">Enlace directo: <a href="${escapeHtml(clase.meet_url)}">${escapeHtml(clase.meet_url)}</a></p>`
     : `<p>Te compartimos el enlace de Meet en breve.</p>`;
 
-  const tipsBlock = tipo === '24h'
-    ? `<p>Si tienes un proyecto real (cocina, armario, mueble a medida) por presupuestar, tenlo a mano. Ese es el ejercicio que mas rendimiento te da.</p>`
-    : `<p>Con la camara y el microfono a punto ya estamos.</p>`;
+  let subject: string;
+  let html: string;
 
-  const html = `
+  if (tipo === '24h') {
+    const horaSolo = fmtHoraSolo(clase.fecha);
+    subject = 'Mañana tenemos clase — Curino';
+    html = `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <h2 style="color:#000;margin-top:0;">${escapeHtml(subject.replace(' — Curino',''))}</h2>
+  <h2 style="color:#000;margin-top:0;">Mañana tenemos clase</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
-  <p>${escapeHtml(intro)}</p>
+  <p>Mañana a las ${escapeHtml(horaSolo)} tenemos la clase. 2 horas en directo.</p>
+  <p>Enlace de acceso:</p>
+  ${meetBlock}
+  <p>No hace falta que prepares nada.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático.</p>
+</body>
+</html>`;
+  } else {
+    const fechaLegible = fmtFechaClase(clase.fecha);
+    subject = 'En 1 hora empezamos — Curino';
+    html = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <h2 style="color:#000;margin-top:0;">En 1 hora empezamos</h2>
+  <p>Hola ${escapeHtml(nombre)},</p>
+  <p>Empezamos en aproximadamente 1 hora.</p>
   <p><strong>Cuando:</strong> ${escapeHtml(fechaLegible)}<br>
      <strong>Duracion:</strong> ${clase.duracion_min} minutos</p>
   ${meetBlock}
-  ${tipsBlock}
+  <p>Con la camara y el microfono a punto ya estamos.</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automatico.</p>
 </body>
 </html>`;
+  }
 
   await resendSend({
     from: 'Curino <noreply@casacurino.com>',
