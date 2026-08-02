@@ -85,3 +85,28 @@ entrypoint = "./functions/presupuesto-form-relay/index.ts"
 # (api/solicitar-presupuesto) con el ANON_KEY como apikey, sin user JWT real.
 # Coherente con magazine-relay-contact (también desplegada con verify_jwt=false
 # aunque no aparezca en este config.toml por ser anterior a la entrada en la CLI).
+
+[functions.clases-checkout]
+enabled = true
+verify_jwt = false
+import_map = "./functions/clases-checkout/deno.json"
+entrypoint = "./functions/clases-checkout/index.ts"
+# verify_jwt=false: invitado, la landing /clases es pública. Invocada
+# server-to-server desde /api/clases-checkout con ANON_KEY como apikey.
+
+[functions.notify-class-reminder]
+enabled = true
+verify_jwt = false
+import_map = "./functions/notify-class-reminder/deno.json"
+entrypoint = "./functions/notify-class-reminder/index.ts"
+# verify_jwt=false: invocada por pg_cron via net.http_post. Autenticación
+# propia por header X-Cron-Secret vs env CRON_SECRET.
+
+[functions.lista-espera-relay]
+enabled = true
+verify_jwt = false
+import_map = "./functions/lista-espera-relay/deno.json"
+entrypoint = "./functions/lista-espera-relay/index.ts"
+# verify_jwt=false: form público de captura de email cuando no hay clase
+# abierta. Invocada desde /api/lista-espera con ANON_KEY. Hardening propio
+# (honeypot + rate limit por hash IP en tabla lista_espera).
