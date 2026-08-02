@@ -156,6 +156,16 @@ $$;
 -- añadiendo 'clase' con prefijo 'CLASE'. Formato CLASE-YYYY-NNNNNN.
 -- Idempotente: create or replace + insert on conflict do nothing sobre
 -- invoice_counters (creado fuera de repo en Fase E marketplace).
+--
+-- IMPORTANTE: la tabla invoice_counters tiene un CHECK constraint que
+-- restringe los tipos permitidos. Añadir 'armario' en Fase H2 y
+-- 'clase' aquí requiere alterar el constraint ANTES de intentar
+-- insertar. Bloque idempotente: drop if exists + add con el array
+-- completo. Descubierto en el despliegue del PR #166.
+alter table invoice_counters drop constraint if exists invoice_counters_invoice_type_check;
+alter table invoice_counters add constraint invoice_counters_invoice_type_check
+  check (invoice_type = any (array['simplified'::text, 'auto_invoice'::text, 'magazine'::text, 'armario'::text, 'clase'::text]));
+
 create or replace function assign_invoice_number(p_type text, p_year int)
 returns text
 language plpgsql
@@ -236,14 +246,37 @@ create policy "Admin can read all clase invoices"
 -- recordatorio y marca reminder_24h_sent_at / reminder_1h_sent_at
 -- (idempotencia por columna).
 --
--- Requiere GUC:
---   alter database postgres set "app.settings.functions_url" = 'https://<PROJECT_REF>.supabase.co/functions/v1';
---   alter database postgres set "app.settings.cron_secret"   = '<CRON_SECRET_random_32B>';
+-- Requiere pg_net (para net.http_post) y supabase_vault (para leer
+-- URL y secreto sin exponerlos en cron.job.command).
 --
--- Documentado en la descripción del PR.
+-- BOOTSTRAP: ANTES de aplicar esta migración por primera vez en un
+-- proyecto nuevo, definir los 2 secrets en Vault (una sola vez):
+--
+--   select vault.create_secret(
+--     'https://<PROJECT_REF>.supabase.co/functions/v1',
+--     'clases_functions_url',
+--     'URL base de las Supabase Edge Functions (pg_cron -> Edge)'
+--   );
+--   select vault.create_secret(
+--     '<valor_random_hex_32B>',
+--     'clases_cron_secret',
+--     'Secreto compartido pg_cron -> notify-class-reminder (X-Cron-Secret)'
+--   );
+--
+-- El valor de clases_cron_secret debe coincidir con la env var
+-- CRON_SECRET de las Supabase Edge Secrets (dashboard) para que
+-- notify-class-reminder valide el header X-Cron-Secret entrante.
+--
+-- Descubierto en despliegue PR #166: alter database postgres set ...
+-- (GUC) requiere permisos que la CLI no tiene; Vault es la ruta
+-- limpia sin dependencia del dashboard.
+create extension if not exists pg_net with schema extensions;
+
 do $$
 begin
-  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+  if exists (select 1 from pg_extension where extname = 'pg_cron')
+     and exists (select 1 from pg_extension where extname = 'supabase_vault')
+     and exists (select 1 from pg_extension where extname = 'pg_net') then
     perform cron.unschedule('class-reminders-frequent')
       where exists (select 1 from cron.job where jobname = 'class-reminders-frequent');
     perform cron.schedule(
@@ -251,10 +284,10 @@ begin
       '*/10 * * * *',
       $cron$
         select net.http_post(
-          url := current_setting('app.settings.functions_url', true) || '/notify-class-reminder',
+          url := (select decrypted_secret from vault.decrypted_secrets where name = 'clases_functions_url') || '/notify-class-reminder',
           headers := jsonb_build_object(
             'Content-Type', 'application/json',
-            'X-Cron-Secret', current_setting('app.settings.cron_secret', true)
+            'X-Cron-Secret', (select decrypted_secret from vault.decrypted_secrets where name = 'clases_cron_secret')
           ),
           body := '{}'::jsonb
         );
@@ -262,7 +295,7 @@ begin
     );
     raise notice 'pg_cron: class-reminders-frequent scheduled every 10 min';
   else
-    raise notice 'pg_cron extension not installed; class-reminders-frequent NOT scheduled';
+    raise notice 'pg_cron/supabase_vault/pg_net not fully available; class-reminders-frequent NOT scheduled';
   end if;
 end $$;
 
