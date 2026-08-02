@@ -44,6 +44,14 @@ import {
   sendArmarioPurchaseEmail,
   ArmarioOrderData
 } from '../_shared/armario-invoices.ts'
+import {
+  generateClaseInvoicePdf,
+  uploadClaseInvoicePdf,
+  sendClaseConfirmationEmail,
+  sendClaseRefundEmail,
+  ClaseInvoiceData,
+  ClaseInfo
+} from '../_shared/clase-invoices.ts'
 
 Deno.serve(async (req) => {
   // Stripe siempre manda POST
@@ -138,6 +146,7 @@ Deno.serve(async (req) => {
         //   'magazine_package' → paquete de créditos de Revista (G2)
         //   'magazine_boost'   → boost/promoción de Revista (G4)
         //   'armario'          → pedido del configurador de armarios (H3)
+        //   'clase'            → plaza en clase en directo (landing /clases)
         //   resto              → marketplace (compatible con Fase D sin purpose)
         const purpose = session.metadata?.purpose;
         if (purpose === 'magazine_package') {
@@ -146,6 +155,8 @@ Deno.serve(async (req) => {
           await handleMagazineBoostCompleted(supabase, session);
         } else if (purpose === 'armario') {
           await handleArmarioCompleted(supabase, session);
+        } else if (purpose === 'clase') {
+          await handleClaseCompleted(supabase, stripe, session);
         } else {
           await handleCheckoutCompleted(supabase, stripe, session);
         }
@@ -1026,5 +1037,184 @@ async function handleArmarioCompleted(
     await sendArmarioPurchaseEmail(orderData, pdfBytes);
   } catch (invoiceError) {
     console.error(`armario: invoice PDF/email failed for order ${order.id}:`, invoiceError);
+  }
+}
+
+// ============================================================================
+// CLASES: venta de plaza en clase en directo (landing /clases).
+//
+// metadata esperada en la session:
+//   purpose = 'clase'
+//   clase_id = <uuid>
+//   nombre = <string>
+//   telefono = <string opcional>
+//   desistimiento_renunciado = 'true'
+//   event_id = <uuid — compartido con dataLayer para dedup GA4/futuro>
+//   utm_source, utm_medium, utm_campaign = <opcionales>
+//
+// Acciones:
+//   1. Idempotencia: skip si inscripciones.stripe_session_id ya existe.
+//   2. Incremento atómico de plaza via RPC incrementar_plaza_clase.
+//      - Si null → clase agotada entre checkout y webhook. Refund
+//        automático via stripe.refunds.create y email al comprador.
+//   3. Asigna invoice_number (CLASE-YYYY-NNNNNN).
+//   4. Inserta fila en inscripciones (estado='pagada').
+//   5. Best-effort: PDF factura + upload al bucket + email con Meet
+//      + factura adjunta. Fallos aquí solo se loguean (no revierten
+//      la compra ni el incremento).
+// ============================================================================
+async function handleClaseCompleted(
+  supabase: ReturnType<typeof createClient>,
+  stripe: Stripe,
+  session: Stripe.Checkout.Session
+) {
+  const claseId = session.metadata?.clase_id;
+  const nombre = session.metadata?.nombre;
+  const telefono = session.metadata?.telefono || null;
+  const desistimientoRenunciado = session.metadata?.desistimiento_renunciado === 'true';
+  const eventId = session.metadata?.event_id || null;
+  const utmSource = session.metadata?.utm_source || null;
+  const utmMedium = session.metadata?.utm_medium || null;
+  const utmCampaign = session.metadata?.utm_campaign || null;
+
+  const buyerEmail = (session.customer_details?.email || session.customer_email || '').toLowerCase();
+  const amountPaidCents = session.amount_total ?? 0;
+
+  if (!claseId || !nombre || !buyerEmail) {
+    console.error('clase: missing metadata for session', session.id);
+    return;
+  }
+  if (amountPaidCents <= 0) {
+    console.error('clase: invalid amount_total for session', session.id);
+    return;
+  }
+
+  // 1. Idempotencia — si ya existe la inscripción para este session_id,
+  // salimos sin hacer nada (evita refund en retries de webhooks).
+  const { data: existing } = await supabase
+    .from('inscripciones')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`clase: inscripcion already exists for session ${session.id}`);
+    return;
+  }
+
+  // 2. Incremento atómico de plaza. Si la clase se llenó entre el
+  // checkout y este webhook, la RPC devuelve NULL → refund automático.
+  const { data: claseAfter, error: incError } = await supabase
+    .rpc('incrementar_plaza_clase', { p_clase_id: claseId });
+
+  if (incError) {
+    console.error(`clase: incrementar_plaza_clase failed for ${claseId}`, incError);
+    return;
+  }
+
+  if (!claseAfter) {
+    // Se agotó entre checkout y webhook → refund automático + email.
+    console.warn(`clase: sold out mid-checkout for session ${session.id}, refunding`);
+    try {
+      const paymentIntent = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      if (paymentIntent) {
+        await stripe.refunds.create({ payment_intent: paymentIntent });
+      }
+      await sendClaseRefundEmail(buyerEmail, nombre);
+    } catch (refundErr) {
+      console.error(`clase: refund/email failed for session ${session.id}`, refundErr);
+    }
+    return;
+  }
+
+  // 3. Numero de factura CLASE-YYYY-NNNNNN
+  const currentYear = new Date().getFullYear();
+  const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'clase',
+    p_year: currentYear
+  });
+  if (invErr) {
+    console.error('clase: error assigning invoice number:', invErr);
+  }
+
+  // 4. Insertar inscripcion
+  const paymentIntentId = typeof session.payment_intent === 'string'
+    ? session.payment_intent
+    : (session.payment_intent?.id ?? null);
+
+  const { data: inscripcion, error: insError } = await supabase
+    .from('inscripciones')
+    .insert({
+      clase_id: claseId,
+      nombre,
+      email: buyerEmail,
+      telefono,
+      stripe_session_id: session.id,
+      stripe_payment_intent: paymentIntentId,
+      importe_cents: amountPaidCents,
+      desistimiento_renunciado: desistimientoRenunciado,
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      estado: 'pagada',
+      invoice_number: invoiceNum,
+      event_id: eventId
+    })
+    .select('id, created_at')
+    .single();
+
+  if (insError || !inscripcion) {
+    console.error(`clase: insert inscripcion failed for session ${session.id}`, insError);
+    // No refund aquí: la plaza YA se incrementó y el pago está hecho.
+    // Un error del INSERT (constraint, disponibilidad DB) requiere
+    // intervención humana; el refund automático solo aplica al caso
+    // legítimo de "agotada mid-checkout".
+    return;
+  }
+
+  console.log(`clase: inscripcion ${inscripcion.id} confirmed for ${buyerEmail}`);
+
+  // 5. Best-effort: PDF factura + email con Meet + factura adjunta.
+  try {
+    const claseInfo: ClaseInfo = {
+      id: claseAfter.id,
+      fecha: claseAfter.fecha,
+      duracion_min: claseAfter.duracion_min,
+      meet_url: claseAfter.meet_url
+    };
+
+    const invoiceData: ClaseInvoiceData = {
+      id: inscripcion.id,
+      clase_id: claseAfter.id,
+      clase_fecha: claseAfter.fecha,
+      nombre,
+      email: buyerEmail,
+      amount_paid_cents: amountPaidCents,
+      invoice_number: invoiceNum || `CLASE-${inscripcion.id.slice(0, 8)}`,
+      created_at: inscripcion.created_at
+    };
+
+    const pdfBytes = await generateClaseInvoicePdf(invoiceData);
+    const pdfPath = await uploadClaseInvoicePdf(supabase, inscripcion.id, pdfBytes);
+
+    await supabase
+      .from('inscripciones')
+      .update({ pdf_url: pdfPath })
+      .eq('id', inscripcion.id);
+
+    await sendClaseConfirmationEmail(
+      buyerEmail, nombre, claseInfo, pdfBytes, invoiceData.invoice_number
+    );
+
+    await supabase
+      .from('inscripciones')
+      .update({ confirmation_sent_at: new Date().toISOString() })
+      .eq('id', inscripcion.id);
+
+    console.log(`clase: invoice + confirmation sent for inscripcion ${inscripcion.id}`);
+  } catch (invoiceError) {
+    console.error(`clase: invoice/email failed for inscripcion ${inscripcion.id}`, invoiceError);
   }
 }
