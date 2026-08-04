@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Titillium+Web:wght@600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 
 <script type="application/ld+json" id="event-jsonld">
 {
@@ -84,488 +84,839 @@
 
 <style>
 /* -----------------------------------------------------------
-   Landing /clases — autocontenida (ver plan). Sin dependencias
-   de site-shell.css / main-nav.js / main-footer.js. Portable
-   a otro dominio copiando solo este fichero (+ cookie-banner.js
-   como excepción obligatoria).
+   Landing /clases — autocontenida, restyle (lenguaje MKT-like).
+   Sin dependencias de site-shell.css / main-nav.js / main-footer.js.
+   Portable a otro dominio copiando solo este fichero (+ cookie-banner.js
+   como excepción obligatoria por consent).
    ----------------------------------------------------------- */
 
 :root {
-  --ink: #0a0a0a;
-  --ink-soft: #333;
-  --muted: #666;
-  --muted-2: #888;
-  --line: #e5e5e5;
-  --line-soft: #f1f0ea;
-  --bg: #f8f8f6;
-  --paper: #ffffff;
-  --accent: #cc785c;
-  --font-sans: 'Open Sans', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --max-w: 720px;
-  --max-w-wide: 960px;
-  --radius: 6px;
+  /* Paleta base — navy oscuro con acento único. Cambiar --accent y
+     sus dependientes para probar variantes (púrpura / cobre / ámbar). */
+  --bg: #0E0B32;
+  --surface: #15113B;
+  --surface-2: #1B1745;
+  --border: #25224F;
+  --border-soft: rgba(255, 255, 255, 0.06);
+
+  --accent: #D97528;
+  --accent-strong: #E88A45;
+  --accent-soft: rgba(217, 117, 40, 0.15);
+  --accent-ghost: rgba(217, 117, 40, 0.08);
+  --accent-border: rgba(217, 117, 40, 0.35);
+
+  --text: #FFFFFF;
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --text-dim: rgba(255, 255, 255, 0.45);
+
+  --danger: #ff7676;
+  --success: #6ce6a0;
+
+  --font-heading: 'Titillium Web', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+
+  --max-w: 1120px;
+  --max-w-narrow: 760px;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html { color-scheme: dark; }
 body {
   font-family: var(--font-sans);
   font-size: 16px;
-  line-height: 1.55;
-  color: var(--ink-soft);
+  line-height: 1.6;
+  color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
-img { max-width: 100%; height: auto; display: block; }
-a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
-a:hover { color: var(--accent); }
-button { font-family: inherit; font-size: inherit; }
-:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 3px;
-  border-radius: 2px;
+body.has-clase-abierta { padding-bottom: 88px; }
+@media (min-width: 768px) {
+  body.has-clase-abierta { padding-bottom: 0; }
 }
 
-/* HEADER */
+img, svg { max-width: 100%; height: auto; display: block; }
+a { color: var(--text); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; text-decoration-color: rgba(255,255,255,0.25); }
+a:hover { text-decoration-color: var(--accent); color: var(--accent); }
+button { font-family: inherit; font-size: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* ============================================================
+   BARRA STICKY SUPERIOR (solo visible si hay clase abierta)
+   ============================================================ */
+.urgency-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--accent);
+  color: #fff;
+  display: none;
+}
+body.has-clase-abierta .urgency-bar { display: block; }
+.urgency-bar-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+.urgency-bar-inner .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #fff; opacity: 0.9;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.35; }
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
 .top-bar {
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(14, 11, 50, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+body.has-clase-abierta .top-bar { top: 40px; }
+@media (max-width: 640px) {
+  body.has-clase-abierta .top-bar { top: 56px; }
 }
 .top-bar-inner {
-  max-width: var(--max-w-wide);
+  max-width: var(--max-w);
   margin: 0 auto;
-  padding: 14px 20px;
+  padding: 16px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
 }
 .brand {
-  font-family: var(--font-serif);
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-weight: 700;
   font-size: 22px;
-  color: var(--ink);
-  text-decoration: none;
   letter-spacing: 0.02em;
+  color: var(--text);
+  text-decoration: none;
 }
-.brand:hover { color: var(--ink); }
+.brand:hover { color: var(--text); text-decoration: none; }
 .top-link {
   font-size: 13px;
-  color: var(--muted);
+  font-weight: 500;
+  color: var(--text-muted);
   text-decoration: none;
 }
-.top-link:hover { color: var(--ink); }
+.top-link:hover { color: var(--text); }
 
-/* SECTIONS + type */
-section { padding: 56px 20px; }
-.wrap { max-width: var(--max-w); margin: 0 auto; }
-.wrap-wide { max-width: var(--max-w-wide); margin: 0 auto; }
-h1, h2, h3 {
-  font-family: var(--font-serif);
-  color: var(--ink);
-  font-weight: 500;
-  line-height: 1.15;
+/* ============================================================
+   TIPOGRAFÍA / UTILITIES
+   ============================================================ */
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  color: var(--text);
+  line-height: 1.05;
   margin: 0 0 20px;
   letter-spacing: 0.005em;
 }
-h1 { font-size: clamp(34px, 6vw, 56px); }
-h2 { font-size: clamp(26px, 4.2vw, 38px); }
-h3 { font-size: clamp(20px, 3vw, 24px); }
-p { margin: 0 0 16px; }
-p.lead { font-size: 18px; color: var(--ink-soft); }
-.eyebrow {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
+h1 {
+  font-size: clamp(34px, 6vw, 60px);
+  font-weight: 700;
   text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 20px;
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+}
+h2 {
+  font-size: clamp(28px, 4.5vw, 44px);
+  font-weight: 700;
+  line-height: 1.1;
+}
+h3 {
+  font-size: clamp(18px, 2.4vw, 22px);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+p { margin: 0 0 16px; color: var(--text-muted); }
+.lead { font-size: clamp(15px, 1.5vw, 18px); color: var(--text-muted); line-height: 1.6; max-width: 60ch; }
+.accent { color: var(--accent); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 14px;
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+.chip:before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  flex-shrink: 0;
 }
 
-/* HERO */
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+section { padding: 88px 20px; position: relative; }
+@media (max-width: 640px) { section { padding: 60px 18px; } }
+.wrap { max-width: var(--max-w); margin: 0 auto; }
+.wrap-narrow { max-width: var(--max-w-narrow); margin: 0 auto; }
+.section-head { text-align: center; max-width: var(--max-w-narrow); margin: 0 auto 56px; }
+.section-head .chip { margin-bottom: 20px; }
+.section-head .lead { margin: 0 auto; }
+
+/* ============================================================
+   HERO
+   ============================================================ */
 .hero {
-  padding: 64px 20px 48px;
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
+  padding: 72px 20px 88px;
+  position: relative;
+  overflow: hidden;
 }
-.hero .lead { max-width: 620px; }
-.data-block {
-  margin: 30px 0 28px;
-  padding: 20px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(circle at center, var(--accent-soft), transparent 60%);
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.6;
+}
+.hero-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 48px;
+  position: relative;
+}
+.hero-inner.has-video {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 960px) {
+  .hero-inner.has-video {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 64px;
+  }
+}
+.hero-copy .chip { margin-bottom: 24px; }
+.hero-copy h1 { margin-bottom: 20px; }
+.hero-copy .lead { margin-bottom: 32px; max-width: 44ch; }
+
+.data-block {
+  margin: 8px 0 28px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
 }
 .data-row {
   display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 4px 0;
-  font-size: 15px;
+  flex-direction: column;
+  gap: 4px;
 }
-.data-row .label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; }
-.data-row .value { color: var(--ink); font-weight: 600; text-align: right; }
-.plazas-line {
-  margin-top: 8px;
-  font-size: 14px;
-  color: var(--muted);
-  text-align: center;
+.data-row .label {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 500;
 }
-.plazas-line strong { color: var(--ink); }
-
-/* Botón primario */
-.btn {
-  display: inline-block;
-  background: var(--ink);
-  color: var(--paper);
-  padding: 16px 32px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 16px;
+.data-row .value {
+  color: var(--text);
   font-weight: 600;
+  font-size: 15px;
+  font-family: var(--font-sans);
+}
+.plazas-line {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plazas-line strong { color: var(--text); font-weight: 600; }
+.plazas-line .mono { color: var(--accent); font-weight: 600; }
+
+/* Hero video slot: solo se muestra si el JS inyecta contenido */
+.hero-video {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,0.5);
+}
+.hero-video video, .hero-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.hero-video:empty { display: none; }
+
+/* ============================================================
+   BOTONES
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   text-decoration: none;
-  transition: background 120ms ease;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
   min-height: 48px;
-  min-width: 200px;
-  text-align: center;
+  letter-spacing: 0.005em;
 }
-.btn:hover, .btn:focus { background: #222; color: var(--paper); }
-.btn:disabled { background: var(--muted-2); cursor: not-allowed; }
-.btn-primary { background: var(--ink); }
-.btn-block { display: block; width: 100%; }
+.btn:hover { text-decoration: none; }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 10px 30px -12px var(--accent);
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--accent-strong);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.btn-primary:disabled { background: var(--surface-2); color: var(--text-dim); box-shadow: none; cursor: not-allowed; transform: none; }
+.btn-ghost {
+  background: transparent;
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+.btn-ghost:hover { background: var(--accent-ghost); color: var(--text); }
+.btn-block { display: flex; width: 100%; }
+.btn .arrow { transition: transform 120ms ease; }
+.btn:hover .arrow { transform: translateX(3px); }
 
-/* SECCIONES */
-.section-alt { background: var(--paper); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.section-bg { background: var(--bg); }
-
-.para-quien-list {
-  margin: 0;
-  padding: 0;
+/* ============================================================
+   PARA QUIÉN ES / NO ES
+   ============================================================ */
+.pq-list {
   list-style: none;
+  margin: 32px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
 }
-.para-quien-list li {
-  padding: 14px 0 14px 28px;
-  border-bottom: 1px solid var(--line-soft);
+.pq-list li {
+  padding: 20px 22px 20px 52px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   position: relative;
   font-size: 16px;
+  color: var(--text);
+  line-height: 1.5;
 }
-.para-quien-list li:before {
-  content: "—";
+.pq-list li:before {
+  content: "";
   position: absolute;
-  left: 0;
+  left: 22px;
+  top: 26px;
+  width: 14px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.pq-list.no li:before {
+  content: "×";
+  top: 16px;
+  left: 22px;
+  width: auto;
+  height: auto;
+  background: none;
+  color: var(--text-dim);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* ============================================================
+   TIMELINE "QUÉ VAMOS A VER"
+   ============================================================ */
+.timeline {
+  position: relative;
+  padding: 24px 0 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-soft) 90%, transparent);
+}
+.timeline-item {
+  position: relative;
+  padding: 0 0 32px 68px;
+}
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-node {
+  position: absolute;
+  left: 12px;
+  top: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--accent);
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: 0 0 0 6px var(--bg), 0 0 20px var(--accent-soft);
+  z-index: 1;
 }
-.para-quien-list li:last-child { border-bottom: none; }
-
-.no-block { margin-top: 12px; }
-.no-block li:before { content: "×"; color: var(--muted-2); font-weight: 700; }
-
-/* SECCIÓN "Qué vamos a ver" — estilo presupuesto */
-.presupuesto-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 0 10px;
-  border-bottom: 1px solid var(--ink);
+.timeline-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+}
+.timeline-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 500;
+  color: var(--accent);
   text-transform: uppercase;
-  color: var(--ink);
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
 }
-.presupuesto-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
-  align-items: baseline;
-}
-.presupuesto-item h3 {
-  font-family: var(--font-sans);
+.timeline-item h3 { margin: 0 0 8px; font-family: var(--font-heading); font-weight: 700; }
+.timeline-item p { margin: 0; color: var(--text-muted); font-size: 15px; }
+.timeline-total {
+  margin: 32px auto 0;
+  text-align: center;
+  padding: 18px 24px;
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  max-width: 380px;
+  color: var(--text);
   font-weight: 600;
+  font-family: var(--font-heading);
   font-size: 16px;
-  color: var(--ink);
-  margin: 0 0 6px;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
 }
-.presupuesto-item p {
-  margin: 0;
-  font-size: 15px;
-  color: var(--ink-soft);
-}
-.presupuesto-item .duracion {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--ink);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  min-width: 70px;
-  text-align: right;
-}
-.presupuesto-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 22px 0 4px;
-  border-top: 2px solid var(--ink);
-  margin-top: 4px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-.presupuesto-total .value { font-variant-numeric: tabular-nums; }
 
-/* Quién la da */
+/* ============================================================
+   QUIÉN LA DA
+   ============================================================ */
 .founder-card {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: 1fr;
   gap: 32px;
   align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+@media (min-width: 720px) {
+  .founder-card { grid-template-columns: 220px 1fr; gap: 40px; }
 }
 .founder-card img {
-  width: 180px;
-  height: 220px;
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 4/5;
   object-fit: cover;
-  border-radius: var(--radius);
-  filter: grayscale(100%);
+  border-radius: var(--radius-md);
+  filter: grayscale(100%) contrast(1.05);
 }
-.founder-card p { margin-bottom: 12px; }
+.founder-card p { color: var(--text-muted); margin-bottom: 14px; }
+.founder-card p strong { color: var(--text); }
 
-/* Qué incluye — bullets simples */
-.include-list { list-style: none; margin: 0; padding: 0; }
-.include-list li {
-  padding: 12px 0 12px 26px;
-  border-bottom: 1px solid var(--line-soft);
-  position: relative;
-  font-size: 16px;
+/* ============================================================
+   QUÉ INCLUYE
+   ============================================================ */
+.include-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
 }
-.include-list li:before {
-  content: "✓";
-  position: absolute;
-  left: 0;
+@media (min-width: 640px) { .include-grid { grid-template-columns: 1fr 1fr; } }
+.include-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.include-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--accent);
-  font-weight: 700;
 }
-.include-list li:last-child { border-bottom: none; }
+.include-icon svg { width: 20px; height: 20px; }
+.include-body { color: var(--text); font-size: 15px; line-height: 1.5; }
+.include-body strong { display: block; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.include-body span { color: var(--text-muted); }
 
-/* FAQ */
-details {
-  border-bottom: 1px solid var(--line);
-  padding: 18px 0;
+/* ============================================================
+   FAQ
+   ============================================================ */
+.faq {
+  max-width: 780px;
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
 }
-details summary {
+details.faq-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px 22px;
+  transition: border-color 120ms ease;
+}
+details.faq-item[open] { border-color: var(--accent-border); }
+details.faq-item summary {
   cursor: pointer;
-  font-weight: 600;
-  font-size: 17px;
-  color: var(--ink);
   list-style: none;
-  padding-right: 32px;
+  padding: 18px 30px 18px 0;
   position: relative;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text);
 }
-details summary::-webkit-details-marker { display: none; }
-details summary::after {
-  content: "+";
+details.faq-item summary::-webkit-details-marker { display: none; }
+details.faq-item summary::after {
+  content: "";
   position: absolute;
-  right: 0;
-  top: -2px;
-  font-size: 22px;
-  color: var(--muted);
-  transition: transform 120ms ease;
+  right: 4px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 200ms ease;
 }
-details[open] summary::after { content: "−"; }
-details p { margin: 16px 0 0; font-size: 15px; color: var(--ink-soft); }
+details.faq-item[open] summary::after {
+  transform: translateY(-30%) rotate(-135deg);
+}
+details.faq-item p {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
 
-/* CTA final */
-.cta-final { text-align: center; }
-.cta-final .btn { min-width: 240px; }
+/* ============================================================
+   CTA FINAL
+   ============================================================ */
+.cta-final {
+  position: relative;
+  text-align: center;
+  padding: 88px 20px;
+  overflow: hidden;
+}
+.cta-final::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, var(--accent-soft), transparent 60%);
+  filter: blur(50px);
+  pointer-events: none;
+  opacity: 0.5;
+}
+.cta-final .wrap { position: relative; }
+.cta-final h2 { margin-bottom: 12px; }
 .cta-final .cta-info {
-  margin-top: 16px;
-  font-size: 14px;
-  color: var(--muted);
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
 }
 
-/* Lista de espera */
+/* ============================================================
+   LISTA DE ESPERA
+   ============================================================ */
 .lista-espera-block {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 32px 24px;
-  margin-top: 24px;
+  max-width: 560px;
+  margin: 32px auto 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
 }
 .lista-espera-block form {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 4px;
 }
 .lista-espera-block input[type="email"] {
   flex: 1 1 220px;
   padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  font-size: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 15px;
   font-family: inherit;
+  color: var(--text);
   min-width: 0;
 }
-.lista-espera-block input[type="email"]:focus { outline: none; border-color: var(--ink); }
-.lista-espera-block .btn { min-width: 140px; padding: 14px 24px; }
-.lista-espera-msg { margin-top: 14px; font-size: 15px; }
-.lista-espera-msg.ok { color: #2a7a3f; }
-.lista-espera-msg.err { color: #a03030; }
+.lista-espera-block input[type="email"]::placeholder { color: var(--text-dim); }
+.lista-espera-block input[type="email"]:focus { outline: none; border-color: var(--accent); }
+.lista-espera-block .btn { min-width: 140px; padding: 14px 22px; }
+.lista-espera-msg { margin: 14px 0 0; font-size: 14px; min-height: 20px; }
+.lista-espera-msg.ok { color: var(--success); }
+.lista-espera-msg.err { color: var(--danger); }
 
-/* FOOTER */
+/* ============================================================
+   FOOTER
+   ============================================================ */
 .footer {
-  background: var(--paper);
-  border-top: 1px solid var(--line);
-  padding: 40px 20px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  padding: 44px 20px 40px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-muted);
 }
-.footer-inner {
-  max-width: var(--max-w-wide);
-  margin: 0 auto;
-}
+.footer-inner { max-width: var(--max-w); margin: 0 auto; }
 .footer p { margin: 0 0 10px; }
 .footer .legal-links a {
-  color: var(--muted);
+  color: var(--text-muted);
   text-decoration: none;
-  margin-right: 18px;
+  margin-right: 20px;
   display: inline-block;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  font-weight: 500;
 }
-.footer .legal-links a:hover { color: var(--ink); text-decoration: underline; }
+.footer .legal-links a:hover { color: var(--accent); }
 .footer .fiscal {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--border);
   padding-top: 16px;
   margin-top: 16px;
-  color: var(--muted-2);
+  color: var(--text-dim);
   font-size: 12px;
+  line-height: 1.6;
 }
+.footer .fiscal a { color: var(--text-dim); }
 
-/* DIALOG (formulario compra) */
+/* ============================================================
+   DIALOG COMPRA
+   ============================================================ */
 dialog {
   padding: 0;
-  border: none;
-  border-radius: var(--radius);
-  max-width: 460px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  max-width: 480px;
   width: calc(100% - 32px);
-  background: var(--paper);
-  color: var(--ink-soft);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
 }
-dialog::backdrop { background: rgba(10,10,10,0.55); }
-.dlg-body { padding: 28px 24px; }
-.dlg-body h2 { margin-bottom: 6px; font-size: 24px; }
-.dlg-body .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); }
+.dlg-body { padding: 32px 28px; position: relative; }
+.dlg-body h2 { margin-bottom: 6px; font-size: clamp(22px, 3vw, 26px); }
+.dlg-body .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.01em; }
 .dlg-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 26px;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 22px;
   cursor: pointer;
-  color: var(--muted);
-  padding: 6px 10px;
+  color: var(--text-muted);
+  padding: 4px 10px;
   line-height: 1;
+  border-radius: 6px;
 }
-.dlg-close:hover { color: var(--ink); }
+.dlg-close:hover { color: var(--text); border-color: var(--border); }
 .form-group { margin-bottom: 16px; }
 .form-group label {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink);
-  margin-bottom: 6px;
-  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group input[type="tel"] {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  font-size: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 15px;
   font-family: inherit;
+  color: var(--text);
 }
-.form-group input:focus { outline: none; border-color: var(--ink); }
-.form-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.form-group input:focus { outline: none; border-color: var(--accent); }
+.form-hint { font-size: 12px; color: var(--text-dim); margin: 6px 0 0; }
 .checkbox-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 14px;
-  background: var(--bg);
-  border-radius: var(--radius);
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
   margin: 18px 0;
 }
-.checkbox-row input { margin-top: 3px; flex-shrink: 0; }
+.checkbox-row input { margin-top: 3px; flex-shrink: 0; accent-color: var(--accent); }
 .checkbox-row label {
   font-size: 13px;
-  color: var(--ink-soft);
-  line-height: 1.45;
+  color: var(--text);
+  line-height: 1.5;
   font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 0;
 }
-.form-error {
-  color: #a03030;
-  font-size: 14px;
-  margin: 12px 0 0;
-  min-height: 20px;
-}
-/* Honeypot invisible */
+.form-error { color: var(--danger); font-size: 14px; margin: 12px 0 0; min-height: 20px; }
+
+/* Honeypot */
 .hp-field {
   position: absolute;
   left: -9999px;
-  width: 1px;
-  height: 1px;
+  width: 1px; height: 1px;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
 }
 
-/* States */
+/* ============================================================
+   CTA FIJA MÓVIL (solo <= 768px, solo si hay clase abierta)
+   ============================================================ */
+.mobile-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: rgba(14, 11, 50, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+body.has-clase-abierta .mobile-cta { display: flex; }
+@media (min-width: 768px) {
+  .mobile-cta { display: none !important; }
+}
+.mobile-cta .price {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+.mobile-cta .price small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.mobile-cta .btn { flex: 1; min-height: 46px; padding: 12px 16px; font-size: 14px; }
+
+/* ============================================================
+   STATES / HELPERS
+   ============================================================ */
 .hidden { display: none !important; }
-.loading-clase { text-align: center; color: var(--muted); font-size: 15px; padding: 20px 0; }
-
-/* Responsive */
-@media (max-width: 640px) {
-  section { padding: 44px 18px; }
-  .hero { padding: 40px 18px 40px; }
-  .data-block { padding: 16px; }
-  .founder-card {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  .founder-card img { width: 140px; height: 170px; }
-  .top-bar-inner { padding: 12px 18px; }
-  .brand { font-size: 19px; }
+.loading-clase {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 40px 0;
+  letter-spacing: 0.02em;
 }
-@media (max-width: 380px) {
-  .btn { min-width: 100%; padding: 14px 18px; }
-  .presupuesto-item { grid-template-columns: 1fr; }
-  .presupuesto-item .duracion { text-align: left; margin-top: 6px; }
-}
+.sin-clase-block { text-align: center; padding: 20px 0 0; }
+.sin-clase-block .lead { margin: 0 auto 8px; }
 
-/* Motion preferences */
+/* Motion */
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
-  details summary::after { transition: none; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* Reduce hero glow en Instagram in-app browser (baja capacidad) */
+@media (max-width: 380px) {
+  .hero::before, .cta-final::before { display: none; }
 }
 </style>
 </head>
 <body>
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZR7NNTC" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+<!-- Barra sticky de urgencia. Solo visible si body.has-clase-abierta. Se rellena por JS con la fecha. -->
+<div class="urgency-bar" role="status" aria-live="polite">
+  <div class="urgency-bar-inner">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="urgency-text">Clase en directo · Plazas limitadas</span>
+  </div>
+</div>
 
 <header class="top-bar">
   <div class="top-bar-inner">
@@ -574,40 +925,64 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
   </div>
 </header>
 
-<!-- HERO -->
+<!-- ========== HERO ========== -->
 <section class="hero">
-  <div class="wrap">
-    <span class="eyebrow">Clase en directo · Plazas limitadas</span>
-    <h1>Vender cocinas y armarios a medida sin ser carpintero</h1>
-    <p class="lead">Dos horas en directo. Cómo funciona el negocio por dentro, qué materiales tienes que conocer y cómo se le pone precio a un proyecto. Sin taller, sin maquinaria y sin haber cogido una sierra en tu vida.</p>
+  <div class="hero-inner" id="hero-inner">
+    <div class="hero-copy">
+      <span class="chip">Clase en directo · Plazas limitadas</span>
+      <h1>Vender cocinas y armarios a medida <span class="accent">sin ser carpintero</span></h1>
+      <p class="lead">Dos horas en directo. Cómo funciona el negocio por dentro, qué materiales tienes que conocer y cómo se le pone precio a un proyecto. Sin taller, sin maquinaria y sin haber cogido una sierra en tu vida.</p>
 
-    <div id="clase-data" class="hidden">
-      <div class="data-block">
-        <div class="data-row"><span class="label">Fecha</span><span class="value" id="v-fecha">—</span></div>
-        <div class="data-row"><span class="label">Hora</span><span class="value" id="v-hora">—</span></div>
-        <div class="data-row"><span class="label">Duración</span><span class="value" id="v-duracion">2 horas</span></div>
-        <div class="data-row"><span class="label">Plazas</span><span class="value" id="v-plazas">—</span></div>
-        <div class="data-row"><span class="label">Precio</span><span class="value" id="v-precio">90 € IVA incluido</span></div>
+      <div id="clase-data" class="hidden">
+        <div class="data-block">
+          <div class="data-row"><span class="label">Fecha</span><span class="value" id="v-fecha">—</span></div>
+          <div class="data-row"><span class="label">Hora</span><span class="value" id="v-hora">—</span></div>
+          <div class="data-row"><span class="label">Duración</span><span class="value" id="v-duracion">2 horas</span></div>
+          <div class="data-row"><span class="label">Precio</span><span class="value" id="v-precio">90 € IVA incluido</span></div>
+        </div>
+        <button class="btn btn-primary btn-block" type="button" data-open-form>Reservar mi plaza <span class="arrow">→</span></button>
+        <p class="plazas-line">Quedan <strong class="mono" id="v-plazas-libres">—</strong> de <strong class="mono" id="v-plazas-totales">—</strong> plazas</p>
       </div>
-      <button class="btn btn-primary btn-block" type="button" data-open-form>Reservar mi plaza</button>
-      <p class="plazas-line">Quedan <strong id="v-plazas-libres">—</strong> de <strong id="v-plazas-totales">—</strong> plazas</p>
+
+      <p id="clase-loading" class="loading-clase">Cargando próxima fecha…</p>
+
+      <div id="sin-clase" class="hidden sin-clase-block">
+        <p class="lead" style="margin-bottom: 6px;">Ahora mismo no hay fecha abierta.</p>
+        <p style="color: var(--text-dim); margin: 0;">Puedes apuntarte a la lista de espera abajo.</p>
+      </div>
     </div>
 
-    <p id="clase-loading" class="loading-clase">Cargando próxima fecha…</p>
+    <!--
+      ============================================================
+      VÍDEO DE VENTA · PENDIENTE DE GRABAR (~1:30)
+      ============================================================
+      Este slot solo se renderiza en el DOM si `SALES_VIDEO_URL`
+      está definido en el script inline (ver bloque JS al final).
 
-    <div id="sin-clase" class="hidden">
-      <p class="lead" style="margin-bottom: 8px;">Ahora mismo no hay fecha abierta.</p>
-      <p style="color: var(--muted);">Puedes apuntarte a la lista de espera abajo.</p>
-    </div>
+      Cuando el vídeo esté grabado y subido, hay 2 formas:
+        - Vídeo hosteado (mp4/webm): pon la URL directa.
+        - Vimeo/YouTube unlisted: pon la URL embed (`/embed/…`).
+
+      El JS detecta el tipo y elige entre <video> autoplay muted
+      loop playsinline (para hosting propio) o <iframe> (Vimeo/YT).
+
+      Mientras SALES_VIDEO_URL sea null (por defecto), este slot
+      queda invisible y el hero colapsa a 1 columna centrada.
+      Cero placeholder visible en producción.
+      ============================================================
+    -->
+    <div id="hero-video-slot" class="hero-video" aria-hidden="true"></div>
   </div>
 </section>
 
-<!-- PARA QUIÉN ES -->
-<section class="section-alt">
+<!-- ========== PARA QUIÉN ES ========== -->
+<section>
   <div class="wrap">
-    <h2>Para quién es</h2>
-    <p>Esta clase es para ti si:</p>
-    <ul class="para-quien-list">
+    <div class="section-head">
+      <h2>Para quién es</h2>
+      <p class="lead">Esta clase es para ti si:</p>
+    </div>
+    <ul class="pq-list">
       <li>Tienes un trabajo y quieres montar algo tuyo sin dejarlo de un día para otro</li>
       <li>Se te da bien tratar con gente y quieres vender algo que exista de verdad</li>
       <li>Ya probaste otras cosas por internet y te cansaste de vender aire</li>
@@ -616,12 +991,14 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
   </div>
 </section>
 
-<!-- PARA QUIÉN NO ES -->
+<!-- ========== PARA QUIÉN NO ES ========== -->
 <section>
   <div class="wrap">
-    <h2>Para quién NO es</h2>
-    <p>Voy a ser claro para que nadie pague de más:</p>
-    <ul class="para-quien-list no-block">
+    <div class="section-head">
+      <h2>Para quién NO es</h2>
+      <p class="lead">Voy a ser claro para que nadie pague de más:</p>
+    </div>
+    <ul class="pq-list no">
       <li>No es ingreso pasivo. Aquí hay que hablar con gente, pisar obras y hacer seguimiento.</li>
       <li>No vendes nada la primera semana. Una cocina se cierra en semanas, no en un clic.</li>
       <li>Si buscas algo automatizado que funcione mientras duermes, esto es exactamente lo contrario.</li>
@@ -630,55 +1007,63 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
   </div>
 </section>
 
-<!-- QUÉ VAMOS A VER (presupuesto) -->
-<section class="section-alt">
+<!-- ========== TIMELINE: QUÉ VAMOS A VER ========== -->
+<section>
   <div class="wrap">
-    <h2>Qué vamos a ver</h2>
-    <div class="presupuesto-header"><span>Partida</span><span>Duración</span></div>
+    <div class="section-head">
+      <span class="chip">Programa</span>
+      <h2>Qué vamos a ver</h2>
+    </div>
 
-    <div class="presupuesto-item">
-      <div>
-        <h3>El negocio por dentro</h3>
-        <p>Cómo se mueve la carpintería a medida: quién compra, por qué un proyecto medio ronda los 20.000 €, dónde está el margen de verdad y por qué queda hueco para el que sabe vender.</p>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-node">01</div>
+        <div class="timeline-card">
+          <div class="timeline-eyebrow">40 min · Bloque 1</div>
+          <h3>El negocio por dentro</h3>
+          <p>Cómo se mueve la carpintería a medida: quién compra, por qué un proyecto medio ronda los 20.000 €, dónde está el margen de verdad y por qué queda hueco para el que sabe vender.</p>
+        </div>
       </div>
-      <div class="duracion">40 min</div>
-    </div>
 
-    <div class="presupuesto-item">
-      <div>
-        <h3>Los materiales que tienes que conocer</h3>
-        <p>Tablero, canto, herraje y lacado. Lo justo para sentarte delante de un interiorista sin que se note que llegaste ayer. Te enseño las muestras en mano.</p>
+      <div class="timeline-item">
+        <div class="timeline-node">02</div>
+        <div class="timeline-card">
+          <div class="timeline-eyebrow">35 min · Bloque 2</div>
+          <h3>Los materiales que tienes que conocer</h3>
+          <p>Tablero, canto, herraje y lacado. Lo justo para sentarte delante de un interiorista sin que se note que llegaste ayer. Te enseño las muestras en mano.</p>
+        </div>
       </div>
-      <div class="duracion">35 min</div>
-    </div>
 
-    <div class="presupuesto-item">
-      <div>
-        <h3>Cómo se pone precio a un proyecto</h3>
-        <p>Presupuesto un caso real delante de ti, de plano a cifra final, explicando de dónde sale cada número.</p>
+      <div class="timeline-item">
+        <div class="timeline-node">03</div>
+        <div class="timeline-card">
+          <div class="timeline-eyebrow">35 min · Bloque 3</div>
+          <h3>Cómo se pone precio a un proyecto</h3>
+          <p>Presupuesto un caso real delante de ti, de plano a cifra final, explicando de dónde sale cada número.</p>
+        </div>
       </div>
-      <div class="duracion">35 min</div>
-    </div>
 
-    <div class="presupuesto-item">
-      <div>
-        <h3>Preguntas</h3>
-        <p>Tus dudas sobre tu situación y por dónde empezar.</p>
+      <div class="timeline-item">
+        <div class="timeline-node">04</div>
+        <div class="timeline-card">
+          <div class="timeline-eyebrow">10 min · Bloque 4</div>
+          <h3>Preguntas</h3>
+          <p>Tus dudas sobre tu situación y por dónde empezar.</p>
+        </div>
       </div>
-      <div class="duracion">10 min</div>
     </div>
 
-    <div class="presupuesto-total">
-      <span>Total</span>
-      <span class="value">2 horas · 90 € IVA incluido</span>
-    </div>
+    <div class="timeline-total mono">2 h · 90 € IVA incluido</div>
   </div>
 </section>
 
-<!-- QUIÉN LA DA -->
+<!-- ========== QUIÉN LA DA ========== -->
 <section>
   <div class="wrap">
-    <h2>Quién la da</h2>
+    <div class="section-head">
+      <span class="chip">Quién la da</span>
+      <h2>Joan de Mora</h2>
+    </div>
     <div class="founder-card">
       <img src="/assets/imagenes/nosotros/founder.webp" alt="Joan de Mora, fundador de Curino">
       <div>
@@ -689,81 +1074,122 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
   </div>
 </section>
 
-<!-- QUÉ INCLUYE -->
-<section class="section-alt">
-  <div class="wrap">
-    <h2>Qué incluye</h2>
-    <ul class="include-list">
-      <li>2 horas en directo, grupo de máximo <span data-plazas-totales>—</span> personas</li>
-      <li>Grabación disponible durante 30 días</li>
-      <li>La plantilla de presupuesto que uso yo</li>
-      <li>Preguntas sobre tu situación concreta durante la clase</li>
-    </ul>
-  </div>
-</section>
-
-<!-- FAQ -->
+<!-- ========== QUÉ INCLUYE ========== -->
 <section>
   <div class="wrap">
-    <h2>Preguntas frecuentes</h2>
-    <details>
-      <summary>¿Necesito saber de carpintería?</summary>
-      <p>No. La clase está pensada para alguien que llega de cero. Lo que sí hace falta es que no te dé apuro hablar con gente, porque esto se cierra hablando.</p>
-    </details>
-    <details>
-      <summary>¿Esto es un negocio de ingreso pasivo?</summary>
-      <p>No, y prefiero decírtelo antes de que pagues. Es venta. Los proyectos se cierran hablando con arquitectos, interioristas y particulares, y eso lo haces tú. Lo que no tienes que hacer es fabricar.</p>
-    </details>
-    <details>
-      <summary>¿Cuánto se tarda en vender el primer proyecto?</summary>
-      <p>Depende de a cuánta gente hables. Pero una cocina no se cierra en una tarde: se enseña, se presupuesta, se ajusta y se firma. Cuenta en semanas.</p>
-    </details>
-    <details>
-      <summary>¿Y si no puedo asistir en directo?</summary>
-      <p>Tienes la grabación 30 días. Pero el valor está en poder preguntar por tu caso, así que ven si puedes.</p>
-    </details>
-    <details>
-      <summary>¿Esto acaba en una venta de otra cosa?</summary>
-      <p>Al final de la clase te cuento cómo trabajamos con la gente que quiere dedicarse a esto en serio. Los primeros 110 minutos son la clase, sin condiciones y sin letra pequeña.</p>
-    </details>
-    <details>
-      <summary>¿Hay factura?</summary>
-      <p>Sí, automática, a nombre de tu empresa si me pasas los datos.</p>
-    </details>
-    <details>
-      <summary>¿Puedo cancelar?</summary>
-      <p>Al reservar renuncias al desistimiento porque la clase se imparte antes de los 14 días. Si no puedes venir, escríbeme y te paso a la siguiente fecha.</p>
-    </details>
+    <div class="section-head">
+      <span class="chip">Incluye</span>
+      <h2>Qué te llevas</h2>
+    </div>
+    <div class="include-grid">
+      <div class="include-item">
+        <div class="include-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="include-body">
+          <strong>Clase en directo</strong>
+          <span>2 horas, grupo de máximo <span data-plazas-totales>—</span> personas.</span>
+        </div>
+      </div>
+      <div class="include-item">
+        <div class="include-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><polygon points="10,9 15,11 10,13" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="include-body">
+          <strong>Grabación 30 días</strong>
+          <span>Disponible por si te la pierdes o quieres volver a verla.</span>
+        </div>
+      </div>
+      <div class="include-item">
+        <div class="include-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
+        </div>
+        <div class="include-body">
+          <strong>Plantilla de presupuesto</strong>
+          <span>La que uso yo, lista para adaptar a tu forma de trabajar.</span>
+        </div>
+      </div>
+      <div class="include-item">
+        <div class="include-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="include-body">
+          <strong>Preguntas en directo</strong>
+          <span>Sobre tu situación concreta durante la clase.</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- CTA FINAL -->
-<section class="section-alt" id="cta-final-section">
-  <div class="wrap cta-final">
+<!-- ========== FAQ ========== -->
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <span class="chip">FAQ</span>
+      <h2>Preguntas frecuentes</h2>
+    </div>
+    <div class="faq">
+      <details class="faq-item">
+        <summary>¿Necesito saber de carpintería?</summary>
+        <p>No. La clase está pensada para alguien que llega de cero. Lo que sí hace falta es que no te dé apuro hablar con gente, porque esto se cierra hablando.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Esto es un negocio de ingreso pasivo?</summary>
+        <p>No, y prefiero decírtelo antes de que pagues. Es venta. Los proyectos se cierran hablando con arquitectos, interioristas y particulares, y eso lo haces tú. Lo que no tienes que hacer es fabricar.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Cuánto se tarda en vender el primer proyecto?</summary>
+        <p>Depende de a cuánta gente hables. Pero una cocina no se cierra en una tarde: se enseña, se presupuesta, se ajusta y se firma. Cuenta en semanas.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Y si no puedo asistir en directo?</summary>
+        <p>Tienes la grabación 30 días. Pero el valor está en poder preguntar por tu caso, así que ven si puedes.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Esto acaba en una venta de otra cosa?</summary>
+        <p>Al final de la clase te cuento cómo trabajamos con la gente que quiere dedicarse a esto en serio. Los primeros 110 minutos son la clase, sin condiciones y sin letra pequeña.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Hay factura?</summary>
+        <p>Sí, automática, a nombre de tu empresa si me pasas los datos.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Puedo cancelar?</summary>
+        <p>Al reservar renuncias al desistimiento porque la clase se imparte antes de los 14 días. Si no puedes venir, escríbeme y te paso a la siguiente fecha.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CTA FINAL ========== -->
+<section class="cta-final" id="cta-final-section">
+  <div class="wrap wrap-narrow">
     <h2>Reserva tu plaza</h2>
     <p class="cta-info" id="cta-final-info">— · — · 2 horas en directo · 90 € IVA incluido</p>
-    <button class="btn btn-primary" type="button" data-open-form>Reservar mi plaza</button>
+    <button class="btn btn-primary" type="button" data-open-form>Reservar mi plaza <span class="arrow">→</span></button>
   </div>
 </section>
 
-<!-- LISTA DE ESPERA (oculta si hay clase) -->
+<!-- ========== LISTA DE ESPERA (oculta si hay clase) ========== -->
 <section id="lista-espera-section" class="hidden">
-  <div class="wrap">
-    <h2>Ahora mismo no hay fecha abierta</h2>
-    <p>Déjame tu email y te aviso en cuanto abra la siguiente. Sin spam y sin newsletter.</p>
+  <div class="wrap wrap-narrow">
+    <div class="section-head">
+      <h2>Ahora mismo no hay fecha abierta</h2>
+      <p class="lead">Déjame tu email y te aviso en cuanto abra la siguiente. Sin spam y sin newsletter.</p>
+    </div>
     <div class="lista-espera-block">
       <form id="form-lista-espera" novalidate>
-        <!-- Honeypot: bots suelen rellenar todo -->
         <div class="hp-field"><label for="le-website">No rellenar</label><input type="text" id="le-website" name="website" autocomplete="off" tabindex="-1"></div>
         <input type="email" name="email" id="le-email" placeholder="tu@email.com" required aria-label="Email">
-        <button class="btn btn-primary" type="submit">Avísame</button>
+        <button class="btn btn-primary" type="submit">Avísame <span class="arrow">→</span></button>
       </form>
       <p id="le-msg" class="lista-espera-msg" role="status"></p>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- ========== FOOTER ========== -->
 <footer class="footer">
   <div class="footer-inner">
     <p class="legal-links">
@@ -778,10 +1204,10 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
   </div>
 </footer>
 
-<!-- DIÁLOGO DE COMPRA -->
+<!-- ========== DIÁLOGO DE COMPRA ========== -->
 <dialog id="dlg-compra" aria-labelledby="dlg-titulo">
-  <button class="dlg-close" type="button" aria-label="Cerrar" data-close-dlg>&times;</button>
   <div class="dlg-body">
+    <button class="dlg-close" type="button" aria-label="Cerrar" data-close-dlg>&times;</button>
     <h2 id="dlg-titulo">Reservar mi plaza</h2>
     <p class="subtitle" id="dlg-subtitle">— · — · 90 € IVA incluido</p>
     <form id="form-compra" novalidate>
@@ -802,24 +1228,38 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
         <input type="checkbox" id="f-desist" name="desist" required>
         <label for="f-desist">Solicito que la clase se imparta antes de que finalice el plazo de desistimiento de 14 días y entiendo que, una vez impartida, pierdo el derecho a desistir.</label>
       </div>
-      <button class="btn btn-primary btn-block" type="submit" id="f-submit">Pagar 90 € y reservar</button>
+      <button class="btn btn-primary btn-block" type="submit" id="f-submit">Pagar 90 € y reservar <span class="arrow">→</span></button>
       <p class="form-error" id="f-error" role="alert"></p>
     </form>
   </div>
 </dialog>
 
+<!-- ========== CTA FIJA MÓVIL (solo si hay clase, solo ≤768px) ========== -->
+<div class="mobile-cta" aria-hidden="true">
+  <div class="price">90 €<small>IVA incluido</small></div>
+  <button class="btn btn-primary" type="button" data-open-form>Reservar mi plaza <span class="arrow">→</span></button>
+</div>
+
 <script>
 (function () {
   'use strict';
 
+  // ==========================================================
+  // CONFIG · VÍDEO DE VENTA
+  // ==========================================================
+  // Cuando el vídeo esté grabado, cambia null por la URL:
+  //   - Vídeo mp4/webm hosteado: 'https://cdn.example.com/venta.mp4'
+  //   - Vimeo unlisted:          'https://player.vimeo.com/video/XXXXXXX'
+  //   - YouTube unlisted:        'https://www.youtube.com/embed/XXXXXXXXXXX'
+  // Mientras sea null el hero se renderiza en 1 columna centrada
+  // y no aparece ningún placeholder al usuario.
+  var SALES_VIDEO_URL = null;
+  // ==========================================================
+
   var el = function (id) { return document.getElementById(id); };
-  var q = function (sel, ctx) { return (ctx || document).querySelector(sel); };
   var qa = function (sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); };
 
-  // ── UTMs ─────────────────────────────────────────────────────────────
-  // Se capturan al aterrizar y se guardan en sessionStorage. Se propagan
-  // en el POST /api/clases-checkout como metadata Stripe. Es la primera
-  // vez que el repo captura UTMs; ver plan.
+  // ── UTMs ─────────────────────────────────────────────────
   function captureUtms() {
     try {
       var params = new URLSearchParams(window.location.search);
@@ -831,7 +1271,7 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
       if (Object.keys(picked).length > 0) {
         sessionStorage.setItem('curino_clase_utms', JSON.stringify(picked));
       }
-    } catch (_e) { /* sessionStorage bloqueado, ignora */ }
+    } catch (_e) {}
   }
   function getUtms() {
     try {
@@ -841,12 +1281,9 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
   }
   captureUtms();
 
-  // ── event_id (UUID) compartido con dataLayer ─────────────────────────
+  // ── event_id ─────────────────────────────────────────────
   function uuid() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    // Fallback RFC4122 v4 mínimo
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       var r = Math.random() * 16 | 0;
       var v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -854,7 +1291,7 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     });
   }
 
-  // ── Fechas ──────────────────────────────────────────────────────────
+  // ── Fechas ───────────────────────────────────────────────
   function fmtFecha(iso) {
     try {
       return new Intl.DateTimeFormat('es-ES', {
@@ -871,6 +1308,14 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
       }).format(new Date(iso)) + ' (hora peninsular)';
     } catch (_e) { return ''; }
   }
+  function fmtHoraCorta(iso) {
+    try {
+      return new Intl.DateTimeFormat('es-ES', {
+        hour: '2-digit', minute: '2-digit', hour12: false,
+        timeZone: 'Europe/Madrid'
+      }).format(new Date(iso));
+    } catch (_e) { return ''; }
+  }
   function fmtEurCents(cents) {
     try {
       return new Intl.NumberFormat('es-ES', {
@@ -880,7 +1325,36 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     } catch (_e) { return (cents / 100) + ' €'; }
   }
 
-  // ── Estado clase actual ─────────────────────────────────────────────
+  // ── Render vídeo (solo si SALES_VIDEO_URL) ───────────────
+  function renderHeroVideo() {
+    if (!SALES_VIDEO_URL) return;
+    var slot = el('hero-video-slot');
+    var inner = el('hero-inner');
+    if (!slot || !inner) return;
+
+    var isEmbed = /youtube\.com\/embed|player\.vimeo\.com/.test(SALES_VIDEO_URL);
+    if (isEmbed) {
+      var iframe = document.createElement('iframe');
+      iframe.src = SALES_VIDEO_URL;
+      iframe.title = 'Vídeo de venta — Clase Curino';
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.allowFullscreen = true;
+      iframe.loading = 'lazy';
+      slot.appendChild(iframe);
+    } else {
+      var video = document.createElement('video');
+      video.src = SALES_VIDEO_URL;
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      slot.appendChild(video);
+    }
+    slot.setAttribute('aria-hidden', 'false');
+    inner.classList.add('has-video');
+  }
+  renderHeroVideo();
+
+  // ── Estado clase ─────────────────────────────────────────
   var claseActual = null;
 
   function renderClase(clase) {
@@ -891,6 +1365,7 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
       el('sin-clase').classList.remove('hidden');
       el('lista-espera-section').classList.remove('hidden');
       el('cta-final-section').classList.add('hidden');
+      document.body.classList.remove('has-clase-abierta');
       return;
     }
 
@@ -900,17 +1375,19 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     el('v-precio').textContent = fmtEurCents(clase.precio_cents);
 
     var libres = Math.max(0, clase.plazas_totales - clase.plazas_ocupadas);
-    el('v-plazas').textContent = libres + ' de ' + clase.plazas_totales;
     el('v-plazas-libres').textContent = libres;
     el('v-plazas-totales').textContent = clase.plazas_totales;
     qa('[data-plazas-totales]').forEach(function (n) { n.textContent = clase.plazas_totales; });
 
     el('cta-final-info').textContent = fmtFecha(clase.fecha) + ' · ' + fmtHora(clase.fecha) + ' · 2 horas en directo · ' + fmtEurCents(clase.precio_cents);
-    el('dlg-subtitle').textContent = fmtFecha(clase.fecha) + ' · ' + fmtHora(clase.fecha) + ' · ' + fmtEurCents(clase.precio_cents);
+    el('dlg-subtitle').textContent = fmtFecha(clase.fecha) + ' · ' + fmtHoraCorta(clase.fecha) + ' · ' + fmtEurCents(clase.precio_cents);
+
+    // Barra de urgencia superior
+    el('urgency-text').textContent = 'Clase en directo · ' + fmtFecha(clase.fecha) + ' · ' + fmtHoraCorta(clase.fecha) + ' · Plazas limitadas';
 
     el('clase-data').classList.remove('hidden');
+    document.body.classList.add('has-clase-abierta');
 
-    // Botones deshabilitados si ya no hay plazas
     if (libres <= 0) {
       qa('[data-open-form]').forEach(function (btn) {
         btn.textContent = 'Plaza agotada';
@@ -925,17 +1402,15 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     .then(function (data) { renderClase(data && data.clase ? data.clase : null); })
     .catch(function () { renderClase(null); });
 
-  // ── Diálogo compra ──────────────────────────────────────────────────
+  // ── Diálogo compra ───────────────────────────────────────
   var dlg = el('dlg-compra');
   function abrirDialogo() {
     if (!claseActual) return;
     el('f-error').textContent = '';
     el('f-submit').removeAttribute('disabled');
-    el('f-submit').textContent = 'Pagar ' + fmtEurCents(claseActual.precio_cents).replace(' IVA incluido', '') + ' y reservar';
-    if (dlg.showModal) { dlg.showModal(); }
-    else { dlg.setAttribute('open', 'open'); }
+    el('f-submit').innerHTML = 'Pagar ' + fmtEurCents(claseActual.precio_cents).replace(' IVA incluido', '') + ' y reservar <span class="arrow">→</span>';
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', 'open');
 
-    // event_id + begin_checkout — se genera nuevo por sesión de compra
     var eid = uuid();
     sessionStorage.setItem('curino_clase_event_id', eid);
     try {
@@ -957,19 +1432,18 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     } catch (_e) {}
   }
   function cerrarDialogo() {
-    if (dlg.close) { dlg.close(); } else { dlg.removeAttribute('open'); }
+    if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
   }
   qa('[data-open-form]').forEach(function (btn) { btn.addEventListener('click', abrirDialogo); });
   qa('[data-close-dlg]').forEach(function (btn) { btn.addEventListener('click', cerrarDialogo); });
   dlg.addEventListener('click', function (e) {
-    // Click sobre backdrop cierra
     var rect = dlg.getBoundingClientRect();
     if (e.clientY < rect.top || e.clientY > rect.bottom || e.clientX < rect.left || e.clientX > rect.right) {
       cerrarDialogo();
     }
   });
 
-  // ── Submit compra ───────────────────────────────────────────────────
+  // ── Submit compra ────────────────────────────────────────
   el('form-compra').addEventListener('submit', function (e) {
     e.preventDefault();
     if (!claseActual) return;
@@ -990,21 +1464,15 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     var utms = getUtms();
 
     el('f-submit').setAttribute('disabled', 'disabled');
-    el('f-submit').textContent = 'Redirigiendo a Stripe…';
+    el('f-submit').innerHTML = 'Redirigiendo a Stripe…';
 
     fetch('/api/clases-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
-        clase_id: claseActual.id,
-        nombre: nombre,
-        email: email,
-        telefono: telefono,
-        desistimiento_renunciado: true,
-        event_id: event_id,
-        utm_source: utms.utm_source || '',
-        utm_medium: utms.utm_medium || '',
-        utm_campaign: utms.utm_campaign || ''
+        clase_id: claseActual.id, nombre: nombre, email: email, telefono: telefono,
+        desistimiento_renunciado: true, event_id: event_id,
+        utm_source: utms.utm_source || '', utm_medium: utms.utm_medium || '', utm_campaign: utms.utm_campaign || ''
       })
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
@@ -1017,7 +1485,7 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
           else msg += 'Prueba en unos segundos o escribeme a info@casacurino.com.';
           errEl.textContent = msg;
           el('f-submit').removeAttribute('disabled');
-          el('f-submit').textContent = 'Pagar 90 € y reservar';
+          el('f-submit').innerHTML = 'Pagar 90 € y reservar <span class="arrow">→</span>';
           return;
         }
         window.location.assign(resp.data.checkout_url);
@@ -1025,17 +1493,17 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
       .catch(function () {
         errEl.textContent = 'Error de red. Prueba en unos segundos.';
         el('f-submit').removeAttribute('disabled');
-        el('f-submit').textContent = 'Pagar 90 € y reservar';
+        el('f-submit').innerHTML = 'Pagar 90 € y reservar <span class="arrow">→</span>';
       });
   });
 
-  // ── Lista de espera ─────────────────────────────────────────────────
+  // ── Lista de espera ──────────────────────────────────────
   var leForm = el('form-lista-espera');
   if (leForm) {
     leForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var email = el('le-email').value.trim().toLowerCase();
-      var website = el('le-website').value; // honeypot
+      var website = el('le-website').value;
       var msgEl = el('le-msg');
       msgEl.textContent = '';
       msgEl.className = 'lista-espera-msg';
@@ -1072,7 +1540,7 @@ dialog::backdrop { background: rgba(10,10,10,0.55); }
     });
   }
 
-  // ── "Configurar cookies" desde el footer ────────────────────────────
+  // ── "Configurar cookies" desde el footer ─────────────────
   qa('[data-cookie-prefs]').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
