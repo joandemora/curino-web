@@ -7,6 +7,9 @@
   "redirects": [
     { "source": "/pro", "destination": "/maestro/", "permanent": true },
     { "source": "/pro/", "destination": "/maestro/", "permanent": true },
-    { "source": "/pro/:path*", "destination": "/maestro/:path*", "permanent": true }
+    { "source": "/pro/:path*", "destination": "/maestro/:path*", "permanent": true },
+    { "source": "/clases", "destination": "/partners/", "permanent": true },
+    { "source": "/clases/", "destination": "/partners/", "permanent": true },
+    { "source": "/clases/:path*", "destination": "/partners/:path*", "permanent": true }
   ]
 }
