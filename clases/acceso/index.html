@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<!--
+  CRITICO: sin referrer. El access_token va en la URL como query param
+  y si el navegador lo enviara en el header Referer al cargar los
+  iframes de Vimeo, el token quedaria en logs de Vimeo Analytics y en
+  cualquier terceros que apareciera en el DOM. Con no-referrer el
+  navegador no envia ese header.
+-->
+<meta name="referrer" content="no-referrer">
+<title>Tu curso — Curino</title>
+<meta name="description" content="Acceso al curso de Curino.">
+
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Titillium+Web:wght@700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0E0B32;
+  --surface: #15113B;
+  --surface-2: #1B1745;
+  --border: #25224F;
+  --accent: #D97528;
+  --accent-strong: #E88A45;
+  --accent-soft: rgba(217, 117, 40, 0.15);
+  --accent-ghost: rgba(217, 117, 40, 0.08);
+  --accent-border: rgba(217, 117, 40, 0.35);
+  --text: #FFFFFF;
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --text-dim: rgba(255, 255, 255, 0.45);
+  --font-heading: 'Titillium Web', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+a { color: var(--text); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,0.25); }
+a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+.top-bar {
+  background: rgba(14, 11, 50, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.top-bar-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+.top-link { font-size: 13px; font-weight: 500; color: var(--text-muted); text-decoration: none; }
+.top-link:hover { color: var(--text); }
+
+.main {
+  flex: 1;
+  padding: 56px 20px 88px;
+  position: relative;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+.wrap-narrow { max-width: 560px; margin: 0 auto; text-align: center; }
+
+h1 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(28px, 4.5vw, 42px);
+  color: var(--text);
+  margin: 0 0 12px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+}
+.intro {
+  color: var(--text-muted);
+  margin: 0 0 40px;
+  font-size: clamp(15px, 1.5vw, 17px);
+}
+.intro strong { color: var(--text); font-weight: 600; }
+
+/* Lista de videos */
+.videos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+.video-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 20px 24px;
+}
+.video-card h2 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+  margin: 0 0 16px;
+  letter-spacing: 0.005em;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.video-card .num {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  flex-shrink: 0;
+}
+.video-frame {
+  position: relative;
+  aspect-ratio: 16/9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.video-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.video-frame.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+.video-frame.placeholder .icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.video-frame.placeholder .icon svg { width: 20px; height: 20px; }
+
+/* Estado de carga inicial y errores */
+.state-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 28px;
+  text-align: center;
+  max-width: 560px;
+  margin: 40px auto 0;
+}
+.state-card h2 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.state-card p { color: var(--text-muted); margin: 0 0 20px; font-size: 15px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent);
+  color: #fff;
+  padding: 14px 28px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 10px 30px -12px var(--accent);
+  transition: transform 120ms ease, background 120ms ease;
+}
+.btn:hover { background: var(--accent-strong); color: #fff; transform: translateY(-1px); text-decoration: none; }
+.btn .arrow { transition: transform 120ms ease; }
+.btn:hover .arrow { transform: translateX(3px); }
+
+.loading {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 40px 0;
+  letter-spacing: 0.02em;
+}
+
+.footer {
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  padding: 32px 20px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.footer a { color: var(--text-dim); }
+
+@media (max-width: 640px) {
+  .main { padding: 40px 16px 60px; }
+  .video-card { padding: 16px 16px 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="top-bar">
+  <div class="top-bar-inner">
+    <a class="brand" href="/clases/">Curino</a>
+    <a class="top-link" href="https://www.casacurino.com/">Volver a casacurino.com →</a>
+  </div>
+</header>
+
+<main class="main">
+  <div class="wrap">
+    <div id="state-loading" class="loading">Cargando tu curso…</div>
+
+    <div id="state-ok" class="hidden" style="display:none;">
+      <h1 id="hello">Tu curso Curino</h1>
+      <p class="intro" id="intro">Cuando y donde quieras. Sin caducidad.</p>
+      <div class="videos" id="videos"></div>
+    </div>
+
+    <div id="state-err" class="hidden" style="display:none;">
+      <div class="state-card">
+        <h2>Este enlace no es válido</h2>
+        <p>Si crees que es un error, escríbenos y lo resolvemos.</p>
+        <a class="btn" href="mailto:info@casacurino.com?subject=Acceso al curso Curino">Escribir a info@casacurino.com <span class="arrow">→</span></a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  SISTEMA &amp; CURINO SLU · CIF ESB24788580 · Carrer de Balmes 252, 5-2, 08006 Barcelona · <a href="mailto:info@casacurino.com">info@casacurino.com</a>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var el = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+
+  function showErr() {
+    el('state-loading').style.display = 'none';
+    el('state-ok').style.display = 'none';
+    el('state-err').style.display = 'block';
+  }
+  function showOk(data) {
+    el('state-loading').style.display = 'none';
+    el('state-err').style.display = 'none';
+    el('state-ok').style.display = 'block';
+
+    var nombre = (data && data.comprador && data.comprador.nombre) ? String(data.comprador.nombre) : '';
+    if (nombre) {
+      el('hello').textContent = 'Hola ' + nombre + ', bienvenido';
+    } else {
+      el('hello').textContent = 'Tu curso Curino';
+    }
+
+    var videos = (data && Array.isArray(data.videos)) ? data.videos : [];
+    var html = '';
+    for (var i = 0; i < videos.length; i++) {
+      var v = videos[i];
+      var num = String(i + 1).padStart(2, '0');
+      var titulo = esc(v.titulo || 'Bloque ' + (i + 1));
+      var frame;
+      if (v.url_embed) {
+        // Iframe Vimeo con permissions minimas. Los parametros title/byline/portrait
+        // los pone el propio URL de embed (ver curso-acceso/index.ts).
+        frame = '<iframe src="' + esc(v.url_embed) + '" title="' + titulo + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>';
+      } else {
+        frame = ''
+          + '<div class="video-frame placeholder">'
+          +   '<div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
+          +   '<div>Disponible próximamente</div>'
+          + '</div>';
+      }
+      html += ''
+        + '<article class="video-card">'
+        +   '<h2><span class="num">' + num + '</span>' + titulo + '</h2>'
+        +   (v.url_embed ? '<div class="video-frame">' + frame + '</div>' : frame)
+        + '</article>';
+    }
+    el('videos').innerHTML = html;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var token = String(params.get('t') || '').trim();
+  var TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+
+  if (!TOKEN_RE.test(token)) {
+    showErr();
+    return;
+  }
+
+  fetch('/api/curso-acceso', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ token: token })
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data && data.ok) showOk(data);
+      else showErr();
+    })
+    .catch(function () { showErr(); });
+})();
+</script>
+</body>
+</html>

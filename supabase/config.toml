@@ -110,3 +110,20 @@ entrypoint = "./functions/lista-espera-relay/index.ts"
 # verify_jwt=false: form público de captura de email cuando no hay clase
 # abierta. Invocada desde /api/lista-espera con ANON_KEY. Hardening propio
 # (honeypot + rate limit por hash IP en tabla lista_espera).
+
+[functions.curso-checkout]
+enabled = true
+verify_jwt = false
+import_map = "./functions/curso-checkout/deno.json"
+entrypoint = "./functions/curso-checkout/index.ts"
+# verify_jwt=false: invitado, curso comprable 24/7 desde /clases/.
+# Invocada server-to-server desde /api/curso-checkout con ANON_KEY.
+
+[functions.curso-acceso]
+enabled = true
+verify_jwt = false
+import_map = "./functions/curso-acceso/deno.json"
+entrypoint = "./functions/curso-acceso/index.ts"
+# verify_jwt=false: valida el access_token del email de confirmacion.
+# Invocada desde /api/curso-acceso con ANON_KEY. Siempre HTTP 200
+# (nunca 404 al usuario); el body dice {ok:false} para tokens invalidos.
