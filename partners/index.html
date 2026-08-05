@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vender cocinas y armarios a medida sin ser carpintero — Curso online | Curino</title>
 <meta name="description" content="Curso online de 4 clases pregrabadas. Cómo funciona el negocio de la carpintería a medida por dentro, qué materiales tienes que conocer y cómo se le pone precio a un proyecto. Sin taller, sin maquinaria y sin haber cogido una sierra en tu vida.">
-<link rel="canonical" href="https://www.casacurino.com/clases/">
+<link rel="canonical" href="https://www.casacurino.com/partners/">
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="Vender cocinas y armarios a medida sin ser carpintero — Curso online | Curino">
 <meta property="og:description" content="4 clases pregrabadas. Cómo funciona el negocio por dentro, qué materiales tienes que conocer y cómo se le pone precio a un proyecto. Sin taller, sin maquinaria y sin haber cogido una sierra en tu vida.">
-<meta property="og:url" content="https://www.casacurino.com/clases/">
+<meta property="og:url" content="https://www.casacurino.com/partners/">
 <meta property="og:image" content="https://www.casacurino.com/assets/imagenes/favicon-curino.png">
 <meta property="og:site_name" content="Curino">
 
@@ -46,7 +46,7 @@
     "price": "90",
     "priceCurrency": "EUR",
     "availability": "https://schema.org/InStock",
-    "url": "https://www.casacurino.com/clases/",
+    "url": "https://www.casacurino.com/partners/",
     "category": "digital"
   },
   "inLanguage": "es-ES"
@@ -84,7 +84,8 @@
 
 <style>
 /* -----------------------------------------------------------
-   Landing /clases — pivot a curso pregrabado comprable 24/7.
+   Landing /partners — programa de partners con curso 24/7 como
+   primera puerta de entrada.
    Autocontenida (sin site-shell.css / main-nav.js / main-footer.js).
    cookie-banner.js es la unica dependencia externa por consent.
    ----------------------------------------------------------- */
@@ -455,8 +456,32 @@ section { padding: 88px 20px; position: relative; }
   letter-spacing: 0.08em;
   margin-bottom: 10px;
 }
-.timeline-item h3 { margin: 0 0 8px; font-family: var(--font-heading); font-weight: 700; }
+.timeline-item h3 { margin: 0 0 14px; font-family: var(--font-heading); font-weight: 700; }
 .timeline-item p { margin: 0; color: var(--text-muted); font-size: 15px; }
+.timeline-bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.timeline-bullets li {
+  position: relative;
+  padding-left: 22px;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.timeline-bullets li:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 12px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
 .timeline-total {
   margin: 32px auto 0;
   text-align: center;
@@ -777,7 +802,7 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
 
 <header class="top-bar">
   <div class="top-bar-inner">
-    <a class="brand" href="/clases/">Curino</a>
+    <a class="brand" href="/partners/">Curino</a>
     <a class="top-link" href="https://www.casacurino.com/">Volver a casacurino.com →</a>
   </div>
 </header>
@@ -800,12 +825,25 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
 
     <!--
       ============================================================
-      VÍDEO DE VENTA · PENDIENTE DE GRABAR (~1:30)
+      VÍDEO DE VENTA · PENDIENTE DE GRABAR (VSL ~5 min)
       ============================================================
       Este slot solo se renderiza en el DOM si `SALES_VIDEO_URL`
       está definido en el script inline (ver bloque JS al final).
       Sin URL, el hero se muestra en 1 columna centrada y este
       slot queda invisible. Cero placeholder en producción.
+
+      IMPORTANTE: el CTA "Comprar el curso" tiene que estar
+      visible desde el minuto 1 del VSL. Ya lo está por
+      construcción:
+        - Desktop: hero-inner grid 2 cols cuando has-video,
+          copy (con CTA) a la izquierda, vídeo a la derecha,
+          ambos al mismo nivel de scroll.
+        - Móvil: hero-inner grid 1 col, .hero-copy (con CTA) va
+          ANTES que #hero-video-slot en el DOM, así que el CTA
+          se ve al aterrizar.
+        - Móvil, además: .mobile-cta está fija abajo siempre.
+      No introducir lógica de "esperar a que termine el vídeo"
+      para mostrar el CTA. Quien está convencido paga en el min 1.
       ============================================================
     -->
     <div id="hero-video-slot" class="hero-video" aria-hidden="true"></div>
@@ -855,41 +893,62 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
       <div class="timeline-item">
         <div class="timeline-node">01</div>
         <div class="timeline-card">
-          <div class="timeline-eyebrow">40 min · Bloque 1</div>
-          <h3>El negocio por dentro</h3>
-          <p>Cómo se mueve la carpintería a medida: quién compra, por qué un proyecto medio ronda los 20.000 €, dónde está el margen de verdad y por qué queda hueco para el que sabe vender.</p>
+          <div class="timeline-eyebrow">Clase 1</div>
+          <h3>El negocio de la carpintería a medida</h3>
+          <ul class="timeline-bullets">
+            <li>Cómo funciona el sector: quién diseña, quién fabrica, quién instala y quién se lleva el margen</li>
+            <li>El modelo Curino: tú vendes el proyecto, la producción está resuelta</li>
+            <li>Por qué armarios, cocinas y mobiliario a medida: ticket alto y demanda constante</li>
+            <li>Qué necesitas y qué no: sin taller, sin stock, sin inversión en ads</li>
+          </ul>
         </div>
       </div>
 
       <div class="timeline-item">
         <div class="timeline-node">02</div>
         <div class="timeline-card">
-          <div class="timeline-eyebrow">35 min · Bloque 2</div>
-          <h3>Los materiales que tienes que conocer</h3>
-          <p>Tablero, canto, herraje y lacado. Lo justo para sentarte delante de un interiorista sin que se note que llegaste ayer. Te enseño las muestras en mano.</p>
+          <div class="timeline-eyebrow">Clase 2</div>
+          <h3>Materiales y producto: hablar como un profesional</h3>
+          <ul class="timeline-bullets">
+            <li>Tableros y acabados: melamina, lacado, chapa natural — qué es cada cosa y cuándo se usa</li>
+            <li>Herrajes y calidades: qué diferencia un armario de 3.000 € de uno de 12.000 €</li>
+            <li>Anatomía de un armario y de una cocina: módulos, frentes, interiores</li>
+            <li>Vocabulario técnico mínimo para no quedarte en blanco en una reunión</li>
+          </ul>
         </div>
       </div>
 
       <div class="timeline-item">
         <div class="timeline-node">03</div>
         <div class="timeline-card">
-          <div class="timeline-eyebrow">35 min · Bloque 3</div>
-          <h3>Cómo se pone precio a un proyecto</h3>
-          <p>Presupuesto un caso real delante de ti, de plano a cifra final, explicando de dónde sale cada número.</p>
+          <div class="timeline-eyebrow">Clase 3</div>
+          <h3>Planos, diseño y presupuesto</h3>
+          <ul class="timeline-bullets">
+            <li>Cómo leer un plano de arquitecto o interiorista: cotas, alzados y lo que importa</li>
+            <li>El CAD de Curino: diseñar y presentar un mueble paso a paso</li>
+            <li>Cómo se calcula un presupuesto: materiales, fabricación, instalación y tu margen</li>
+            <li>Errores típicos que hunden el margen</li>
+          </ul>
         </div>
       </div>
 
       <div class="timeline-item">
         <div class="timeline-node">04</div>
         <div class="timeline-card">
-          <div class="timeline-eyebrow">10 min · Bloque 4</div>
-          <h3>Preguntas</h3>
-          <p>Tus dudas sobre tu situación y por dónde empezar.</p>
+          <div class="timeline-eyebrow">Clase 4</div>
+          <h3>Vender: de cero a tu primer proyecto</h3>
+          <ul class="timeline-bullets">
+            <li>Tu cliente no es el particular: prospección de interioristas y arquitectos</li>
+            <li>Cómo conseguir la primera reunión: mensaje, portfolio y propuesta</li>
+            <li>La presentación que cierra: renders del CAD + presupuesto profesional</li>
+            <li>Objeciones habituales y cómo responderlas</li>
+            <li>El proceso tras el sí: pedido, producción y cobro</li>
+          </ul>
         </div>
       </div>
     </div>
 
-    <div class="timeline-total mono">2 h · 90 € IVA incluido</div>
+    <div class="timeline-total mono">4 clases · 90 € IVA incluido</div>
   </div>
 </section>
 
@@ -1047,14 +1106,16 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
   'use strict';
 
   // ==========================================================
-  // CONFIG · VÍDEO DE VENTA (opcional)
+  // CONFIG · VSL DE VENTA (~5 min) — opcional
   // ==========================================================
-  // Cuando el video de venta esté grabado, cambia null por la URL:
-  //   - mp4/webm hosteado: 'https://cdn.example.com/venta.mp4'
+  // Cuando el VSL esté grabado, cambia null por la URL:
+  //   - mp4/webm hosteado: 'https://cdn.example.com/vsl.mp4'
   //   - Vimeo unlisted:    'https://player.vimeo.com/video/XXXXXXX'
   //   - YouTube unlisted:  'https://www.youtube.com/embed/XXXXXXXXXXX'
   // Mientras sea null el hero se muestra en 1 columna centrada
-  // y no aparece ningún placeholder al usuario.
+  // y no aparece ningún placeholder al usuario. El CTA "Comprar
+  // el curso" está SIEMPRE visible desde el minuto 1 (ver el
+  // comentario HTML en el hero-video-slot).
   var SALES_VIDEO_URL = null;
   // ==========================================================
 
