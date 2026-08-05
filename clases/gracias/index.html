@@ -226,15 +226,14 @@ p { margin: 0 0 16px; color: var(--text-muted); }
     <div class="check-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h1>Tu plaza está confirmada</h1>
-    <p class="lead">Hemos recibido tu pago y ya tienes plaza en la clase.</p>
+    <h1>Tu compra está confirmada</h1>
+    <p class="lead">Hemos recibido tu pago y el curso ya es tuyo.</p>
 
     <div class="card">
       <h2>Qué pasa ahora</h2>
       <ul>
-        <li>Te acabamos de enviar un email de confirmación con <strong>el enlace de Google Meet</strong> y la <strong>factura</strong> adjunta.</li>
-        <li>El día antes te enviamos un recordatorio con el enlace, y otro 1 hora antes de empezar.</li>
-        <li>Si tienes un proyecto real por presupuestar, ten los datos a mano para la clase.</li>
+        <li>Te acabamos de enviar un email de confirmación con <strong>tu enlace de acceso al curso</strong> y la <strong>factura</strong> adjunta.</li>
+        <li>Con ese enlace accedes a las 4 clases pregrabadas cuando y donde quieras. Sin caducidad.</li>
       </ul>
       <p class="hint">¿No ves el email? Revisa spam/promociones o escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>.</p>
     </div>
@@ -261,7 +260,7 @@ p { margin: 0 0 16px; color: var(--text-muted); }
     .then(function (data) {
       if (!data || !data.paid) return;
       var eventId = null;
-      try { eventId = data.event_id || sessionStorage.getItem('curino_clase_event_id') || null; } catch (_e) {}
+      try { eventId = data.event_id || sessionStorage.getItem('curino_curso_event_id') || null; } catch (_e) {}
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         event: 'purchase',
@@ -271,15 +270,15 @@ p { margin: 0 0 16px; color: var(--text-muted); }
           value: data.amount_total,
           currency: data.currency,
           items: [{
-            item_id: 'clase-carpinteria',
-            item_name: 'Clase Curino: vender carpinteria a medida sin ser carpintero',
+            item_id: 'curso-carpinteria',
+            item_name: 'Curso Curino: vender carpinteria a medida sin ser carpintero',
             price: data.amount_total,
             quantity: 1
           }]
         }
       });
-      try { sessionStorage.removeItem('curino_clase_event_id'); } catch (_e) {}
-      try { sessionStorage.removeItem('curino_clase_utms'); } catch (_e) {}
+      try { sessionStorage.removeItem('curino_curso_event_id'); } catch (_e) {}
+      try { sessionStorage.removeItem('curino_curso_utms'); } catch (_e) {}
     })
     .catch(function () {});
 })();
