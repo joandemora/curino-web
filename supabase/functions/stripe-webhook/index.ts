@@ -52,6 +52,12 @@ import {
   ClaseInvoiceData,
   ClaseInfo
 } from '../_shared/clase-invoices.ts'
+import {
+  generateCursoInvoicePdf,
+  uploadCursoInvoicePdf,
+  sendCursoConfirmationEmail,
+  CursoInvoiceData
+} from '../_shared/curso-invoices.ts'
 
 Deno.serve(async (req) => {
   // Stripe siempre manda POST
@@ -146,7 +152,10 @@ Deno.serve(async (req) => {
         //   'magazine_package' → paquete de créditos de Revista (G2)
         //   'magazine_boost'   → boost/promoción de Revista (G4)
         //   'armario'          → pedido del configurador de armarios (H3)
-        //   'clase'            → plaza en clase en directo (landing /clases)
+        //   'clase'            → plaza en clase en directo (INACTIVA en el
+        //                        producto publico; se conserva para futuras
+        //                        mentorias 1-1)
+        //   'curso'            → compra del curso pregrabado (landing /clases)
         //   resto              → marketplace (compatible con Fase D sin purpose)
         const purpose = session.metadata?.purpose;
         if (purpose === 'magazine_package') {
@@ -157,6 +166,8 @@ Deno.serve(async (req) => {
           await handleArmarioCompleted(supabase, session);
         } else if (purpose === 'clase') {
           await handleClaseCompleted(supabase, stripe, session);
+        } else if (purpose === 'curso') {
+          await handleCursoCompleted(supabase, session);
         } else {
           await handleCheckoutCompleted(supabase, stripe, session);
         }
@@ -1216,5 +1227,160 @@ async function handleClaseCompleted(
     console.log(`clase: invoice + confirmation sent for inscripcion ${inscripcion.id}`);
   } catch (invoiceError) {
     console.error(`clase: invoice/email failed for inscripcion ${inscripcion.id}`, invoiceError);
+  }
+}
+
+// ============================================================================
+// CURSO: compra del curso pregrabado (landing /clases).
+//
+// metadata esperada en la session:
+//   purpose = 'curso'
+//   nombre = <string>
+//   telefono = <string opcional>
+//   desistimiento_renunciado = 'true'
+//   event_id = <uuid — compartido con dataLayer>
+//   utm_source, utm_medium, utm_campaign = <opcionales>
+//
+// Acciones:
+//   1. Idempotencia: skip si inscripciones_curso.stripe_session_id
+//      ya existe.
+//   2. Generar access_token (base64url 32B = 43 chars) con
+//      crypto.getRandomValues. UNIQUE en la tabla + regex en
+//      curso-acceso previene colisiones y probing.
+//   3. Asigna invoice_number CURSO-YYYY-NNNNNN.
+//   4. Inserta fila en inscripciones_curso (estado='pagada').
+//   5. Best-effort: PDF factura + upload al bucket + email con
+//      enlace de acceso (SITE_URL/clases/acceso/?t=<token>) +
+//      factura adjunta. Fallos aqui solo se loguean.
+//
+// NO hay refund automatico (no hay agotamiento: es contenido
+// digital ilimitado). NO hay recordatorios (no hay fecha).
+// ============================================================================
+function generateAccessToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+async function handleCursoCompleted(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const nombre = session.metadata?.nombre;
+  const telefono = session.metadata?.telefono || null;
+  const desistimientoRenunciado = session.metadata?.desistimiento_renunciado === 'true';
+  const eventId = session.metadata?.event_id || null;
+  const utmSource = session.metadata?.utm_source || null;
+  const utmMedium = session.metadata?.utm_medium || null;
+  const utmCampaign = session.metadata?.utm_campaign || null;
+
+  const buyerEmail = (session.customer_details?.email || session.customer_email || '').toLowerCase();
+  const amountPaidCents = session.amount_total ?? 0;
+
+  if (!nombre || !buyerEmail) {
+    console.error('curso: missing metadata for session', session.id);
+    return;
+  }
+  if (amountPaidCents <= 0) {
+    console.error('curso: invalid amount_total for session', session.id);
+    return;
+  }
+
+  // 1. Idempotencia
+  const { data: existing } = await supabase
+    .from('inscripciones_curso')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`curso: inscripcion already exists for session ${session.id}`);
+    return;
+  }
+
+  // 2. Token de acceso
+  const accessToken = generateAccessToken();
+
+  // 3. Numero de factura CURSO-YYYY-NNNNNN
+  const currentYear = new Date().getFullYear();
+  const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'curso',
+    p_year: currentYear
+  });
+  if (invErr) {
+    console.error('curso: error assigning invoice number:', invErr);
+  }
+
+  // 4. Insertar inscripcion
+  const paymentIntentId = typeof session.payment_intent === 'string'
+    ? session.payment_intent
+    : (session.payment_intent?.id ?? null);
+
+  const { data: inscripcion, error: insError } = await supabase
+    .from('inscripciones_curso')
+    .insert({
+      nombre,
+      email: buyerEmail,
+      stripe_session_id: session.id,
+      stripe_payment_intent: paymentIntentId,
+      importe_cents: amountPaidCents,
+      desistimiento_renunciado: desistimientoRenunciado,
+      access_token: accessToken,
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+      estado: 'pagada',
+      invoice_number: invoiceNum,
+      event_id: eventId
+    })
+    .select('id, created_at')
+    .single();
+
+  if (insError || !inscripcion) {
+    console.error(`curso: insert inscripcion failed for session ${session.id}`, insError);
+    return;
+  }
+
+  console.log(`curso: inscripcion ${inscripcion.id} confirmed for ${buyerEmail}`);
+
+  // 5. Best-effort: PDF factura + email con enlace de acceso + factura adjunta
+  try {
+    const invoiceData: CursoInvoiceData = {
+      id: inscripcion.id,
+      nombre,
+      email: buyerEmail,
+      amount_paid_cents: amountPaidCents,
+      invoice_number: invoiceNum || `CURSO-${inscripcion.id.slice(0, 8)}`,
+      created_at: inscripcion.created_at
+    };
+
+    const pdfBytes = await generateCursoInvoicePdf(invoiceData);
+    const pdfPath = await uploadCursoInvoicePdf(supabase, inscripcion.id, pdfBytes);
+
+    await supabase
+      .from('inscripciones_curso')
+      .update({ pdf_url: pdfPath })
+      .eq('id', inscripcion.id);
+
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
+    const accessUrl = `${siteUrl}/clases/acceso/?t=${accessToken}`;
+
+    await sendCursoConfirmationEmail(
+      buyerEmail, nombre, accessUrl, pdfBytes, invoiceData.invoice_number
+    );
+
+    await supabase
+      .from('inscripciones_curso')
+      .update({ confirmation_sent_at: new Date().toISOString() })
+      .eq('id', inscripcion.id);
+
+    console.log(`curso: invoice + confirmation sent for inscripcion ${inscripcion.id}`);
+  } catch (invoiceError) {
+    console.error(`curso: invoice/email failed for inscripcion ${inscripcion.id}`, invoiceError);
   }
 }
