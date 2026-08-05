@@ -6,7 +6,7 @@
 // A diferencia de _shared/clase-invoices.ts:
 //   - No hay meet_url, ni fechas, ni recordatorios.
 //   - El email de confirmacion lleva un enlace de acceso al curso
-//     (/clases/acceso/?t=<token>) que abre la pagina con los 4
+//     (/partners/acceso/?t=<token>) que abre la pagina con los 4
 //     videos. El token lo genera el webhook, aqui solo se recibe
 //     el accessUrl completo.
 //   - Solo hay 2 emails: confirmacion (con factura adjunta) y

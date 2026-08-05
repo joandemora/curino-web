@@ -2,7 +2,7 @@
 //
 // Edge Function: valida el access_token del enlace del email de
 // confirmacion y devuelve los 4 videos del curso + nombre del
-// comprador. Invocada desde /clases/acceso/?t=<token>.
+// comprador. Invocada desde /partners/acceso/?t=<token>.
 //
 // Contrato:
 //   Body: { token: string }
@@ -22,7 +22,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 //   'https://player.vimeo.com/video/XXXXXXX?h=HASH&title=0&byline=0&portrait=0'
 // El hash h= es la unlisted key privada del video.
 //
-// Mientras cualquier url_embed sea null, la pagina /clases/acceso/
+// Mientras cualquier url_embed sea null, la pagina /partners/acceso/
 // muestra ese bloque con "Disponible proximamente" pero sigue
 // renderizando los 4 titulos y el resto de la pagina normal.
 // Nunca 404, ni al usuario ni al buyer que ya pago.
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     const token = String(body?.token || '').trim();
 
     // Cualquier fallo de validacion o BD devuelve { ok: false }
-    // con HTTP 200 -- la pagina /clases/acceso/ debe pintar el
+    // con HTTP 200 -- la pagina /partners/acceso/ debe pintar el
     // mensaje amable. Nunca 404 seco.
     if (!TOKEN_RE.test(token)) {
       return jsonResponse({ ok: false, error: 'invalid_token' }, 200);

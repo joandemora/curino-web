@@ -1,7 +1,7 @@
 // /api/curso-acceso.js
 //
 // Proxy Vercel Edge → Supabase Edge Function `curso-acceso`.
-// Recibe { token } de la página /clases/acceso/?t=<token>.
+// Recibe { token } de la página /partners/acceso/?t=<token>.
 // La Edge Function siempre devuelve HTTP 200 (nunca 404 al
 // usuario); el body dice { ok: true | false } y la página lo pinta.
 
