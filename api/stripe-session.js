@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
     // ni nada del cliente. Sí devolvemos metadata.event_id (UUID generado
     // por la landing) para que la página de gracias pueda deduplicar el
     // evento purchase con futuros Pixel/CAPI. purpose ayuda al frontend
-    // a saber si viene de /clases (evento con item_id fijo).
+    // a saber si viene de /partners (evento con item_id fijo).
     const eventId = (session.metadata && typeof session.metadata.event_id === 'string')
       ? session.metadata.event_id : null;
     const purpose = (session.metadata && typeof session.metadata.purpose === 'string')

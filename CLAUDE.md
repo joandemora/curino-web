@@ -18,7 +18,7 @@ Sin frameworks (ni React, ni build). Cada página es un HTML independiente. Los 
 - `/assets/js/main-footer.js` — inyecta `<div id="main-footer-mount">` con footer
 - `/assets/js/cookie-banner.js` — banner de consent propio, autocontenido
 
-Excepción: `/clases/` es autocontenida (HTML+CSS+JS inline sin dependencias del sistema shared) — decisión de portabilidad. Sí usa `cookie-banner.js` como única excepción.
+Excepción: `/partners/` es autocontenida (HTML+CSS+JS inline sin dependencias del sistema shared) — decisión de portabilidad. Sí usa `cookie-banner.js` como única excepción. **La ruta pública anterior `/clases/*` redirige con 301 permanente a `/partners/*`** (ver `vercel.json`).
 
 ## Estructura
 
@@ -194,10 +194,10 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 ## Tracking, consent y GTM
 
 - **GTM único**: `GTM-NZR7NNTC`. El tag GA4 vive dentro del contenedor GTM — **no** se carga `gtag.js` directo en el HTML.
-- **Meta Pixel y CAPI**: **no existen en el repo**. Documentado en `CONSENT_AUDIT.md §2.4` y en el commit `5c259cc`. Cualquier evento Pixel se dispara desde tags en la GTM Console (ver comentarios `Lead (Pixel via GTM)` en el código). Cuando se conecte Pixel/CAPI, la landing `/clases/` ya pushea `event_id` UUID a `dataLayer` para dedup.
-- **Consent Mode v2**: bloque inline canónico en 49 páginas públicas (más `/clases/` y `/clases/gracias/`). Defaults granted globales + denied en EEE+UK+CH+IS+LI+NO. Banner `cookie-banner.js` (propio, autocontenido) promueve via `gtag('consent','update')`. Bloqueantes B1/B2 documentados en `CONSENT_AUDIT.md` siguen abiertos.
-- **UTMs**: hasta 2026-08 no se capturaban en ninguna página. La landing `/clases/` es la primera; guarda `{utm_source, utm_medium, utm_campaign}` en `sessionStorage.curino_clase_utms` al aterrizar y los propaga como metadata Stripe hasta la fila `inscripciones`.
-- **Eventos ecommerce actuales**: `add_to_cart`, `begin_checkout`, `purchase` (armarios y marketplace, sin `event_id`), `generate_lead`. En `/clases/`: `begin_checkout` y `purchase` con `event_id`.
+- **Meta Pixel y CAPI**: **no existen en el repo**. Documentado en `CONSENT_AUDIT.md §2.4` y en el commit `5c259cc`. Cualquier evento Pixel se dispara desde tags en la GTM Console (ver comentarios `Lead (Pixel via GTM)` en el código). Cuando se conecte Pixel/CAPI, la landing `/partners/` ya pushea `event_id` UUID a `dataLayer` para dedup.
+- **Consent Mode v2**: bloque inline canónico en 49 páginas públicas (más `/partners/`, `/partners/gracias/` y `/partners/acceso/`). Defaults granted globales + denied en EEE+UK+CH+IS+LI+NO. Banner `cookie-banner.js` (propio, autocontenido) promueve via `gtag('consent','update')`. Bloqueantes B1/B2 documentados en `CONSENT_AUDIT.md` siguen abiertos.
+- **UTMs**: hasta 2026-08 no se capturaban en ninguna página. La landing `/partners/` es la primera; guarda `{utm_source, utm_medium, utm_campaign}` en `sessionStorage.curino_curso_utms` al aterrizar y los propaga como metadata Stripe hasta la fila `inscripciones_curso`.
+- **Eventos ecommerce actuales**: `add_to_cart`, `begin_checkout`, `purchase` (armarios y marketplace, sin `event_id`), `generate_lead`. En `/partners/`: `begin_checkout` y `purchase` con `event_id` e `item_id: 'curso-carpinteria'`.
 
 ## RLS — patrones vigentes
 
@@ -221,7 +221,7 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 - **`/configurador-armarios-vestidores/`** — configurador 3D single-page (~16MB con base64)
 - **`/configurador-2d/`** — configurador marketplace 2D
 - **`/checkout/`** — página de compra multi-armario
-- **`/clases/`** — landing venta plaza clase directo (autocontenida, 2026-08)
+- **`/partners/`** — landing programa Partners: curso pregrabado 24/7 (90 €), primera puerta de entrada. Autocontenida. Ruta anterior `/clases/*` redirige con 301 permanente.
 - **`/revista/{seccion}/{slug}/`** — SSR revista editorial (rewrites en `vercel.json`)
 - **`/admin/`** — panel interno: presupuestos (CRUD + PDF Puppeteer), moderación revista, generador IA
 - **`/mi-cuenta/`, `/cuenta/`, `/login/`, `/registro/`, `/recuperar-contrasena/`, `/auth/`** — auth Supabase
@@ -236,4 +236,4 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 - Fase G (revista, G1-G4): mayo 2026.
 - Fase H (armarios, H2-H10): mayo-junio 2026.
 - Consent Mode v2 avanzado + banner blindado (#165): junio 2026.
-- Landing `/clases` (2026-08).
+- Landing `/clases` (2026-08). Pivotada a curso pregrabado (agosto 2026). Movida a `/partners` (agosto 2026); `/clases/*` → `/partners/*` con 301 permanente.

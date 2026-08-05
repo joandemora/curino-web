@@ -122,8 +122,8 @@ Deno.serve(async (req) => {
         quantity: 1
       }],
       customer_email: email,
-      success_url: `${siteUrl}/clases/gracias/?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/clases/`,
+      success_url: `${siteUrl}/partners/gracias/?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/partners/`,
       metadata: {
         purpose: 'clase',
         clase_id,

@@ -91,8 +91,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/clases-checkout/deno.json"
 entrypoint = "./functions/clases-checkout/index.ts"
-# verify_jwt=false: invitado, la landing /clases es pública. Invocada
-# server-to-server desde /api/clases-checkout con ANON_KEY como apikey.
+# verify_jwt=false: fosil del producto viejo (clase en directo).
+# Sin punto de entrada publico tras el pivot a /partners (curso 24/7);
+# se conserva desplegada para futuras mentorias 1-1. Invocada
+# historicamente desde /api/clases-checkout con ANON_KEY como apikey.
 
 [functions.notify-class-reminder]
 enabled = true
@@ -116,7 +118,7 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/curso-checkout/deno.json"
 entrypoint = "./functions/curso-checkout/index.ts"
-# verify_jwt=false: invitado, curso comprable 24/7 desde /clases/.
+# verify_jwt=false: invitado, curso comprable 24/7 desde /partners/.
 # Invocada server-to-server desde /api/curso-checkout con ANON_KEY.
 
 [functions.curso-acceso]

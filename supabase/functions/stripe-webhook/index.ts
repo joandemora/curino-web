@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
         //   'clase'            → plaza en clase en directo (INACTIVA en el
         //                        producto publico; se conserva para futuras
         //                        mentorias 1-1)
-        //   'curso'            → compra del curso pregrabado (landing /clases)
+        //   'curso'            → compra del curso pregrabado (landing /partners)
         //   resto              → marketplace (compatible con Fase D sin purpose)
         const purpose = session.metadata?.purpose;
         if (purpose === 'magazine_package') {
@@ -1052,7 +1052,8 @@ async function handleArmarioCompleted(
 }
 
 // ============================================================================
-// CLASES: venta de plaza en clase en directo (landing /clases).
+// CLASES: venta de plaza en clase en directo (fosil, sin landing publica
+// tras el pivot a /partners; se conserva para futuras mentorias 1-1).
 //
 // metadata esperada en la session:
 //   purpose = 'clase'
@@ -1231,7 +1232,7 @@ async function handleClaseCompleted(
 }
 
 // ============================================================================
-// CURSO: compra del curso pregrabado (landing /clases).
+// CURSO: compra del curso pregrabado (landing /partners).
 //
 // metadata esperada en la session:
 //   purpose = 'curso'
@@ -1250,7 +1251,7 @@ async function handleClaseCompleted(
 //   3. Asigna invoice_number CURSO-YYYY-NNNNNN.
 //   4. Inserta fila en inscripciones_curso (estado='pagada').
 //   5. Best-effort: PDF factura + upload al bucket + email con
-//      enlace de acceso (SITE_URL/clases/acceso/?t=<token>) +
+//      enlace de acceso (SITE_URL/partners/acceso/?t=<token>) +
 //      factura adjunta. Fallos aqui solo se loguean.
 //
 // NO hay refund automatico (no hay agotamiento: es contenido
@@ -1368,7 +1369,7 @@ async function handleCursoCompleted(
       .eq('id', inscripcion.id);
 
     const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
-    const accessUrl = `${siteUrl}/clases/acceso/?t=${accessToken}`;
+    const accessUrl = `${siteUrl}/partners/acceso/?t=${accessToken}`;
 
     await sendCursoConfirmationEmail(
       buyerEmail, nombre, accessUrl, pdfBytes, invoiceData.invoice_number
