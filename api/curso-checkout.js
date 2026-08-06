@@ -65,6 +65,13 @@ export default async function handler(request) {
   const utm_medium = trim(body?.utm_medium);
   const utm_campaign = trim(body?.utm_campaign);
 
+  // origin: 'partners' | 'partners-clase' (fallback 'partners').
+  // La Edge Function usa el valor para determinar cancel_url. Se
+  // sanitiza aqui via allowlist para que en ningun caso el cliente
+  // pueda inyectar una URL arbitraria (open-redirect).
+  const originRaw = trim(body?.origin, 40);
+  const origin = originRaw === 'partners-clase' ? 'partners-clase' : 'partners';
+
   if (nombre.length < 2) return jsonResponse({ error: 'invalid_nombre' }, 400);
   if (!EMAIL_RE.test(email)) return jsonResponse({ error: 'invalid_email' }, 400);
   if (!desistimiento_renunciado) return jsonResponse({ error: 'desistimiento_required' }, 400);
@@ -79,6 +86,7 @@ export default async function handler(request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        origin,
         nombre, email, telefono,
         desistimiento_renunciado: true,
         event_id, utm_source, utm_medium, utm_campaign

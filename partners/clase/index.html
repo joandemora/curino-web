@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Clase gratuita — Curino</title>
+<meta name="description" content="Clase gratuita: cómo funciona el negocio de la carpintería a medida sin ser carpintero.">
+
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Titillium+Web:wght@600;700&display=swap" rel="stylesheet">
+
+<!-- Google Consent Mode v2 + GTM (GTM-NZR7NNTC). Bloque idéntico al resto de páginas públicas. -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+
+  gtag('consent', 'default', {
+    'ad_storage': 'granted',
+    'ad_user_data': 'granted',
+    'ad_personalization': 'granted',
+    'analytics_storage': 'granted'
+  });
+
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500,
+    'region': ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR',
+      'HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES',
+      'SE','IS','LI','NO','GB','CH']
+  });
+
+  gtag('set', 'url_passthrough', true);
+  gtag('set', 'ads_data_redaction', true);
+</script>
+<script src="/assets/js/cookie-banner.js" defer></script>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-NZR7NNTC');</script>
+
+<style>
+/* -----------------------------------------------------------
+   Landing /partners/clase/ — clase gratuita (VSL + unlock CTA).
+   Misma paleta y tipografia que /partners/. Pagina minima: el
+   video es el protagonista. Sin nav, sin temario, sin FAQ.
+   ----------------------------------------------------------- */
+:root {
+  --bg: #0E0B32;
+  --surface: #15113B;
+  --surface-2: #1B1745;
+  --border: #25224F;
+
+  --accent: #D97528;
+  --accent-strong: #E88A45;
+  --accent-soft: rgba(217, 117, 40, 0.15);
+  --accent-ghost: rgba(217, 117, 40, 0.08);
+  --accent-border: rgba(217, 117, 40, 0.35);
+
+  --text: #FFFFFF;
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --text-dim: rgba(255, 255, 255, 0.45);
+  --danger: #ff7676;
+
+  --font-heading: 'Titillium Web', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --radius-lg: 16px;
+  --radius-md: 10px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+img, svg { max-width: 100%; height: auto; display: block; }
+a { color: var(--text); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,0.25); }
+a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* ============================================================
+   HEADER minimalista (solo logo + volver)
+   ============================================================ */
+.top-bar {
+  background: rgba(14, 11, 50, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.top-bar-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.brand {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+.top-link { font-size: 13px; font-weight: 500; color: var(--text-muted); text-decoration: none; }
+.top-link:hover { color: var(--text); }
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+.main {
+  flex: 1;
+  padding: 40px 20px 72px;
+  position: relative;
+}
+.main::before {
+  content: "";
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(circle at center, var(--accent-soft), transparent 60%);
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.5;
+}
+.wrap { max-width: 900px; margin: 0 auto; position: relative; }
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+h1 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: clamp(28px, 5vw, 44px);
+  color: var(--text);
+  margin: 0 0 32px;
+  text-transform: uppercase;
+  line-height: 1.05;
+  letter-spacing: -0.005em;
+}
+h1 .accent { color: var(--accent); }
+
+/* ============================================================
+   VÍDEO — protagonista
+   ============================================================ */
+.video-wrap {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,0.5);
+  margin-bottom: 32px;
+}
+.video-wrap iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+/* Overlay play custom (autoplay muted + gate hasta primer clic) */
+.play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 11, 50, 0.35);
+  cursor: pointer;
+  transition: background 200ms ease;
+  z-index: 2;
+}
+.play-overlay:hover { background: rgba(14, 11, 50, 0.5); }
+.play-overlay.hidden { display: none; }
+.play-btn {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 20px 60px -10px var(--accent);
+  transition: transform 150ms ease, background 150ms ease;
+}
+.play-btn:hover { background: var(--accent-strong); transform: scale(1.05); }
+.play-btn svg { width: 34px; height: 34px; margin-left: 4px; }
+.play-hint {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.9);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: rgba(14, 11, 50, 0.7);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  pointer-events: none;
+}
+
+/* Placeholder cuando FREE_CLASS_VIDEO_URL es null */
+.video-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px;
+}
+.video-placeholder .icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.video-placeholder .icon svg { width: 24px; height: 24px; }
+
+/* ============================================================
+   CTA — dos estados: bloqueado y activo
+   ============================================================ */
+.cta-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  transition: border-color 400ms ease, background 400ms ease, box-shadow 400ms ease;
+  position: relative;
+}
+.cta-card.locked {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.cta-card.unlocked {
+  background: var(--surface);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 1px var(--accent-border), 0 30px 60px -30px var(--accent-soft);
+}
+.cta-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.cta-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 400ms ease, color 400ms ease, border-color 400ms ease;
+}
+.cta-card.locked .cta-icon {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.cta-card.unlocked .cta-icon {
+  background: var(--accent-ghost);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+.cta-icon svg { width: 22px; height: 22px; }
+.cta-body { flex: 1 1 240px; min-width: 0; }
+.cta-body .title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text);
+  margin: 0 0 4px;
+  transition: color 400ms ease;
+}
+.cta-card.locked .cta-body .title { color: var(--text-muted); }
+.cta-body .sub {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0;
+}
+.cta-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: transform 120ms ease, background 200ms ease, box-shadow 200ms ease, opacity 400ms ease;
+  min-height: 48px;
+}
+.cta-card.locked .cta-btn {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border-color: var(--border);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.65;
+}
+.cta-card.unlocked .cta-btn {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 10px 30px -12px var(--accent);
+}
+.cta-card.unlocked .cta-btn:hover { background: var(--accent-strong); transform: translateY(-1px); }
+.cta-btn .arrow { transition: transform 120ms ease; }
+.cta-card.unlocked .cta-btn:hover .arrow { transform: translateX(3px); }
+
+@media (max-width: 640px) {
+  .cta-inner { flex-direction: column; align-items: stretch; text-align: left; }
+  .cta-btn { width: 100%; }
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  padding: 32px 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.footer-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.footer .legal-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-right: 16px;
+  font-weight: 500;
+}
+.footer .legal-links a:hover { color: var(--accent); }
+.footer .fiscal { color: var(--text-dim); }
+.footer .fiscal a { color: var(--text-dim); }
+
+/* Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+@media (max-width: 380px) {
+  .main::before { display: none; }
+}
+</style>
+</head>
+<body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZR7NNTC" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+<header class="top-bar">
+  <div class="top-bar-inner">
+    <a class="brand" href="/partners/">Curino</a>
+    <a class="top-link" href="https://www.casacurino.com/">Volver a casacurino.com →</a>
+  </div>
+</header>
+
+<main class="main">
+  <div class="wrap">
+    <div class="eyebrow">Clase gratuita</div>
+    <h1>Vender carpintería a medida <span class="accent">sin ser carpintero</span></h1>
+
+    <div class="video-wrap" id="video-wrap">
+      <!--
+        ============================================================
+        VÍDEO DE LA CLASE GRATUITA · PENDIENTE DE GRABAR
+        ============================================================
+        Cuando esté subido a Vimeo como "Private + Domain-restricted"
+        para casacurino.com, sustituir null por la URL de embed:
+          'https://player.vimeo.com/video/XXXXXXX?h=HASH'
+        El hash h= es la unlisted key privada del vídeo.
+
+        Mientras FREE_CLASS_VIDEO_URL sea null, esta página muestra
+        un placeholder "Disponible en breve" y NO renderiza ni el
+        reproductor ni el bloque de CTA. La página sigue siendo
+        accesible para no dar 404 a los que reciban el link por
+        WhatsApp antes de tiempo.
+        ============================================================
+      -->
+    </div>
+
+    <div id="cta-container"></div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="legal-links">
+      <a href="/aviso-legal/">Aviso legal</a>
+      <a href="/privacidad/">Privacidad</a>
+      <a href="/cookies/">Cookies</a>
+      <a href="/aviso-legal/" data-cookie-prefs>Configurar cookies</a>
+    </p>
+    <p class="fiscal">
+      SISTEMA &amp; CURINO SLU · CIF ESB24788580 · <a href="mailto:info@casacurino.com">info@casacurino.com</a>
+    </p>
+  </div>
+</footer>
+
+<!-- Modulo compartido del dialogo de compra -->
+<script src="/assets/js/partners-checkout-dialog.js" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.PartnersCheckoutDialog) {
+      PartnersCheckoutDialog.init({ origin: 'partners-clase' });
+    }
+  });
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ==========================================================
+  // CONFIG · VÍDEO DE LA CLASE GRATUITA · PENDIENTE DE GRABAR
+  // ==========================================================
+  // Cuando esté subido a Vimeo como "Private + Domain-restricted"
+  // para casacurino.com, sustituir null por la URL de embed:
+  //   'https://player.vimeo.com/video/XXXXXXX?h=HASH'
+  // Mientras sea null, la página muestra "disponible en breve" y
+  // no renderiza reproductor ni CTA.
+  var FREE_CLASS_VIDEO_URL = null;
+  // ==========================================================
+
+  // Momento en segundos en el que se desbloquea el CTA. Si null,
+  // se desbloquea cuando termina el video (evento 'ended'). Ajustar
+  // aqui sin tocar nada mas. Ejemplos:
+  //   var UNLOCK_AT_SECONDS = 180;   // desbloquear a los 3 min
+  //   var UNLOCK_AT_SECONDS = null;  // desbloquear al final
+  var UNLOCK_AT_SECONDS = null;
+  // ==========================================================
+
+  var UNLOCK_KEY = 'curino_free_class_unlocked';
+  var qa = function (sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); };
+
+  // ── UTMs (misma key que /partners/, la comparte el dialogo) ─
+  function captureUtms() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var picked = {};
+      ['utm_source', 'utm_medium', 'utm_campaign'].forEach(function (k) {
+        var v = params.get(k);
+        if (v) picked[k] = String(v).slice(0, 240);
+      });
+      if (Object.keys(picked).length > 0) {
+        sessionStorage.setItem('curino_curso_utms', JSON.stringify(picked));
+      }
+    } catch (_e) {}
+  }
+  captureUtms();
+
+  // ── Tracking helpers ────────────────────────────────────
+  function push(event, data) {
+    try {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push(Object.assign({ event: event }, data || {}));
+    } catch (_e) {}
+  }
+
+  // ── "Configurar cookies" desde el footer ─────────────────
+  qa('[data-cookie-prefs]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      try { document.dispatchEvent(new CustomEvent('curino:open-cookie-banner')); } catch (_e) {}
+    });
+  });
+
+  // ── Placeholder si no hay vídeo ─────────────────────────
+  function renderPlaceholder() {
+    var wrap = document.getElementById('video-wrap');
+    wrap.innerHTML = ''
+      + '<div class="video-placeholder">'
+      +   '<div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
+      +   '<div>Disponible en breve</div>'
+      + '</div>';
+  }
+
+  // ── Render del CTA en estado dado ───────────────────────
+  function renderCta(unlocked) {
+    var container = document.getElementById('cta-container');
+    var lockedIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+    var unlockedIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+    var title, sub, btnHtml;
+    if (unlocked) {
+      title = 'Ya puedes reservar tu plaza';
+      sub = 'Curso completo con acceso inmediato.';
+      btnHtml = '<button class="cta-btn" type="button" data-open-form>Convertirse en Curino Partner · 90 € pago único <span class="arrow">→</span></button>';
+    } else {
+      title = 'Se desbloquea durante la clase';
+      sub = 'Sigue viendo el vídeo para activar la compra.';
+      btnHtml = '<button class="cta-btn" type="button" disabled aria-disabled="true">Convertirse en Curino Partner · 90 € pago único</button>';
+    }
+    container.innerHTML = ''
+      + '<div class="cta-card ' + (unlocked ? 'unlocked' : 'locked') + '" id="cta-card" aria-live="polite">'
+      +   '<div class="cta-inner">'
+      +     '<div class="cta-icon" aria-hidden="true">' + (unlocked ? unlockedIcon : lockedIcon) + '</div>'
+      +     '<div class="cta-body">'
+      +       '<p class="title">' + title + '</p>'
+      +       '<p class="sub">' + sub + '</p>'
+      +     '</div>'
+      +     btnHtml
+      +   '</div>'
+      + '</div>';
+  }
+
+  // ── Desbloqueo suave (transicion via clases CSS + swap del card) ──
+  var isUnlocked = false;
+  function unlockCta() {
+    if (isUnlocked) return;
+    isUnlocked = true;
+    try { sessionStorage.setItem(UNLOCK_KEY, '1'); } catch (_e) {}
+    renderCta(true);
+    push('free_class_cta_unlocked', {});
+  }
+
+  // ── Vimeo Player SDK: setup, tracking y unlock ─────────
+  function loadVimeoSDK(cb) {
+    if (window.Vimeo && window.Vimeo.Player) return cb();
+    var s = document.createElement('script');
+    s.src = 'https://player.vimeo.com/api/player.js';
+    s.async = true;
+    s.onload = cb;
+    s.onerror = function () { console.error('free-class: Vimeo SDK failed to load'); };
+    document.head.appendChild(s);
+  }
+
+  function initVideo() {
+    // Vimeo requiere autoplay + muted para que iOS/Safari permitan
+    // el autoplay al cargar. playsinline evita fullscreen forzado
+    // en iOS. controls=1 mantiene los controles nativos visibles
+    // tras el primer click (el overlay los tapa hasta entonces).
+    var params = 'autoplay=1&muted=1&playsinline=1&controls=1&title=0&byline=0&portrait=0';
+    var srcSep = FREE_CLASS_VIDEO_URL.indexOf('?') > -1 ? '&' : '?';
+    var iframeSrc = FREE_CLASS_VIDEO_URL + srcSep + params;
+
+    var wrap = document.getElementById('video-wrap');
+    wrap.innerHTML = ''
+      + '<iframe src="' + iframeSrc + '" title="Clase gratuita — Curino" '
+      +   'allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>'
+      + '<div class="play-overlay" id="play-overlay" role="button" aria-label="Reproducir con sonido">'
+      +   '<button class="play-btn" type="button" aria-label="Reproducir con sonido">'
+      +     '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="8,5 20,12 8,19"/></svg>'
+      +   '</button>'
+      +   '<span class="play-hint">Toca para reproducir con sonido</span>'
+      + '</div>';
+
+    loadVimeoSDK(function () {
+      var iframe = wrap.querySelector('iframe');
+      var overlay = document.getElementById('play-overlay');
+      if (!iframe || !window.Vimeo) return;
+
+      var player = new Vimeo.Player(iframe);
+      var progressFired = { p25: false, p50: false, p75: false };
+      var soundOn = false;
+
+      // Al hacer clic en el overlay: reiniciar desde 0 + unmute +
+      // play. Es el momento en que el usuario "empieza a ver de
+      // verdad". Los controles de Vimeo (que estaban tapados por
+      // el overlay) quedan accesibles a partir de aqui.
+      overlay.addEventListener('click', function () {
+        overlay.classList.add('hidden');
+        Promise.resolve()
+          .then(function () { return player.setCurrentTime(0); })
+          .then(function () { return player.setMuted(false); })
+          .then(function () { return player.play(); })
+          .then(function () {
+            soundOn = true;
+            push('free_class_started_with_sound', {});
+          })
+          .catch(function (err) {
+            console.error('free-class: unmute play failed', err);
+          });
+      });
+
+      // Timeupdate: unlock por umbral + progreso 25/50/75.
+      player.on('timeupdate', function (data) {
+        var t = data.seconds;
+        var d = data.duration || 0;
+        if (!isUnlocked && UNLOCK_AT_SECONDS !== null && t >= UNLOCK_AT_SECONDS) {
+          unlockCta();
+        }
+        if (d > 0 && soundOn) {
+          var p = t / d;
+          if (!progressFired.p25 && p >= 0.25) { progressFired.p25 = true; push('free_class_progress', { percent: 25 }); }
+          if (!progressFired.p50 && p >= 0.50) { progressFired.p50 = true; push('free_class_progress', { percent: 50 }); }
+          if (!progressFired.p75 && p >= 0.75) { progressFired.p75 = true; push('free_class_progress', { percent: 75 }); }
+        }
+      });
+
+      // Ended: desbloqueo si UNLOCK_AT_SECONDS es null.
+      player.on('ended', function () {
+        if (UNLOCK_AT_SECONDS === null) unlockCta();
+      });
+    });
+  }
+
+  // ── Bootstrap ───────────────────────────────────────────
+  if (!FREE_CLASS_VIDEO_URL) {
+    // Sin vídeo: placeholder y NO renderizar CTA (nada que comprar
+    // sin haber visto la clase). La página se ve acabada.
+    renderPlaceholder();
+    return;
+  }
+
+  // Con vídeo: si el usuario ya desbloqueo en una sesion previa
+  // dentro de esta pestaña, arrancar en unlocked directo. Si no,
+  // arrancar en locked y esperar a timeupdate/ended.
+  var wasUnlocked = false;
+  try { wasUnlocked = sessionStorage.getItem(UNLOCK_KEY) === '1'; } catch (_e) {}
+  isUnlocked = wasUnlocked;
+  renderCta(wasUnlocked);
+  initVideo();
+})();
+</script>
+</body>
+</html>
