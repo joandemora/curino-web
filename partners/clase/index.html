@@ -560,7 +560,7 @@ h1 .accent { color: var(--accent); }
   function unlockCta() {
     if (isUnlocked) return;
     isUnlocked = true;
-    try { sessionStorage.setItem(UNLOCK_KEY, '1'); } catch (_e) {}
+    try { localStorage.setItem(UNLOCK_KEY, '1'); } catch (_e) {}
     renderCta(true);
     push('free_class_cta_unlocked', {});
   }
@@ -654,11 +654,13 @@ h1 .accent { color: var(--accent); }
     return;
   }
 
-  // Con vídeo: si el usuario ya desbloqueo en una sesion previa
-  // dentro de esta pestaña, arrancar en unlocked directo. Si no,
-  // arrancar en locked y esperar a timeupdate/ended.
+  // Con vídeo: si el usuario ya desbloqueo en cualquier visita
+  // anterior desde este navegador, arrancar en unlocked directo (el
+  // visitante que vuelve otro día desde WhatsApp encuentra el botón
+  // visible sin re-ver el vídeo). Si no, arrancar en locked y esperar
+  // a timeupdate/ended.
   var wasUnlocked = false;
-  try { wasUnlocked = sessionStorage.getItem(UNLOCK_KEY) === '1'; } catch (_e) {}
+  try { wasUnlocked = localStorage.getItem(UNLOCK_KEY) === '1'; } catch (_e) {}
   isUnlocked = wasUnlocked;
   renderCta(wasUnlocked);
   initVideo();
