@@ -70,6 +70,13 @@ Deno.serve(async (req) => {
     const utm_campaign = trimSlice(body?.utm_campaign);
     const event_id = trimSlice(body?.event_id, 64);
 
+    // origin: allowlist estricta para determinar cancel_url. Cualquier
+    // otro valor cae a 'partners'. NUNCA aceptar URL completa del
+    // cliente -- evita open-redirect via Stripe.
+    const originRaw = trimSlice(body?.origin, 40);
+    const origin = originRaw === 'partners-clase' ? 'partners-clase' : 'partners';
+    const cancelPath = origin === 'partners-clase' ? '/partners/clase/' : '/partners/';
+
     if (nombre.length < 2) return jsonResponse({ error: 'invalid_nombre' }, 400);
     if (!EMAIL_RE.test(email)) return jsonResponse({ error: 'invalid_email' }, 400);
     if (!desistimiento_renunciado) return jsonResponse({ error: 'desistimiento_required' }, 400);
@@ -96,9 +103,10 @@ Deno.serve(async (req) => {
       }],
       customer_email: email,
       success_url: `${siteUrl}/partners/gracias/?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/partners/`,
+      cancel_url: `${siteUrl}${cancelPath}`,
       metadata: {
         purpose: 'curso',
+        origin,
         nombre,
         telefono,
         desistimiento_renunciado: 'true',
