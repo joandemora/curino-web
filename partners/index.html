@@ -666,82 +666,9 @@ details.faq-item p {
 }
 .footer .fiscal a { color: var(--text-dim); }
 
-/* ============================================================
-   DIALOG COMPRA
-   ============================================================ */
-dialog {
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  max-width: 480px;
-  width: calc(100% - 32px);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
-}
-dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); }
-.dlg-body { padding: 32px 28px; position: relative; }
-.dlg-body h2 { margin-bottom: 6px; font-size: clamp(22px, 3vw, 26px); }
-.dlg-body .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.01em; }
-.dlg-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  background: transparent;
-  border: 1px solid transparent;
-  font-size: 22px;
-  cursor: pointer;
-  color: var(--text-muted);
-  padding: 4px 10px;
-  line-height: 1;
-  border-radius: 6px;
-}
-.dlg-close:hover { color: var(--text); border-color: var(--border); }
-.form-group { margin-bottom: 16px; }
-.form-group label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.form-group input[type="text"],
-.form-group input[type="email"],
-.form-group input[type="tel"] {
-  width: 100%;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 15px;
-  font-family: inherit;
-  color: var(--text);
-}
-.form-group input:focus { outline: none; border-color: var(--accent); }
-.form-hint { font-size: 12px; color: var(--text-dim); margin: 6px 0 0; }
-.checkbox-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--accent-ghost);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  margin: 18px 0;
-}
-.checkbox-row input { margin-top: 3px; flex-shrink: 0; accent-color: var(--accent); }
-.checkbox-row label {
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.5;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  margin: 0;
-}
-.form-error { color: var(--danger); font-size: 14px; margin: 12px 0 0; min-height: 20px; }
+/* Dialog de compra: estilos vienen de /assets/js/partners-checkout-dialog.js
+   (inyectados al init). Mantener las CSS vars (--surface, --accent, etc.)
+   accesibles al :root de la pagina, que es donde el modulo las lee. */
 
 /* ============================================================
    CTA FIJA MÓVIL (siempre visible en ≤767px tras el pivot)
@@ -1065,35 +992,16 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
   </div>
 </footer>
 
-<!-- ========== DIÁLOGO DE COMPRA ========== -->
-<dialog id="dlg-compra" aria-labelledby="dlg-titulo">
-  <div class="dlg-body">
-    <button class="dlg-close" type="button" aria-label="Cerrar" data-close-dlg>&times;</button>
-    <h2 id="dlg-titulo">Comprar el curso</h2>
-    <p class="subtitle">4 clases · 2 h · 90 € IVA incluido</p>
-    <form id="form-compra" novalidate>
-      <div class="form-group">
-        <label for="f-nombre">Nombre y apellidos</label>
-        <input type="text" id="f-nombre" name="nombre" required autocomplete="name" minlength="2" maxlength="120">
-      </div>
-      <div class="form-group">
-        <label for="f-email">Email</label>
-        <input type="email" id="f-email" name="email" required autocomplete="email" maxlength="200">
-        <p class="form-hint">Te enviamos aquí el enlace de acceso al curso y la factura.</p>
-      </div>
-      <div class="form-group">
-        <label for="f-telefono">Teléfono (opcional)</label>
-        <input type="tel" id="f-telefono" name="telefono" autocomplete="tel" maxlength="40">
-      </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="f-desist" name="desist" required>
-        <label for="f-desist">Solicito acceder inmediatamente al contenido digital del curso y acepto expresamente que, una vez que se me dé acceso al contenido, pierdo el derecho de desistimiento (art. 103.m texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios).</label>
-      </div>
-      <button class="btn btn-primary btn-block" type="submit" id="f-submit">Pagar 90 € y empezar <span class="arrow">→</span></button>
-      <p class="form-error" id="f-error" role="alert"></p>
-    </form>
-  </div>
-</dialog>
+<!-- El dialogo de compra vive en /assets/js/partners-checkout-dialog.js
+     (compartido con /partners/clase/). El modulo lo inyecta al init. -->
+<script src="/assets/js/partners-checkout-dialog.js" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.PartnersCheckoutDialog) {
+      PartnersCheckoutDialog.init({ origin: 'partners' });
+    }
+  });
+</script>
 
 <!-- ========== CTA FIJA MÓVIL (siempre visible en ≤767px) ========== -->
 <div class="mobile-cta" aria-hidden="true">
@@ -1119,15 +1027,13 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
   var SALES_VIDEO_URL = null;
   // ==========================================================
 
-  // Precio hardcoded del curso (coincide con Edge Function
-  // curso-checkout y con Stripe unit_amount). Solo para tracking
-  // en dataLayer; el precio real siempre lo pone Stripe.
-  var PRICE_CENTS = 9000;
-
   var el = function (id) { return document.getElementById(id); };
   var qa = function (sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); };
 
   // ── UTMs ─────────────────────────────────────────────────
+  // Capturadas al aterrizar. El dialogo compartido
+  // (partners-checkout-dialog.js) las lee del mismo sessionStorage
+  // key (curino_curso_utms) y las envia como metadata Stripe.
   function captureUtms() {
     try {
       var params = new URLSearchParams(window.location.search);
@@ -1141,23 +1047,7 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
       }
     } catch (_e) {}
   }
-  function getUtms() {
-    try {
-      var raw = sessionStorage.getItem('curino_curso_utms');
-      return raw ? JSON.parse(raw) : {};
-    } catch (_e) { return {}; }
-  }
   captureUtms();
-
-  // ── event_id ─────────────────────────────────────────────
-  function uuid() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      var r = Math.random() * 16 | 0;
-      var v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  }
 
   // ── Render vídeo (solo si SALES_VIDEO_URL) ───────────────
   function renderHeroVideo() {
@@ -1187,98 +1077,6 @@ dialog::backdrop { background: rgba(14,11,50,0.85); backdrop-filter: blur(4px); 
     inner.classList.add('has-video');
   }
   renderHeroVideo();
-
-  // ── Diálogo compra ───────────────────────────────────────
-  var dlg = el('dlg-compra');
-  function abrirDialogo() {
-    el('f-error').textContent = '';
-    el('f-submit').removeAttribute('disabled');
-    el('f-submit').innerHTML = 'Pagar 90 € y empezar <span class="arrow">→</span>';
-    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', 'open');
-
-    var eid = uuid();
-    sessionStorage.setItem('curino_curso_event_id', eid);
-    try {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({
-        event: 'begin_checkout',
-        event_id: eid,
-        ecommerce: {
-          currency: 'EUR',
-          value: PRICE_CENTS / 100,
-          items: [{
-            item_id: 'curso-carpinteria',
-            item_name: 'Curso Curino: vender carpinteria a medida sin ser carpintero',
-            price: PRICE_CENTS / 100,
-            quantity: 1
-          }]
-        }
-      });
-    } catch (_e) {}
-  }
-  function cerrarDialogo() {
-    if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
-  }
-  qa('[data-open-form]').forEach(function (btn) { btn.addEventListener('click', abrirDialogo); });
-  qa('[data-close-dlg]').forEach(function (btn) { btn.addEventListener('click', cerrarDialogo); });
-  dlg.addEventListener('click', function (e) {
-    var rect = dlg.getBoundingClientRect();
-    if (e.clientY < rect.top || e.clientY > rect.bottom || e.clientX < rect.left || e.clientX > rect.right) {
-      cerrarDialogo();
-    }
-  });
-
-  // ── Submit compra ────────────────────────────────────────
-  el('form-compra').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    var nombre = el('f-nombre').value.trim();
-    var email = el('f-email').value.trim().toLowerCase();
-    var telefono = el('f-telefono').value.trim();
-    var desist = el('f-desist').checked;
-    var event_id = sessionStorage.getItem('curino_curso_event_id') || uuid();
-
-    var errEl = el('f-error');
-    errEl.textContent = '';
-
-    if (nombre.length < 2) { errEl.textContent = 'Escribe tu nombre.'; return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'Email no valido.'; return; }
-    if (!desist) { errEl.textContent = 'Debes marcar la casilla para continuar.'; return; }
-
-    var utms = getUtms();
-
-    el('f-submit').setAttribute('disabled', 'disabled');
-    el('f-submit').innerHTML = 'Redirigiendo a Stripe…';
-
-    fetch('/api/curso-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        nombre: nombre, email: email, telefono: telefono,
-        desistimiento_renunciado: true, event_id: event_id,
-        utm_source: utms.utm_source || '', utm_medium: utms.utm_medium || '', utm_campaign: utms.utm_campaign || ''
-      })
-    })
-      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
-      .then(function (resp) {
-        if (!resp.ok || !resp.data || !resp.data.checkout_url) {
-          var msg = 'No hemos podido iniciar el pago. ';
-          if (resp.data && resp.data.error === 'invalid_email') msg = 'Email no valido.';
-          else if (resp.data && resp.data.error === 'desistimiento_required') msg = 'Debes marcar la casilla para continuar.';
-          else msg += 'Prueba en unos segundos o escribeme a info@casacurino.com.';
-          errEl.textContent = msg;
-          el('f-submit').removeAttribute('disabled');
-          el('f-submit').innerHTML = 'Pagar 90 € y empezar <span class="arrow">→</span>';
-          return;
-        }
-        window.location.assign(resp.data.checkout_url);
-      })
-      .catch(function () {
-        errEl.textContent = 'Error de red. Prueba en unos segundos.';
-        el('f-submit').removeAttribute('disabled');
-        el('f-submit').innerHTML = 'Pagar 90 € y empezar <span class="arrow">→</span>';
-      });
-  });
 
   // ── "Configurar cookies" desde el footer ─────────────────
   qa('[data-cookie-prefs]').forEach(function (a) {
