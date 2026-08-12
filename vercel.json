@@ -10,6 +10,10 @@
     { "source": "/pro/:path*", "destination": "/maestro/:path*", "permanent": true },
     { "source": "/clases", "destination": "/partners/", "permanent": true },
     { "source": "/clases/", "destination": "/partners/", "permanent": true },
+    { "source": "/clases/gracias", "destination": "/partners/gracias/", "permanent": true },
+    { "source": "/clases/gracias/", "destination": "/partners/gracias/", "permanent": true },
+    { "source": "/clases/acceso", "destination": "/partners/acceso/", "permanent": true },
+    { "source": "/clases/acceso/", "destination": "/partners/acceso/", "permanent": true },
     { "source": "/clases/:path*", "destination": "/partners/:path*", "permanent": true }
   ]
 }
