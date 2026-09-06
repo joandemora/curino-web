@@ -3,11 +3,20 @@
 -- =============================================================
 -- Ejecutar a mano en el SQL Editor de Supabase (o `psql`).
 -- Contiene:
---   Cliente 1 "Carpintería Demo" (obj 2): 3 prescriptores, 2 llamadas,
---     1 reunión agendada este mes (semáforo ámbar mes actual),
---     2 reuniones agendadas + celebradas el mes pasado (semáforo verde).
---   Cliente 2 "Fusteria Segona" (obj 2): 2 prescriptores, 3 llamadas
---     este mes, 0 reuniones (semáforo rojo mes actual → garantía activada).
+--   Cliente 1 "Carpintería Demo" (obj 2, fecha_alta hace 3 meses):
+--     3 prescriptores, 2 llamadas, 1 reunión agendada este mes
+--     (semáforo ámbar mes actual), 2 reuniones agendadas + celebradas
+--     el mes pasado (semáforo verde). Sirve además para "últimos 6
+--     meses": los meses anteriores a la alta no aparecen en la tabla.
+--   Cliente 2 "Fusteria Segona" (obj 2, fecha_alta = hoy): 2 prescriptores,
+--     3 llamadas este mes, 0 reuniones (rojo → garantía activada).
+--     En "últimos 6 meses" sólo aparece la fila del mes actual (el
+--     resto son meses anteriores a fecha_alta).
+--   Cliente 3 "Fusteria Pausada" (obj 2, estado 'pausado', fecha_alta
+--     hace 2 meses): sin datos; en la tabla sale en gris con etiqueta
+--     "pausado", sin semáforo.
+--   Cliente 4 "Fusteria Baja" (obj 2, estado 'baja', fecha_alta hace
+--     3 meses): NO aparece en la tabla de garantía.
 --
 -- Ejecutable varias veces si vaciás las tablas antes; no es idempotente
 -- por email/nombre (inserta duplicados si se corre encima).
@@ -38,7 +47,9 @@ begin
     'Carpintería Demo SL', 'B00000000', 'Marta Ruiz',
     'demo@carpinteriademo.es', '600000000',
     'Barcelona', 'Cataluña', 1700, 'piloto',
-    current_date, 2, 'Cliente semilla para pruebas locales.'
+    -- alta hace 3 meses: consistente con las reuniones del mes pasado
+    -- que se insertan más abajo (agendar antes del alta no tendría sentido).
+    current_date - interval '3 months', 2, 'Cliente semilla para pruebas locales.'
   )
   returning id into v_cliente_id;
 
@@ -169,4 +180,28 @@ begin
     (v_presc2_1, v_cliente2_id, now() - interval '4 days', 'no_contesta', null),
     (v_presc2_1, v_cliente2_id, now() - interval '2 days', 'conversacion', 'Pide que le enviemos catálogo.'),
     (v_presc2_2, v_cliente2_id, now() - interval '1 day',  'buzon', null);
+
+  -- ============================================================
+  -- Cliente 3: Fusteria Pausada (fila gris "pausado" en la tabla)
+  -- ============================================================
+  insert into crm_clientes (
+    nombre, estado, cuota_mensual, fecha_alta, objetivo_reuniones_mes, notas
+  )
+  values (
+    'Fusteria Pausada SL', 'pausado', 1700,
+    current_date - interval '2 months', 2,
+    'Cliente en pausa: la tabla de garantía muestra fila en gris sin semáforo.'
+  );
+
+  -- ============================================================
+  -- Cliente 4: Fusteria Baja (NO aparece en la tabla de garantía)
+  -- ============================================================
+  insert into crm_clientes (
+    nombre, estado, cuota_mensual, fecha_alta, objetivo_reuniones_mes, notas
+  )
+  values (
+    'Fusteria Baja SL', 'baja', 1700,
+    current_date - interval '3 months', 2,
+    'Cliente dado de baja: excluido de la tabla de garantía (no hay servicio).'
+  );
 end $$;

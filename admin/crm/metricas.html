@@ -56,8 +56,13 @@
 .mt-sem.green{background:#d7ecdc;color:#1e5b23}
 .mt-sem.amber{background:#fdf3d9;color:#8a6a1c}
 .mt-sem.red{background:#a83232;color:#fff;box-shadow:0 0 0 2px #fdb;animation:pulse 1.8s ease-in-out infinite}
+.mt-sem.pausado{background:#e5e5e5;color:#666}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 2px rgba(168,50,50,.15)}50%{box-shadow:0 0 0 4px rgba(168,50,50,.35)}}
 .mt-sem-note{font-size:11px;color:#a83232;margin-left:.4rem;font-weight:600}
+
+/* Filas de clientes en pausa: sin semáforo, todo en gris. */
+.mt-row-pausado td{color:#888;background:#fafaf7}
+.mt-row-pausado .mt-cliente{color:#666}
 
 /* ─── Embudo ──────────────────────────────────────────── */
 .mt-embudo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
@@ -261,7 +266,7 @@
 
   async function loadClientes() {
     var r = await supa.from('crm_clientes')
-      .select('id, nombre, estado, objetivo_reuniones_mes')
+      .select('id, nombre, estado, objetivo_reuniones_mes, fecha_alta')
       .order('nombre');
     if (r.error) throw r.error;
     state.clientes = r.data || [];
@@ -357,12 +362,19 @@
 
   // ── Render garantía ───────────────────────────────────
   function renderGarantia(range) {
-    // Grid completo: clientes × meses del rango. Rellena con ceros los
-    // meses sin fila en la vista (la vista sólo produce fila si hubo
-    // al menos una reunión); esos ceros son exactamente el rojo.
-    var clientes = state.filterCliente
+    // Grid: clientes × meses del rango, con dos reglas contractuales:
+    //   - Clientes en 'baja' → excluidos por completo (no hay servicio).
+    //   - Meses anteriores a fecha_alta → no aparecen (no había contrato).
+    //     El mes de alta sí cuenta, aunque sea parcial.
+    //   - Clientes 'pausado' → fila en gris con etiqueta "pausado", sin
+    //     semáforo (los números siguen visibles).
+    // Los ceros sintéticos (mes con contrato y sin reuniones) son
+    // exactamente el rojo — la vista no los emite porque agrupa sobre
+    // filas existentes.
+    var clientes = (state.filterCliente
       ? state.clientes.filter(function (c) { return c.id === state.filterCliente; })
-      : state.clientes;
+      : state.clientes)
+      .filter(function (c) { return c.estado !== 'baja'; });
 
     // Índice { cliente_id → { monthKey → row } }
     var idx = {};
@@ -374,7 +386,12 @@
 
     var rows = [];
     clientes.forEach(function (c) {
+      // fecha_alta llega como 'YYYY-MM-DD'; su mes es substring 0..7.
+      // Si es null, tratamos al cliente como "alta desconocida" e
+      // incluimos todos los meses del rango.
+      var altaKey = c.fecha_alta ? c.fecha_alta.slice(0, 7) : null;
       range.months.forEach(function (mkey) {
+        if (altaKey && mkey < altaKey) return;
         var v = (idx[c.id] || {})[mkey] || { reuniones_agendadas: 0, reuniones_celebradas: 0 };
         rows.push({
           cliente: c,
@@ -396,6 +413,16 @@
 
     tb.innerHTML = rows.map(function (r) {
       var obj = r.cliente.objetivo_reuniones_mes;
+      if (r.cliente.estado === 'pausado') {
+        return '<tr class="mt-row-pausado">'
+          + '<td><div class="mt-cliente">' + esc(r.cliente.nombre) + '</div></td>'
+          + '<td><div class="mt-mes">' + esc(monthNameFromKey(r.mes)) + '</div></td>'
+          + '<td class="num">' + r.agendadas + '</td>'
+          + '<td class="num">' + r.celebradas + '</td>'
+          + '<td class="num">' + obj + '</td>'
+          + '<td><span class="mt-sem pausado">Pausado</span></td>'
+          + '</tr>';
+      }
       var sem = semaforo(r.agendadas, obj);
       var note = sem === 'red' ? '<span class="mt-sem-note">Garantía activada</span>' : '';
       return '<tr>'
