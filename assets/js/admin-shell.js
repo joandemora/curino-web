@@ -61,6 +61,12 @@
         { id: 'carpinteria-herrajes',   label: 'Herrajes',      href: '/admin/proyectos-carpinteria/catalogo/herrajes/' },
         { id: 'carpinteria-config',     label: 'Configuración', href: '/admin/proyectos-carpinteria/config/' }
       ]
+    },
+    {
+      group: 'CRM',
+      items: [
+        { id: 'crm-cola', label: 'Cola de llamadas', href: '/admin/crm/' }
+      ]
     }
   ];
 

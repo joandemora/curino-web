@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM · Cola de llamadas — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+/* ─── Layout general ────────────────────────────────────── */
+.crm-hero{margin-bottom:1.25rem}
+.crm-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.25rem}
+.crm-hero p{color:#666;font-size:13px;margin:0}
+
+/* ─── Métricas del día ──────────────────────────────────── */
+.crm-metrics{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;
+  margin-bottom:1.25rem;
+}
+.crm-metric{
+  background:#fff;border:1px solid #e5e5e5;border-radius:10px;
+  padding:.8rem 1rem;
+}
+.crm-metric-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#888;font-weight:600}
+.crm-metric-value{font-size:22px;font-weight:600;color:#1a1a1a;margin-top:.15rem}
+
+/* ─── Filtros ──────────────────────────────────────────── */
+.crm-filters{
+  display:flex;gap:.5rem;flex-wrap:wrap;
+  background:#fff;border:1px solid #e5e5e5;border-radius:10px;
+  padding:.75rem;margin-bottom:1.25rem;align-items:center;
+}
+.crm-filters label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:600}
+.crm-filters select{
+  font-family:inherit;font-size:13px;color:#1a1a1a;
+  background:#fafaf7;border:1px solid #e5e5e5;border-radius:6px;
+  padding:.4rem .6rem;min-width:180px;
+}
+.crm-filters .crm-refresh{
+  margin-left:auto;background:transparent;border:1px solid #e5e5e5;
+  color:#555;font-size:12px;padding:.4rem .8rem;border-radius:6px;
+  cursor:pointer;font-family:inherit;
+}
+.crm-filters .crm-refresh:hover{border-color:#1a1a1a;color:#1a1a1a}
+
+/* ─── Grupos ──────────────────────────────────────────── */
+.crm-group{margin-bottom:1.75rem}
+.crm-group-title{
+  font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+  color:#888;font-weight:700;margin-bottom:.6rem;
+}
+.crm-group-title .crm-group-count{color:#cc785c;margin-left:.4rem}
+.crm-group.callbacks .crm-group-title{color:#a83232}
+
+/* ─── Card prescriptor ────────────────────────────────── */
+.crm-card{
+  background:#fff;border:1px solid #e5e5e5;border-radius:10px;
+  padding:1rem 1.1rem;margin-bottom:.7rem;
+  transition:opacity .2s,background .2s,border-color .2s;
+}
+.crm-card.done{opacity:.45;background:#f5f5f2;border-color:#dcdcd6}
+.crm-card.done .crm-actions,.crm-card.done .crm-drawer{display:none}
+
+.crm-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;flex-wrap:wrap}
+.crm-card-name{font-size:16px;font-weight:600;line-height:1.25;color:#1a1a1a}
+.crm-card-meta{color:#666;font-size:12.5px;margin-top:.2rem;line-height:1.5}
+.crm-card-meta .sep{color:#ccc;padding:0 .35rem}
+.crm-card-badge{
+  font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+  padding:.15rem .5rem;border-radius:99px;background:#f0eee6;color:#555;font-weight:600;
+}
+.crm-card-badge.frio{background:#eef2f7;color:#4a5b6c}
+.crm-card-badge.en_cadencia{background:#fdf3d9;color:#8a6a1c}
+.crm-card-badge.contactado{background:#e2f0e6;color:#2e7d32}
+
+.crm-tel{
+  display:inline-block;font-size:14px;font-weight:600;color:#cc785c;
+  text-decoration:none;margin-top:.5rem;letter-spacing:.02em;
+}
+.crm-tel:hover{text-decoration:underline}
+
+.crm-callback{
+  margin-top:.5rem;padding:.4rem .6rem;background:#fdf1f0;border-left:3px solid #a83232;
+  border-radius:0 6px 6px 0;font-size:12.5px;color:#7a2020;
+}
+.crm-callback strong{font-weight:600}
+
+.crm-lastnote{
+  margin-top:.5rem;padding:.4rem .6rem;background:#f8f8f5;border-left:3px solid #d6d3ca;
+  border-radius:0 6px 6px 0;font-size:12.5px;color:#555;font-style:italic;
+}
+.crm-lastnote small{display:block;color:#888;font-style:normal;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.15rem}
+
+.crm-cliente-line{margin-top:.4rem;font-size:12.5px;color:#666}
+.crm-cliente-line strong{color:#1a1a1a;font-weight:600}
+
+/* ─── Botones de resultado ────────────────────────────── */
+.crm-actions{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:.4rem;margin-top:.85rem;
+}
+.crm-action-btn{
+  padding:.55rem .7rem;border-radius:6px;border:1px solid #e5e5e5;background:#fff;
+  color:#1a1a1a;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  letter-spacing:.02em;text-align:center;transition:background .15s,border-color .15s;
+}
+.crm-action-btn:hover:not(:disabled){background:#111;color:#fff;border-color:#111}
+.crm-action-btn.primary{background:#cc785c;color:#fff;border-color:#cc785c}
+.crm-action-btn.primary:hover:not(:disabled){background:#b8664b;border-color:#b8664b}
+.crm-action-btn.warning{color:#8a6a1c}
+.crm-action-btn.danger{color:#a83232}
+.crm-action-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ─── Drawer inline (mini-formularios) ────────────────── */
+.crm-drawer{
+  display:none;
+  margin-top:.85rem;padding:.9rem;background:#faf9f4;border:1px solid #e8e5da;border-radius:8px;
+}
+.crm-drawer.open{display:block}
+.crm-drawer h4{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:.6rem;font-weight:700}
+.crm-drawer label{display:block;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .2rem;font-weight:600}
+.crm-drawer input[type="date"],
+.crm-drawer input[type="datetime-local"],
+.crm-drawer input[type="number"],
+.crm-drawer textarea{
+  width:100%;padding:.5rem .6rem;border:1px solid #ddd;border-radius:6px;
+  font-family:inherit;font-size:13px;background:#fff;color:#1a1a1a;
+}
+.crm-drawer textarea{min-height:70px;resize:vertical}
+.crm-drawer-actions{display:flex;gap:.4rem;margin-top:.75rem}
+.crm-drawer-actions button{
+  padding:.5rem 1rem;border-radius:6px;border:1px solid #ddd;background:#fff;
+  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;color:#1a1a1a;
+}
+.crm-drawer-actions button.primary{background:#111;color:#fff;border-color:#111}
+.crm-drawer-actions button.primary:hover{background:#333}
+.crm-drawer-actions button:not(.primary):hover{border-color:#1a1a1a}
+
+/* ─── Estados globales ────────────────────────────────── */
+.crm-empty{
+  background:#fff;border:1px dashed #d6d3ca;border-radius:10px;
+  padding:2rem 1.5rem;text-align:center;color:#666;
+}
+.crm-empty h3{font-size:16px;font-weight:600;margin-bottom:.4rem;color:#1a1a1a}
+.crm-empty p{margin:.3rem 0}
+.crm-empty code{
+  background:#f5f5f2;padding:.15rem .4rem;border-radius:4px;font-size:12px;
+  font-family:'SF Mono',Menlo,Consolas,monospace;color:#a83232;
+}
+
+.crm-loading{padding:2rem;text-align:center;color:#888;font-size:13px}
+.crm-error{
+  background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;
+  padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;
+}
+
+/* ─── Toast ─────────────────────────────────────────── */
+.crm-toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  background:#1a1a1a;color:#fff;padding:.7rem 1.1rem;border-radius:8px;
+  font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+  z-index:200;pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.crm-toast.show{opacity:1}
+.crm-toast.err{background:#a83232}
+
+/* ─── Mobile ────────────────────────────────────────── */
+@media(max-width:640px){
+  .crm-metrics{grid-template-columns:repeat(3,1fr);gap:.4rem}
+  .crm-metric{padding:.6rem .7rem}
+  .crm-metric-value{font-size:18px}
+  .crm-filters select{min-width:0;flex:1 1 140px}
+  .crm-card{padding:.85rem}
+  .crm-card-name{font-size:15px}
+  .crm-actions{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="crm-hero">
+    <h1>Cola de llamadas</h1>
+    <p>Prescriptores a contactar hoy. Callbacks comprometidos primero.</p>
+  </div>
+
+  <!-- Métricas del día -->
+  <div class="crm-metrics">
+    <div class="crm-metric">
+      <div class="crm-metric-label">Llamadas hoy</div>
+      <div class="crm-metric-value" id="mLlamadas">—</div>
+    </div>
+    <div class="crm-metric">
+      <div class="crm-metric-label">Conversaciones</div>
+      <div class="crm-metric-value" id="mConv">—</div>
+    </div>
+    <div class="crm-metric">
+      <div class="crm-metric-label">Reuniones agendadas</div>
+      <div class="crm-metric-value" id="mReu">—</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="crm-filters">
+    <label for="fCliente">Cliente</label>
+    <select id="fCliente"><option value="">Todos</option></select>
+    <label for="fTerritorio">Territorio</label>
+    <select id="fTerritorio"><option value="">Todos</option></select>
+    <button type="button" class="crm-refresh" id="btnRefresh" title="Recargar">↻ Recargar</button>
+  </div>
+
+  <div id="errBox"></div>
+  <div id="colaContainer">
+    <div class="crm-loading">Cargando cola…</div>
+  </div>
+</main>
+
+<div class="crm-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+/* ============================================================
+ * CRM · Cola de llamadas
+ * ============================================================
+ * Pantalla de trabajo del SDR. Toda la lectura y escritura va
+ * directamente vía cliente Supabase con el JWT del usuario
+ * autenticado — las policies RLS de crm_ (is_crm_staff) deciden.
+ *
+ * Requiere que el JWT del usuario lleve app_metadata.app_role
+ * = 'sdr' | 'admin' (ver migración 20260906_crm_schema.sql). Sin
+ * ese claim las queries devuelven vacío y la cola sale vacía.
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var supa;              // cliente Supabase inicializado por admin-shell
+  var currentUser;       // usuario actual (session.user)
+
+  // Estado en memoria — recargado en cada loadCola()
+  var state = {
+    prescriptores: [],   // filas de crm_prescriptores
+    lastCall: {},        // { prescriptor_id: última fila de crm_llamadas }
+    clientes: [],        // filas de crm_clientes (piloto|activo) para filtro + resolver nombre
+    filterCliente: '',
+    filterTerritorio: ''
+  };
+
+  var RESULTADO_LABEL = {
+    no_contesta: 'No contesta',
+    buzon: 'Buzón',
+    recepcion: 'Recepción',
+    conversacion: 'Conversación',
+    reunion_agendada: 'Reunión',
+    no_interesado: 'No interesado',
+    volver_a_llamar: 'Volver a llamar'
+  };
+
+  // ── Arranque ──────────────────────────────────────────
+  initAdminShell({ activeSection: 'crm-cola', title: 'CRM · Cola de llamadas' })
+    .then(function (ctx) {
+      supa = ctx.supabase;
+      currentUser = ctx.user;
+      wireFilters();
+      return loadAll();
+    })
+    .catch(function () { /* admin-shell ya redirige si no hay auth */ });
+
+  function wireFilters() {
+    document.getElementById('fCliente').addEventListener('change', function (e) {
+      state.filterCliente = e.target.value;
+      renderCola();
+    });
+    document.getElementById('fTerritorio').addEventListener('change', function (e) {
+      state.filterTerritorio = e.target.value;
+      renderCola();
+    });
+    document.getElementById('btnRefresh').addEventListener('click', loadAll);
+  }
+
+  // ── Carga ─────────────────────────────────────────────
+  async function loadAll() {
+    document.getElementById('errBox').innerHTML = '';
+    document.getElementById('colaContainer').innerHTML = '<div class="crm-loading">Cargando cola…</div>';
+    try {
+      await Promise.all([loadClientes(), loadCola(), loadMetrics()]);
+      renderClientesSelect();
+      renderTerritoriosSelect();
+      renderCola();
+    } catch (e) {
+      showError(e && e.message ? e.message : 'Error cargando datos');
+    }
+  }
+
+  async function loadClientes() {
+    var r = await supa.from('crm_clientes')
+      .select('id, nombre, territorio, estado')
+      .in('estado', ['piloto', 'activo'])
+      .order('nombre');
+    if (r.error) throw r.error;
+    state.clientes = r.data || [];
+  }
+
+  async function loadCola() {
+    // Sólo estados "en juego". 'reunion'/'activo'/'descartado'/'no_molestar'/'baja'
+    // no aparecen en la cola de trabajo diaria.
+    var r = await supa.from('crm_prescriptores')
+      .select('id, nombre_estudio, tipo, ciudad, telefono, cliente_asignado, estado, proximo_contacto, territorio')
+      .in('estado', ['frio', 'en_cadencia', 'contactado'])
+      .order('proximo_contacto', { ascending: true, nullsFirst: false });
+    if (r.error) throw r.error;
+    state.prescriptores = r.data || [];
+
+    // Última llamada por prescriptor: query separada + dedupe cliente-side.
+    // Evita el nested select de PostgREST que a veces no ordena bien por
+    // fecha en la tabla foránea.
+    state.lastCall = {};
+    var ids = state.prescriptores.map(function (p) { return p.id; });
+    if (!ids.length) return;
+    var lc = await supa.from('crm_llamadas')
+      .select('id, prescriptor_id, fecha, resultado, notas')
+      .in('prescriptor_id', ids)
+      .order('fecha', { ascending: false });
+    if (lc.error) throw lc.error;
+    (lc.data || []).forEach(function (row) {
+      if (!state.lastCall[row.prescriptor_id]) state.lastCall[row.prescriptor_id] = row;
+    });
+  }
+
+  async function loadMetrics() {
+    var startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    var iso = startOfDay.toISOString();
+
+    async function count(match) {
+      var q = supa.from('crm_llamadas')
+        .select('id', { count: 'exact', head: true })
+        .eq('sdr_id', currentUser.id)
+        .gte('fecha', iso);
+      Object.keys(match || {}).forEach(function (k) { q = q.eq(k, match[k]); });
+      var r = await q;
+      if (r.error) return 0;
+      return r.count || 0;
+    }
+
+    var [total, conv, reu] = await Promise.all([
+      count(),
+      count({ resultado: 'conversacion' }),
+      count({ resultado: 'reunion_agendada' })
+    ]);
+    document.getElementById('mLlamadas').textContent = total;
+    document.getElementById('mConv').textContent = conv;
+    document.getElementById('mReu').textContent = reu;
+  }
+
+  // ── Render ────────────────────────────────────────────
+  function renderClientesSelect() {
+    var sel = document.getElementById('fCliente');
+    // Preserva la primera opción "Todos"
+    sel.innerHTML = '<option value="">Todos</option>' + state.clientes.map(function (c) {
+      return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>';
+    }).join('');
+  }
+
+  function renderTerritoriosSelect() {
+    var terr = {};
+    state.prescriptores.forEach(function (p) { if (p.territorio) terr[p.territorio] = true; });
+    state.clientes.forEach(function (c) { if (c.territorio) terr[c.territorio] = true; });
+    var keys = Object.keys(terr).sort();
+    var sel = document.getElementById('fTerritorio');
+    sel.innerHTML = '<option value="">Todos</option>' + keys.map(function (t) {
+      return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+    }).join('');
+  }
+
+  function renderCola() {
+    var container = document.getElementById('colaContainer');
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+
+    var filtered = state.prescriptores.filter(function (p) {
+      if (state.filterCliente && p.cliente_asignado !== state.filterCliente) return false;
+      if (state.filterTerritorio && p.territorio !== state.filterTerritorio) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      container.innerHTML = emptyStateHtml();
+      return;
+    }
+
+    var callbacks = [];
+    var cadencia = [];
+    var frios = [];
+    filtered.forEach(function (p) {
+      var overdue = p.proximo_contacto && new Date(p.proximo_contacto) <= today;
+      if (overdue) callbacks.push(p);
+      else if (p.estado === 'en_cadencia' || p.estado === 'contactado') cadencia.push(p);
+      else if (p.estado === 'frio') frios.push(p);
+      else cadencia.push(p);  // fallback defensivo
+    });
+
+    var html = '';
+    if (callbacks.length) html += renderGroup('Callbacks comprometidos', callbacks, 'callbacks');
+    if (cadencia.length)  html += renderGroup('En cadencia / contactados', cadencia, '');
+    if (frios.length)     html += renderGroup('Fríos', frios, '');
+    container.innerHTML = html;
+
+    wireCardActions(container);
+  }
+
+  function renderGroup(title, items, cls) {
+    var out = '<section class="crm-group ' + cls + '">'
+      + '<div class="crm-group-title">' + esc(title)
+      + '<span class="crm-group-count">' + items.length + '</span></div>';
+    items.forEach(function (p) { out += renderCard(p); });
+    return out + '</section>';
+  }
+
+  function renderCard(p) {
+    var cliente = clienteById(p.cliente_asignado);
+    var last = state.lastCall[p.id];
+    var overdue = p.proximo_contacto && new Date(p.proximo_contacto) <= todayStart();
+
+    var telHtml = p.telefono
+      ? '<a class="crm-tel" href="tel:' + esc(p.telefono) + '">📞 ' + esc(p.telefono) + '</a>'
+      : '<span style="color:#aaa;font-size:12px;font-style:italic">Sin teléfono</span>';
+
+    var metaBits = [];
+    if (p.tipo)   metaBits.push(esc(p.tipo));
+    if (p.ciudad) metaBits.push(esc(p.ciudad));
+
+    var callbackBlock = overdue
+      ? '<div class="crm-callback">Callback comprometido para <strong>' + fmtDate(p.proximo_contacto) + '</strong></div>'
+      : '';
+
+    var lastNoteBlock = (last && last.notas)
+      ? '<div class="crm-lastnote"><small>Última llamada · ' + fmtDate(last.fecha) + ' · ' + esc(RESULTADO_LABEL[last.resultado] || last.resultado) + '</small>' + esc(last.notas) + '</div>'
+      : '';
+
+    var clienteBlock = cliente
+      ? '<div class="crm-cliente-line">En nombre de <strong>' + esc(cliente.nombre) + '</strong></div>'
+      : '<div class="crm-cliente-line" style="color:#a83232">⚠ Sin cliente asignado — no se puede registrar llamada</div>';
+
+    var canAct = !!cliente;
+
+    return '<article class="crm-card" data-id="' + esc(p.id) + '" data-cliente="' + esc(p.cliente_asignado || '') + '">'
+      + '<div class="crm-card-head">'
+      +   '<div>'
+      +     '<div class="crm-card-name">' + esc(p.nombre_estudio) + '</div>'
+      +     '<div class="crm-card-meta">' + metaBits.join('<span class="sep">·</span>') + '</div>'
+      +   '</div>'
+      +   '<div class="crm-card-badge ' + esc(p.estado) + '">' + esc(p.estado.replace('_', ' ')) + '</div>'
+      + '</div>'
+      + telHtml
+      + clienteBlock
+      + callbackBlock
+      + lastNoteBlock
+      + renderActions(canAct)
+      + '<div class="crm-drawer" data-drawer></div>'
+      + '</article>';
+  }
+
+  function renderActions(enabled) {
+    var dis = enabled ? '' : ' disabled';
+    var b = function (res, cls) {
+      return '<button type="button" class="crm-action-btn ' + (cls || '')
+        + '" data-res="' + res + '"' + dis + '>' + RESULTADO_LABEL[res] + '</button>';
+    };
+    return '<div class="crm-actions">'
+      + b('no_contesta') + b('buzon') + b('recepcion')
+      + b('conversacion', 'warning')
+      + b('reunion_agendada', 'primary')
+      + b('no_interesado', 'danger')
+      + b('volver_a_llamar')
+      + '</div>';
+  }
+
+  // ── Interacción ───────────────────────────────────────
+  function wireCardActions(root) {
+    root.querySelectorAll('.crm-card').forEach(function (card) {
+      card.querySelectorAll('.crm-action-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var res = btn.getAttribute('data-res');
+          onActionClick(card, res);
+        });
+      });
+    });
+  }
+
+  function onActionClick(card, resultado) {
+    var prescId = card.getAttribute('data-id');
+    var clienteId = card.getAttribute('data-cliente');
+    if (!clienteId) return;
+
+    // Los 3 resultados "rápidos" no necesitan drawer: INSERT y fin.
+    if (resultado === 'no_contesta' || resultado === 'buzon' || resultado === 'recepcion') {
+      quickInsert(card, prescId, clienteId, resultado);
+      return;
+    }
+    // El resto abre drawer con el mini-formulario correspondiente.
+    openDrawer(card, prescId, clienteId, resultado);
+  }
+
+  async function quickInsert(card, prescId, clienteId, resultado) {
+    setCardBusy(card, true);
+    try {
+      await insertLlamada(prescId, clienteId, resultado, null);
+      markCardDone(card, RESULTADO_LABEL[resultado]);
+      toast(RESULTADO_LABEL[resultado] + ' registrado');
+      loadMetrics();
+    } catch (e) {
+      setCardBusy(card, false);
+      toast('Error: ' + (e.message || 'no se pudo registrar'), true);
+    }
+  }
+
+  function openDrawer(card, prescId, clienteId, resultado) {
+    var drawer = card.querySelector('[data-drawer]');
+    drawer.innerHTML = buildDrawerHtml(resultado);
+    drawer.classList.add('open');
+
+    var cancel = drawer.querySelector('[data-cancel]');
+    var submit = drawer.querySelector('[data-submit]');
+    cancel.addEventListener('click', function () {
+      drawer.classList.remove('open');
+      drawer.innerHTML = '';
+    });
+    submit.addEventListener('click', function () {
+      onDrawerSubmit(card, prescId, clienteId, resultado, drawer);
+    });
+  }
+
+  function buildDrawerHtml(resultado) {
+    if (resultado === 'volver_a_llamar') {
+      var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+      var iso = tomorrow.toISOString().slice(0, 10);
+      return '<h4>Programar callback</h4>'
+        + '<label>Próximo contacto</label>'
+        + '<input type="date" data-field="fecha" value="' + iso + '" required>'
+        + '<label>Nota (opcional)</label>'
+        + '<textarea data-field="notas" placeholder="Ej: Llamar por la tarde, pidió que le enviásemos referencias."></textarea>'
+        + drawerActionsHtml('Guardar callback');
+    }
+    if (resultado === 'reunion_agendada') {
+      var t = new Date(); t.setDate(t.getDate() + 3); t.setHours(10, 0, 0, 0);
+      // datetime-local necesita YYYY-MM-DDTHH:MM (sin timezone).
+      var localIso = t.toISOString().slice(0, 16);
+      return '<h4>Nueva reunión</h4>'
+        + '<label>Fecha y hora</label>'
+        + '<input type="datetime-local" data-field="fecha_reunion" value="' + localIso + '" required>'
+        + '<label>Nota (opcional)</label>'
+        + '<textarea data-field="notas" placeholder="Ej: Reunión presencial en el estudio. Interés en armarios a medida."></textarea>'
+        + drawerActionsHtml('Agendar reunión');
+    }
+    if (resultado === 'conversacion') {
+      return '<h4>Conversación</h4>'
+        + '<label>Nota (opcional)</label>'
+        + '<textarea data-field="notas" placeholder="Resumen de la conversación."></textarea>'
+        + drawerActionsHtml('Registrar');
+    }
+    if (resultado === 'no_interesado') {
+      return '<h4>Marcar como no interesado</h4>'
+        + '<p style="color:#666;font-size:12.5px;margin-bottom:.4rem">El prescriptor pasa a estado <strong>descartado</strong>.</p>'
+        + '<label>Motivo (opcional)</label>'
+        + '<textarea data-field="notas" placeholder="Ej: Trabaja siempre con la misma carpintería."></textarea>'
+        + drawerActionsHtml('Descartar');
+    }
+    return '<h4>?</h4>';
+  }
+
+  function drawerActionsHtml(submitLabel) {
+    return '<div class="crm-drawer-actions">'
+      + '<button type="button" class="primary" data-submit>' + esc(submitLabel) + '</button>'
+      + '<button type="button" data-cancel>Cancelar</button>'
+      + '</div>';
+  }
+
+  async function onDrawerSubmit(card, prescId, clienteId, resultado, drawer) {
+    var notas = (drawer.querySelector('[data-field="notas"]') || {}).value || null;
+    if (notas) notas = notas.trim() || null;
+
+    setCardBusy(card, true);
+    try {
+      if (resultado === 'volver_a_llamar') {
+        var fecha = drawer.querySelector('[data-field="fecha"]').value;
+        if (!fecha) throw new Error('Falta la fecha de próximo contacto');
+        var llamada = await insertLlamada(prescId, clienteId, resultado, notas, { proximo_contacto: fecha });
+        await updatePrescriptor(prescId, { proximo_contacto: fecha });
+        markCardDone(card, 'Callback para ' + fmtDate(fecha));
+      } else if (resultado === 'reunion_agendada') {
+        var fr = drawer.querySelector('[data-field="fecha_reunion"]').value;
+        if (!fr) throw new Error('Falta la fecha de la reunión');
+        // El datetime-local llega sin timezone → lo interpretamos como
+        // hora local del navegador y lo pasamos a ISO con offset.
+        var frIso = new Date(fr).toISOString();
+        var llamadaR = await insertLlamada(prescId, clienteId, resultado, notas);
+        await createReunion(prescId, clienteId, llamadaR.id, frIso, notas);
+        await updatePrescriptor(prescId, { estado: 'reunion' });
+        markCardDone(card, 'Reunión agendada · ' + fmtDate(frIso));
+      } else if (resultado === 'conversacion') {
+        await insertLlamada(prescId, clienteId, resultado, notas);
+        await updatePrescriptor(prescId, { estado: 'contactado' });
+        markCardDone(card, 'Conversación registrada');
+      } else if (resultado === 'no_interesado') {
+        await insertLlamada(prescId, clienteId, resultado, notas);
+        await updatePrescriptor(prescId, { estado: 'descartado' });
+        markCardDone(card, 'Descartado');
+      }
+      toast(RESULTADO_LABEL[resultado] + ' registrado');
+      loadMetrics();
+    } catch (e) {
+      setCardBusy(card, false);
+      toast('Error: ' + (e.message || 'no se pudo registrar'), true);
+    }
+  }
+
+  // ── Supabase writes ───────────────────────────────────
+  async function insertLlamada(prescId, clienteId, resultado, notas, extra) {
+    var row = Object.assign({
+      prescriptor_id: prescId,
+      cliente_id: clienteId,
+      sdr_id: currentUser.id,
+      resultado: resultado,
+      notas: notas
+    }, extra || {});
+    var r = await supa.from('crm_llamadas').insert(row).select('id').single();
+    if (r.error) throw r.error;
+    return r.data;
+  }
+
+  async function updatePrescriptor(prescId, changes) {
+    var r = await supa.from('crm_prescriptores').update(changes).eq('id', prescId);
+    if (r.error) throw r.error;
+  }
+
+  async function createReunion(prescId, clienteId, llamadaId, fechaIso, notas) {
+    var r = await supa.from('crm_reuniones').insert({
+      prescriptor_id: prescId,
+      cliente_id: clienteId,
+      llamada_id: llamadaId,
+      fecha_reunion: fechaIso,
+      estado: 'agendada',
+      resultado_cliente: 'pendiente',
+      notas_sdr: notas
+    });
+    if (r.error) throw r.error;
+  }
+
+  // ── UI helpers ────────────────────────────────────────
+  function setCardBusy(card, busy) {
+    card.querySelectorAll('button').forEach(function (b) { b.disabled = busy; });
+  }
+
+  function markCardDone(card, label) {
+    card.classList.add('done');
+    card.querySelector('.crm-card-badge').textContent = '✓ ' + label;
+  }
+
+  function toast(msg, isErr) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.toggle('err', !!isErr);
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+
+  function showError(msg) {
+    document.getElementById('errBox').innerHTML =
+      '<div class="crm-error">' + esc(msg) + '</div>';
+  }
+
+  function emptyStateHtml() {
+    return '<div class="crm-empty">'
+      + '<h3>La cola está vacía</h3>'
+      + '<p>No hay prescriptores en estados <em>frío</em>, <em>en cadencia</em> ni <em>contactado</em> que encajen con el filtro.</p>'
+      + '<p style="margin-top:.9rem;font-size:12px">Si aún no has cargado datos, puedes ejecutar el seed de demo:</p>'
+      + '<p><code>psql &lt; supabase/seeds/crm_demo.sql</code></p>'
+      + '<p style="margin-top:.6rem;font-size:11.5px;color:#888">La alta manual de prescriptores y la importación de listas llegan en la siguiente PR.</p>'
+      + '</div>';
+  }
+
+  function clienteById(id) {
+    if (!id) return null;
+    for (var i = 0; i < state.clientes.length; i++) {
+      if (state.clientes[i].id === id) return state.clientes[i];
+    }
+    return null;
+  }
+
+  function todayStart() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+  function fmtDate(v) {
+    if (!v) return '';
+    var d = new Date(v);
+    if (isNaN(d)) return String(v);
+    var dd = String(d.getDate()).padStart(2, '0');
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var yy = d.getFullYear();
+    // Si es datetime, añade hh:mm
+    var s = dd + '/' + mm + '/' + yy;
+    if (String(v).length > 10) {
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mi = String(d.getMinutes()).padStart(2, '0');
+      s += ' ' + hh + ':' + mi;
+    }
+    return s;
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+})();
+</script>
+</body>
+</html>
