@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM · Prescriptores — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+/* ─── Layout general ────────────────────────────────────── */
+.pr-hero{margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.pr-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.25rem}
+.pr-hero p{color:#666;font-size:13px;margin:0}
+.pr-hero a.back{font-size:12px;color:#888;text-decoration:none}
+.pr-hero a.back:hover{color:#1a1a1a}
+
+/* ─── Tabs ──────────────────────────────────────────────── */
+.pr-tabs{display:flex;gap:.15rem;border-bottom:1px solid #e5e5e5;margin-bottom:1.5rem}
+.pr-tab{
+  background:transparent;border:none;padding:.7rem 1.2rem;
+  font-family:inherit;font-size:13px;color:#666;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600;
+  letter-spacing:.02em;
+}
+.pr-tab:hover{color:#1a1a1a}
+.pr-tab.active{color:#cc785c;border-bottom-color:#cc785c}
+.pr-panel{display:none}
+.pr-panel.active{display:block}
+
+/* ─── Cards genéricas ───────────────────────────────────── */
+.pr-card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem}
+.pr-card h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:700;margin-bottom:1rem}
+
+/* ─── Form (alta manual) ────────────────────────────────── */
+.pr-form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.85rem 1rem}
+@media(max-width:640px){.pr-form-grid{grid-template-columns:1fr}}
+.pr-field label{display:block;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem;font-weight:600}
+.pr-field label .req{color:#a83232;margin-left:.15rem}
+.pr-field input, .pr-field select, .pr-field textarea{
+  width:100%;padding:.55rem .7rem;border:1px solid #ddd;border-radius:6px;
+  font-family:inherit;font-size:13px;background:#fafaf7;color:#1a1a1a;
+}
+.pr-field textarea{min-height:60px;resize:vertical}
+.pr-form-actions{margin-top:1.25rem;display:flex;gap:.5rem}
+
+/* ─── Filtros + búsqueda del listado ────────────────────── */
+.pr-filters{
+  display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;
+  background:#fff;border:1px solid #e5e5e5;border-radius:10px;
+  padding:.75rem;margin-bottom:1rem;
+}
+.pr-filters input, .pr-filters select{
+  font-family:inherit;font-size:13px;color:#1a1a1a;
+  background:#fafaf7;border:1px solid #e5e5e5;border-radius:6px;
+  padding:.4rem .6rem;
+}
+.pr-filters input[type="search"]{min-width:220px;flex:1 1 220px}
+.pr-filters select{min-width:150px}
+.pr-count{font-size:12px;color:#888;margin-left:auto}
+
+/* ─── Tabla listado ────────────────────────────────────── */
+.pr-table-wrap{overflow-x:auto;background:#fff;border:1px solid #e5e5e5;border-radius:10px}
+.pr-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+.pr-table thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  color:#888;font-weight:700;padding:.7rem .8rem;border-bottom:1px solid #e5e5e5;
+  background:#fafaf7;position:sticky;top:0;
+}
+.pr-table tbody td{padding:.55rem .8rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
+.pr-table tbody tr:hover td{background:#faf9f4}
+.pr-cell-editable{cursor:text;padding:.35rem .5rem;border-radius:4px;min-height:1.5em;color:#1a1a1a}
+.pr-cell-editable:hover{background:#fdf3d9;outline:1px dashed #d6c07a}
+.pr-cell-editable.empty{color:#bbb;font-style:italic}
+.pr-cell-editable.saving{background:#f0eee6}
+.pr-cell-editable.saved{background:#d7ecdc;transition:background 1.2s}
+.pr-cell-editable.err{background:#fdf1f0;color:#a83232}
+.pr-cell input{
+  width:100%;padding:.35rem .5rem;border:1px solid #cc785c;border-radius:4px;
+  font-family:inherit;font-size:13px;background:#fff;
+}
+.pr-badge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:.15rem .5rem;border-radius:99px;background:#f0eee6;color:#555;font-weight:600;white-space:nowrap}
+.pr-badge.frio{background:#eef2f7;color:#4a5b6c}
+.pr-badge.en_cadencia{background:#fdf3d9;color:#8a6a1c}
+.pr-badge.contactado{background:#e2f0e6;color:#2e7d32}
+.pr-badge.reunion{background:#fde5db;color:#a04328}
+.pr-badge.activo{background:#d7ecdc;color:#1e5b23}
+.pr-badge.descartado{background:#efefef;color:#888}
+.pr-badge.no_molestar{background:#3a1414;color:#fff}
+.pr-nm-btn{
+  background:transparent;border:1px solid #ddd;color:#7a2020;
+  padding:.3rem .55rem;border-radius:6px;font-size:11px;font-weight:600;
+  font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap;
+}
+.pr-nm-btn:hover:not(:disabled){background:#3a1414;color:#fff;border-color:#3a1414}
+.pr-nm-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ─── Importador CSV ───────────────────────────────────── */
+.pr-step{margin-bottom:1.5rem}
+.pr-step-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;font-weight:700;margin-bottom:.6rem}
+.pr-step-title .num{
+  display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;
+  background:#cc785c;color:#fff;border-radius:99px;font-size:10px;font-weight:700;
+  margin-right:.5rem;vertical-align:middle;
+}
+.pr-drop{
+  border:2px dashed #d6d3ca;border-radius:10px;padding:1.5rem;text-align:center;
+  color:#666;background:#faf9f4;cursor:pointer;transition:border-color .15s,background .15s;
+}
+.pr-drop:hover, .pr-drop.dragover{border-color:#cc785c;background:#fdf1e9}
+.pr-drop input[type="file"]{display:none}
+.pr-drop small{display:block;font-size:11px;color:#999;margin-top:.4rem}
+.pr-textarea-csv{
+  width:100%;min-height:120px;padding:.6rem;border:1px solid #ddd;border-radius:8px;
+  font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;line-height:1.5;
+  background:#fff;color:#1a1a1a;resize:vertical;
+}
+.pr-sep-row{display:flex;gap:.5rem;align-items:center;margin-top:.5rem;font-size:12px;color:#666}
+.pr-sep-row select{padding:.3rem .5rem;border:1px solid #ddd;border-radius:4px;font-family:inherit;font-size:12px}
+
+.pr-mapping-table{width:100%;border-collapse:collapse;font-size:13px}
+.pr-mapping-table th, .pr-mapping-table td{padding:.55rem .7rem;border-bottom:1px solid #f0efe9;text-align:left}
+.pr-mapping-table th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:700;background:#fafaf7}
+.pr-mapping-table select{padding:.35rem .5rem;border:1px solid #ddd;border-radius:4px;font-family:inherit;font-size:12px;background:#fff;min-width:180px}
+.pr-mapping-preview{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11.5px;color:#888;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.pr-batch-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:1rem}
+@media(max-width:640px){.pr-batch-controls{grid-template-columns:1fr}}
+
+.pr-validation{background:#faf9f4;border:1px solid #e8e5da;border-radius:8px;padding:1rem;margin-top:.6rem}
+.pr-val-line{display:flex;justify-content:space-between;font-size:13px;color:#555;padding:.3rem 0}
+.pr-val-line strong{color:#1a1a1a;font-weight:700}
+.pr-val-line.ok strong{color:#2e7d32}
+.pr-val-line.warn strong{color:#8a6a1c}
+.pr-val-line.err strong{color:#a83232}
+
+.pr-details{margin-top:.6rem}
+.pr-details summary{cursor:pointer;font-size:12px;color:#666;padding:.4rem 0}
+.pr-details ul{list-style:none;padding:.4rem .6rem;background:#fff;border:1px solid #eee;border-radius:6px;max-height:200px;overflow-y:auto;font-size:12px;color:#555;margin-top:.2rem}
+.pr-details li{padding:.15rem 0;border-bottom:1px solid #f5f4ee}
+.pr-details li:last-child{border-bottom:none}
+
+.pr-result{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem 1.5rem;margin-top:1rem}
+.pr-result h3{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:.7rem}
+
+/* ─── Toast ─────────────────────────────────────────── */
+.pr-toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  background:#1a1a1a;color:#fff;padding:.7rem 1.1rem;border-radius:8px;
+  font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+  z-index:200;pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.pr-toast.show{opacity:1}
+.pr-toast.err{background:#a83232}
+
+.pr-loading{padding:2rem;text-align:center;color:#888;font-size:13px}
+.pr-error{background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="pr-hero">
+    <div>
+      <h1>Prescriptores</h1>
+      <p>Alta manual, importación desde CSV y gestión del listado compartido.</p>
+    </div>
+    <a class="back" href="/admin/crm/">← Volver a la cola de llamadas</a>
+  </div>
+
+  <div class="pr-tabs">
+    <button type="button" class="pr-tab active" data-tab="listado">Listado</button>
+    <button type="button" class="pr-tab" data-tab="nuevo">+ Nuevo</button>
+    <button type="button" class="pr-tab" data-tab="importar">Importar CSV</button>
+  </div>
+
+  <div id="errBox"></div>
+
+  <!-- ═══════════════ LISTADO ═══════════════ -->
+  <section class="pr-panel active" data-panel="listado">
+    <div class="pr-filters">
+      <input type="search" id="fSearch" placeholder="Buscar por nombre o ciudad…">
+      <select id="fEstado">
+        <option value="">Todos los estados</option>
+        <option value="frio">Frío</option>
+        <option value="en_cadencia">En cadencia</option>
+        <option value="contactado">Contactado</option>
+        <option value="reunion">Reunión</option>
+        <option value="activo">Activo</option>
+        <option value="descartado">Descartado</option>
+        <option value="no_molestar">No molestar</option>
+      </select>
+      <select id="fTerritorio"><option value="">Todos los territorios</option></select>
+      <span class="pr-count" id="prCount">—</span>
+    </div>
+    <div class="pr-table-wrap">
+      <table class="pr-table">
+        <thead>
+          <tr>
+            <th>Estudio</th>
+            <th>Tipo</th>
+            <th>Persona</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Ciudad</th>
+            <th>Territorio</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="prTbody">
+          <tr><td colspan="9" class="pr-loading">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════ NUEVO ═══════════════ -->
+  <section class="pr-panel" data-panel="nuevo">
+    <div class="pr-card">
+      <h2>Alta manual</h2>
+      <form id="formNuevo" class="pr-form-grid" autocomplete="off">
+        <div class="pr-field" style="grid-column:1 / -1">
+          <label for="nNombre">Nombre del estudio <span class="req">*</span></label>
+          <input type="text" id="nNombre" required maxlength="200">
+        </div>
+        <div class="pr-field">
+          <label for="nTipo">Tipo</label>
+          <select id="nTipo">
+            <option value="arquitecto">Arquitecto</option>
+            <option value="interiorista">Interiorista</option>
+            <option value="constructora">Constructora</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="pr-field">
+          <label for="nCliente">Cliente asignado (opcional)</label>
+          <select id="nCliente"><option value="">Sin asignar</option></select>
+        </div>
+        <div class="pr-field">
+          <label for="nPersona">Persona de contacto</label>
+          <input type="text" id="nPersona" maxlength="200">
+        </div>
+        <div class="pr-field">
+          <label for="nTelefono">Teléfono</label>
+          <input type="tel" id="nTelefono" maxlength="60">
+        </div>
+        <div class="pr-field">
+          <label for="nEmail">Email</label>
+          <input type="email" id="nEmail" maxlength="200">
+        </div>
+        <div class="pr-field">
+          <label for="nCiudad">Ciudad</label>
+          <input type="text" id="nCiudad" maxlength="100">
+        </div>
+        <div class="pr-field">
+          <label for="nTerritorio">Territorio</label>
+          <input type="text" id="nTerritorio" maxlength="100" list="territoriosList">
+          <datalist id="territoriosList"></datalist>
+        </div>
+        <div class="pr-field">
+          <label for="nInstagram">Instagram</label>
+          <input type="text" id="nInstagram" maxlength="100" placeholder="@estudio">
+        </div>
+        <div class="pr-field">
+          <label for="nWeb">Web</label>
+          <input type="url" id="nWeb" maxlength="200" placeholder="https://…">
+        </div>
+        <div class="pr-field">
+          <label for="nFuente">Fuente</label>
+          <input type="text" id="nFuente" maxlength="200" placeholder="ej: Instagram, referido, listado COAC">
+        </div>
+        <div class="pr-field" style="grid-column:1 / -1">
+          <label for="nNotas">Notas</label>
+          <textarea id="nNotas" maxlength="2000"></textarea>
+        </div>
+        <div class="pr-form-actions" style="grid-column:1 / -1">
+          <button type="submit" class="ash-btn">Guardar prescriptor</button>
+          <button type="reset" class="ash-btn ash-btn-outline">Limpiar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ═══════════════ IMPORTAR CSV ═══════════════ -->
+  <section class="pr-panel" data-panel="importar">
+    <!-- Paso 1: input -->
+    <div class="pr-card" id="stepInput">
+      <div class="pr-step-title"><span class="num">1</span>Cargar CSV</div>
+      <label class="pr-drop" id="dropZone">
+        <div><strong>Subir archivo</strong> o arrastrar aquí</div>
+        <small>Excel exporta con separador <code>;</code> en español; también funciona <code>,</code>.</small>
+        <input type="file" id="csvFile" accept=".csv,text/csv,text/plain">
+      </label>
+      <div style="margin:1rem 0 .3rem;font-size:12px;color:#666">o pegar el CSV aquí:</div>
+      <textarea class="pr-textarea-csv" id="csvPaste" placeholder="estudio;persona;email;telefono;ciudad&#10;Estudio Alfa;Laura Pons;laura@alfa.com;610000001;Barcelona"></textarea>
+      <div class="pr-sep-row">
+        <label>Separador:
+          <select id="csvSep">
+            <option value="auto">Auto (detectar)</option>
+            <option value=",">Coma ,</option>
+            <option value=";">Punto y coma ;</option>
+            <option value="\t">Tabulador</option>
+          </select>
+        </label>
+        <a href="#" id="downloadTemplate" style="margin-left:auto;font-size:12px;color:#cc785c;text-decoration:none">↓ Descargar plantilla</a>
+      </div>
+      <div class="pr-form-actions" style="margin-top:1rem">
+        <button type="button" class="ash-btn" id="btnParseCsv">Parsear</button>
+        <button type="button" class="ash-btn ash-btn-outline" id="btnResetImport">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Paso 2: mapeo -->
+    <div class="pr-card" id="stepMapping" hidden>
+      <div class="pr-step-title"><span class="num">2</span>Mapeo de columnas</div>
+      <p style="color:#666;font-size:13px;margin-bottom:.85rem">Asigna cada columna del CSV a un campo. Las columnas <em>Ignorar</em> se descartan.</p>
+      <div style="overflow-x:auto">
+        <table class="pr-mapping-table">
+          <thead>
+            <tr><th>Columna CSV</th><th>Muestra</th><th>Campo destino</th></tr>
+          </thead>
+          <tbody id="mappingTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="pr-batch-controls">
+        <div class="pr-field">
+          <label for="gTerritorio">Territorio (aplicar a todas)</label>
+          <input type="text" id="gTerritorio" placeholder="Ej: Cataluña" list="territoriosList2">
+          <datalist id="territoriosList2"></datalist>
+        </div>
+        <div class="pr-field">
+          <label for="gCliente">Cliente asignado (aplicar a todas)</label>
+          <select id="gCliente"><option value="">Sin asignar</option></select>
+        </div>
+        <div class="pr-field">
+          <label for="gFuente">Fuente (aplicar a todas)</label>
+          <input type="text" id="gFuente" placeholder="Ej: listado COAC sept 2026">
+        </div>
+      </div>
+
+      <div class="pr-form-actions" style="margin-top:1rem">
+        <button type="button" class="ash-btn" id="btnValidate">Continuar → validar</button>
+        <button type="button" class="ash-btn ash-btn-outline" id="btnBackToInput">← Atrás</button>
+      </div>
+    </div>
+
+    <!-- Paso 3: validación -->
+    <div class="pr-card" id="stepValidate" hidden>
+      <div class="pr-step-title"><span class="num">3</span>Validación</div>
+      <div class="pr-validation" id="valSummary"></div>
+      <div id="valDetails"></div>
+      <div class="pr-form-actions" style="margin-top:1rem">
+        <button type="button" class="ash-btn" id="btnImport">Importar</button>
+        <button type="button" class="ash-btn ash-btn-outline" id="btnBackToMapping">← Atrás</button>
+      </div>
+    </div>
+
+    <!-- Resultado -->
+    <div id="importResult"></div>
+  </section>
+</main>
+
+<div class="pr-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+/* ============================================================
+ * CRM · Prescriptores — alta manual + import CSV + listado
+ * ============================================================
+ * Toda lectura/escritura vía cliente Supabase con el JWT del
+ * usuario. RLS de is_crm_staff() (JWT app_role in sdr|admin)
+ * decide. Sin frameworks, sin endpoints nuevos, sin Edge Functions.
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var supa, currentUser;
+
+  // Estado en memoria
+  var state = {
+    clientes: [],
+    prescriptores: [],
+    dupIndex: null,           // { emailByLower: {email→row}, phoneByNorm: {phone→row} }
+    csv: null,                // { headers: [...], rows: [[...]] }
+    mapping: [],              // por columna CSV, campo destino o null
+    batchGlobals: {},         // { territorio, cliente_asignado, fuente }
+    prepared: null            // filas listas para insertar tras validación
+  };
+
+  // Campos del schema aceptados como destino de mapeo CSV
+  var FIELDS = [
+    { key: '',                 label: '— Ignorar —' },
+    { key: 'nombre_estudio',   label: 'Nombre del estudio *' },
+    { key: 'tipo',             label: 'Tipo (arquitecto/interiorista/constructora/otro)' },
+    { key: 'persona_contacto', label: 'Persona de contacto' },
+    { key: 'email',            label: 'Email' },
+    { key: 'telefono',         label: 'Teléfono' },
+    { key: 'ciudad',           label: 'Ciudad' },
+    { key: 'territorio',       label: 'Territorio' },
+    { key: 'instagram',        label: 'Instagram' },
+    { key: 'web',              label: 'Web' },
+    { key: 'fuente',           label: 'Fuente' },
+    { key: 'notas',            label: 'Notas' }
+  ];
+
+  // Sinónimos para autoasignar mapeo. Se comparan tras normalizar
+  // (lowercase + strip accents + strip non-alphanumeric).
+  var SYNONYMS = {
+    nombre_estudio:   ['nombreestudio','estudio','despacho','empresa','razonsocial','nombreempresa','name','studio','nombre'],
+    tipo:             ['tipo','categoria','category','disciplina'],
+    persona_contacto: ['personacontacto','contacto','persona','contact','person','nombrecontacto','responsable'],
+    email:            ['email','correo','mail','emailcontacto','correoelectronico'],
+    telefono:         ['telefono','tel','phone','movil','mobile','tlf','contacto1','telefonocontacto'],
+    ciudad:           ['ciudad','city','poblacion','localidad'],
+    territorio:       ['territorio','territory','provincia','region','comunidad','ccaa','pais','autonomia'],
+    instagram:        ['instagram','ig','insta','handle','instagramuser'],
+    web:              ['web','website','url','sitio','pagina','pageweb'],
+    fuente:           ['fuente','source','origen','listado','canal'],
+    notas:            ['notas','comentarios','observaciones','notes','remarks','descripcion']
+  };
+
+  var TIPOS_VALIDOS = ['arquitecto','interiorista','constructora','otro'];
+
+  // ── Arranque ──────────────────────────────────────────
+  initAdminShell({ activeSection: 'crm-prescriptores', title: 'CRM · Prescriptores' })
+    .then(function (ctx) {
+      supa = ctx.supabase;
+      currentUser = ctx.user;
+      wireTabs();
+      wireForm();
+      wireImporter();
+      wireFilters();
+      return loadAll();
+    })
+    .catch(function () { /* admin-shell redirige */ });
+
+  // ── Tabs ──────────────────────────────────────────────
+  function wireTabs() {
+    document.querySelectorAll('.pr-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var tab = btn.getAttribute('data-tab');
+        document.querySelectorAll('.pr-tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        document.querySelectorAll('.pr-panel').forEach(function (p) {
+          p.classList.toggle('active', p.getAttribute('data-panel') === tab);
+        });
+      });
+    });
+  }
+
+  // ── Carga inicial ─────────────────────────────────────
+  async function loadAll() {
+    try {
+      await Promise.all([loadClientes(), loadPrescriptores()]);
+      renderClientesSelects();
+      renderTerritoriosDatalist();
+      renderTerritorioFilter();
+      renderListado();
+      buildDupIndex();
+    } catch (e) {
+      showError(e && e.message ? e.message : 'Error cargando datos');
+    }
+  }
+
+  async function loadClientes() {
+    var r = await supa.from('crm_clientes')
+      .select('id, nombre, territorio, estado')
+      .in('estado', ['piloto','activo'])
+      .order('nombre');
+    if (r.error) throw r.error;
+    state.clientes = r.data || [];
+  }
+
+  async function loadPrescriptores() {
+    var r = await supa.from('crm_prescriptores')
+      .select('id, nombre_estudio, tipo, persona_contacto, email, telefono, ciudad, territorio, instagram, web, estado, cliente_asignado, fuente, notas, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(2000);
+    if (r.error) throw r.error;
+    state.prescriptores = r.data || [];
+  }
+
+  function buildDupIndex() {
+    var emailByLower = {};
+    var phoneByNorm = {};
+    state.prescriptores.forEach(function (p) {
+      if (p.email) emailByLower[p.email.toLowerCase()] = p;
+      if (p.telefono) {
+        var n = normPhone(p.telefono);
+        if (n) phoneByNorm[n] = p;
+      }
+    });
+    state.dupIndex = { emailByLower: emailByLower, phoneByNorm: phoneByNorm };
+  }
+
+  // ── Selects compartidos ───────────────────────────────
+  function renderClientesSelects() {
+    var opts = '<option value="">Sin asignar</option>' + state.clientes.map(function (c) {
+      return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>';
+    }).join('');
+    document.getElementById('nCliente').innerHTML = opts;
+    document.getElementById('gCliente').innerHTML = opts;
+  }
+
+  function renderTerritoriosDatalist() {
+    var terr = {};
+    state.prescriptores.forEach(function (p) { if (p.territorio) terr[p.territorio] = true; });
+    state.clientes.forEach(function (c) { if (c.territorio) terr[c.territorio] = true; });
+    var html = Object.keys(terr).sort().map(function (t) {
+      return '<option value="' + esc(t) + '">';
+    }).join('');
+    document.getElementById('territoriosList').innerHTML = html;
+    document.getElementById('territoriosList2').innerHTML = html;
+  }
+
+  function renderTerritorioFilter() {
+    var terr = {};
+    state.prescriptores.forEach(function (p) { if (p.territorio) terr[p.territorio] = true; });
+    var sel = document.getElementById('fTerritorio');
+    sel.innerHTML = '<option value="">Todos los territorios</option>'
+      + Object.keys(terr).sort().map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('');
+  }
+
+  // ── Alta manual ───────────────────────────────────────
+  function wireForm() {
+    document.getElementById('formNuevo').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var row = {
+        nombre_estudio:   val('nNombre').trim(),
+        tipo:             val('nTipo'),
+        persona_contacto: nullIfEmpty(val('nPersona')),
+        email:            nullIfEmpty(val('nEmail').trim().toLowerCase()),
+        telefono:         nullIfEmpty(val('nTelefono').trim()),
+        ciudad:           nullIfEmpty(val('nCiudad').trim()),
+        territorio:       nullIfEmpty(val('nTerritorio').trim()),
+        instagram:        nullIfEmpty(val('nInstagram').trim()),
+        web:              nullIfEmpty(val('nWeb').trim()),
+        fuente:           nullIfEmpty(val('nFuente').trim()),
+        notas:            nullIfEmpty(val('nNotas').trim()),
+        cliente_asignado: nullIfEmpty(val('nCliente')),
+        estado:           'frio'
+      };
+      if (!row.nombre_estudio) { toast('Falta el nombre del estudio', true); return; }
+      if (row.email && !looksLikeEmail(row.email)) { toast('Email con formato inválido', true); return; }
+
+      var r = await supa.from('crm_prescriptores').insert(row).select().single();
+      if (r.error) {
+        if (String(r.error.message || '').match(/duplicate|unique/i)) {
+          toast('Ya existe un prescriptor con ese email', true);
+        } else {
+          toast('Error: ' + r.error.message, true);
+        }
+        return;
+      }
+      state.prescriptores.unshift(r.data);
+      buildDupIndex();
+      renderTerritoriosDatalist();
+      renderTerritorioFilter();
+      renderListado();
+      document.getElementById('formNuevo').reset();
+      toast('Prescriptor guardado');
+      // Volver al listado para que el usuario lo vea de inmediato
+      document.querySelector('.pr-tab[data-tab="listado"]').click();
+    });
+  }
+
+  // ── Listado ───────────────────────────────────────────
+  function wireFilters() {
+    ['fSearch','fEstado','fTerritorio'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', renderListado);
+      document.getElementById(id).addEventListener('change', renderListado);
+    });
+  }
+
+  function renderListado() {
+    var q = document.getElementById('fSearch').value.toLowerCase().trim();
+    var estado = document.getElementById('fEstado').value;
+    var terr = document.getElementById('fTerritorio').value;
+    var rows = state.prescriptores.filter(function (p) {
+      if (estado && p.estado !== estado) return false;
+      if (terr && p.territorio !== terr) return false;
+      if (q) {
+        var hay = ((p.nombre_estudio || '') + ' ' + (p.ciudad || '')).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+
+    document.getElementById('prCount').textContent = rows.length + ' de ' + state.prescriptores.length;
+
+    var tb = document.getElementById('prTbody');
+    if (!rows.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="pr-loading">Sin prescriptores que coincidan con el filtro.</td></tr>';
+      return;
+    }
+
+    tb.innerHTML = rows.map(function (p) {
+      return '<tr data-id="' + esc(p.id) + '">'
+        + editableCell(p, 'nombre_estudio')
+        + editableCell(p, 'tipo')
+        + editableCell(p, 'persona_contacto')
+        + editableCell(p, 'email')
+        + editableCell(p, 'telefono')
+        + editableCell(p, 'ciudad')
+        + editableCell(p, 'territorio')
+        + '<td><span class="pr-badge ' + esc(p.estado) + '">' + esc((p.estado || '').replace('_',' ')) + '</span></td>'
+        + '<td><button type="button" class="pr-nm-btn" data-nm="' + esc(p.id) + '"'
+        + (p.estado === 'no_molestar' ? ' disabled' : '')
+        + '>🚫 No molestar</button></td>'
+        + '</tr>';
+    }).join('');
+
+    wireCellEditing(tb);
+    wireNoMolestar(tb);
+  }
+
+  function editableCell(p, field) {
+    var v = p[field];
+    var isEmpty = v == null || v === '';
+    var display = isEmpty ? '(vacío)' : v;
+    return '<td class="pr-cell">'
+      + '<div class="pr-cell-editable' + (isEmpty ? ' empty' : '') + '"'
+      + ' data-field="' + esc(field) + '" tabindex="0">' + esc(display) + '</div>'
+      + '</td>';
+  }
+
+  function wireCellEditing(root) {
+    root.querySelectorAll('.pr-cell-editable').forEach(function (cell) {
+      cell.addEventListener('click', function () { beginEdit(cell); });
+      cell.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); beginEdit(cell); }
+      });
+    });
+  }
+
+  function beginEdit(cell) {
+    if (cell.querySelector('input')) return;
+    var field = cell.getAttribute('data-field');
+    var id = cell.closest('tr').getAttribute('data-id');
+    var row = findPrescriptor(id);
+    if (!row) return;
+    var currentVal = row[field] == null ? '' : String(row[field]);
+    var input;
+    if (field === 'tipo') {
+      input = document.createElement('select');
+      TIPOS_VALIDOS.forEach(function (t) {
+        var o = document.createElement('option'); o.value = t; o.textContent = t;
+        if (t === currentVal) o.selected = true; input.appendChild(o);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type = (field === 'email') ? 'email' : (field === 'telefono') ? 'tel' : 'text';
+      input.value = currentVal;
+    }
+    cell.innerHTML = ''; cell.appendChild(input); input.focus();
+    if (input.select) input.select();
+
+    var committed = false;
+    function commit() {
+      if (committed) return; committed = true;
+      var newVal = input.value.trim();
+      if (newVal === currentVal || (newVal === '' && !currentVal)) {
+        renderCellStatic(cell, field, currentVal);
+        return;
+      }
+      saveCell(id, field, newVal, cell);
+    }
+    function cancel() {
+      if (committed) return; committed = true;
+      renderCellStatic(cell, field, currentVal);
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+  }
+
+  function renderCellStatic(cell, field, value) {
+    var isEmpty = value == null || value === '';
+    cell.classList.toggle('empty', isEmpty);
+    cell.textContent = isEmpty ? '(vacío)' : String(value);
+  }
+
+  async function saveCell(id, field, newVal, cell) {
+    var row = findPrescriptor(id); if (!row) return;
+    var payload = {}; payload[field] = newVal === '' ? null : newVal;
+
+    // Validación de email antes de mandar (falta doble red por unique idx en DB)
+    if (field === 'email' && payload.email && !looksLikeEmail(payload.email)) {
+      cell.classList.add('err');
+      renderCellStatic(cell, field, row[field]);
+      toast('Email con formato inválido', true);
+      setTimeout(function(){ cell.classList.remove('err'); }, 1500);
+      return;
+    }
+
+    cell.classList.add('saving');
+    renderCellStatic(cell, field, payload[field]);
+    var r = await supa.from('crm_prescriptores').update(payload).eq('id', id).select().single();
+    cell.classList.remove('saving');
+    if (r.error) {
+      cell.classList.add('err');
+      renderCellStatic(cell, field, row[field]);
+      toast('Error: ' + r.error.message, true);
+      setTimeout(function(){ cell.classList.remove('err'); }, 1500);
+      return;
+    }
+    // Éxito: refresca la fila en el estado local
+    Object.assign(row, r.data);
+    cell.classList.add('saved');
+    setTimeout(function(){ cell.classList.remove('saved'); }, 1200);
+    buildDupIndex();
+    if (field === 'territorio') { renderTerritoriosDatalist(); renderTerritorioFilter(); }
+  }
+
+  function wireNoMolestar(root) {
+    root.querySelectorAll('[data-nm]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var id = btn.getAttribute('data-nm');
+        var row = findPrescriptor(id); if (!row) return;
+        if (!confirm('Marcar "' + row.nombre_estudio + '" como NO MOLESTAR? Este prescriptor no aparecerá más en la cola.')) return;
+        btn.disabled = true;
+        var r = await supa.from('crm_prescriptores').update({ estado: 'no_molestar' }).eq('id', id).select().single();
+        if (r.error) { btn.disabled = false; toast('Error: ' + r.error.message, true); return; }
+        Object.assign(row, r.data);
+        renderListado();
+        toast('Marcado como No molestar');
+      });
+    });
+  }
+
+  function findPrescriptor(id) {
+    for (var i = 0; i < state.prescriptores.length; i++) {
+      if (state.prescriptores[i].id === id) return state.prescriptores[i];
+    }
+    return null;
+  }
+
+  // ── Importador CSV ────────────────────────────────────
+  function wireImporter() {
+    var drop = document.getElementById('dropZone');
+    var file = document.getElementById('csvFile');
+    file.addEventListener('change', function () {
+      if (file.files && file.files[0]) readFile(file.files[0]);
+    });
+    drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', function () { drop.classList.remove('dragover'); });
+    drop.addEventListener('drop', function (e) {
+      e.preventDefault(); drop.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+    });
+
+    document.getElementById('btnParseCsv').addEventListener('click', doParse);
+    document.getElementById('btnResetImport').addEventListener('click', resetImport);
+    document.getElementById('btnBackToInput').addEventListener('click', function () {
+      show('stepInput'); hide('stepMapping'); hide('stepValidate');
+    });
+    document.getElementById('btnBackToMapping').addEventListener('click', function () {
+      show('stepMapping'); hide('stepValidate');
+    });
+    document.getElementById('btnValidate').addEventListener('click', doValidate);
+    document.getElementById('btnImport').addEventListener('click', doImport);
+    document.getElementById('downloadTemplate').addEventListener('click', function (e) {
+      e.preventDefault(); downloadTemplate();
+    });
+  }
+
+  function readFile(f) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      document.getElementById('csvPaste').value = String(reader.result || '');
+      toast('CSV cargado: ' + f.name);
+    };
+    reader.onerror = function () { toast('No se pudo leer el archivo', true); };
+    reader.readAsText(f, 'utf-8');
+  }
+
+  function resetImport() {
+    document.getElementById('csvPaste').value = '';
+    document.getElementById('csvFile').value = '';
+    document.getElementById('gTerritorio').value = '';
+    document.getElementById('gCliente').value = '';
+    document.getElementById('gFuente').value = '';
+    document.getElementById('importResult').innerHTML = '';
+    state.csv = null; state.mapping = []; state.prepared = null;
+    show('stepInput'); hide('stepMapping'); hide('stepValidate');
+  }
+
+  function doParse() {
+    var text = document.getElementById('csvPaste').value;
+    if (!text.trim()) { toast('Pega o sube un CSV primero', true); return; }
+    var sepChoice = document.getElementById('csvSep').value;
+    var sep = sepChoice === 'auto' ? autoDetectSep(text) : (sepChoice === '\\t' ? '\t' : sepChoice);
+    var parsed = parseCSV(text, sep);
+    if (!parsed.rows.length) { toast('CSV vacío', true); return; }
+    var headers = parsed.rows.shift().map(function (h) { return String(h || '').trim(); });
+    state.csv = { headers: headers, rows: parsed.rows.filter(function (r) { return r.some(function (c) { return String(c || '').trim() !== ''; }); }) };
+    state.mapping = headers.map(function (h) { return guessField(h); });
+    renderMapping();
+    show('stepMapping'); hide('stepInput'); hide('stepValidate');
+  }
+
+  function autoDetectSep(text) {
+    var firstLine = text.split(/\r?\n/)[0] || '';
+    var counts = { ',': (firstLine.match(/,/g) || []).length,
+                   ';': (firstLine.match(/;/g) || []).length,
+                   '\t': (firstLine.match(/\t/g) || []).length };
+    var best = ',', max = 0;
+    Object.keys(counts).forEach(function (k) { if (counts[k] > max) { max = counts[k]; best = k; } });
+    return best;
+  }
+
+  function parseCSV(text, sep) {
+    // Excel/Windows exportan CSV con BOM UTF-8; PostgREST y nuestros
+    // matches de cabecera no lo esperan → lo quitamos aquí.
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    var rows = [], row = [], cur = '', inQuote = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQuote) {
+        if (c === '"') {
+          if (text[i+1] === '"') { cur += '"'; i++; } else { inQuote = false; }
+        } else { cur += c; }
+      } else {
+        if (c === '"') { inQuote = true; }
+        else if (c === sep) { row.push(cur); cur = ''; }
+        else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+        else if (c === '\r') { /* skip */ }
+        else { cur += c; }
+      }
+    }
+    if (cur.length || row.length) { row.push(cur); rows.push(row); }
+    return { sep: sep, rows: rows };
+  }
+
+  function normHeader(s) {
+    return String(s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  function guessField(header) {
+    var n = normHeader(header);
+    if (!n) return '';
+    for (var field in SYNONYMS) {
+      var syns = SYNONYMS[field];
+      for (var i = 0; i < syns.length; i++) {
+        if (n === syns[i] || n.indexOf(syns[i]) !== -1 || syns[i].indexOf(n) !== -1) return field;
+      }
+    }
+    return '';
+  }
+
+  function renderMapping() {
+    var tb = document.getElementById('mappingTbody');
+    tb.innerHTML = state.csv.headers.map(function (h, i) {
+      // Muestra: primera fila no vacía en esa columna
+      var sample = '';
+      for (var r = 0; r < state.csv.rows.length && !sample; r++) {
+        var v = state.csv.rows[r][i];
+        if (v && String(v).trim()) sample = String(v).trim();
+      }
+      var opts = FIELDS.map(function (f) {
+        var sel = state.mapping[i] === f.key ? ' selected' : '';
+        return '<option value="' + esc(f.key) + '"' + sel + '>' + esc(f.label) + '</option>';
+      }).join('');
+      return '<tr>'
+        + '<td><strong>' + esc(h || '(vacío)') + '</strong></td>'
+        + '<td><div class="pr-mapping-preview" title="' + esc(sample) + '">' + esc(sample) + '</div></td>'
+        + '<td><select data-idx="' + i + '">' + opts + '</select></td>'
+        + '</tr>';
+    }).join('');
+    tb.querySelectorAll('select').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        state.mapping[Number(sel.getAttribute('data-idx'))] = sel.value;
+      });
+    });
+  }
+
+  function doValidate() {
+    state.batchGlobals = {
+      territorio:       nullIfEmpty(document.getElementById('gTerritorio').value.trim()),
+      cliente_asignado: nullIfEmpty(document.getElementById('gCliente').value),
+      fuente:           nullIfEmpty(document.getElementById('gFuente').value.trim())
+    };
+
+    // Se exige que alguien haya mapeado nombre_estudio.
+    if (state.mapping.indexOf('nombre_estudio') === -1) {
+      toast('Debes mapear una columna a "Nombre del estudio"', true);
+      return;
+    }
+
+    var prepared = [];
+    var skippedNoName = [];
+    var invalidEmails = [];
+    var dupEmail = [];
+    var dupPhone = [];
+    var intraCsvEmail = {};
+    var intraCsvPhone = {};
+
+    state.csv.rows.forEach(function (row, rowIdx) {
+      var obj = { estado: 'frio' };
+      state.mapping.forEach(function (field, colIdx) {
+        if (!field) return;
+        var v = row[colIdx];
+        if (v == null) return;
+        v = String(v).trim();
+        if (!v) return;
+        obj[field] = v;
+      });
+
+      if (state.batchGlobals.territorio && !obj.territorio) obj.territorio = state.batchGlobals.territorio;
+      if (state.batchGlobals.cliente_asignado && !obj.cliente_asignado) obj.cliente_asignado = state.batchGlobals.cliente_asignado;
+      if (state.batchGlobals.fuente && !obj.fuente) obj.fuente = state.batchGlobals.fuente;
+
+      if (!obj.nombre_estudio) {
+        skippedNoName.push({ rowIdx: rowIdx + 2, raw: row.join(' | ') });  // +2 = 1-indexed + header
+        return;
+      }
+
+      // tipo normalizado
+      if (obj.tipo) {
+        var t = obj.tipo.toLowerCase();
+        if (TIPOS_VALIDOS.indexOf(t) !== -1) obj.tipo = t;
+        else obj.tipo = 'otro';
+      }
+
+      // email
+      if (obj.email) {
+        obj.email = obj.email.toLowerCase();
+        if (!looksLikeEmail(obj.email)) {
+          invalidEmails.push({ rowIdx: rowIdx + 2, nombre: obj.nombre_estudio, email: obj.email });
+          delete obj.email;
+        }
+      }
+
+      // duplicados contra base
+      if (obj.email) {
+        var existingE = state.dupIndex.emailByLower[obj.email];
+        if (existingE) {
+          dupEmail.push({ rowIdx: rowIdx + 2, nombre: obj.nombre_estudio, email: obj.email, existing: existingE });
+          return;
+        }
+        // dup intra-CSV email
+        if (intraCsvEmail[obj.email]) {
+          dupEmail.push({ rowIdx: rowIdx + 2, nombre: obj.nombre_estudio, email: obj.email, existing: { nombre_estudio: 'fila ' + intraCsvEmail[obj.email] + ' del CSV' } });
+          return;
+        }
+        intraCsvEmail[obj.email] = rowIdx + 2;
+      }
+      if (obj.telefono) {
+        var n = normPhone(obj.telefono);
+        if (n) {
+          var existingP = state.dupIndex.phoneByNorm[n];
+          if (existingP) {
+            dupPhone.push({ rowIdx: rowIdx + 2, nombre: obj.nombre_estudio, telefono: obj.telefono, existing: existingP });
+            return;
+          }
+          if (intraCsvPhone[n]) {
+            dupPhone.push({ rowIdx: rowIdx + 2, nombre: obj.nombre_estudio, telefono: obj.telefono, existing: { nombre_estudio: 'fila ' + intraCsvPhone[n] + ' del CSV' } });
+            return;
+          }
+          intraCsvPhone[n] = rowIdx + 2;
+        }
+      }
+
+      prepared.push(obj);
+    });
+
+    state.prepared = prepared;
+    renderValidation({
+      total: state.csv.rows.length,
+      prepared: prepared,
+      skippedNoName: skippedNoName,
+      invalidEmails: invalidEmails,
+      dupEmail: dupEmail,
+      dupPhone: dupPhone
+    });
+    show('stepValidate'); hide('stepMapping');
+  }
+
+  function renderValidation(v) {
+    var sum = document.getElementById('valSummary');
+    sum.innerHTML = ''
+      + line('Filas en CSV',                v.total,                          '')
+      + line('A importar',                  v.prepared.length,                v.prepared.length ? 'ok' : 'warn')
+      + line('Descartadas sin nombre',      v.skippedNoName.length,           v.skippedNoName.length ? 'warn' : '')
+      + line('Emails con formato inválido', v.invalidEmails.length + ' (se importan sin email)', v.invalidEmails.length ? 'warn' : '')
+      + line('Duplicados por email',        v.dupEmail.length,                v.dupEmail.length ? 'err' : '')
+      + line('Duplicados por teléfono',     v.dupPhone.length,                v.dupPhone.length ? 'err' : '');
+
+    var det = document.getElementById('valDetails');
+    det.innerHTML = ''
+      + details('Filas descartadas sin nombre_estudio', v.skippedNoName.map(function (r) {
+          return 'Fila ' + r.rowIdx + ': ' + esc(truncate(r.raw, 120));
+        }))
+      + details('Emails inválidos (se importan sin email)', v.invalidEmails.map(function (r) {
+          return 'Fila ' + r.rowIdx + ' — ' + esc(r.nombre) + ' — ' + esc(r.email);
+        }))
+      + details('Duplicados por email (se ignoran)', v.dupEmail.map(function (r) {
+          var link = r.existing.id
+            ? '?fSearch=' + encodeURIComponent(r.existing.nombre_estudio || '')
+            : '';
+          return 'Fila ' + r.rowIdx + ' — ' + esc(r.nombre) + ' — ' + esc(r.email)
+            + ' → ' + (link ? '<a href="prescriptores.html' + link + '">' : '')
+            + esc(r.existing.nombre_estudio || '')
+            + (link ? '</a>' : '');
+        }))
+      + details('Duplicados por teléfono (se ignoran)', v.dupPhone.map(function (r) {
+          var link = r.existing.id
+            ? '?fSearch=' + encodeURIComponent(r.existing.nombre_estudio || '')
+            : '';
+          return 'Fila ' + r.rowIdx + ' — ' + esc(r.nombre) + ' — ' + esc(r.telefono)
+            + ' → ' + (link ? '<a href="prescriptores.html' + link + '">' : '')
+            + esc(r.existing.nombre_estudio || '')
+            + (link ? '</a>' : '');
+        }));
+
+    document.getElementById('btnImport').textContent = v.prepared.length
+      ? ('Importar ' + v.prepared.length + ' prescriptor' + (v.prepared.length !== 1 ? 'es' : ''))
+      : 'Nada que importar';
+    document.getElementById('btnImport').disabled = !v.prepared.length;
+  }
+
+  function line(label, value, cls) {
+    return '<div class="pr-val-line ' + cls + '"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>';
+  }
+  function details(title, items) {
+    if (!items.length) return '';
+    return '<details class="pr-details"><summary>' + esc(title) + ' (' + items.length + ')</summary><ul>'
+      + items.map(function (h) { return '<li>' + h + '</li>'; }).join('')
+      + '</ul></details>';
+  }
+  function truncate(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
+
+  async function doImport() {
+    var rows = state.prepared || [];
+    if (!rows.length) return;
+    var btn = document.getElementById('btnImport');
+    btn.disabled = true; btn.textContent = 'Importando…';
+
+    var inserted = 0;
+    var perRowErrors = [];  // { row, error }
+
+    for (var i = 0; i < rows.length; i += 100) {
+      var batch = rows.slice(i, i + 100);
+      var r = await supa.from('crm_prescriptores').insert(batch).select('id');
+      if (!r.error) {
+        inserted += (r.data || batch).length;
+        continue;
+      }
+      // Cae a insert fila-a-fila para reportar cuáles fallan. Un batch
+      // completo suele romperse por el índice unique parcial de email
+      // si una fila colisiona con otra recién insertada en paralelo
+      // desde otra sesión, o por un email duplicado que no detectamos.
+      for (var j = 0; j < batch.length; j++) {
+        var rr = await supa.from('crm_prescriptores').insert(batch[j]).select('id').maybeSingle();
+        if (rr.error) perRowErrors.push({ row: batch[j], error: rr.error.message });
+        else inserted++;
+      }
+    }
+
+    // Refresca el estado y el listado
+    await loadPrescriptores();
+    buildDupIndex();
+    renderTerritoriosDatalist();
+    renderTerritorioFilter();
+    renderListado();
+
+    document.getElementById('importResult').innerHTML = ''
+      + '<div class="pr-result">'
+      + '<h3>Importación completada</h3>'
+      + line('Prescriptores insertados', inserted, 'ok')
+      + line('Errores por fila',         perRowErrors.length, perRowErrors.length ? 'err' : '')
+      + details('Errores', perRowErrors.map(function (e) {
+          return esc((e.row.nombre_estudio || '(sin nombre)')) + ' — ' + esc(e.error);
+        }))
+      + '<div class="pr-form-actions" style="margin-top:.8rem">'
+      +   '<button type="button" class="ash-btn" id="btnGotoListado">Ver listado</button>'
+      +   '<button type="button" class="ash-btn ash-btn-outline" id="btnImportarMas">Importar otro CSV</button>'
+      + '</div>'
+      + '</div>';
+    document.getElementById('btnGotoListado').addEventListener('click', function () {
+      document.querySelector('.pr-tab[data-tab="listado"]').click();
+    });
+    document.getElementById('btnImportarMas').addEventListener('click', resetImport);
+
+    toast(inserted + ' prescriptores importados');
+    btn.disabled = false; btn.textContent = 'Importar';
+  }
+
+  function downloadTemplate() {
+    var csv = 'nombre_estudio;tipo;persona_contacto;email;telefono;ciudad;territorio;instagram;web;fuente;notas\n'
+      + 'Estudio Ejemplo;arquitecto;Nombre Apellidos;contacto@ejemplo.com;612345678;Barcelona;Cataluña;@estudio;https://estudio.com;Instagram;\n';
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'plantilla-prescriptores.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  // ── Helpers ───────────────────────────────────────────
+  function show(id) { document.getElementById(id).hidden = false; }
+  function hide(id) { document.getElementById(id).hidden = true; }
+  function val(id) { return document.getElementById(id).value; }
+  function nullIfEmpty(v) { v = (v == null ? '' : String(v)).trim(); return v === '' ? null : v; }
+  function looksLikeEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+  function normPhone(s) { return String(s || '').replace(/[\s.\-()+]/g, ''); }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+  function toast(msg, isErr) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+  function showError(msg) {
+    document.getElementById('errBox').innerHTML = '<div class="pr-error">' + esc(msg) + '</div>';
+  }
+
+  // Deep-link ?fSearch=... para "ir al duplicado" desde la validación
+  (function applyQueryFilters() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('fSearch')) {
+      var wait = setInterval(function () {
+        var el = document.getElementById('fSearch');
+        if (el) { clearInterval(wait); el.value = params.get('fSearch'); el.dispatchEvent(new Event('input')); }
+      }, 200);
+    }
+  })();
+})();
+</script>
+</body>
+</html>
