@@ -51,7 +51,7 @@ curino-web/
 ├── supabase/
 │   ├── config.toml                         ← registro de Edge Functions (enabled + verify_jwt)
 │   ├── functions/                          ← Edge Functions Deno
-│   └── migrations/YYYYMMDD_*.sql           ← migraciones vigentes (formato timestamp)
+│   └── migrations/YYYYMMDDHHMMSS_*.sql     ← migraciones vigentes (timestamp completo)
 ├── supabase-*.sql                          ← SQL legacy (ejecutar en SQL Editor manualmente)
 ├── CONSENT_AUDIT.md                        ← auditoría cobertura consent Mode v2 (junio 2026)
 └── vercel.json                             ← rewrites + redirects (no crons, no builds)
@@ -63,7 +63,7 @@ curino-web/
 
 Dos convenciones coexisten:
 
-- `/supabase/migrations/YYYYMMDD_<snake>.sql` — **formato vigente** consumido por `supabase db push`. Todo lo nuevo (>= mayo 2026) va aquí.
+- `/supabase/migrations/YYYYMMDDHHMMSS_<snake>.sql` — **formato vigente** consumido por `supabase db push`. Timestamp completo obligatorio: el CLI usa la versión como PK en `supabase_migrations.schema_migrations` y colisiona si dos archivos comparten prefijo (pasó en septiembre 2026 con los prefijos `YYYYMMDD` a secas y forzó un renombrado retroactivo — ver commit chore(supabase): prefijos únicos). Si vas a crear varias en el mismo día usa `HHMMSS` real o incremental `000001`, `000002`… Todo lo nuevo va aquí.
 - `/supabase-<módulo>-<fase>.sql` en la raíz — formato legacy, ejecutado a mano en el SQL Editor. Todavía es la fuente de verdad para varias tablas (`invoice_counters`, `library_items`, `magazine_articles`, `marketplace_orders`, etc. — creados antes de `supabase/migrations/`).
 
 Las migraciones son idempotentes por diseño: `create table if not exists`, `create or replace function`, `drop policy if exists ... create policy`. Se pueden reejecutar sin daño.
