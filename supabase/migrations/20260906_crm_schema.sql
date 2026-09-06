@@ -191,18 +191,43 @@ create trigger trg_crm_reuniones_updated_at
 -- =============================================================
 -- 5. Vista crm_metricas_cliente_mes — base de la garantía
 -- =============================================================
--- Una fila por cliente y mes con nº de reuniones agendadas y
--- celebradas. Es la fuente para "mes sin reunión = mes gratis".
--- El mes se calcula por fecha_reunion (no por created_at) porque
--- la garantía se computa sobre lo entregado en ese mes natural.
+-- Una fila por cliente y mes con dos conteos que NO se agrupan
+-- por el mismo criterio:
+--   * reuniones_agendadas → date_trunc('month', created_at)
+--     Es el mes en que el SDR ENTREGA. Es lo que cuenta para la
+--     garantía "mes sin reunión = mes gratis": lo que importa es
+--     cuántas reuniones se cerraron ese mes, no cuándo caían.
+--   * reuniones_celebradas → date_trunc('month', fecha_reunion)
+--     Es el mes en que la reunión ocurrió de verdad. Se cuentan
+--     sólo las que llegaron al estado 'celebrada'.
+-- Como los dos agrupadores son distintos, se combinan con FULL
+-- OUTER JOIN por (cliente_id, mes) y coalesce a 0.
 create or replace view crm_metricas_cliente_mes as
+with agendadas as (
+  select
+    cliente_id,
+    date_trunc('month', created_at)::date as mes,
+    count(*)::int as reuniones_agendadas
+  from crm_reuniones
+  group by cliente_id, date_trunc('month', created_at)
+),
+celebradas as (
+  select
+    cliente_id,
+    date_trunc('month', fecha_reunion)::date as mes,
+    count(*)::int as reuniones_celebradas
+  from crm_reuniones
+  where estado = 'celebrada'
+  group by cliente_id, date_trunc('month', fecha_reunion)
+)
 select
-  cliente_id,
-  date_trunc('month', fecha_reunion)::date as mes,
-  count(*)::int as reuniones_agendadas,
-  count(*) filter (where estado = 'celebrada')::int as reuniones_celebradas
-from crm_reuniones
-group by cliente_id, date_trunc('month', fecha_reunion);
+  coalesce(a.cliente_id, c.cliente_id) as cliente_id,
+  coalesce(a.mes, c.mes)               as mes,
+  coalesce(a.reuniones_agendadas, 0)   as reuniones_agendadas,
+  coalesce(c.reuniones_celebradas, 0)  as reuniones_celebradas
+from agendadas a
+full outer join celebradas c
+  on c.cliente_id = a.cliente_id and c.mes = a.mes;
 
 -- =============================================================
 -- 6. Vista crm_portal_reuniones — placeholder para portal cliente
