@@ -65,7 +65,8 @@
     {
       group: 'CRM',
       items: [
-        { id: 'crm-cola', label: 'Cola de llamadas', href: '/admin/crm/' }
+        { id: 'crm-cola',           label: 'Cola de llamadas', href: '/admin/crm/' },
+        { id: 'crm-prescriptores',  label: 'Prescriptores',    href: '/admin/crm/prescriptores.html' }
       ]
     }
   ];
