@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM · Métricas — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+/* ─── Layout general ────────────────────────────────────── */
+.mt-hero{margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.mt-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.25rem}
+.mt-hero p{color:#666;font-size:13px;margin:0}
+.mt-hero a.back{font-size:12px;color:#888;text-decoration:none}
+.mt-hero a.back:hover{color:#1a1a1a}
+
+/* ─── Filtros ──────────────────────────────────────────── */
+.mt-filters{
+  display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;
+  background:#fff;border:1px solid #e5e5e5;border-radius:10px;
+  padding:.75rem;margin-bottom:1.5rem;
+}
+.mt-filters label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:600}
+.mt-filters select{
+  font-family:inherit;font-size:13px;color:#1a1a1a;
+  background:#fafaf7;border:1px solid #e5e5e5;border-radius:6px;
+  padding:.4rem .6rem;min-width:180px;
+}
+
+/* ─── Sección genérica ────────────────────────────────── */
+.mt-section{margin-bottom:2rem}
+.mt-section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#888;font-weight:700;margin-bottom:.75rem;display:flex;align-items:baseline;gap:.5rem}
+.mt-section-title .hint{color:#bbb;font-size:11px;text-transform:none;letter-spacing:0;font-weight:400;font-style:italic}
+
+/* ─── Tabla garantía ──────────────────────────────────── */
+.mt-table-wrap{overflow-x:auto;background:#fff;border:1px solid #e5e5e5;border-radius:10px}
+.mt-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+.mt-table thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  color:#888;font-weight:700;padding:.7rem .9rem;border-bottom:1px solid #e5e5e5;background:#fafaf7;
+}
+.mt-table thead th.num{text-align:right}
+.mt-table tbody td{padding:.65rem .9rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
+.mt-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
+.mt-table tbody tr:hover td{background:#faf9f4}
+.mt-cliente{font-weight:600;color:#1a1a1a}
+.mt-mes{color:#666;font-size:12px}
+
+.mt-sem{
+  display:inline-block;padding:.2rem .7rem;border-radius:99px;
+  font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+}
+.mt-sem.green{background:#d7ecdc;color:#1e5b23}
+.mt-sem.amber{background:#fdf3d9;color:#8a6a1c}
+.mt-sem.red{background:#a83232;color:#fff;box-shadow:0 0 0 2px #fdb;animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 2px rgba(168,50,50,.15)}50%{box-shadow:0 0 0 4px rgba(168,50,50,.35)}}
+.mt-sem-note{font-size:11px;color:#a83232;margin-left:.4rem;font-weight:600}
+
+/* ─── Embudo ──────────────────────────────────────────── */
+.mt-embudo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.mt-embudo{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.1rem 1.25rem;display:flex;flex-direction:column}
+.mt-embudo-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.85rem}
+.mt-embudo-name{font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3}
+.mt-embudo-sub{font-size:11px;color:#888;margin-top:.15rem}
+.mt-embudo-body{display:grid;grid-template-columns:1fr 1fr;gap:.55rem 1rem;margin-bottom:.85rem}
+.mt-embudo-stat{display:flex;flex-direction:column;padding:.5rem .7rem;background:#faf9f4;border-radius:8px}
+.mt-embudo-stat.big{grid-column:span 2;background:#111;color:#fff}
+.mt-embudo-stat.big .mt-stat-label{color:rgba(255,255,255,.55)}
+.mt-embudo-stat.big .mt-stat-value{color:#fff;font-size:26px}
+.mt-stat-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#888;font-weight:600}
+.mt-stat-value{font-size:20px;font-weight:700;color:#1a1a1a;margin-top:.15rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.mt-stat-value .pct{font-size:12px;color:#888;margin-left:.3rem;font-weight:600}
+.mt-embudo .mt-copy{
+  margin-top:auto;background:#fff;border:1px solid #e5e5e5;color:#1a1a1a;
+  padding:.5rem .8rem;border-radius:6px;font-family:inherit;font-size:12px;
+  cursor:pointer;font-weight:600;letter-spacing:.02em;
+  transition:background .15s, border-color .15s, color .15s;
+}
+.mt-embudo .mt-copy:hover{background:#111;color:#fff;border-color:#111}
+.mt-embudo .mt-copy.copied{background:#2e7d32;color:#fff;border-color:#2e7d32}
+
+/* ─── Detalle reuniones ──────────────────────────────── */
+.mt-detalle{overflow-x:auto;background:#fff;border:1px solid #e5e5e5;border-radius:10px}
+.mt-detalle table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+.mt-detalle thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  color:#888;font-weight:700;padding:.7rem .9rem;border-bottom:1px solid #e5e5e5;background:#fafaf7;
+}
+.mt-detalle tbody td{padding:.55rem .9rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
+.mt-detalle .mt-notes{color:#666;font-size:12px;max-width:340px;white-space:normal;line-height:1.4}
+
+.mt-edit-select, .mt-edit-input{
+  padding:.35rem .5rem;border:1px solid #ddd;border-radius:4px;
+  font-family:inherit;font-size:12px;background:#fff;color:#1a1a1a;min-width:120px;
+}
+.mt-edit-input.num{width:110px;text-align:right;min-width:0}
+.mt-edit-saving{opacity:.55}
+.mt-edit-saved{outline:2px solid #2e7d32;outline-offset:1px}
+.mt-edit-err{outline:2px solid #a83232;outline-offset:1px}
+
+/* ─── Estados vacíos ─────────────────────────────────── */
+.mt-empty{background:#fff;border:1px dashed #d6d3ca;border-radius:10px;padding:1.5rem;text-align:center;color:#888;font-size:13px}
+.mt-loading{padding:2rem;text-align:center;color:#888;font-size:13px}
+.mt-error{background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px}
+
+/* ─── Toast ─────────────────────────────────────────── */
+.mt-toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  background:#1a1a1a;color:#fff;padding:.7rem 1.1rem;border-radius:8px;
+  font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+  z-index:200;pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.mt-toast.show{opacity:1}
+.mt-toast.err{background:#a83232}
+
+@media(max-width:640px){
+  .mt-filters select{min-width:0;flex:1 1 140px}
+  .mt-embudo-body{grid-template-columns:1fr}
+  .mt-embudo-stat.big{grid-column:span 1}
+}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="mt-hero">
+    <div>
+      <h1>Métricas del CRM</h1>
+      <p>Garantía por cliente-mes, embudo del periodo y detalle de reuniones.</p>
+    </div>
+    <a class="back" href="/admin/crm/">← Volver a la cola</a>
+  </div>
+
+  <div class="mt-filters">
+    <label for="fCliente">Cliente</label>
+    <select id="fCliente"><option value="">Todos</option></select>
+    <label for="fRango">Rango</label>
+    <select id="fRango">
+      <option value="este_mes">Este mes</option>
+      <option value="mes_pasado">Mes pasado</option>
+      <option value="ultimos_6">Últimos 6 meses</option>
+    </select>
+  </div>
+
+  <div id="errBox"></div>
+
+  <!-- Garantía -->
+  <section class="mt-section">
+    <div class="mt-section-title">
+      Garantía por cliente y mes
+      <span class="hint">rojo = mes sin reuniones (garantía activada, mes gratis)</span>
+    </div>
+    <div class="mt-table-wrap">
+      <table class="mt-table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Mes</th>
+            <th class="num">Agendadas</th>
+            <th class="num">Celebradas</th>
+            <th class="num">Objetivo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tblGarantia">
+          <tr><td colspan="6" class="mt-loading">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Embudo -->
+  <section class="mt-section">
+    <div class="mt-section-title">Embudo del periodo</div>
+    <div id="embudoGrid" class="mt-embudo-grid">
+      <div class="mt-loading">Cargando…</div>
+    </div>
+  </section>
+
+  <!-- Detalle reuniones -->
+  <section class="mt-section">
+    <div class="mt-section-title" id="detalleTitle">Reuniones del periodo</div>
+    <div class="mt-detalle" id="detalleWrap">
+      <div class="mt-loading">Cargando…</div>
+    </div>
+  </section>
+</main>
+
+<div class="mt-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+/* ============================================================
+ * CRM · Métricas
+ * ============================================================
+ * Panel de lectura + edición de resultado de reunión. Todo vía
+ * cliente Supabase con el JWT del usuario. RLS is_crm_staff decide.
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var supa;
+
+  var state = {
+    clientes: [],           // TODOS los estados (para el selector)
+    metricasRows: [],       // filas de crm_metricas_cliente_mes en el rango
+    llamadas: [],           // crm_llamadas en el rango
+    reuniones: [],          // crm_reuniones en el rango con nombre_estudio embebido
+    filterCliente: '',
+    filterRango: 'este_mes'
+  };
+
+  var ESTADOS_REUNION = ['agendada','celebrada','no_show','reprogramada','cancelada'];
+  var RESULTADOS_CLIENTE = ['pendiente','proyecto_en_curso','presupuesto_enviado','sin_interes'];
+
+  // ── Arranque ──────────────────────────────────────────
+  initAdminShell({ activeSection: 'crm-metricas', title: 'CRM · Métricas' })
+    .then(function (ctx) {
+      supa = ctx.supabase;
+      wireFilters();
+      return loadAll();
+    })
+    .catch(function () { /* admin-shell redirige */ });
+
+  function wireFilters() {
+    document.getElementById('fCliente').addEventListener('change', function (e) {
+      state.filterCliente = e.target.value; loadAll();
+    });
+    document.getElementById('fRango').addEventListener('change', function (e) {
+      state.filterRango = e.target.value; loadAll();
+    });
+  }
+
+  // ── Carga ─────────────────────────────────────────────
+  async function loadAll() {
+    document.getElementById('errBox').innerHTML = '';
+    document.getElementById('tblGarantia').innerHTML = '<tr><td colspan="6" class="mt-loading">Cargando…</td></tr>';
+    document.getElementById('embudoGrid').innerHTML = '<div class="mt-loading">Cargando…</div>';
+    document.getElementById('detalleWrap').innerHTML = '<div class="mt-loading">Cargando…</div>';
+
+    var range = getRange(state.filterRango);
+    try {
+      if (!state.clientes.length) await loadClientes();
+      renderClientesSelect();
+      await Promise.all([
+        loadMetricasView(range),
+        loadLlamadas(range),
+        loadReuniones(range)
+      ]);
+      renderGarantia(range);
+      renderEmbudo(range);
+      renderDetalle(range);
+    } catch (e) {
+      showError(e && e.message ? e.message : 'Error cargando métricas');
+    }
+  }
+
+  async function loadClientes() {
+    var r = await supa.from('crm_clientes')
+      .select('id, nombre, estado, objetivo_reuniones_mes')
+      .order('nombre');
+    if (r.error) throw r.error;
+    state.clientes = r.data || [];
+  }
+
+  async function loadMetricasView(range) {
+    // El mes en la vista viene como date (primer día del mes). Filtramos
+    // por >= start del rango. Si se filtra por cliente, restringimos.
+    // `mes` en la vista es date (primer día del mes); comparamos con
+    // date en lugar de con timestamp ISO para que PostgREST no tenga que
+    // castear.
+    var q = supa.from('crm_metricas_cliente_mes')
+      .select('cliente_id, mes, reuniones_agendadas, reuniones_celebradas')
+      .gte('mes', range.startDate);
+    if (state.filterCliente) q = q.eq('cliente_id', state.filterCliente);
+    var r = await q;
+    if (r.error) throw r.error;
+    state.metricasRows = r.data || [];
+  }
+
+  async function loadLlamadas(range) {
+    var q = supa.from('crm_llamadas')
+      .select('id, cliente_id, resultado, fecha')
+      .gte('fecha', range.startIso)
+      .lt('fecha', range.endIso);
+    if (state.filterCliente) q = q.eq('cliente_id', state.filterCliente);
+    var r = await q;
+    if (r.error) throw r.error;
+    state.llamadas = r.data || [];
+  }
+
+  async function loadReuniones(range) {
+    var q = supa.from('crm_reuniones')
+      .select('id, cliente_id, prescriptor_id, fecha_reunion, estado, resultado_cliente, valor_estimado, notas_sdr, notas_cliente, created_at, crm_prescriptores(nombre_estudio)')
+      .gte('fecha_reunion', range.startIso)
+      .lt('fecha_reunion', range.endIso)
+      .order('fecha_reunion', { ascending: false });
+    if (state.filterCliente) q = q.eq('cliente_id', state.filterCliente);
+    var r = await q;
+    if (r.error) throw r.error;
+    state.reuniones = r.data || [];
+  }
+
+  // ── Rango ─────────────────────────────────────────────
+  function getRange(kind) {
+    var today = new Date();
+    var y = today.getFullYear(), m = today.getMonth();
+    if (kind === 'mes_pasado') {
+      var s = new Date(y, m - 1, 1), e = new Date(y, m, 1);
+      return build(s, e, [monthKey(s)]);
+    }
+    if (kind === 'ultimos_6') {
+      var s6 = new Date(y, m - 5, 1), e6 = new Date(y, m + 1, 1);
+      var months = [];
+      for (var i = -5; i <= 0; i++) months.push(monthKey(new Date(y, m + i, 1)));
+      return build(s6, e6, months);
+    }
+    // default: este_mes
+    var s0 = new Date(y, m, 1), e0 = new Date(y, m + 1, 1);
+    return build(s0, e0, [monthKey(s0)]);
+  }
+  function build(start, end, months) {
+    return {
+      start: start, end: end, months: months,
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+      startDate: start.toISOString().slice(0, 10),
+      label: rangeLabel(start, end, months)
+    };
+  }
+  function rangeLabel(start, end, months) {
+    if (months.length === 1) return monthName(start);
+    return monthName(start) + ' – ' + monthName(new Date(end.getFullYear(), end.getMonth() - 1, 1));
+  }
+  function monthKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1); }
+  function monthName(d) {
+    var names = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return names[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function monthNameFromKey(key) {
+    var parts = key.split('-');
+    return monthName(new Date(Number(parts[0]), Number(parts[1]) - 1, 1));
+  }
+
+  // ── Render selects ────────────────────────────────────
+  function renderClientesSelect() {
+    var sel = document.getElementById('fCliente');
+    sel.innerHTML = '<option value="">Todos</option>' + state.clientes.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (c.id === state.filterCliente ? ' selected' : '') + '>'
+        + esc(c.nombre) + '</option>';
+    }).join('');
+  }
+
+  // ── Render garantía ───────────────────────────────────
+  function renderGarantia(range) {
+    // Grid completo: clientes × meses del rango. Rellena con ceros los
+    // meses sin fila en la vista (la vista sólo produce fila si hubo
+    // al menos una reunión); esos ceros son exactamente el rojo.
+    var clientes = state.filterCliente
+      ? state.clientes.filter(function (c) { return c.id === state.filterCliente; })
+      : state.clientes;
+
+    // Índice { cliente_id → { monthKey → row } }
+    var idx = {};
+    state.metricasRows.forEach(function (r) {
+      var key = r.mes.slice(0, 7);
+      if (!idx[r.cliente_id]) idx[r.cliente_id] = {};
+      idx[r.cliente_id][key] = r;
+    });
+
+    var rows = [];
+    clientes.forEach(function (c) {
+      range.months.forEach(function (mkey) {
+        var v = (idx[c.id] || {})[mkey] || { reuniones_agendadas: 0, reuniones_celebradas: 0 };
+        rows.push({
+          cliente: c,
+          mes: mkey,
+          agendadas: v.reuniones_agendadas,
+          celebradas: v.reuniones_celebradas
+        });
+      });
+    });
+
+    // Ordena por cliente y luego mes desc (mes más reciente arriba)
+    rows.sort(function (a, b) {
+      if (a.cliente.nombre !== b.cliente.nombre) return a.cliente.nombre.localeCompare(b.cliente.nombre);
+      return b.mes.localeCompare(a.mes);
+    });
+
+    var tb = document.getElementById('tblGarantia');
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" class="mt-empty">Sin datos para el filtro seleccionado.</td></tr>'; return; }
+
+    tb.innerHTML = rows.map(function (r) {
+      var obj = r.cliente.objetivo_reuniones_mes;
+      var sem = semaforo(r.agendadas, obj);
+      var note = sem === 'red' ? '<span class="mt-sem-note">Garantía activada</span>' : '';
+      return '<tr>'
+        + '<td><div class="mt-cliente">' + esc(r.cliente.nombre) + '</div></td>'
+        + '<td><div class="mt-mes">' + esc(monthNameFromKey(r.mes)) + '</div></td>'
+        + '<td class="num">' + r.agendadas + '</td>'
+        + '<td class="num">' + r.celebradas + '</td>'
+        + '<td class="num">' + obj + '</td>'
+        + '<td><span class="mt-sem ' + sem + '">' + semaforoLabel(sem) + '</span>' + note + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  function semaforo(agendadas, objetivo) {
+    if (agendadas === 0) return 'red';
+    if (agendadas < objetivo) return 'amber';
+    return 'green';
+  }
+  function semaforoLabel(sem) {
+    return sem === 'green' ? 'Objetivo' : sem === 'amber' ? 'Bajo objetivo' : 'Sin reuniones';
+  }
+
+  // ── Render embudo ─────────────────────────────────────
+  function renderEmbudo(range) {
+    var clientes = state.filterCliente
+      ? state.clientes.filter(function (c) { return c.id === state.filterCliente; })
+      : state.clientes;
+
+    // Aggregate llamadas per cliente
+    var agg = {};
+    state.llamadas.forEach(function (l) {
+      if (!agg[l.cliente_id]) agg[l.cliente_id] = { total: 0, conv: 0, reu: 0 };
+      agg[l.cliente_id].total++;
+      if (l.resultado === 'conversacion' || l.resultado === 'reunion_agendada') agg[l.cliente_id].conv++;
+      if (l.resultado === 'reunion_agendada') agg[l.cliente_id].reu++;
+    });
+
+    var grid = document.getElementById('embudoGrid');
+    if (!clientes.length) { grid.innerHTML = '<div class="mt-empty">Sin clientes en el filtro.</div>'; return; }
+
+    grid.innerHTML = clientes.map(function (c) {
+      var a = agg[c.id] || { total: 0, conv: 0, reu: 0 };
+      var contactoPct = a.total ? Math.round((a.conv / a.total) * 100) : null;
+      var conversionPct = a.conv ? Math.round((a.reu / a.conv) * 100) : null;
+
+      return '<div class="mt-embudo" data-cliente="' + esc(c.id) + '">'
+        + '<div class="mt-embudo-head">'
+        +   '<div>'
+        +     '<div class="mt-embudo-name">' + esc(c.nombre) + '</div>'
+        +     '<div class="mt-embudo-sub">' + esc(range.label) + ' · objetivo ' + c.objetivo_reuniones_mes + '/mes</div>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="mt-embudo-body">'
+        +   stat('Llamadas',       a.total,          null,          true)
+        +   stat('Conversaciones', a.conv,           contactoPct,   false)
+        +   stat('Reuniones',      a.reu,            null,          false)
+        +   stat('Contacto %',     pct(contactoPct), null,          false)
+        +   stat('Conversión %',   pct(conversionPct), null,        false)
+        + '</div>'
+        + '<button type="button" class="mt-copy" data-copy-cliente="' + esc(c.id) + '">📋 Copiar informe</button>'
+        + '</div>';
+    }).join('');
+
+    grid.querySelectorAll('[data-copy-cliente]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        copyReport(btn.getAttribute('data-copy-cliente'), range, btn);
+      });
+    });
+  }
+
+  function stat(label, value, pctVal, big) {
+    var pctHtml = pctVal != null ? '<span class="pct">' + pctVal + '%</span>' : '';
+    return '<div class="mt-embudo-stat' + (big ? ' big' : '') + '">'
+      + '<div class="mt-stat-label">' + esc(label) + '</div>'
+      + '<div class="mt-stat-value">' + esc(String(value)) + pctHtml + '</div>'
+      + '</div>';
+  }
+  function pct(v) { return v == null ? '—' : v; }
+
+  // ── Render detalle reuniones ──────────────────────────
+  function renderDetalle(range) {
+    var wrap = document.getElementById('detalleWrap');
+    var title = document.getElementById('detalleTitle');
+    title.textContent = state.filterCliente
+      ? 'Reuniones del periodo — ' + (clienteById(state.filterCliente) || { nombre: '' }).nombre
+      : 'Reuniones del periodo';
+
+    if (!state.reuniones.length) {
+      wrap.innerHTML = '<div class="mt-empty">Sin reuniones en el rango seleccionado.</div>';
+      return;
+    }
+
+    var rows = state.reuniones.map(function (r) {
+      var estudio = (r.crm_prescriptores && r.crm_prescriptores.nombre_estudio) || '(sin prescriptor)';
+      var cliente = state.filterCliente ? '' : '<td>' + esc((clienteById(r.cliente_id) || {}).nombre || '') + '</td>';
+      return '<tr data-id="' + esc(r.id) + '">'
+        + '<td>' + esc(fmtDate(r.fecha_reunion)) + '</td>'
+        + '<td>' + esc(estudio) + '</td>'
+        + cliente
+        + '<td>' + selectEditable('estado', r.estado, ESTADOS_REUNION) + '</td>'
+        + '<td>' + selectEditable('resultado_cliente', r.resultado_cliente, RESULTADOS_CLIENTE) + '</td>'
+        + '<td>' + numEditable('valor_estimado', r.valor_estimado) + '</td>'
+        + '<td class="mt-notes">' + esc(r.notas_sdr || '') + '</td>'
+        + '</tr>';
+    }).join('');
+
+    var clienteCol = state.filterCliente ? '' : '<th>Cliente</th>';
+    wrap.innerHTML = '<table>'
+      + '<thead><tr>'
+      +   '<th>Fecha</th><th>Estudio</th>' + clienteCol
+      +   '<th>Estado</th><th>Resultado cliente</th><th>Valor est. (€)</th><th>Notas SDR</th>'
+      + '</tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+      + '</table>';
+
+    wireDetalleEdits(wrap);
+  }
+
+  function selectEditable(field, value, options) {
+    return '<select class="mt-edit-select" data-field="' + esc(field) + '">'
+      + options.map(function (o) {
+          return '<option value="' + esc(o) + '"' + (o === value ? ' selected' : '') + '>' + esc(o.replace('_',' ')) + '</option>';
+        }).join('')
+      + '</select>';
+  }
+  function numEditable(field, value) {
+    return '<input class="mt-edit-input num" type="number" step="1" min="0" data-field="' + esc(field) + '"'
+      + ' value="' + (value == null ? '' : esc(String(value))) + '" placeholder="—">';
+  }
+
+  function wireDetalleEdits(root) {
+    root.querySelectorAll('[data-field]').forEach(function (el) {
+      var initial = el.value;
+      el.addEventListener('change', function () { saveEdit(el, initial); initial = el.value; });
+      // números: también en blur por si el usuario no cambia el foco a otro campo
+      if (el.tagName === 'INPUT') {
+        el.addEventListener('blur', function () { if (el.value !== initial) { saveEdit(el, initial); initial = el.value; } });
+      }
+    });
+  }
+
+  async function saveEdit(el, prevValue) {
+    var tr = el.closest('tr');
+    var id = tr.getAttribute('data-id');
+    var field = el.getAttribute('data-field');
+    var raw = el.value;
+    var payload = {};
+    if (field === 'valor_estimado') {
+      payload[field] = raw === '' ? null : Number(raw);
+      if (payload[field] != null && (isNaN(payload[field]) || payload[field] < 0)) {
+        markErr(el); el.value = prevValue; toast('Valor no válido', true); return;
+      }
+    } else {
+      payload[field] = raw;
+    }
+
+    el.classList.add('mt-edit-saving');
+    var r = await supa.from('crm_reuniones').update(payload).eq('id', id).select().single();
+    el.classList.remove('mt-edit-saving');
+    if (r.error) {
+      markErr(el); el.value = prevValue; toast('Error: ' + r.error.message, true); return;
+    }
+    // Actualiza estado local para que "Copiar informe" refleje el cambio.
+    var reuIndex = state.reuniones.findIndex(function (x) { return x.id === id; });
+    if (reuIndex !== -1) Object.assign(state.reuniones[reuIndex], r.data);
+    markOk(el);
+    toast('Guardado');
+  }
+
+  function markOk(el) { el.classList.add('mt-edit-saved'); setTimeout(function(){ el.classList.remove('mt-edit-saved'); }, 1200); }
+  function markErr(el) { el.classList.add('mt-edit-err'); setTimeout(function(){ el.classList.remove('mt-edit-err'); }, 1500); }
+
+  // ── Copiar informe ────────────────────────────────────
+  function copyReport(clienteId, range, btn) {
+    var cliente = clienteById(clienteId);
+    if (!cliente) return;
+
+    // Filas de la vista para este cliente dentro del rango
+    var metricRows = state.metricasRows.filter(function (r) { return r.cliente_id === clienteId; });
+    var totalAgend = metricRows.reduce(function (s, r) { return s + r.reuniones_agendadas; }, 0);
+    var totalCeleb = metricRows.reduce(function (s, r) { return s + r.reuniones_celebradas; }, 0);
+
+    // Embudo
+    var a = { total: 0, conv: 0, reu: 0 };
+    state.llamadas.forEach(function (l) {
+      if (l.cliente_id !== clienteId) return;
+      a.total++;
+      if (l.resultado === 'conversacion' || l.resultado === 'reunion_agendada') a.conv++;
+      if (l.resultado === 'reunion_agendada') a.reu++;
+    });
+    var contactoPct = a.total ? Math.round((a.conv / a.total) * 100) : 0;
+    var conversionPct = a.conv ? Math.round((a.reu / a.conv) * 100) : 0;
+
+    // Reuniones del cliente en el rango
+    var reus = state.reuniones.filter(function (r) { return r.cliente_id === clienteId; });
+    reus.sort(function (x, y) { return new Date(x.fecha_reunion) - new Date(y.fecha_reunion); });
+
+    var lines = [];
+    lines.push('CURINO — Informe ' + cliente.nombre + ' — ' + range.label);
+    lines.push('');
+    lines.push('Reuniones agendadas: ' + totalAgend + '  (objetivo mensual: ' + cliente.objetivo_reuniones_mes + ')');
+    lines.push('Reuniones celebradas: ' + totalCeleb);
+    lines.push('');
+    lines.push('Embudo del período:');
+    lines.push('- Llamadas totales: ' + a.total);
+    lines.push('- Conversaciones: ' + a.conv + ' (' + contactoPct + '% contacto)');
+    lines.push('- Reuniones agendadas: ' + a.reu + ' (' + conversionPct + '% conversión)');
+    lines.push('');
+    if (reus.length) {
+      lines.push('Reuniones registradas:');
+      reus.forEach(function (r) {
+        var estudio = (r.crm_prescriptores && r.crm_prescriptores.nombre_estudio) || '(sin estudio)';
+        var val = r.valor_estimado != null ? ' · ' + Number(r.valor_estimado).toLocaleString('es-ES') + '€' : '';
+        lines.push('- ' + fmtDate(r.fecha_reunion, false) + ' · ' + estudio + ' · ' + r.estado + val);
+      });
+    } else {
+      lines.push('Reuniones registradas: ninguna en el período.');
+    }
+
+    var text = lines.join('\n');
+    doCopy(text).then(function () {
+      btn.classList.add('copied');
+      var prev = btn.textContent; btn.textContent = '✓ Copiado';
+      setTimeout(function () { btn.classList.remove('copied'); btn.textContent = prev; }, 1600);
+      toast('Informe copiado al portapapeles');
+    }, function () {
+      toast('No se pudo copiar. Selecciona y copia manualmente.', true);
+      window.prompt('Copia el informe manualmente:', text);
+    });
+  }
+
+  function doCopy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    // Fallback: textarea temporal
+    return new Promise(function (resolve, reject) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? resolve() : reject();
+      } catch (e) { reject(e); }
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────
+  function clienteById(id) {
+    for (var i = 0; i < state.clientes.length; i++) if (state.clientes[i].id === id) return state.clientes[i];
+    return null;
+  }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function fmtDate(v, withTime) {
+    if (!v) return '';
+    var d = new Date(v); if (isNaN(d)) return String(v);
+    var s = pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+    if (withTime !== false && String(v).length > 10) s += ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return s;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+  function toast(msg, isErr) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+  function showError(msg) {
+    document.getElementById('errBox').innerHTML = '<div class="mt-error">' + esc(msg) + '</div>';
+  }
+})();
+</script>
+</body>
+</html>
