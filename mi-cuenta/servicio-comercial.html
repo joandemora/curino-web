@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi servicio comercial — Curino</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --black:var(--ink); --mid:var(--ink-mute); --border:var(--line); --white:var(--paper);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Open Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.6;min-height:100vh}
+body.hidden-until-auth{visibility:hidden}
+h1,h2,h3{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight:300;letter-spacing:-.02em;margin:0}
+
+/* ─── Top bar ─────────────────────────────────────── */
+.sc-top{
+  position:sticky;top:0;z-index:20;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:1.1rem 2rem;background:rgba(255,255,255,.9);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.sc-top a.sc-back{
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);text-decoration:none;font-weight:600;
+}
+.sc-top a.sc-back:hover{color:var(--ink-mute)}
+.sc-top .sc-user{font-size:12px;color:var(--ink-mute)}
+
+/* ─── Layout ──────────────────────────────────────── */
+.sc-main{max-width:960px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+.sc-hero{margin-bottom:2.5rem}
+.sc-hero .sc-cliente{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-mute);margin-bottom:.6rem}
+.sc-hero h1{font-size:34px;line-height:1.15;margin-bottom:.4rem}
+.sc-hero .sc-sub{color:#666;font-size:14px}
+
+/* ─── Panel del mes en curso ──────────────────────── */
+.sc-current{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:2rem 2.2rem;margin-bottom:2.5rem;
+}
+.sc-current-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem}
+.sc-current-title{font-size:14px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-mute);font-weight:700}
+.sc-current-count{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-size:56px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.sc-current-count .sc-count-total{color:var(--ink-mute);font-size:34px}
+.sc-current-count .sc-count-label{font-size:14px;color:#888;font-weight:400;font-family:'Open Sans',system-ui,sans-serif;text-transform:none;letter-spacing:0;display:block;margin-top:.4rem}
+.sc-status{
+  display:inline-block;padding:.45rem 1rem;border-radius:99px;
+  font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+}
+.sc-status.ok    {background:#d7ecdc;color:#1e5b23}
+.sc-status.warn  {background:#fdf3d9;color:#8a6a1c}
+.sc-status.free  {background:#a83232;color:#fff}
+.sc-status-hint  {display:block;font-size:12.5px;color:#666;margin-top:.6rem;font-weight:400;text-transform:none;letter-spacing:0}
+
+/* ─── Lista de reuniones ──────────────────────────── */
+.sc-section{margin-bottom:2.5rem}
+.sc-section h2{font-size:14px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-mute);font-weight:700;font-family:'Open Sans',system-ui,sans-serif;margin-bottom:1rem}
+
+.sc-reunion{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:1rem 1.2rem;background:#fff;border:1px solid var(--line);
+  border-radius:10px;margin-bottom:.5rem;gap:1rem;flex-wrap:wrap;
+}
+.sc-reunion-fecha{
+  font-family:var(--serif,'Cormorant Garamond',Georgia,serif);
+  font-size:20px;font-weight:400;letter-spacing:-.01em;min-width:150px;
+}
+.sc-reunion-fecha small{display:block;font-family:'Open Sans',system-ui,sans-serif;font-size:11.5px;color:#888;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-top:.15rem}
+.sc-reunion-estudio{flex:1 1 200px;font-size:14px;color:var(--ink)}
+.sc-reunion-badges{display:flex;gap:.4rem;flex-wrap:wrap}
+
+.sc-badge{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  padding:.2rem .6rem;border-radius:99px;background:#f0eee6;color:#555;font-weight:600;white-space:nowrap;
+}
+.sc-badge.estado-agendada{background:#eef2f7;color:#4a5b6c}
+.sc-badge.estado-celebrada{background:#d7ecdc;color:#1e5b23}
+.sc-badge.estado-no_show{background:#fdf1f0;color:#a83232}
+.sc-badge.estado-reprogramada{background:#fdf3d9;color:#8a6a1c}
+.sc-badge.estado-cancelada{background:#e5e5e5;color:#666}
+.sc-badge.res-proyecto_en_curso{background:#d7ecdc;color:#1e5b23}
+.sc-badge.res-presupuesto_enviado{background:#fdf3d9;color:#8a6a1c}
+.sc-badge.res-sin_interes{background:#e5e5e5;color:#666}
+
+/* ─── Histórico ───────────────────────────────────── */
+.sc-hist-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sc-hist{width:100%;border-collapse:collapse;font-size:13px}
+.sc-hist thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  color:#888;font-weight:700;padding:.7rem 1rem;background:#faf9f4;border-bottom:1px solid var(--line);
+}
+.sc-hist thead th.num{text-align:right}
+.sc-hist tbody td{padding:.65rem 1rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
+.sc-hist tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
+.sc-hist tbody tr:last-child td{border-bottom:none}
+
+/* ─── Empty state (sin vínculo) ───────────────────── */
+.sc-empty{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:3rem 2rem;text-align:center;color:#666;
+}
+.sc-empty h2{font-size:22px;font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight:300;color:var(--ink);margin-bottom:.6rem;text-transform:none;letter-spacing:-.02em}
+.sc-empty p{max-width:440px;margin:.5rem auto;font-size:14px;line-height:1.6}
+.sc-empty a{color:#cc785c;text-decoration:none;font-weight:600}
+.sc-empty a:hover{text-decoration:underline}
+
+.sc-loading{padding:3rem;text-align:center;color:#888;font-size:13px}
+.sc-error{background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;padding:.9rem 1.1rem;border-radius:10px;margin-bottom:1.5rem;font-size:13px}
+
+@media(max-width:640px){
+  .sc-top{padding:.9rem 1rem}
+  .sc-main{padding:1.75rem 1rem 3rem}
+  .sc-hero h1{font-size:26px}
+  .sc-current{padding:1.4rem 1.2rem}
+  .sc-current-count{font-size:44px}
+  .sc-reunion{flex-direction:column;align-items:flex-start;gap:.5rem}
+  .sc-reunion-fecha{min-width:0}
+}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<header class="sc-top">
+  <a class="sc-back" href="/mi-cuenta/">← Mi cuenta</a>
+  <span class="sc-user" id="scUser"></span>
+</header>
+
+<main class="sc-main" id="scMain">
+  <div class="sc-loading">Cargando…</div>
+</main>
+
+<script>
+/* ============================================================
+ * Portal cliente · Servicio comercial
+ * ============================================================
+ * Página read-only del cliente (carpintería). Todo va vía cliente
+ * Supabase con el JWT del usuario logueado. RLS (portal policies
+ * añadidas en 20260907000002_crm_portal_cliente.sql) filtra:
+ *   - crm_clientes: SU fila.
+ *   - crm_reuniones + crm_portal_reuniones: SUS reuniones.
+ *   - crm_prescriptores: sólo los que tienen reunión con su cliente
+ *     (para resolver nombre_estudio en la vista).
+ *   - crm_llamadas: 0 filas (sin policy → invisible).
+ * Sin acceso a datos de otros clientes ni al catálogo de prescriptores.
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var supa, currentUser, cliente;
+
+  document.addEventListener('DOMContentLoaded', boot);
+
+  async function boot() {
+    var cfg;
+    try {
+      var r = await fetch('/api/config');
+      cfg = await r.json();
+    } catch (e) { redirectLogin(); return; }
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) { redirectLogin(); return; }
+
+    supa = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    var s = await supa.auth.getSession();
+    if (!s.data.session) { redirectLogin(); return; }
+    currentUser = s.data.session.user;
+    document.getElementById('scUser').textContent = currentUser.email || '';
+    document.body.classList.remove('hidden-until-auth');
+
+    await load();
+  }
+
+  function redirectLogin() {
+    window.location.href = '/login/?redirect=' + encodeURIComponent(window.location.pathname);
+  }
+
+  async function load() {
+    var main = document.getElementById('scMain');
+    try {
+      // 1) Fetch cliente (RLS: 0 o 1 fila según vínculo).
+      var c = await supa.from('crm_clientes')
+        .select('id, nombre, objetivo_reuniones_mes, estado, fecha_alta')
+        .limit(1);
+      if (c.error) throw c.error;
+      if (!c.data || !c.data.length) {
+        renderEmpty(main);
+        return;
+      }
+      cliente = c.data[0];
+
+      // 2) Reuniones (últimos 6 meses + este mes) via crm_portal_reuniones
+      //    (view security_invoker → RLS filtra por su cliente).
+      var start = new Date(); start.setMonth(start.getMonth() - 5); start.setDate(1); start.setHours(0,0,0,0);
+      var reu = await supa.from('crm_portal_reuniones')
+        .select('id, cliente_id, fecha_reunion, estado, resultado_cliente, valor_estimado, nombre_estudio, created_at')
+        .gte('fecha_reunion', start.toISOString())
+        .order('fecha_reunion', { ascending: false });
+      if (reu.error) throw reu.error;
+      var reuniones = reu.data || [];
+
+      render(main, reuniones);
+    } catch (e) {
+      main.innerHTML = '<div class="sc-error">' + esc(e.message || 'Error cargando el servicio') + '</div>';
+    }
+  }
+
+  function render(main, reuniones) {
+    var now = new Date();
+    var sMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    var sNext  = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    var obj = cliente.objetivo_reuniones_mes;
+
+    // Este mes: agendadas (por created_at) y celebradas (por fecha_reunion).
+    // Misma semántica que crm_metricas_cliente_mes.
+    var reuMes = reuniones.filter(function (r) {
+      var c = new Date(r.created_at);
+      return c >= sMonth && c < sNext;
+    });
+    var celebMes = reuniones.filter(function (r) {
+      if (r.estado !== 'celebrada') return false;
+      var f = new Date(r.fecha_reunion);
+      return f >= sMonth && f < sNext;
+    });
+    var agendadasMes = reuMes.length;
+
+    // Estado del mes en curso (garantía dicha en positivo).
+    var statusCls, statusLabel, statusHint;
+    if (agendadasMes >= obj) {
+      statusCls = 'ok'; statusLabel = 'En objetivo';
+      statusHint = 'Objetivo del mes cumplido.';
+    } else if (agendadasMes > 0) {
+      statusCls = 'warn'; statusLabel = 'Por debajo';
+      statusHint = 'Faltan ' + (obj - agendadasMes) + ' para llegar al objetivo del mes.';
+    } else {
+      statusCls = 'free'; statusLabel = 'Mes sin reuniones';
+      statusHint = 'No hemos agendado ninguna reunión este mes. Este mes no se factura (garantía Curino).';
+    }
+
+    // Reuniones agendadas ESTE mes (calendario: created_at en el mes).
+    // Se ordenan por fecha_reunion asc para pintarlas en orden cronológico.
+    var reuMesSorted = reuMes.slice().sort(function (a, b) { return new Date(a.fecha_reunion) - new Date(b.fecha_reunion); });
+
+    // Histórico: por mes distinto al actual, agendadas y celebradas.
+    var byMonth = {};
+    reuniones.forEach(function (r) {
+      var kAg = monthKey(new Date(r.created_at));
+      var kCel = monthKey(new Date(r.fecha_reunion));
+      if (kAg !== monthKey(now)) {
+        byMonth[kAg] = byMonth[kAg] || { key: kAg, agendadas: 0, celebradas: 0 };
+        byMonth[kAg].agendadas++;
+      }
+      if (r.estado === 'celebrada' && kCel !== monthKey(now)) {
+        byMonth[kCel] = byMonth[kCel] || { key: kCel, agendadas: 0, celebradas: 0 };
+        byMonth[kCel].celebradas++;
+      }
+    });
+    var histRows = Object.keys(byMonth).map(function (k) { return byMonth[k]; })
+      .sort(function (a, b) { return b.key.localeCompare(a.key); });
+
+    var html = ''
+      + '<div class="sc-hero">'
+      +   '<div class="sc-cliente">Servicio comercial · ' + esc(cliente.nombre) + '</div>'
+      +   '<h1>' + monthName(now) + '</h1>'
+      +   '<div class="sc-sub">Reuniones agendadas y celebradas del mes en curso, e histórico reciente.</div>'
+      + '</div>'
+
+      + '<div class="sc-current">'
+      +   '<div class="sc-current-head">'
+      +     '<div class="sc-current-title">Reuniones agendadas este mes</div>'
+      +     '<div><span class="sc-status ' + statusCls + '">' + statusLabel + '</span></div>'
+      +   '</div>'
+      +   '<div class="sc-current-count">'
+      +     agendadasMes + ' <span class="sc-count-total">/ ' + obj + '</span>'
+      +     '<span class="sc-count-label">Celebradas este mes: ' + celebMes.length + '</span>'
+      +   '</div>'
+      +   '<div class="sc-status-hint">' + statusHint + '</div>'
+      + '</div>'
+
+      + '<section class="sc-section">'
+      +   '<h2>Reuniones del mes</h2>'
+      +   (reuMesSorted.length ? reuMesSorted.map(reunionRow).join('') : emptyRow('Aún no hay reuniones agendadas este mes.'))
+      + '</section>';
+
+    if (histRows.length) {
+      html += '<section class="sc-section">'
+        + '<h2>Meses anteriores</h2>'
+        + '<div class="sc-hist-wrap"><table class="sc-hist">'
+        + '<thead><tr><th>Mes</th><th class="num">Agendadas</th><th class="num">Celebradas</th></tr></thead>'
+        + '<tbody>'
+        + histRows.map(function (r) {
+            return '<tr>'
+              + '<td>' + monthNameFromKey(r.key) + '</td>'
+              + '<td class="num">' + r.agendadas + '</td>'
+              + '<td class="num">' + r.celebradas + '</td>'
+              + '</tr>';
+          }).join('')
+        + '</tbody></table></div>'
+      + '</section>';
+    }
+
+    main.innerHTML = html;
+  }
+
+  function reunionRow(r) {
+    var badges = '<span class="sc-badge estado-' + esc(r.estado) + '">' + esc(r.estado.replace('_',' ')) + '</span>';
+    if (r.resultado_cliente && r.resultado_cliente !== 'pendiente') {
+      badges += ' <span class="sc-badge res-' + esc(r.resultado_cliente) + '">' + esc(r.resultado_cliente.replace('_',' ')) + '</span>';
+    }
+    return '<div class="sc-reunion">'
+      + '<div class="sc-reunion-fecha">' + fmtDate(r.fecha_reunion) + '<small>' + fmtTime(r.fecha_reunion) + '</small></div>'
+      + '<div class="sc-reunion-estudio">' + esc(r.nombre_estudio || '—') + '</div>'
+      + '<div class="sc-reunion-badges">' + badges + '</div>'
+      + '</div>';
+  }
+
+  function emptyRow(msg) {
+    return '<div class="sc-reunion" style="justify-content:center;color:#888;font-style:italic">' + esc(msg) + '</div>';
+  }
+
+  function renderEmpty(main) {
+    main.innerHTML = '<div class="sc-empty">'
+      + '<h2>Aún no hay servicio comercial vinculado a esta cuenta</h2>'
+      + '<p>Si acabas de contratar el servicio de prospección con Curino, escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a> con el email de esta cuenta y lo vinculamos.</p>'
+      + '<p style="margin-top:1.5rem"><a href="/mi-cuenta/">← Volver a mi cuenta</a></p>'
+      + '</div>';
+  }
+
+  // ── Helpers ──────────────────────────────────────
+  function monthKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1); }
+  function monthName(d) {
+    var names = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return capitalize(names[d.getMonth()]) + ' ' + d.getFullYear();
+  }
+  function monthNameFromKey(k) {
+    var parts = k.split('-');
+    return monthName(new Date(Number(parts[0]), Number(parts[1]) - 1, 1));
+  }
+  function fmtDate(v) {
+    if (!v) return '';
+    var d = new Date(v); if (isNaN(d)) return String(v);
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+  function fmtTime(v) {
+    if (!v || String(v).length <= 10) return '';
+    var d = new Date(v);
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ' h';
+  }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+})();
+</script>
+</body>
+</html>

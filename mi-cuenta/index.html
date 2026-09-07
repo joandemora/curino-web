@@ -316,6 +316,21 @@ nav{
       </div>
     </div>
 
+    <!-- Card: Mi servicio comercial (CRM portal) — sólo si el user tiene fila en crm_clientes.
+         Renderizado condicional en loadCrmPortal(); style="display:none" por defecto. -->
+    <div class="account-card card-crm" id="cardCrm" style="display:none">
+      <div class="card-header">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+        <h2>Mi servicio comercial</h2>
+      </div>
+      <div class="card-body">
+        <div id="crmSummary" class="card-empty">Cargando…</div>
+      </div>
+      <div class="card-footer">
+        <a href="/mi-cuenta/servicio-comercial.html" class="btn btn-primary btn-small">Ver mi panel</a>
+      </div>
+    </div>
+
     <!-- Card 2: Mi Plan -->
     <div class="account-card card-plan">
       <div class="card-header">
@@ -496,6 +511,90 @@ function initAccount(){
   loadUserLogo();
   loadBrandStatus();
   loadShortcuts();
+  loadCrmPortal();
+}
+
+// ── CRM PORTAL (servicio comercial) ──
+// Pinta la card "Mi servicio comercial" sólo si el user está vinculado
+// a una fila de crm_clientes vía user_id (RLS: "crm_clientes portal read").
+// Si no hay vínculo, el select devuelve [] y la card queda invisible.
+// Contenido: agendadas este mes vs objetivo, próxima reunión (fecha +
+// estudio), botón al portal completo. Nada que exponga otros clientes.
+async function loadCrmPortal(){
+  if(!_supabase||!_currentUser) return;
+  var card = document.getElementById('cardCrm');
+  var summary = document.getElementById('crmSummary');
+  if(!card||!summary) return;
+  try{
+    var cli = await _supabase.from('crm_clientes')
+      .select('id, nombre, objetivo_reuniones_mes')
+      .limit(1);
+    if(cli.error||!cli.data||!cli.data.length) return; // silencio: sin vínculo
+    var cliente = cli.data[0];
+
+    // Reuniones del cliente (vista security_invoker: RLS filtra por su cliente).
+    var reu = await _supabase.from('crm_portal_reuniones')
+      .select('id, fecha_reunion, estado, nombre_estudio, created_at')
+      .order('fecha_reunion', {ascending:true});
+    var rows = (reu.data||[]);
+
+    // Agendadas este mes = created_at dentro del mes actual (misma lógica
+    // que crm_metricas_cliente_mes.reuniones_agendadas).
+    var now = new Date();
+    var sMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    var sNext  = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    var agendadasMes = rows.filter(function(r){
+      var c = new Date(r.created_at);
+      return c >= sMonth && c < sNext;
+    }).length;
+
+    // Próxima reunión = fecha_reunion futura, la más cercana.
+    var proxima = null;
+    for(var i=0; i<rows.length; i++){
+      if(new Date(rows[i].fecha_reunion) >= now){ proxima = rows[i]; break; }
+    }
+
+    var obj = cliente.objetivo_reuniones_mes;
+    var estado = agendadasMes >= obj
+      ? '<span style="color:#2e7d32;font-weight:600">✓ en objetivo</span>'
+      : (agendadasMes > 0
+        ? '<span style="color:#8a6a1c;font-weight:600">' + (obj-agendadasMes) + ' por debajo</span>'
+        : '<span style="color:#a83232;font-weight:600">mes sin reuniones — no facturado</span>');
+
+    var proximaHtml = proxima
+      ? '<div style="margin-top:.6rem;font-size:12.5px;color:#555">Próxima: <strong>' + fmtDatePortal(proxima.fecha_reunion) + '</strong> · ' + escHtmlPortal(proxima.nombre_estudio) + '</div>'
+      : '<div style="margin-top:.6rem;font-size:12.5px;color:#888">Sin reuniones próximas.</div>';
+
+    summary.classList.remove('card-empty');
+    summary.innerHTML = ''
+      + '<div style="font-size:13px;color:#555">Este mes</div>'
+      + '<div style="font-size:22px;font-weight:600;color:#1a1a1a;margin-top:.15rem"><span>' + agendadasMes + '</span> / ' + obj + ' <span style="font-size:12px;color:#888;font-weight:400">reuniones agendadas</span></div>'
+      + '<div style="margin-top:.4rem;font-size:12.5px">' + estado + '</div>'
+      + proximaHtml;
+    card.style.display = '';
+  }catch(e){
+    // Silencio: si algo falla, la card no aparece (no queremos ruidos en
+    // la home de user que no tiene servicio contratado).
+    console.warn('loadCrmPortal:', e);
+  }
+}
+
+function fmtDatePortal(v){
+  if(!v) return '';
+  var d = new Date(v); if(isNaN(d)) return String(v);
+  var dd = String(d.getDate()).padStart(2,'0');
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  var yy = d.getFullYear();
+  var s = dd+'/'+mm+'/'+yy;
+  if(String(v).length > 10){
+    s += ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+  return s;
+}
+function escHtmlPortal(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 
 // Accesos rápidos a secciones del marketplace + admin según rol del user.

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM · Clientes — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<style>
+.cli-hero{margin-bottom:1.25rem}
+.cli-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.25rem}
+.cli-hero p{color:#666;font-size:13px;margin:0}
+
+.cli-wrap{overflow-x:auto;background:#fff;border:1px solid #e5e5e5;border-radius:10px}
+.cli-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1000px}
+.cli-table thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  color:#888;font-weight:700;padding:.7rem .9rem;border-bottom:1px solid #e5e5e5;background:#fafaf7;
+}
+.cli-table thead th.num{text-align:right}
+.cli-table tbody td{padding:.65rem .9rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
+.cli-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
+.cli-table tbody tr:hover td{background:#faf9f4}
+.cli-nombre{font-weight:600;color:#1a1a1a}
+
+.cli-badge{
+  font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+  padding:.15rem .5rem;border-radius:99px;background:#f0eee6;color:#555;font-weight:600;white-space:nowrap;
+}
+.cli-badge.piloto{background:#fdf3d9;color:#8a6a1c}
+.cli-badge.activo{background:#d7ecdc;color:#1e5b23}
+.cli-badge.pausado{background:#e5e5e5;color:#666}
+.cli-badge.baja{background:#3a1414;color:#fff}
+
+.cli-linked{font-size:12px;color:#2e7d32;font-weight:600}
+.cli-linked .cli-email{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11.5px;color:#555;font-weight:400;display:block;margin-top:.15rem}
+.cli-unlinked{color:#aaa;font-style:italic;font-size:12px}
+
+.cli-link-form{display:flex;gap:.35rem;align-items:center}
+.cli-link-form input{
+  padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;
+  font-family:inherit;font-size:12px;background:#fff;color:#1a1a1a;min-width:200px;
+}
+.cli-link-form button{
+  padding:.4rem .7rem;border-radius:6px;border:1px solid #111;background:#111;color:#fff;
+  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em;
+}
+.cli-link-form button:hover:not(:disabled){background:#333}
+.cli-link-form button:disabled{opacity:.5;cursor:not-allowed}
+.cli-link-form .cli-cancel{background:#fff;color:#555;border-color:#ddd}
+.cli-link-form .cli-cancel:hover{border-color:#1a1a1a;color:#1a1a1a}
+
+.cli-unlink-btn{
+  background:transparent;border:1px solid #ddd;color:#7a2020;
+  padding:.3rem .55rem;border-radius:6px;font-size:11px;font-weight:600;
+  font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap;
+}
+.cli-unlink-btn:hover:not(:disabled){background:#a83232;color:#fff;border-color:#a83232}
+
+.cli-link-btn{
+  background:#fff;border:1px solid #cc785c;color:#cc785c;
+  padding:.3rem .7rem;border-radius:6px;font-size:11px;font-weight:600;
+  font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap;
+}
+.cli-link-btn:hover:not(:disabled){background:#cc785c;color:#fff}
+
+.cli-loading{padding:2rem;text-align:center;color:#888;font-size:13px}
+.cli-error{background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px}
+
+.cli-toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+  background:#1a1a1a;color:#fff;padding:.7rem 1.1rem;border-radius:8px;
+  font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);
+  z-index:200;pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.cli-toast.show{opacity:1}
+.cli-toast.err{background:#a83232}
+</style>
+</head>
+<body class="hidden-until-auth">
+
+<main class="ash-content">
+  <div class="cli-hero">
+    <h1>Clientes del CRM</h1>
+    <p>Listado de carpinterías con servicio contratado. Aquí se vincula la cuenta web de cada cliente para que pueda ver su portal en <code>/mi-cuenta/servicio-comercial.html</code>.</p>
+  </div>
+
+  <div id="errBox"></div>
+
+  <div class="cli-wrap">
+    <table class="cli-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Estado</th>
+          <th class="num">Cuota €/mes</th>
+          <th class="num">Objetivo</th>
+          <th>Fecha alta</th>
+          <th>Cuenta web vinculada</th>
+        </tr>
+      </thead>
+      <tbody id="cliTbody">
+        <tr><td colspan="6" class="cli-loading">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="cli-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script>
+/* ============================================================
+ * CRM · Clientes
+ * ============================================================
+ * Vinculación cuenta web ↔ crm_clientes.user_id via RPC
+ * get_user_id_by_email (security definer, guard is_crm_staff).
+ * Reverse-lookup con get_user_emails_by_ids para pintar el email
+ * de los ya vinculados.
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var supa;
+  var clientes = [];
+  var emailByUserId = {};
+
+  initAdminShell({ activeSection: 'crm-clientes', title: 'CRM · Clientes' })
+    .then(function (ctx) { supa = ctx.supabase; return loadAll(); })
+    .catch(function () { /* admin-shell redirige */ });
+
+  async function loadAll() {
+    document.getElementById('errBox').innerHTML = '';
+    try {
+      var r = await supa.from('crm_clientes')
+        .select('id, nombre, estado, cuota_mensual, objetivo_reuniones_mes, fecha_alta, user_id')
+        .order('nombre');
+      if (r.error) throw r.error;
+      clientes = r.data || [];
+
+      // Reverse-lookup de emails vinculados (bulk RPC staff-only).
+      var linkedIds = clientes.filter(function (c) { return c.user_id; }).map(function (c) { return c.user_id; });
+      if (linkedIds.length) {
+        var e = await supa.rpc('get_user_emails_by_ids', { p_ids: linkedIds });
+        if (!e.error && e.data) {
+          emailByUserId = {};
+          e.data.forEach(function (row) { emailByUserId[row.user_id] = row.email; });
+        }
+      }
+      render();
+    } catch (e) {
+      showError(e && e.message ? e.message : 'Error cargando clientes');
+    }
+  }
+
+  function render() {
+    var tb = document.getElementById('cliTbody');
+    if (!clientes.length) {
+      tb.innerHTML = '<tr><td colspan="6" class="cli-loading">Sin clientes.</td></tr>';
+      return;
+    }
+    tb.innerHTML = clientes.map(function (c) {
+      return '<tr data-id="' + esc(c.id) + '">'
+        + '<td><div class="cli-nombre">' + esc(c.nombre) + '</div></td>'
+        + '<td><span class="cli-badge ' + esc(c.estado) + '">' + esc(c.estado) + '</span></td>'
+        + '<td class="num">' + fmtEur(c.cuota_mensual) + '</td>'
+        + '<td class="num">' + c.objetivo_reuniones_mes + '</td>'
+        + '<td>' + esc(c.fecha_alta || '—') + '</td>'
+        + '<td>' + renderLinkCell(c) + '</td>'
+        + '</tr>';
+    }).join('');
+    wireLinkButtons();
+  }
+
+  function renderLinkCell(c) {
+    if (c.user_id) {
+      var email = emailByUserId[c.user_id];
+      return '<div class="cli-linked">✓ Vinculada'
+        + (email ? '<span class="cli-email">' + esc(email) + '</span>'
+                 : '<span class="cli-email">(uuid ' + esc(c.user_id.slice(0, 8)) + '…, email no disponible)</span>')
+        + '</div>'
+        + ' <button type="button" class="cli-unlink-btn" data-unlink="' + esc(c.id) + '">Desvincular</button>';
+    }
+    return '<button type="button" class="cli-link-btn" data-link="' + esc(c.id) + '">+ Vincular cuenta</button>';
+  }
+
+  function wireLinkButtons() {
+    document.querySelectorAll('[data-link]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openLinkForm(btn.getAttribute('data-link'), btn); });
+    });
+    document.querySelectorAll('[data-unlink]').forEach(function (btn) {
+      btn.addEventListener('click', function () { doUnlink(btn.getAttribute('data-unlink'), btn); });
+    });
+  }
+
+  function openLinkForm(clienteId, btn) {
+    var td = btn.closest('td');
+    td.innerHTML = ''
+      + '<form class="cli-link-form" data-cli="' + esc(clienteId) + '">'
+      +   '<input type="email" placeholder="email@ejemplo.com" required autofocus>'
+      +   '<button type="submit">Vincular</button>'
+      +   '<button type="button" class="cli-cancel">Cancelar</button>'
+      + '</form>';
+    var form = td.querySelector('form');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      doLink(clienteId, form.querySelector('input').value.trim(), form);
+    });
+    form.querySelector('.cli-cancel').addEventListener('click', function () {
+      var c = findCliente(clienteId);
+      td.innerHTML = renderLinkCell(c);
+      wireLinkButtons();
+    });
+  }
+
+  async function doLink(clienteId, email, form) {
+    if (!email) return;
+    form.querySelectorAll('button, input').forEach(function (el) { el.disabled = true; });
+    try {
+      // Paso 1: buscar el uuid del email vía RPC staff-only.
+      var r = await supa.rpc('get_user_id_by_email', { p_email: email });
+      if (r.error) throw r.error;
+      var uuid = r.data;
+      if (!uuid) {
+        toast('No hay usuario web con ese email', true);
+        form.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
+        return;
+      }
+      // Paso 2: guardar user_id en la fila.
+      var u = await supa.from('crm_clientes').update({ user_id: uuid }).eq('id', clienteId);
+      if (u.error) {
+        // Error típico: unique violation (ese user_id ya está vinculado a otro cliente).
+        if (String(u.error.message || '').match(/duplicate|unique/i)) {
+          toast('Esa cuenta ya está vinculada a otra carpintería', true);
+        } else {
+          toast('Error: ' + u.error.message, true);
+        }
+        form.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
+        return;
+      }
+      // Refresca estado local + email cache.
+      var c = findCliente(clienteId); if (c) c.user_id = uuid;
+      emailByUserId[uuid] = email;
+      render();
+      toast('Cuenta vinculada');
+    } catch (e) {
+      toast('Error: ' + (e.message || 'no se pudo vincular'), true);
+      form.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
+    }
+  }
+
+  async function doUnlink(clienteId, btn) {
+    var c = findCliente(clienteId); if (!c) return;
+    if (!confirm('Desvincular la cuenta web de "' + c.nombre + '"? El portal dejará de mostrar datos a ese usuario.')) return;
+    btn.disabled = true;
+    var r = await supa.from('crm_clientes').update({ user_id: null }).eq('id', clienteId);
+    if (r.error) { btn.disabled = false; toast('Error: ' + r.error.message, true); return; }
+    c.user_id = null;
+    render();
+    toast('Cuenta desvinculada');
+  }
+
+  function findCliente(id) {
+    for (var i = 0; i < clientes.length; i++) if (clientes[i].id === id) return clientes[i];
+    return null;
+  }
+
+  function fmtEur(v) {
+    if (v == null) return '—';
+    return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €';
+  }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+  function toast(msg, isErr) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+  function showError(msg) {
+    document.getElementById('errBox').innerHTML = '<div class="cli-error">' + esc(msg) + '</div>';
+  }
+})();
+</script>
+</body>
+</html>

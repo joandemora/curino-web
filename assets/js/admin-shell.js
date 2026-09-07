@@ -67,6 +67,7 @@
       items: [
         { id: 'crm-cola',           label: 'Cola de llamadas', href: '/admin/crm/' },
         { id: 'crm-prescriptores',  label: 'Prescriptores',    href: '/admin/crm/prescriptores.html' },
+        { id: 'crm-clientes',       label: 'Clientes',         href: '/admin/crm/clientes.html' },
         { id: 'crm-metricas',       label: 'Métricas',         href: '/admin/crm/metricas.html' }
       ]
     }
