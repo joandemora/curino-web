@@ -638,14 +638,19 @@
   }
 
   function beginEdit(cell) {
-    if (cell.querySelector('input')) return;
+    // Guard: hay que cubrir INPUT y SELECT (el original sólo miraba
+    // 'input' y por eso al hacer click en el <select> del tipo, el
+    // click burbujeaba a la celda y beginEdit re-ejecutaba destruyendo
+    // el select mid-click).
+    if (cell.querySelector('input, select')) return;
     var field = cell.getAttribute('data-field');
     var id = cell.closest('tr').getAttribute('data-id');
     var row = findPrescriptor(id);
     if (!row) return;
     var currentVal = row[field] == null ? '' : String(row[field]);
+    var isSelect = (field === 'tipo');
     var input;
-    if (field === 'tipo') {
+    if (isSelect) {
       input = document.createElement('select');
       TIPOS_VALIDOS.forEach(function (t) {
         var o = document.createElement('option'); o.value = t; o.textContent = t;
@@ -657,12 +662,18 @@
       input.value = currentVal;
     }
     cell.innerHTML = ''; cell.appendChild(input); input.focus();
-    if (input.select) input.select();
+    if (!isSelect && input.select) input.select();
 
-    var committed = false;
-    function commit() {
-      if (committed) return; committed = true;
-      var newVal = input.value.trim();
+    // Belt-and-suspenders del guard: para los eventos que dispara el
+    // editor, corta la burbuja hacia la celda. Así aunque la celda
+    // siguiera con su listener, no habría reentrada de beginEdit.
+    ['mousedown','click','keydown'].forEach(function (ev) {
+      input.addEventListener(ev, function (e) { e.stopPropagation(); });
+    });
+
+    var settled = false;
+    function save(newVal) {
+      if (settled) return; settled = true;
       if (newVal === currentVal || (newVal === '' && !currentVal)) {
         renderCellStatic(cell, field, currentVal);
         return;
@@ -670,10 +681,23 @@
       saveCell(id, field, newVal, cell);
     }
     function cancel() {
-      if (committed) return; committed = true;
+      if (settled) return; settled = true;
       renderCellStatic(cell, field, currentVal);
     }
-    input.addEventListener('blur', commit);
+
+    if (isSelect) {
+      // Chrome/macOS dispara blur en cuanto se abre el picker nativo
+      // del <select> (el foco pasa al popup del OS). Si guardásemos en
+      // blur, el saveCell/renderCellStatic destruiría el select justo
+      // cuando el usuario acaba de abrirlo. Guardamos en change (que
+      // sólo dispara cuando se elige opción distinta) y blur sólo
+      // cancela si no llegó a haber change.
+      input.addEventListener('change', function () { save(input.value); });
+      input.addEventListener('blur',   function () { if (!settled) cancel(); });
+    } else {
+      input.addEventListener('blur', function () { save(input.value.trim()); });
+    }
+
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
       else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
