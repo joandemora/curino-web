@@ -339,12 +339,12 @@ nav{
       </div>
     </div>
 
-    <!-- Card: Mi servicio comercial (CRM portal) — sólo si el user tiene fila en crm_clientes.
+    <!-- Card: Curino Partners (CRM portal) — sólo si el user tiene fila en crm_clientes.
          Renderizado condicional en loadCrmPortal(); style="display:none" por defecto. -->
     <div class="account-card card-crm" id="cardCrm" style="display:none">
       <div class="card-header">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
-        <h2>Mi servicio comercial</h2>
+        <h2>Curino Partners</h2>
       </div>
       <div class="card-body">
         <div id="crmSummary" class="card-empty">Cargando…</div>
@@ -367,8 +367,10 @@ nav{
       </div>
     </div>
 
-    <!-- Card 3: Cuenta de marca (Marcas Fase 2) -->
-    <div class="account-card card-brand">
+    <!-- Card 3: Cuenta de marca (Marcas Fase 2). Para rol PARTNER se re-titula
+         a "Mis datos" y su body se sustituye por email + nombre + logout via
+         renderPartnerProfile() — mismo bloque, contenido distinto. -->
+    <div class="account-card card-brand" id="cardBrand">
       <div class="card-header">
         <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 21V11"/></svg>
         <h2>Mi Cuenta</h2>
@@ -525,20 +527,103 @@ var _supabase=null,_currentUser=null;
   }
 })();
 
-function initAccount(){
+async function initAccount(){
   document.getElementById('accountPage').style.display='block';
-  loadProfile();
-  loadProjects();
-  loadArmarios();
-  loadAddresses();
-  loadUserLogo();
-  loadBrandStatus();
-  loadShortcuts();
-  loadCrmPortal();
+  // Rol resuelto una vez → set de cards a mostrar → loaders correspondientes.
+  // Nada de ifs por card en cada loader; toda la decisión vive aquí.
+  var role = await resolveRole();
+  applyRoleVisibility(role);
+  if (role === 'partner') {
+    // Portal Curino Partners + card "Mis datos" (re-titulada desde .card-brand).
+    // No cargamos proyectos/armarios/plan/revista/marca/direcciones/logo:
+    // están ocultas por applyRoleVisibility y sus loaders serían ruido.
+    loadCrmPortal();
+    renderPartnerProfile();
+  } else {
+    // admin y user: mismo set de loaders. Diferencia:
+    //  - user tiene .card-crm oculta por applyRoleVisibility → nunca aparece.
+    //  - admin puede tener link crm → loadCrmPortal la muestra si aplica
+    //    (misma lógica que hoy).
+    loadProfile();
+    loadProjects();
+    loadArmarios();
+    loadAddresses();
+    loadUserLogo();
+    loadBrandStatus();
+    loadShortcuts();
+    if (role === 'admin') loadCrmPortal();
+  }
 }
 
-// ── CRM PORTAL (servicio comercial) ──
-// Pinta la card "Mi servicio comercial" sólo si el user está vinculado
+// ── ROLE RESOLUTION ──
+// Tres roles frontend para el layout de /mi-cuenta/:
+//   'admin'   → user_roles.role='admin' (mismo gate que /admin/*).
+//   'partner' → tiene fila en crm_clientes (via RLS con user_id=auth.uid()).
+//   'user'    → ni una ni otra.
+// Fuente única de verdad para elegir qué renderizar. La seguridad real la
+// dan las RLS del backend; esto es puramente presentación.
+async function resolveRole(){
+  try {
+    var r = await _supabase.from('user_roles').select('role').eq('user_id', _currentUser.id).maybeSingle();
+    if (r.data && r.data.role === 'admin') return 'admin';
+  } catch(e) { /* silent — degradamos a otras comprobaciones */ }
+  try {
+    var c = await _supabase.from('crm_clientes').select('id').limit(1);
+    if (c.data && c.data.length > 0) return 'partner';
+  } catch(e) { /* silent */ }
+  return 'user';
+}
+
+// Cards visibles por rol, identificadas por su clase modifier.
+// null = mostrar todas (admin, comportamiento por defecto del HTML).
+// card-cta cubre configurator + design a la vez.
+var CARDS_BY_ROLE = {
+  admin:   null,
+  partner: ['card-crm', 'card-brand'],
+  user:    ['card-projects','card-armarios','card-plan','card-brand','card-revista','card-cta','card-profile']
+};
+
+function applyRoleVisibility(role){
+  var allowed = CARDS_BY_ROLE[role];
+  if (allowed === null) return; // admin: sin cambios
+  document.querySelectorAll('.account-grid > .account-card').forEach(function(card){
+    var visible = allowed.some(function(cls){ return card.classList.contains(cls); });
+    if (!visible) card.style.display = 'none';
+    // No forzamos display:'' en las visibles: card-crm arranca display:none
+    // y loadCrmPortal la revela cuando llegan datos.
+  });
+}
+
+// ── PARTNER PROFILE (rol 'partner') ──
+// Re-titula .card-brand a "Mis datos" y reemplaza su body con nombre + email
+// + botón cerrar sesión. Sin brand info, sin shortcuts admin/vendedor.
+async function renderPartnerProfile(){
+  var brand = document.getElementById('cardBrand');
+  if (!brand) return;
+  var h2 = brand.querySelector('.card-header h2');
+  if (h2) h2.textContent = 'Mis datos';
+  var body = brand.querySelector('.card-body');
+  if (!body) return;
+  var email = (_currentUser && _currentUser.email) || '';
+  var name = '';
+  try {
+    var r = await _supabase.from('user_profiles').select('first_name,last_name').eq('id', _currentUser.id).maybeSingle();
+    if (r.data) name = [r.data.first_name, r.data.last_name].filter(Boolean).join(' ').trim();
+  } catch(e) { /* silent */ }
+  if (!name) {
+    var meta = (_currentUser && _currentUser.user_metadata) || {};
+    name = meta.full_name || [meta.first_name, meta.last_name].filter(Boolean).join(' ').trim() || '';
+  }
+  body.innerHTML = ''
+    + (name ? '<div style="font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.25rem">Nombre</div>'
+             + '<div style="font-size:15px;color:var(--ink);margin-bottom:1.2rem">' + escHtmlPortal(name) + '</div>' : '')
+    + '<div style="font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.25rem">Email</div>'
+    + '<div style="font-size:14px;color:var(--ink);word-break:break-word;margin-bottom:1.5rem">' + escHtmlPortal(email) + '</div>'
+    + '<button class="btn btn-outline btn-small" onclick="logoutUser()">Cerrar sesión</button>';
+}
+
+// ── CRM PORTAL (Curino Partners) ──
+// Pinta la card "Curino Partners" sólo si el user está vinculado
 // a una fila de crm_clientes vía user_id (RLS: "crm_clientes portal read").
 // Si no hay vínculo, el select devuelve [] y la card queda invisible.
 // Contenido: agendadas este mes vs objetivo, próxima reunión (fecha +
