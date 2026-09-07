@@ -10,10 +10,12 @@
 <link rel="stylesheet" href="/assets/css/tokens.css">
 <link rel="stylesheet" href="/assets/css/admin-shell.css">
 <style>
+/* ─── HERO común ─────────────────────────────────────────── */
 .cli-hero{margin-bottom:1.25rem}
 .cli-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin-bottom:.25rem}
 .cli-hero p{color:#666;font-size:13px;margin:0}
 
+/* ─── Tabla del LISTADO ──────────────────────────────────── */
 .cli-wrap{overflow-x:auto;background:#fff;border:1px solid #e5e5e5;border-radius:10px}
 .cli-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1000px}
 .cli-table thead th{
@@ -23,8 +25,12 @@
 .cli-table thead th.num{text-align:right}
 .cli-table tbody td{padding:.65rem .9rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
 .cli-table tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
+.cli-table tbody tr{cursor:pointer;transition:background .12s}
 .cli-table tbody tr:hover td{background:#faf9f4}
+.cli-table tbody tr.no-click{cursor:default}
 .cli-nombre{font-weight:600;color:#1a1a1a}
+.cli-nombre .arrow{color:#cc785c;margin-left:.4rem;opacity:0;transition:opacity .15s}
+.cli-table tbody tr:hover .arrow{opacity:1}
 
 .cli-badge{
   font-size:10px;text-transform:uppercase;letter-spacing:.06em;
@@ -40,32 +46,131 @@
 .cli-unlinked{color:#aaa;font-style:italic;font-size:12px}
 
 .cli-link-form{display:flex;gap:.35rem;align-items:center}
-.cli-link-form input{
-  padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;
-  font-family:inherit;font-size:12px;background:#fff;color:#1a1a1a;min-width:200px;
-}
-.cli-link-form button{
-  padding:.4rem .7rem;border-radius:6px;border:1px solid #111;background:#111;color:#fff;
-  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em;
-}
+.cli-link-form input{padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:12px;background:#fff;color:#1a1a1a;min-width:200px}
+.cli-link-form button{padding:.4rem .7rem;border-radius:6px;border:1px solid #111;background:#111;color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em}
 .cli-link-form button:hover:not(:disabled){background:#333}
 .cli-link-form button:disabled{opacity:.5;cursor:not-allowed}
 .cli-link-form .cli-cancel{background:#fff;color:#555;border-color:#ddd}
 .cli-link-form .cli-cancel:hover{border-color:#1a1a1a;color:#1a1a1a}
 
-.cli-unlink-btn{
-  background:transparent;border:1px solid #ddd;color:#7a2020;
-  padding:.3rem .55rem;border-radius:6px;font-size:11px;font-weight:600;
-  font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap;
-}
+.cli-unlink-btn{background:transparent;border:1px solid #ddd;color:#7a2020;padding:.3rem .55rem;border-radius:6px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap}
 .cli-unlink-btn:hover:not(:disabled){background:#a83232;color:#fff;border-color:#a83232}
-
-.cli-link-btn{
-  background:#fff;border:1px solid #cc785c;color:#cc785c;
-  padding:.3rem .7rem;border-radius:6px;font-size:11px;font-weight:600;
-  font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap;
-}
+.cli-link-btn{background:#fff;border:1px solid #cc785c;color:#cc785c;padding:.3rem .7rem;border-radius:6px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.02em;white-space:nowrap}
 .cli-link-btn:hover:not(:disabled){background:#cc785c;color:#fff}
+
+/* ═════════════════════════════════════════════════════════
+   WORKSPACE
+   ═════════════════════════════════════════════════════════ */
+.ws-hero{margin-bottom:1.5rem}
+.ws-hero a.ws-back{font-size:12px;color:#888;text-decoration:none;letter-spacing:.02em}
+.ws-hero a.ws-back:hover{color:#1a1a1a}
+.ws-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin:.6rem 0 .25rem}
+.ws-hero .ws-meta{color:#666;font-size:13px;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.ws-hero .ws-meta .sep{color:#ccc}
+
+.ws-tabs{display:flex;gap:.15rem;border-bottom:1px solid #e5e5e5;margin-bottom:1.5rem;overflow-x:auto}
+.ws-tab{
+  background:transparent;border:none;padding:.7rem 1.2rem;
+  font-family:inherit;font-size:13px;color:#666;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600;
+  letter-spacing:.02em;white-space:nowrap;
+}
+.ws-tab:hover{color:#1a1a1a}
+.ws-tab.active{color:#cc785c;border-bottom-color:#cc785c}
+.ws-panel{display:none}
+.ws-panel.active{display:block}
+
+/* Sub-cards genéricas */
+.ws-card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem}
+.ws-card h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#888;font-weight:700;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+.ws-card h2 .hint{color:#bbb;font-size:11px;text-transform:none;letter-spacing:0;font-weight:400;font-style:italic}
+
+/* Resumen — formulario 2 cols */
+.ws-form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.85rem 1.25rem}
+@media(max-width:640px){.ws-form-grid{grid-template-columns:1fr}}
+.ws-field label{display:block;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem;font-weight:600}
+.ws-field input, .ws-field select, .ws-field textarea{
+  width:100%;padding:.55rem .7rem;border:1px solid #ddd;border-radius:6px;
+  font-family:inherit;font-size:13px;background:#fafaf7;color:#1a1a1a;
+}
+.ws-field textarea{min-height:60px;resize:vertical}
+.ws-field .ws-help{font-size:11px;color:#aaa;margin-top:.2rem}
+.ws-field.saved input, .ws-field.saved select, .ws-field.saved textarea{outline:2px solid #2e7d32;outline-offset:1px}
+.ws-field.err input, .ws-field.err select, .ws-field.err textarea{outline:2px solid #a83232;outline-offset:1px}
+
+/* Semáforo del mes actual */
+.ws-sem{
+  display:inline-block;padding:.2rem .7rem;border-radius:99px;
+  font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+}
+.ws-sem.green{background:#d7ecdc;color:#1e5b23}
+.ws-sem.amber{background:#fdf3d9;color:#8a6a1c}
+.ws-sem.red{background:#a83232;color:#fff}
+.ws-sem.pausado{background:#e5e5e5;color:#666}
+
+/* Sub-resumen (proyectos / valor) */
+.ws-subresumen{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1rem}
+.ws-subresumen .cell{background:#111;color:#fff;padding:1rem 1.2rem;border-radius:10px}
+.ws-subresumen .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.55);font-weight:600;margin-bottom:.25rem}
+.ws-subresumen .val{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* Tablas genéricas dentro del workspace */
+.ws-tbl-wrap{overflow-x:auto;background:#fff;border:1px solid #e5e5e5;border-radius:10px}
+.ws-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+.ws-tbl thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#888;font-weight:700;padding:.7rem .9rem;border-bottom:1px solid #e5e5e5;background:#fafaf7}
+.ws-tbl thead th.num{text-align:right}
+.ws-tbl tbody td{padding:.55rem .9rem;border-bottom:1px solid #f0efe9;vertical-align:middle}
+.ws-tbl tbody td.num{text-align:right;font-variant-numeric:tabular-nums}
+.ws-tbl tbody tr:hover td{background:#faf9f4}
+.ws-tbl tbody tr:last-child td{border-bottom:none}
+.ws-tbl .estudio{font-weight:600;color:#1a1a1a}
+.ws-tbl .muted{color:#888;font-size:12px}
+.ws-tbl .notes{color:#666;font-size:12px;max-width:340px;white-space:normal;line-height:1.4}
+
+.ws-edit-select, .ws-edit-input{padding:.35rem .5rem;border:1px solid #ddd;border-radius:4px;font-family:inherit;font-size:12px;background:#fff;color:#1a1a1a;min-width:110px}
+.ws-edit-input.num{width:100px;text-align:right;min-width:0}
+.ws-edit-saving{opacity:.55}
+.ws-edit-saved{outline:2px solid #2e7d32;outline-offset:1px}
+.ws-edit-err{outline:2px solid #a83232;outline-offset:1px}
+
+/* Botones */
+.ws-btn{
+  background:#111;color:#fff;border:1px solid #111;padding:.5rem .9rem;border-radius:6px;
+  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.02em;
+  transition:background .15s,border-color .15s;
+}
+.ws-btn:hover:not(:disabled){background:#333}
+.ws-btn:disabled{opacity:.5;cursor:not-allowed}
+.ws-btn-outline{background:#fff;color:#1a1a1a;border-color:#ddd}
+.ws-btn-outline:hover:not(:disabled){border-color:#1a1a1a}
+.ws-btn-danger{background:#fff;color:#a83232;border-color:#f0c6c3}
+.ws-btn-danger:hover:not(:disabled){background:#a83232;color:#fff;border-color:#a83232}
+
+/* Pool assignment panel */
+.ws-pool{background:#faf9f4;border:1px solid #e8e5da;border-radius:10px;padding:1rem 1.2rem;margin-top:.5rem}
+.ws-pool h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#555;font-weight:700;margin-bottom:.6rem}
+.ws-pool-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin-bottom:.75rem}
+@media(max-width:640px){.ws-pool-filters{grid-template-columns:1fr}}
+.ws-pool-filters input, .ws-pool-filters select{padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:12px;background:#fff}
+.ws-pool-tbl{max-height:360px;overflow-y:auto;background:#fff;border:1px solid #e5e5e5;border-radius:8px}
+.ws-pool-tbl table{width:100%;border-collapse:collapse;font-size:13px}
+.ws-pool-tbl thead th{position:sticky;top:0;background:#fafaf7;padding:.55rem .7rem;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:700;text-align:left;border-bottom:1px solid #e5e5e5}
+.ws-pool-tbl tbody td{padding:.5rem .7rem;border-bottom:1px solid #f0efe9}
+.ws-pool-tbl tbody tr:last-child td{border-bottom:none}
+.ws-pool-tbl input[type="checkbox"]{cursor:pointer}
+.ws-pool-actions{display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;gap:.5rem;flex-wrap:wrap}
+.ws-pool-count{font-size:12px;color:#666}
+
+/* Reunión manual — drawer inline */
+.ws-drawer{background:#faf9f4;border:1px solid #e8e5da;border-radius:10px;padding:1rem 1.2rem;margin-top:.5rem}
+.ws-drawer h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#555;font-weight:700;margin-bottom:.6rem}
+.ws-drawer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
+@media(max-width:640px){.ws-drawer-grid{grid-template-columns:1fr}}
+.ws-drawer-actions{display:flex;gap:.4rem;margin-top:.75rem}
+
+/* Alerta modal-lite (para "prescriptor ya asignado a otro") */
+.ws-alert{background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;padding:.75rem 1rem;border-radius:8px;margin:.6rem 0;font-size:13px;line-height:1.5}
+.ws-alert strong{color:#5a1717}
 
 .cli-loading{padding:2rem;text-align:center;color:#888;font-size:13px}
 .cli-error{background:#fdf1f0;border:1px solid #f0c6c3;color:#7a2020;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px}
@@ -83,30 +188,54 @@
 <body class="hidden-until-auth">
 
 <main class="ash-content">
-  <div class="cli-hero">
-    <h1>Clientes del CRM</h1>
-    <p>Listado de carpinterías con servicio contratado. Aquí se vincula la cuenta web de cada cliente para que pueda ver su portal en <code>/mi-cuenta/servicio-comercial.html</code>.</p>
+
+  <!-- ═════════════════ LISTADO ═════════════════ -->
+  <div id="viewList">
+    <div class="cli-hero">
+      <h1>Clientes del CRM</h1>
+      <p>Listado de carpinterías con servicio contratado. Click en un cliente para abrir su ficha (resumen, prescriptores, reuniones, actividad).</p>
+    </div>
+    <div id="errBox"></div>
+    <div class="cli-wrap">
+      <table class="cli-table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Estado</th>
+            <th class="num">Cuota €/mes</th>
+            <th class="num">Objetivo</th>
+            <th>Fecha alta</th>
+            <th>Cuenta web vinculada</th>
+          </tr>
+        </thead>
+        <tbody id="cliTbody">
+          <tr class="no-click"><td colspan="6" class="cli-loading">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div id="errBox"></div>
+  <!-- ═════════════════ WORKSPACE ═════════════════ -->
+  <div id="viewWorkspace" hidden>
+    <div class="ws-hero">
+      <a class="ws-back" href="#" id="wsBack">← Volver al listado</a>
+      <h1 id="wsClienteName">Cliente</h1>
+      <div class="ws-meta" id="wsClienteMeta"></div>
+    </div>
 
-  <div class="cli-wrap">
-    <table class="cli-table">
-      <thead>
-        <tr>
-          <th>Cliente</th>
-          <th>Estado</th>
-          <th class="num">Cuota €/mes</th>
-          <th class="num">Objetivo</th>
-          <th>Fecha alta</th>
-          <th>Cuenta web vinculada</th>
-        </tr>
-      </thead>
-      <tbody id="cliTbody">
-        <tr><td colspan="6" class="cli-loading">Cargando…</td></tr>
-      </tbody>
-    </table>
+    <div class="ws-tabs">
+      <button type="button" class="ws-tab active" data-tab="resumen">Resumen</button>
+      <button type="button" class="ws-tab" data-tab="prescriptores">Prescriptores</button>
+      <button type="button" class="ws-tab" data-tab="reuniones">Reuniones y proyectos</button>
+      <button type="button" class="ws-tab" data-tab="actividad">Actividad</button>
+    </div>
+
+    <section class="ws-panel active" data-panel="resumen"></section>
+    <section class="ws-panel" data-panel="prescriptores"></section>
+    <section class="ws-panel" data-panel="reuniones"></section>
+    <section class="ws-panel" data-panel="actividad"></section>
   </div>
+
 </main>
 
 <div class="cli-toast" id="toast" role="status" aria-live="polite"></div>
@@ -115,73 +244,123 @@
 <script src="/assets/js/admin-shell.js"></script>
 <script>
 /* ============================================================
- * CRM · Clientes
+ * CRM · Clientes — listado + workspace por cliente
  * ============================================================
- * Vinculación cuenta web ↔ crm_clientes.user_id via RPC
- * get_user_id_by_email (security definer, guard is_crm_staff).
- * Reverse-lookup con get_user_emails_by_ids para pintar el email
- * de los ya vinculados.
+ * Router hash-based: sin hash → listado. #/cliente/<uuid> → workspace
+ * con 4 tabs (Resumen · Prescriptores · Reuniones · Actividad).
+ * Todo vía cliente Supabase con auth. RLS staff decide.
  * ============================================================ */
 (function () {
   'use strict';
 
   var supa;
-  var clientes = [];
-  var emailByUserId = {};
+  var state = {
+    clientes: [],
+    emailByUserId: {},
+    // Cache del workspace del cliente activo (se rehace al abrir uno nuevo)
+    ws: null   // { cliente, prescriptores, reuniones, llamadas, pool }
+  };
 
+  var ESTADOS_CLIENTE = ['piloto','activo','pausado','baja'];
+  var ESTADOS_PRESC   = ['frio','en_cadencia','contactado','reunion','activo','descartado','no_molestar'];
+  var TIPOS_PRESC     = ['arquitecto','interiorista','constructora','otro'];
+  var ESTADOS_REUNION = ['agendada','celebrada','no_show','reprogramada','cancelada'];
+  var RESULTADOS_CLIENTE = ['pendiente','proyecto_en_curso','presupuesto_enviado','sin_interes'];
+  var RESULTADOS_LLAMADA = {
+    no_contesta:'No contesta', buzon:'Buzón', recepcion:'Recepción',
+    conversacion:'Conversación', reunion_agendada:'Reunión agendada',
+    no_interesado:'No interesado', volver_a_llamar:'Volver a llamar'
+  };
+
+  // ── Arranque ─────────────────────────────────────────
   initAdminShell({ activeSection: 'crm-clientes', title: 'CRM · Clientes' })
-    .then(function (ctx) { supa = ctx.supabase; return loadAll(); })
+    .then(function (ctx) { supa = ctx.supabase; return loadListado(); })
+    .then(initRouter)
     .catch(function () { /* admin-shell redirige */ });
 
-  async function loadAll() {
+  // ── Router ───────────────────────────────────────────
+  function initRouter() {
+    window.addEventListener('hashchange', route);
+    route();
+  }
+  function route() {
+    var m = /^#\/cliente\/([0-9a-f-]{36})/.exec(location.hash);
+    if (m) openWorkspace(m[1]);
+    else showList();
+  }
+  function showList() {
+    document.getElementById('viewList').hidden = false;
+    document.getElementById('viewWorkspace').hidden = true;
+  }
+  function showWorkspace() {
+    document.getElementById('viewList').hidden = true;
+    document.getElementById('viewWorkspace').hidden = false;
+  }
+  document.getElementById('wsBack').addEventListener('click', function (e) {
+    e.preventDefault(); location.hash = '';
+  });
+
+  // ══════════════════ LISTADO ══════════════════
+  async function loadListado() {
     document.getElementById('errBox').innerHTML = '';
     try {
       var r = await supa.from('crm_clientes')
         .select('id, nombre, estado, cuota_mensual, objetivo_reuniones_mes, fecha_alta, user_id')
         .order('nombre');
       if (r.error) throw r.error;
-      clientes = r.data || [];
+      state.clientes = r.data || [];
 
-      // Reverse-lookup de emails vinculados (bulk RPC staff-only).
-      var linkedIds = clientes.filter(function (c) { return c.user_id; }).map(function (c) { return c.user_id; });
+      var linkedIds = state.clientes.filter(function (c) { return c.user_id; }).map(function (c) { return c.user_id; });
       if (linkedIds.length) {
         var e = await supa.rpc('get_user_emails_by_ids', { p_ids: linkedIds });
         if (!e.error && e.data) {
-          emailByUserId = {};
-          e.data.forEach(function (row) { emailByUserId[row.user_id] = row.email; });
+          state.emailByUserId = {};
+          e.data.forEach(function (row) { state.emailByUserId[row.user_id] = row.email; });
         }
       }
-      render();
+      renderListado();
     } catch (e) {
       showError(e && e.message ? e.message : 'Error cargando clientes');
     }
   }
 
-  function render() {
+  function renderListado() {
     var tb = document.getElementById('cliTbody');
-    if (!clientes.length) {
-      tb.innerHTML = '<tr><td colspan="6" class="cli-loading">Sin clientes.</td></tr>';
+    if (!state.clientes.length) {
+      tb.innerHTML = '<tr class="no-click"><td colspan="6" class="cli-loading">Sin clientes.</td></tr>';
       return;
     }
-    tb.innerHTML = clientes.map(function (c) {
+    tb.innerHTML = state.clientes.map(function (c) {
       return '<tr data-id="' + esc(c.id) + '">'
-        + '<td><div class="cli-nombre">' + esc(c.nombre) + '</div></td>'
+        + '<td><div class="cli-nombre">' + esc(c.nombre) + '<span class="arrow">→</span></div></td>'
         + '<td><span class="cli-badge ' + esc(c.estado) + '">' + esc(c.estado) + '</span></td>'
         + '<td class="num">' + fmtEur(c.cuota_mensual) + '</td>'
         + '<td class="num">' + c.objetivo_reuniones_mes + '</td>'
         + '<td>' + esc(c.fecha_alta || '—') + '</td>'
-        + '<td>' + renderLinkCell(c) + '</td>'
+        + '<td class="cli-link-cell">' + renderLinkCell(c) + '</td>'
         + '</tr>';
     }).join('');
+
+    // Click en la fila abre el workspace. La celda de linking captura sus
+    // propios clicks (stopPropagation) para no navegar al workspace al
+    // pulsar Vincular/Desvincular.
+    tb.querySelectorAll('tr[data-id]').forEach(function (tr) {
+      tr.addEventListener('click', function () {
+        location.hash = '#/cliente/' + tr.getAttribute('data-id');
+      });
+    });
+    tb.querySelectorAll('.cli-link-cell').forEach(function (td) {
+      td.addEventListener('click', function (e) { e.stopPropagation(); });
+    });
     wireLinkButtons();
   }
 
   function renderLinkCell(c) {
     if (c.user_id) {
-      var email = emailByUserId[c.user_id];
+      var email = state.emailByUserId[c.user_id];
       return '<div class="cli-linked">✓ Vinculada'
         + (email ? '<span class="cli-email">' + esc(email) + '</span>'
-                 : '<span class="cli-email">(uuid ' + esc(c.user_id.slice(0, 8)) + '…, email no disponible)</span>')
+                 : '<span class="cli-email">(uuid ' + esc(c.user_id.slice(0, 8)) + '…)</span>')
         + '</div>'
         + ' <button type="button" class="cli-unlink-btn" data-unlink="' + esc(c.id) + '">Desvincular</button>';
     }
@@ -190,22 +369,21 @@
 
   function wireLinkButtons() {
     document.querySelectorAll('[data-link]').forEach(function (btn) {
-      btn.addEventListener('click', function () { openLinkForm(btn.getAttribute('data-link'), btn); });
+      btn.addEventListener('click', function (e) { e.stopPropagation(); openLinkForm(btn.getAttribute('data-link'), btn); });
     });
     document.querySelectorAll('[data-unlink]').forEach(function (btn) {
-      btn.addEventListener('click', function () { doUnlink(btn.getAttribute('data-unlink'), btn); });
+      btn.addEventListener('click', function (e) { e.stopPropagation(); doUnlink(btn.getAttribute('data-unlink'), btn); });
     });
   }
-
   function openLinkForm(clienteId, btn) {
     var td = btn.closest('td');
-    td.innerHTML = ''
-      + '<form class="cli-link-form" data-cli="' + esc(clienteId) + '">'
+    td.innerHTML = '<form class="cli-link-form" data-cli="' + esc(clienteId) + '">'
       +   '<input type="email" placeholder="email@ejemplo.com" required autofocus>'
       +   '<button type="submit">Vincular</button>'
       +   '<button type="button" class="cli-cancel">Cancelar</button>'
       + '</form>';
     var form = td.querySelector('form');
+    form.addEventListener('click', function (e) { e.stopPropagation(); });
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       doLink(clienteId, form.querySelector('input').value.trim(), form);
@@ -216,12 +394,10 @@
       wireLinkButtons();
     });
   }
-
   async function doLink(clienteId, email, form) {
     if (!email) return;
     form.querySelectorAll('button, input').forEach(function (el) { el.disabled = true; });
     try {
-      // Paso 1: buscar el uuid del email vía RPC staff-only.
       var r = await supa.rpc('get_user_id_by_email', { p_email: email });
       if (r.error) throw r.error;
       var uuid = r.data;
@@ -230,48 +406,663 @@
         form.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
         return;
       }
-      // Paso 2: guardar user_id en la fila.
       var u = await supa.from('crm_clientes').update({ user_id: uuid }).eq('id', clienteId);
       if (u.error) {
-        // Error típico: unique violation (ese user_id ya está vinculado a otro cliente).
-        if (String(u.error.message || '').match(/duplicate|unique/i)) {
-          toast('Esa cuenta ya está vinculada a otra carpintería', true);
-        } else {
-          toast('Error: ' + u.error.message, true);
-        }
+        if (String(u.error.message || '').match(/duplicate|unique/i)) toast('Esa cuenta ya está vinculada a otra carpintería', true);
+        else toast('Error: ' + u.error.message, true);
         form.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
         return;
       }
-      // Refresca estado local + email cache.
       var c = findCliente(clienteId); if (c) c.user_id = uuid;
-      emailByUserId[uuid] = email;
-      render();
+      state.emailByUserId[uuid] = email;
+      renderListado();
       toast('Cuenta vinculada');
     } catch (e) {
       toast('Error: ' + (e.message || 'no se pudo vincular'), true);
       form.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
     }
   }
-
   async function doUnlink(clienteId, btn) {
     var c = findCliente(clienteId); if (!c) return;
-    if (!confirm('Desvincular la cuenta web de "' + c.nombre + '"? El portal dejará de mostrar datos a ese usuario.')) return;
+    if (!confirm('Desvincular la cuenta web de "' + c.nombre + '"?')) return;
     btn.disabled = true;
     var r = await supa.from('crm_clientes').update({ user_id: null }).eq('id', clienteId);
     if (r.error) { btn.disabled = false; toast('Error: ' + r.error.message, true); return; }
     c.user_id = null;
-    render();
+    renderListado();
     toast('Cuenta desvinculada');
   }
 
-  function findCliente(id) {
-    for (var i = 0; i < clientes.length; i++) if (clientes[i].id === id) return clientes[i];
-    return null;
+  // ══════════════════ WORKSPACE ══════════════════
+  async function openWorkspace(clienteId) {
+    showWorkspace();
+    // Reset panels & pintar loading en todos
+    document.querySelectorAll('.ws-panel').forEach(function (p) {
+      p.innerHTML = '<div class="cli-loading">Cargando…</div>';
+    });
+    document.getElementById('wsClienteName').textContent = '…';
+    document.getElementById('wsClienteMeta').innerHTML = '';
+
+    try {
+      await loadWorkspace(clienteId);
+      wireTabs();
+      activateTab('resumen');
+    } catch (e) {
+      document.querySelectorAll('.ws-panel').forEach(function (p) {
+        p.innerHTML = '<div class="cli-error">' + esc(e.message || 'Error cargando la ficha') + '</div>';
+      });
+    }
   }
 
+  async function loadWorkspace(clienteId) {
+    // Cliente completo
+    var c = await supa.from('crm_clientes')
+      .select('id, nombre, nif, persona_contacto, email, telefono, poblacion, territorio, cuota_mensual, estado, fecha_alta, objetivo_reuniones_mes, notas, user_id')
+      .eq('id', clienteId).maybeSingle();
+    if (c.error) throw c.error;
+    if (!c.data) throw new Error('Cliente no encontrado o sin acceso');
+    var cliente = c.data;
+
+    // Prescriptores de su cartera
+    var p = await supa.from('crm_prescriptores')
+      .select('id, nombre_estudio, tipo, persona_contacto, email, telefono, ciudad, territorio, estado, proximo_contacto, updated_at')
+      .eq('cliente_asignado', clienteId)
+      .order('nombre_estudio');
+    if (p.error) throw p.error;
+    var prescriptores = p.data || [];
+
+    // Reuniones (todas del cliente) con nombre_estudio
+    var r = await supa.from('crm_reuniones')
+      .select('id, prescriptor_id, cliente_id, llamada_id, fecha_reunion, estado, resultado_cliente, valor_estimado, notas_sdr, notas_cliente, created_at, crm_prescriptores(nombre_estudio)')
+      .eq('cliente_id', clienteId)
+      .order('fecha_reunion', { ascending: false });
+    if (r.error) throw r.error;
+    var reuniones = r.data || [];
+
+    // Últimas 50 llamadas (con nombre_estudio)
+    var lc = await supa.from('crm_llamadas')
+      .select('id, prescriptor_id, fecha, resultado, duracion_segundos, notas, crm_prescriptores(nombre_estudio)')
+      .eq('cliente_id', clienteId)
+      .order('fecha', { ascending: false })
+      .limit(50);
+    if (lc.error) throw lc.error;
+    var llamadas = lc.data || [];
+
+    // Última llamada por prescriptor (para la tabla del tab Prescriptores)
+    var lastByPresc = {};
+    (llamadas || []).forEach(function (row) {
+      if (!lastByPresc[row.prescriptor_id]) lastByPresc[row.prescriptor_id] = row;
+    });
+    // Además necesitamos la última llamada de CADA prescriptor de la cartera, no solo de las últimas 50
+    // globales. Fallback: para los que no tengan una entrada en lastByPresc, dejamos undefined.
+
+    state.ws = {
+      cliente: cliente,
+      prescriptores: prescriptores,
+      reuniones: reuniones,
+      llamadas: llamadas,
+      lastByPresc: lastByPresc,
+      pool: null   // se carga bajo demanda al abrir el panel de asignación
+    };
+    renderHero();
+  }
+
+  function renderHero() {
+    var c = state.ws.cliente;
+    document.getElementById('wsClienteName').textContent = c.nombre;
+    var email = state.emailByUserId[c.user_id];
+    document.getElementById('wsClienteMeta').innerHTML = ''
+      + '<span class="cli-badge ' + esc(c.estado) + '">' + esc(c.estado) + '</span>'
+      + '<span class="sep">·</span><span>' + esc(c.poblacion || '—') + (c.territorio ? ' (' + esc(c.territorio) + ')' : '') + '</span>'
+      + '<span class="sep">·</span><span>Alta ' + esc(c.fecha_alta || '—') + '</span>'
+      + (c.user_id
+          ? '<span class="sep">·</span><span style="color:#2e7d32;font-weight:600">✓ Cuenta vinculada' + (email ? ' — ' + esc(email) : '') + '</span>'
+          : '<span class="sep">·</span><span style="color:#aaa;font-style:italic">Sin cuenta web vinculada</span>');
+  }
+
+  // ── Tabs ─────────────────────────────────────────────
+  function wireTabs() {
+    document.querySelectorAll('.ws-tab').forEach(function (btn) {
+      btn.onclick = function () { activateTab(btn.getAttribute('data-tab')); };
+    });
+  }
+  function activateTab(tab) {
+    document.querySelectorAll('.ws-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
+    document.querySelectorAll('.ws-panel').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-panel') === tab); });
+    if (tab === 'resumen')       renderResumen();
+    if (tab === 'prescriptores') renderPrescriptores();
+    if (tab === 'reuniones')     renderReuniones();
+    if (tab === 'actividad')     renderActividad();
+  }
+
+  // ══════════ TAB · RESUMEN ══════════
+  function renderResumen() {
+    var c = state.ws.cliente;
+    var mesActual = new Date();
+    var mesKey = mesActual.getFullYear() + '-' + pad2(mesActual.getMonth() + 1);
+
+    // Agendadas y celebradas de este mes desde reuniones del state
+    var sMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1);
+    var sNext  = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 1);
+    var agend = state.ws.reuniones.filter(function (r) { var t = new Date(r.created_at); return t >= sMonth && t < sNext; }).length;
+    var celeb = state.ws.reuniones.filter(function (r) { if (r.estado !== 'celebrada') return false; var t = new Date(r.fecha_reunion); return t >= sMonth && t < sNext; }).length;
+
+    var sem, semLabel, semHint;
+    if (c.estado === 'pausado' || c.estado === 'baja') {
+      sem = 'pausado'; semLabel = c.estado === 'baja' ? 'De baja' : 'En pausa';
+      semHint = 'Cliente sin servicio activo este mes.';
+    } else if (agend >= c.objetivo_reuniones_mes) {
+      sem = 'green'; semLabel = 'En objetivo';
+      semHint = 'Objetivo del mes cumplido (' + agend + ' agendadas ≥ ' + c.objetivo_reuniones_mes + ').';
+    } else if (agend > 0) {
+      sem = 'amber'; semLabel = 'Bajo objetivo';
+      semHint = agend + ' agendadas · faltan ' + (c.objetivo_reuniones_mes - agend) + ' para el objetivo.';
+    } else {
+      sem = 'red'; semLabel = 'Sin reuniones';
+      semHint = 'Este mes activa la garantía (mes gratis).';
+    }
+
+    var panel = document.querySelector('.ws-panel[data-panel="resumen"]');
+    panel.innerHTML = ''
+      + '<div class="ws-card">'
+      +   '<h2>Datos del cliente <span class="hint">edición inline · Enter/blur guarda</span></h2>'
+      +   '<div class="ws-form-grid">'
+      +     resumenField('nombre',           'Nombre',              c.nombre,           'text')
+      +     resumenField('nif',              'NIF',                 c.nif,              'text')
+      +     resumenField('persona_contacto', 'Persona de contacto', c.persona_contacto, 'text')
+      +     resumenField('email',            'Email',               c.email,            'email')
+      +     resumenField('telefono',         'Teléfono',            c.telefono,         'tel')
+      +     resumenField('poblacion',        'Población',           c.poblacion,        'text')
+      +     resumenField('territorio',       'Territorio',          c.territorio,       'text')
+      +     resumenSelect('estado',          'Estado',              c.estado,           ESTADOS_CLIENTE)
+      +     resumenField('cuota_mensual',    'Cuota €/mes',         c.cuota_mensual,    'number')
+      +     resumenField('objetivo_reuniones_mes', 'Objetivo/mes',   c.objetivo_reuniones_mes, 'number')
+      +     resumenField('fecha_alta',       'Fecha alta',          c.fecha_alta,       'date')
+      +     '<div class="ws-field" style="grid-column:1/-1"><label>Notas</label><textarea data-field="notas">' + esc(c.notas || '') + '</textarea></div>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="ws-card">'
+      +   '<h2>Mes en curso · garantía</h2>'
+      +   '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:1rem">'
+      +     '<div>'
+      +       '<div style="font-size:26px;font-weight:600;color:#1a1a1a"><span style="font-variant-numeric:tabular-nums">' + agend + '</span> / ' + c.objetivo_reuniones_mes + ' <span style="font-size:13px;color:#888;font-weight:400">reuniones agendadas</span></div>'
+      +       '<div style="font-size:12.5px;color:#666;margin-top:.25rem">Celebradas este mes: ' + celeb + '</div>'
+      +     '</div>'
+      +     '<span class="ws-sem ' + sem + '">' + esc(semLabel) + '</span>'
+      +   '</div>'
+      +   '<div style="font-size:12.5px;color:#666;margin-top:.75rem">' + esc(semHint) + '</div>'
+      + '</div>'
+      + '<div class="ws-card">'
+      +   '<h2>Cuenta web vinculada</h2>'
+      +   '<div id="wsLinkCell">' + renderLinkCell(c) + '</div>'
+      + '</div>';
+
+    wireResumenEditors(panel);
+    // Reutiliza los handlers de linking del listado.
+    panel.querySelector('#wsLinkCell').addEventListener('click', function (e) { e.stopPropagation(); });
+    wireLinkButtons();
+  }
+
+  function resumenField(field, label, value, type) {
+    return '<div class="ws-field"><label>' + esc(label) + '</label>'
+      + '<input type="' + type + '" data-field="' + esc(field) + '" value="' + esc(value == null ? '' : String(value)) + '"></div>';
+  }
+  function resumenSelect(field, label, value, options) {
+    return '<div class="ws-field"><label>' + esc(label) + '</label>'
+      + '<select data-field="' + esc(field) + '">'
+      + options.map(function (o) { return '<option value="' + esc(o) + '"' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('')
+      + '</select></div>';
+  }
+
+  function wireResumenEditors(root) {
+    root.querySelectorAll('[data-field]').forEach(function (el) {
+      var initial = el.value;
+      var tag = el.tagName;
+      if (tag === 'SELECT') {
+        // Patrón #181: change guarda; blur cancela silencioso si no hubo cambio.
+        el.addEventListener('change', function () { saveResumenField(el, initial); initial = el.value; });
+      } else {
+        el.addEventListener('blur', function () { if (el.value !== initial) { saveResumenField(el, initial); initial = el.value; } });
+      }
+    });
+  }
+  async function saveResumenField(el, prev) {
+    var field = el.getAttribute('data-field');
+    var raw = el.value;
+    var payload = {};
+    if (field === 'cuota_mensual' || field === 'objetivo_reuniones_mes') {
+      var n = raw === '' ? null : Number(raw);
+      if (n != null && (isNaN(n) || n < 0)) { markFieldErr(el); el.value = prev; toast('Valor no válido', true); return; }
+      payload[field] = n;
+    } else if (field === 'fecha_alta') {
+      payload[field] = raw || null;
+    } else {
+      payload[field] = raw === '' ? null : raw;
+    }
+    var wrap = el.closest('.ws-field'); if (wrap) wrap.classList.remove('saved','err');
+    el.classList.add('ws-edit-saving');
+    var r = await supa.from('crm_clientes').update(payload).eq('id', state.ws.cliente.id).select().single();
+    el.classList.remove('ws-edit-saving');
+    if (r.error) { markFieldErr(el); el.value = prev; toast('Error: ' + r.error.message, true); return; }
+    Object.assign(state.ws.cliente, r.data);
+    // También refresca la fila en state.clientes para el listado.
+    var listRow = findCliente(state.ws.cliente.id); if (listRow) Object.assign(listRow, r.data);
+    markFieldOk(el);
+    // Re-render del hero por si cambió nombre/estado/poblacion/territorio/fecha_alta
+    if (['nombre','estado','poblacion','territorio','fecha_alta'].indexOf(field) !== -1) renderHero();
+  }
+  function markFieldOk(el)  { var w = el.closest('.ws-field'); if (w) { w.classList.add('saved');  setTimeout(function(){ w.classList.remove('saved');  }, 1200); } }
+  function markFieldErr(el) { var w = el.closest('.ws-field'); if (w) { w.classList.add('err');    setTimeout(function(){ w.classList.remove('err');    }, 1500); } }
+
+  // ══════════ TAB · PRESCRIPTORES ══════════
+  function renderPrescriptores() {
+    var ps = state.ws.prescriptores;
+    var enCadencia = ps.filter(function (p) { return p.estado === 'en_cadencia'; }).length;
+    var panel = document.querySelector('.ws-panel[data-panel="prescriptores"]');
+    panel.innerHTML = ''
+      + '<div class="ws-card">'
+      +   '<h2>Cartera del cliente <span class="hint">' + ps.length + ' asignados · ' + enCadencia + ' en cadencia</span></h2>'
+      +   '<div style="display:flex;gap:.5rem;margin-bottom:.75rem">'
+      +     '<button type="button" class="ws-btn" id="btnOpenPool">Asignar prescriptores del pool</button>'
+      +   '</div>'
+      +   '<div id="poolBox"></div>'
+      +   (ps.length
+          ? '<div class="ws-tbl-wrap"><table class="ws-tbl"><thead><tr>'
+             + '<th>Estudio</th><th>Tipo</th><th>Ciudad</th><th>Estado</th><th>Última llamada</th><th>Próximo contacto</th><th></th>'
+             + '</tr></thead><tbody id="prescTbody">' + ps.map(prescRow).join('') + '</tbody></table></div>'
+          : '<div class="cli-loading">Sin prescriptores asignados. Usa el botón de arriba para asignar desde el pool.</div>')
+      + '</div>';
+
+    document.getElementById('btnOpenPool').addEventListener('click', openPoolPanel);
+    if (ps.length) wirePrescRemove();
+  }
+
+  function prescRow(p) {
+    var last = state.ws.lastByPresc[p.id];
+    var lastCell = last
+      ? '<div>' + esc(RESULTADOS_LLAMADA[last.resultado] || last.resultado) + '</div><div class="muted">' + fmtDate(last.fecha) + '</div>'
+      : '<span class="muted">—</span>';
+    var proxCell = p.proximo_contacto ? esc(p.proximo_contacto) : '<span class="muted">—</span>';
+    return '<tr data-id="' + esc(p.id) + '">'
+      + '<td><div class="estudio">' + esc(p.nombre_estudio) + '</div></td>'
+      + '<td>' + esc(p.tipo || '—') + '</td>'
+      + '<td>' + esc(p.ciudad || '—') + '</td>'
+      + '<td><span class="cli-badge ' + esc(p.estado) + '">' + esc((p.estado || '').replace('_',' ')) + '</span></td>'
+      + '<td>' + lastCell + '</td>'
+      + '<td>' + proxCell + '</td>'
+      + '<td><button type="button" class="ws-btn ws-btn-danger" data-remove="' + esc(p.id) + '">Quitar</button></td>'
+      + '</tr>';
+  }
+
+  function wirePrescRemove() {
+    document.querySelectorAll('[data-remove]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var pid = btn.getAttribute('data-remove');
+        var p = state.ws.prescriptores.find(function (x) { return x.id === pid; });
+        if (!p) return;
+        if (!confirm('Quitar "' + p.nombre_estudio + '" de la cartera de ' + state.ws.cliente.nombre + '? Volverá al pool.')) return;
+        btn.disabled = true;
+        var r = await supa.from('crm_prescriptores').update({ cliente_asignado: null }).eq('id', pid);
+        if (r.error) { btn.disabled = false; toast('Error: ' + r.error.message, true); return; }
+        state.ws.prescriptores = state.ws.prescriptores.filter(function (x) { return x.id !== pid; });
+        state.ws.pool = null; // invalidar pool para que se refresque
+        renderPrescriptores();
+        toast('Devuelto al pool');
+      });
+    });
+  }
+
+  // ── Pool ─────────────────────────────────────────────
+  async function openPoolPanel() {
+    var box = document.getElementById('poolBox');
+    if (box.querySelector('.ws-pool')) { box.innerHTML = ''; return; } // toggle
+    box.innerHTML = '<div class="ws-pool"><div class="cli-loading">Cargando pool…</div></div>';
+    try {
+      if (!state.ws.pool) {
+        var r = await supa.from('crm_prescriptores')
+          .select('id, nombre_estudio, tipo, ciudad, territorio, estado')
+          .is('cliente_asignado', null)
+          .not('estado', 'in', '("no_molestar","descartado")')
+          .order('nombre_estudio');
+        if (r.error) throw r.error;
+        state.ws.pool = r.data || [];
+      }
+      renderPoolPanel(box);
+    } catch (e) {
+      box.innerHTML = '<div class="ws-alert">' + esc(e.message) + '</div>';
+    }
+  }
+
+  function renderPoolPanel(box) {
+    var pool = state.ws.pool || [];
+    var terrs = uniq(pool.map(function (p) { return p.territorio; }).filter(Boolean)).sort();
+    var cities = uniq(pool.map(function (p) { return p.ciudad; }).filter(Boolean)).sort();
+    box.innerHTML = ''
+      + '<div class="ws-pool">'
+      +   '<h3>Pool sin asignar (' + pool.length + ')</h3>'
+      +   '<div class="ws-pool-filters">'
+      +     '<input type="search" id="poolSearch" placeholder="Buscar por nombre…">'
+      +     '<select id="poolTerritorio"><option value="">Todos los territorios</option>' + terrs.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>'
+      +     '<select id="poolTipo"><option value="">Todos los tipos</option>' + TIPOS_PRESC.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>'
+      +   '</div>'
+      +   '<div class="ws-pool-tbl" id="poolTblWrap"></div>'
+      +   '<div class="ws-pool-actions">'
+      +     '<span class="ws-pool-count" id="poolCount">—</span>'
+      +     '<div>'
+      +       '<button type="button" class="ws-btn ws-btn-outline" id="poolCancel">Cancelar</button>'
+      +       ' <button type="button" class="ws-btn" id="poolAssign" disabled>Asignar 0 seleccionados</button>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+
+    ['poolSearch','poolTerritorio','poolTipo'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input',  renderPoolTable);
+      document.getElementById(id).addEventListener('change', renderPoolTable);
+    });
+    document.getElementById('poolCancel').addEventListener('click', function () { box.innerHTML = ''; });
+    document.getElementById('poolAssign').addEventListener('click', assignSelected);
+    renderPoolTable();
+  }
+
+  function renderPoolTable() {
+    var q  = (document.getElementById('poolSearch').value || '').toLowerCase().trim();
+    var tf = document.getElementById('poolTerritorio').value;
+    var tp = document.getElementById('poolTipo').value;
+    var pool = (state.ws.pool || []).filter(function (p) {
+      if (tf && p.territorio !== tf) return false;
+      if (tp && p.tipo !== tp) return false;
+      if (q && (p.nombre_estudio || '').toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    var wrap = document.getElementById('poolTblWrap');
+    if (!pool.length) { wrap.innerHTML = '<div class="cli-loading">Sin resultados para el filtro.</div>'; updatePoolAssign(); return; }
+    wrap.innerHTML = '<table><thead><tr>'
+      + '<th style="width:32px"></th><th>Estudio</th><th>Tipo</th><th>Ciudad</th><th>Territorio</th><th>Estado</th>'
+      + '</tr></thead><tbody>'
+      + pool.map(function (p) {
+          return '<tr>'
+            + '<td><input type="checkbox" class="poolChk" data-id="' + esc(p.id) + '"></td>'
+            + '<td>' + esc(p.nombre_estudio) + '</td>'
+            + '<td>' + esc(p.tipo || '—') + '</td>'
+            + '<td>' + esc(p.ciudad || '—') + '</td>'
+            + '<td>' + esc(p.territorio || '—') + '</td>'
+            + '<td><span class="cli-badge ' + esc(p.estado) + '">' + esc((p.estado || '').replace('_',' ')) + '</span></td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>';
+    wrap.querySelectorAll('.poolChk').forEach(function (ch) { ch.addEventListener('change', updatePoolAssign); });
+    updatePoolAssign();
+  }
+  function updatePoolAssign() {
+    var n = document.querySelectorAll('.poolChk:checked').length;
+    var btn = document.getElementById('poolAssign');
+    btn.textContent = 'Asignar ' + n + ' seleccionado' + (n === 1 ? '' : 's');
+    btn.disabled = !n;
+    document.getElementById('poolCount').textContent = n ? (n + ' seleccionado' + (n === 1 ? '' : 's')) : '';
+  }
+
+  async function assignSelected() {
+    var ids = [].map.call(document.querySelectorAll('.poolChk:checked'), function (ch) { return ch.getAttribute('data-id'); });
+    if (!ids.length) return;
+    var btn = document.getElementById('poolAssign');
+    btn.disabled = true; btn.textContent = 'Asignando…';
+
+    // Verificación anti-race: sólo actualizamos los que siguen unassigned.
+    // Update con .is('cliente_asignado', null) → sólo toca esos.
+    var upd = await supa.from('crm_prescriptores')
+      .update({ cliente_asignado: state.ws.cliente.id })
+      .in('id', ids)
+      .is('cliente_asignado', null)
+      .select('id');
+    if (upd.error) { btn.disabled = false; toast('Error: ' + upd.error.message, true); updatePoolAssign(); return; }
+
+    var updatedIds = (upd.data || []).map(function (r) { return r.id; });
+    var missed = ids.filter(function (id) { return updatedIds.indexOf(id) === -1; });
+
+    if (missed.length) {
+      // Alguno ya estaba asignado a otro cliente entre la carga del pool y ahora
+      var chk = await supa.from('crm_prescriptores')
+        .select('id, nombre_estudio, cliente_asignado')
+        .in('id', missed);
+      var poseidos = (chk.data || []).filter(function (r) { return r.cliente_asignado; });
+      var owners = uniq(poseidos.map(function (r) { return r.cliente_asignado; }));
+      var ownerRows = owners.length
+        ? await supa.from('crm_clientes').select('id, nombre').in('id', owners)
+        : { data: [] };
+      var ownerMap = {};
+      (ownerRows.data || []).forEach(function (o) { ownerMap[o.id] = o.nombre; });
+      var lines = poseidos.map(function (r) {
+        return '<li><strong>' + esc(r.nombre_estudio) + '</strong> ya pertenece a <em>' + esc(ownerMap[r.cliente_asignado] || r.cliente_asignado) + '</em>. No se ha reasignado (usa la ficha de ese cliente para moverlo).</li>';
+      }).join('');
+      var box = document.getElementById('poolBox');
+      var alert = document.createElement('div');
+      alert.className = 'ws-alert';
+      alert.innerHTML = '<strong>Aviso:</strong> ' + poseidos.length + ' de los seleccionados ya estaban asignados a otro cliente y no se han movido:<ul style="margin:.4rem 0 0 1.2rem">' + lines + '</ul>';
+      box.insertBefore(alert, box.firstChild);
+    }
+
+    // Refresca la cartera local
+    if (updatedIds.length) {
+      var newRows = await supa.from('crm_prescriptores')
+        .select('id, nombre_estudio, tipo, persona_contacto, email, telefono, ciudad, territorio, estado, proximo_contacto, updated_at')
+        .in('id', updatedIds);
+      (newRows.data || []).forEach(function (r) { state.ws.prescriptores.push(r); });
+      state.ws.prescriptores.sort(function (a, b) { return (a.nombre_estudio || '').localeCompare(b.nombre_estudio || ''); });
+      state.ws.pool = (state.ws.pool || []).filter(function (p) { return updatedIds.indexOf(p.id) === -1; });
+    }
+
+    // Cierra el panel (se vuelve a abrir con el nuevo pool si el user quiere)
+    document.getElementById('poolBox').innerHTML = '';
+    renderPrescriptores();
+    toast(updatedIds.length + ' prescriptores asignados' + (missed.length ? ' · ' + missed.length + ' saltados' : ''), !!missed.length);
+  }
+
+  // ══════════ TAB · REUNIONES Y PROYECTOS ══════════
+  function renderReuniones() {
+    var reus = state.ws.reuniones;
+    var proyectos = reus.filter(function (r) { return r.resultado_cliente === 'proyecto_en_curso'; });
+    var valor = proyectos.reduce(function (s, r) { return s + Number(r.valor_estimado || 0); }, 0);
+
+    var panel = document.querySelector('.ws-panel[data-panel="reuniones"]');
+    panel.innerHTML = ''
+      + '<div class="ws-subresumen">'
+      +   '<div class="cell"><div class="lbl">Proyectos en curso</div><div class="val">' + proyectos.length + '</div></div>'
+      +   '<div class="cell"><div class="lbl">Valor firmado</div><div class="val">' + fmtEur(valor) + '</div></div>'
+      + '</div>'
+      + '<div class="ws-card">'
+      +   '<h2>Reuniones (' + reus.length + ') <span class="hint">edición inline de estado, resultado y valor</span></h2>'
+      +   '<div style="display:flex;gap:.5rem;margin-bottom:.75rem">'
+      +     '<button type="button" class="ws-btn" id="btnNewReunion">+ Reunión manual</button>'
+      +   '</div>'
+      +   '<div id="reunionDrawer"></div>'
+      +   (reus.length
+          ? '<div class="ws-tbl-wrap"><table class="ws-tbl"><thead><tr>'
+             + '<th>Fecha</th><th>Estudio</th><th>Estado</th><th>Resultado</th><th class="num">Valor est. (€)</th><th>Notas SDR</th>'
+             + '</tr></thead><tbody id="reuTbody">' + reus.map(reunionRow).join('') + '</tbody></table></div>'
+          : '<div class="cli-loading">Sin reuniones registradas para este cliente.</div>')
+      + '</div>';
+
+    document.getElementById('btnNewReunion').addEventListener('click', openNewReunionDrawer);
+    if (reus.length) wireReunionEditors(panel);
+  }
+
+  function reunionRow(r) {
+    var estudio = (r.crm_prescriptores && r.crm_prescriptores.nombre_estudio) || '(sin prescriptor)';
+    return '<tr data-id="' + esc(r.id) + '">'
+      + '<td>' + esc(fmtDate(r.fecha_reunion, true)) + '</td>'
+      + '<td class="estudio">' + esc(estudio) + '</td>'
+      + '<td>' + selectEditable('estado', r.estado, ESTADOS_REUNION) + '</td>'
+      + '<td>' + selectEditable('resultado_cliente', r.resultado_cliente, RESULTADOS_CLIENTE) + '</td>'
+      + '<td>' + numEditable('valor_estimado', r.valor_estimado) + '</td>'
+      + '<td class="notes">' + esc(r.notas_sdr || '') + '</td>'
+      + '</tr>';
+  }
+  function selectEditable(field, value, options) {
+    return '<select class="ws-edit-select" data-field="' + esc(field) + '">'
+      + options.map(function (o) { return '<option value="' + esc(o) + '"' + (o === value ? ' selected' : '') + '>' + esc(o.replace('_',' ')) + '</option>'; }).join('')
+      + '</select>';
+  }
+  function numEditable(field, value) {
+    return '<input class="ws-edit-input num" type="number" step="1" min="0" data-field="' + esc(field) + '" value="' + (value == null ? '' : esc(String(value))) + '" placeholder="—">';
+  }
+
+  function wireReunionEditors(root) {
+    root.querySelectorAll('[data-field]').forEach(function (el) {
+      var initial = el.value;
+      if (el.tagName === 'SELECT') {
+        el.addEventListener('change', function () { saveReuField(el, initial); initial = el.value; });
+      } else {
+        el.addEventListener('blur', function () { if (el.value !== initial) { saveReuField(el, initial); initial = el.value; } });
+      }
+    });
+  }
+  async function saveReuField(el, prev) {
+    var tr = el.closest('tr');
+    var id = tr.getAttribute('data-id');
+    var field = el.getAttribute('data-field');
+    var raw = el.value;
+    var payload = {};
+    if (field === 'valor_estimado') {
+      var n = raw === '' ? null : Number(raw);
+      if (n != null && (isNaN(n) || n < 0)) { el.classList.add('ws-edit-err'); el.value = prev; setTimeout(function(){ el.classList.remove('ws-edit-err'); }, 1500); toast('Valor no válido', true); return; }
+      payload[field] = n;
+    } else {
+      payload[field] = raw;
+    }
+    el.classList.add('ws-edit-saving');
+    var r = await supa.from('crm_reuniones').update(payload).eq('id', id).select().single();
+    el.classList.remove('ws-edit-saving');
+    if (r.error) { el.classList.add('ws-edit-err'); el.value = prev; setTimeout(function(){ el.classList.remove('ws-edit-err'); }, 1500); toast('Error: ' + r.error.message, true); return; }
+    var idx = state.ws.reuniones.findIndex(function (x) { return x.id === id; });
+    if (idx !== -1) Object.assign(state.ws.reuniones[idx], r.data);
+    el.classList.add('ws-edit-saved'); setTimeout(function(){ el.classList.remove('ws-edit-saved'); }, 1200);
+    // Actualiza subresumen si cambió resultado_cliente o valor_estimado
+    if (field === 'resultado_cliente' || field === 'valor_estimado') {
+      var sr = document.querySelector('.ws-subresumen');
+      if (sr) {
+        var reus = state.ws.reuniones;
+        var proyectos = reus.filter(function (r) { return r.resultado_cliente === 'proyecto_en_curso'; });
+        var valor = proyectos.reduce(function (s, r) { return s + Number(r.valor_estimado || 0); }, 0);
+        sr.innerHTML = ''
+          + '<div class="cell"><div class="lbl">Proyectos en curso</div><div class="val">' + proyectos.length + '</div></div>'
+          + '<div class="cell"><div class="lbl">Valor firmado</div><div class="val">' + fmtEur(valor) + '</div></div>';
+      }
+    }
+  }
+
+  // Reunión manual --------------------------------------
+  function openNewReunionDrawer() {
+    var drawer = document.getElementById('reunionDrawer');
+    if (drawer.querySelector('.ws-drawer')) { drawer.innerHTML = ''; return; }
+    var ps = state.ws.prescriptores;
+    if (!ps.length) {
+      drawer.innerHTML = '<div class="ws-alert">Este cliente no tiene prescriptores en cartera. Asigna al menos uno antes de crear una reunión manual.</div>';
+      return;
+    }
+    // Default: pasado mañana 10:00 hora local
+    var t = new Date(); t.setDate(t.getDate() + 2); t.setHours(10, 0, 0, 0);
+    var isoLocal = t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()) + 'T' + pad2(t.getHours()) + ':' + pad2(t.getMinutes());
+    drawer.innerHTML = ''
+      + '<div class="ws-drawer">'
+      +   '<h3>Nueva reunión manual <span style="color:#888;font-weight:400;font-size:11px;text-transform:none;letter-spacing:0">(sin llamada origen — para reuniones por email o referido)</span></h3>'
+      +   '<div class="ws-drawer-grid">'
+      +     '<div class="ws-field"><label>Prescriptor de la cartera</label><select data-field="prescriptor_id">'
+      +       ps.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.nombre_estudio) + '</option>'; }).join('')
+      +     '</select></div>'
+      +     '<div class="ws-field"><label>Fecha y hora</label><input type="datetime-local" data-field="fecha_reunion" value="' + isoLocal + '" required></div>'
+      +     '<div class="ws-field"><label>Estado</label><select data-field="estado">'
+      +       ESTADOS_REUNION.map(function (o) { return '<option value="' + esc(o) + '"' + (o === 'agendada' ? ' selected' : '') + '>' + esc(o.replace('_',' ')) + '</option>'; }).join('')
+      +     '</select></div>'
+      +     '<div class="ws-field" style="grid-column:1/-1"><label>Notas SDR</label><textarea data-field="notas_sdr" placeholder="Contexto de la reunión."></textarea></div>'
+      +   '</div>'
+      +   '<div class="ws-drawer-actions">'
+      +     '<button type="button" class="ws-btn" id="drawerSubmit">Crear reunión</button>'
+      +     '<button type="button" class="ws-btn ws-btn-outline" id="drawerCancel">Cancelar</button>'
+      +   '</div>'
+      + '</div>';
+    document.getElementById('drawerCancel').addEventListener('click', function () { drawer.innerHTML = ''; });
+    document.getElementById('drawerSubmit').addEventListener('click', createManualReunion);
+  }
+
+  async function createManualReunion() {
+    var drawer = document.getElementById('reunionDrawer');
+    var g = function (f) { return drawer.querySelector('[data-field="' + f + '"]'); };
+    var prescId = g('prescriptor_id').value;
+    var fecha   = g('fecha_reunion').value;
+    var estado  = g('estado').value;
+    var notas   = g('notas_sdr').value.trim() || null;
+    if (!prescId || !fecha) { toast('Falta prescriptor o fecha', true); return; }
+    var iso = new Date(fecha).toISOString();
+    document.getElementById('drawerSubmit').disabled = true;
+    var r = await supa.from('crm_reuniones').insert({
+      prescriptor_id: prescId,
+      cliente_id:     state.ws.cliente.id,
+      llamada_id:     null,
+      fecha_reunion:  iso,
+      estado:         estado,
+      resultado_cliente: 'pendiente',
+      notas_sdr:      notas
+    }).select('id, prescriptor_id, cliente_id, llamada_id, fecha_reunion, estado, resultado_cliente, valor_estimado, notas_sdr, notas_cliente, created_at, crm_prescriptores(nombre_estudio)').single();
+    if (r.error) { document.getElementById('drawerSubmit').disabled = false; toast('Error: ' + r.error.message, true); return; }
+    state.ws.reuniones.unshift(r.data);
+    drawer.innerHTML = '';
+    renderReuniones();
+    toast('Reunión manual creada');
+  }
+
+  // ══════════ TAB · ACTIVIDAD ══════════
+  function renderActividad() {
+    var llamadas = state.ws.llamadas;
+    var panel = document.querySelector('.ws-panel[data-panel="actividad"]');
+    if (!llamadas.length) {
+      panel.innerHTML = '<div class="ws-card"><h2>Actividad reciente</h2><div class="cli-loading">Sin llamadas registradas para este cliente.</div></div>';
+      return;
+    }
+    panel.innerHTML = ''
+      + '<div class="ws-card">'
+      +   '<h2>Últimas 50 llamadas <span class="hint">solo lectura</span></h2>'
+      +   '<div class="ws-tbl-wrap"><table class="ws-tbl"><thead><tr>'
+      +     '<th>Fecha</th><th>Prescriptor</th><th>Resultado</th><th>Duración</th><th>Notas</th>'
+      +   '</tr></thead><tbody>'
+      +   llamadas.map(function (l) {
+          var estudio = (l.crm_prescriptores && l.crm_prescriptores.nombre_estudio) || '(sin prescriptor)';
+          var dur = l.duracion_segundos != null ? fmtDur(l.duracion_segundos) : '<span class="muted">—</span>';
+          return '<tr>'
+            + '<td>' + esc(fmtDate(l.fecha, true)) + '</td>'
+            + '<td class="estudio">' + esc(estudio) + '</td>'
+            + '<td>' + esc(RESULTADOS_LLAMADA[l.resultado] || l.resultado) + '</td>'
+            + '<td>' + dur + '</td>'
+            + '<td class="notes">' + esc(l.notas || '') + '</td>'
+            + '</tr>';
+        }).join('')
+      +   '</tbody></table></div>'
+      + '</div>';
+  }
+
+  // ── Helpers ──────────────────────────────────────────
+  function findCliente(id) {
+    for (var i = 0; i < state.clientes.length; i++) if (state.clientes[i].id === id) return state.clientes[i];
+    return null;
+  }
+  function uniq(arr) { var s = {}, out = []; arr.forEach(function (v) { if (!s[v]) { s[v] = 1; out.push(v); } }); return out; }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
   function fmtEur(v) {
     if (v == null) return '—';
-    return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €';
+    var n = Number(v) || 0;
+    var isInt = (n === Math.floor(n));
+    return n.toLocaleString('es-ES', { minimumFractionDigits: isInt ? 0 : 2, maximumFractionDigits: 2 }) + ' €';
+  }
+  function fmtDate(v, withTime) {
+    if (!v) return '';
+    var d = new Date(v); if (isNaN(d)) return String(v);
+    var s = pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+    if (withTime && String(v).length > 10) s += ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return s;
+  }
+  function fmtDur(s) {
+    if (s == null) return '—';
+    var m = Math.floor(s / 60), r = s % 60;
+    return m + "'" + pad2(r) + '"';
   }
   function esc(s) {
     return String(s == null ? '' : s)
