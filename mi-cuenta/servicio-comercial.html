@@ -39,6 +39,17 @@ h1,h2,h3{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight
 .sc-hero h1{font-size:34px;line-height:1.15;margin-bottom:.4rem}
 .sc-hero .sc-sub{color:#666;font-size:14px}
 
+/* ─── Resumen acumulado desde el alta ──────────────── */
+.sc-resumen{
+  background:#111;color:#fff;border-radius:14px;
+  padding:1.75rem 2rem;margin-bottom:1.5rem;
+}
+.sc-resumen-title{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:1rem}
+.sc-resumen-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.75rem}
+.sc-resumen-cell{min-width:0}
+.sc-resumen-label{font-size:11.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:.35rem}
+.sc-resumen-value{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-size:36px;font-weight:300;line-height:1;letter-spacing:-.02em;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ─── Panel del mes en curso ──────────────────────── */
 .sc-current{
   background:#fff;border:1px solid var(--line);border-radius:14px;
@@ -121,6 +132,10 @@ h1,h2,h3{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight
   .sc-current-count{font-size:44px}
   .sc-reunion{flex-direction:column;align-items:flex-start;gap:.5rem}
   .sc-reunion-fecha{min-width:0}
+  /* Resumen apila en 1 col para que los valores no se coman entre sí */
+  .sc-resumen{padding:1.2rem 1.2rem}
+  .sc-resumen-grid{grid-template-columns:1fr;gap:1rem}
+  .sc-resumen-value{font-size:28px}
 }
 </style>
 </head>
@@ -192,23 +207,40 @@ h1,h2,h3{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight
       }
       cliente = c.data[0];
 
-      // 2) Reuniones (últimos 6 meses + este mes) via crm_portal_reuniones
-      //    (view security_invoker → RLS filtra por su cliente).
-      var start = new Date(); start.setMonth(start.getMonth() - 5); start.setDate(1); start.setHours(0,0,0,0);
+      // 2) Reuniones desde fecha_alta via crm_portal_reuniones (view
+      //    security_invoker → RLS filtra por su cliente). Traemos TODAS
+      //    las reuniones desde el alta para calcular los acumulados del
+      //    bloque resumen; los últimos 6 meses se derivan client-side.
+      var altaIso = cliente.fecha_alta ? cliente.fecha_alta : '1970-01-01';
       var reu = await supa.from('crm_portal_reuniones')
         .select('id, cliente_id, fecha_reunion, estado, resultado_cliente, valor_estimado, nombre_estudio, created_at')
-        .gte('fecha_reunion', start.toISOString())
+        .gte('fecha_reunion', altaIso)
         .order('fecha_reunion', { ascending: false });
       if (reu.error) throw reu.error;
       var reuniones = reu.data || [];
 
-      render(main, reuniones);
+      // Acumulados desde el alta — misma lista, agregada.
+      // celebradas: count(estado='celebrada')
+      // proyectos:  count(resultado_cliente='proyecto_en_curso')
+      // valor:      sum(valor_estimado where resultado_cliente='proyecto_en_curso')
+      var acumulados = {
+        celebradas: 0, proyectos: 0, valor: 0
+      };
+      reuniones.forEach(function (r) {
+        if (r.estado === 'celebrada') acumulados.celebradas++;
+        if (r.resultado_cliente === 'proyecto_en_curso') {
+          acumulados.proyectos++;
+          if (r.valor_estimado != null) acumulados.valor += Number(r.valor_estimado);
+        }
+      });
+
+      render(main, reuniones, acumulados);
     } catch (e) {
       main.innerHTML = '<div class="sc-error">' + esc(e.message || 'Error cargando el servicio') + '</div>';
     }
   }
 
-  function render(main, reuniones) {
+  function render(main, reuniones, acumulados) {
     var now = new Date();
     var sMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     var sNext  = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -261,12 +293,26 @@ h1,h2,h3{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight
     var histRows = Object.keys(byMonth).map(function (k) { return byMonth[k]; })
       .sort(function (a, b) { return b.key.localeCompare(a.key); });
 
+    // Resumen acumulado desde el alta — grid de 3 stats.
+    var acc = acumulados || { celebradas:0, proyectos:0, valor:0 };
+    var resumenHtml = ''
+      + '<div class="sc-resumen">'
+      +   '<div class="sc-resumen-title">Desde el alta</div>'
+      +   '<div class="sc-resumen-grid">'
+      +     '<div class="sc-resumen-cell"><div class="sc-resumen-label">Reuniones celebradas</div><div class="sc-resumen-value">' + acc.celebradas + '</div></div>'
+      +     '<div class="sc-resumen-cell"><div class="sc-resumen-label">Proyectos en curso</div><div class="sc-resumen-value">' + acc.proyectos + '</div></div>'
+      +     '<div class="sc-resumen-cell"><div class="sc-resumen-label">Valor firmado</div><div class="sc-resumen-value">' + fmtEur(acc.valor) + '</div></div>'
+      +   '</div>'
+      + '</div>';
+
     var html = ''
       + '<div class="sc-hero">'
       +   '<div class="sc-cliente">Curino Partners · ' + esc(cliente.nombre) + '</div>'
       +   '<h1>' + monthName(now) + '</h1>'
       +   '<div class="sc-sub">Reuniones agendadas y celebradas del mes en curso, e histórico reciente.</div>'
       + '</div>'
+
+      + resumenHtml
 
       + '<div class="sc-current">'
       +   '<div class="sc-current-head">'
@@ -351,6 +397,16 @@ h1,h2,h3{font-family:var(--serif,'Cormorant Garamond',Georgia,serif);font-weight
   }
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // Formato europeo: 77300 → "77.300 €", 22500.5 → "22.500,50 €".
+  // Sin decimales cuando son enteros para que el header sea limpio.
+  function fmtEur(n) {
+    n = Number(n) || 0;
+    var isInt = (n === Math.floor(n));
+    return n.toLocaleString('es-ES', {
+      minimumFractionDigits: isInt ? 0 : 2,
+      maximumFractionDigits: 2
+    }) + ' €';
+  }
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
