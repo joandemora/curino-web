@@ -110,13 +110,19 @@ nav{
 .account-logo-clear{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:1px solid #fff;font-size:13px;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-family:var(--font);transition:background .15s,transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .account-logo-clear:hover{background:#dc2626;transform:scale(1.1)}
 .account-title{font-family:var(--serif);font-size:clamp(24px,3vw,32px);font-weight:300;letter-spacing:-.02em;text-transform:none;text-align:left}
-.account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-height:320px}
-.card-header{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
+.account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
+/* max-height acota la card para que listas largas (proyectos con 15+ items)
+   no la estiren indefinidamente y las demás cards de la fila queden desiguales.
+   El grid con align-items:stretch iguala altura por fila; el max-height marca
+   el tope. Contenido largo scrollea dentro del card-body. */
+.account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-height:320px;max-height:520px}
+.card-header{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;flex-shrink:0}
 .card-header svg{width:20px;height:20px;stroke:var(--coral);stroke-width:1.8;fill:none;flex-shrink:0}
 .card-header h2{font-family:var(--serif);font-size:18px;font-weight:400;letter-spacing:-.01em;text-transform:none;text-align:left}
-.card-body{flex:1;overflow-y:auto}
-.card-footer{margin-top:auto;padding-top:1rem}
+/* min-height:0 es necesario en flex children para que overflow-y:auto actúe;
+   sin él, flex mantiene la altura del contenido y el scroll nunca aparece. */
+.card-body{flex:1 1 auto;overflow-y:auto;min-height:0}
+.card-footer{margin-top:auto;padding-top:1rem;flex-shrink:0}
 .card-empty{color:var(--ink-mute);font-size:13px;padding:2rem 0;text-align:center}
 /* Brand card */
 .brand-state-pending{background:#fff8e1;color:#8a6d1c;border:1px solid #f0d97c;padding:.75rem .9rem;border-radius:8px;font-size:13px;margin-bottom:.75rem;line-height:1.4}
