@@ -115,13 +115,21 @@ nav{
    ítems de una misma fila). Sin esto, cuando Mis proyectos se llena con
    15+ items y estira su fila a 520px, la fila donde queda "Mi plan" sola
    (o con 1-2 vecinas cortas) permanece en min-height:320 → descuadre entre
-   filas. Detectado tras #183. */
-.account-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:20px;align-items:stretch}
+   filas. Detectado tras #183.
+   minmax(0,1fr): equivalente a 1fr pero desactiva la contribución de min-content
+   del contenido al tamaño de columna. Con 1fr "puro" (minmax(auto,1fr) implícito)
+   una card con contenido intrínsecamente ancho (texto sin espacios, input, botón)
+   puede empujar su columna y estrechar las vecinas → columnas desiguales.
+   Ver también min-width:0 en .account-card. */
+.account-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:20px;align-items:stretch}
 /* max-height acota la card para que listas largas (proyectos con 15+ items)
    no la estiren indefinidamente. Contenido largo scrollea dentro del card-body.
    box-sizing:border-box viene del reset global (tokens.css) → max-height:520
-   capa el TOTAL de la card, no sólo su content-box. */
-.account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-height:320px;max-height:520px}
+   capa el TOTAL de la card, no sólo su content-box.
+   min-width:0: complemento de minmax(0,1fr) en la grid. Sin esto, la card
+   como grid item hereda min-width:auto que respeta el min-content de sus hijos
+   (dimensiones, IDs largos, botones) y puede acabar más ancha que su cuota. */
+.account-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;min-width:0;min-height:320px;max-height:520px}
 .card-header{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;flex-shrink:0}
 .card-header svg{width:20px;height:20px;stroke:var(--coral);stroke-width:1.8;fill:none;flex-shrink:0}
 .card-header h2{font-family:var(--serif);font-size:18px;font-weight:400;letter-spacing:-.01em;text-transform:none;text-align:left}
@@ -237,7 +245,7 @@ nav{
   .footer-legal{align-items:center;text-align:center}
 }
 @media(max-width:1024px){
-  .account-grid{grid-template-columns:repeat(2,1fr)}
+  .account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:640px){
   /* En 1 columna, grid-auto-rows:1fr forzaría TODAS las cards a la altura
