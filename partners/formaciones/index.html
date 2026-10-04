@@ -114,12 +114,13 @@ body{color:var(--ink)}
         <li>Recursos iniciales por email</li>
         <li>Reservas el día y la hora que te vengan bien</li>
       </ul>
-      <div class="fm-price">
+      <div class="fm-price" id="fm-sesion-precio" hidden>
         <div class="fm-amount"><strong data-sesion-precio>150 €</strong><small>IVA incluido</small></div>
         <span class="fm-offer" id="fm-oferta" hidden>Oferta para ti durante <span class="fm-count" id="fm-cuenta">--:--:--</span></span>
         <span class="fm-after" id="fm-despues" hidden>Después: <span data-sesion-normal>150 €</span></span>
       </div>
-      <button type="button" class="fm-btn" data-checkout="sesion">Reservar mi sesión</button>
+      <!-- Oculto hasta que /api/partners-formaciones confirme que la sesión está activa. -->
+      <button type="button" class="fm-btn" data-checkout="sesion" hidden>Reservar mi sesión</button>
       <span class="fm-soon" id="fm-sesion-pronto" hidden>Próximamente</span>
       <p class="fm-err" data-err="sesion" role="alert"></p>
     </article>
@@ -200,11 +201,11 @@ body{color:var(--ink)}
   function pintarSesion(s, desfaseMs) {
     // Activacion por partes: sesion "Proximamente" (sin precio ni boton).
     if (s.activa === false) {
-      $('[data-checkout="sesion"]').hidden = true;
       $('#fm-sesion-pronto').hidden = false;
-      $('.fm-card#sesion .fm-price').hidden = true;
       return;
     }
+    $('#fm-sesion-precio').hidden = false;
+    $('[data-checkout="sesion"]').hidden = false;
     $$('[data-sesion-normal]').forEach(function (el) { el.textContent = eur(s.precio_normal_cents); });
     var oferta = s.precio_tipo === 'oferta' && s.oferta_expira_at;
     $('[data-sesion-precio]').textContent = eur(oferta ? s.precio_cents : s.precio_normal_cents);
