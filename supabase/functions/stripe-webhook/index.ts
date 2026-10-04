@@ -19,6 +19,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
+import { sendMetaEvent, adConsentAllowed } from '../_shared/meta-capi.ts'
 import {
   generateBuyerInvoicePdf,
   generateSellerInvoicePdf,
@@ -1188,6 +1189,12 @@ async function handleClaseCompleted(
 
   console.log(`clase: inscripcion ${inscripcion.id} confirmed for ${buyerEmail}`);
 
+  // 4b. Best-effort: enlazar la solicitud de /partners/ con la compra
+  // (seguimiento comercial) y Purchase por CAPI deduplicado con el
+  // event_id del dataLayer de /partners/gracias/.
+  await linkPartnersSolicitud(supabase, session, String(inscripcion.id), buyerEmail);
+  await sendClasePurchaseCapi(session, buyerEmail, nombre, telefono, amountPaidCents, eventId);
+
   // 5. Best-effort: PDF factura + email con Meet + factura adjunta.
   try {
     const claseInfo: ClaseInfo = {
@@ -1228,6 +1235,63 @@ async function handleClaseCompleted(
     console.log(`clase: invoice + confirmation sent for inscripcion ${inscripcion.id}`);
   } catch (invoiceError) {
     console.error(`clase: invoice/email failed for inscripcion ${inscripcion.id}`, invoiceError);
+  }
+}
+
+async function linkPartnersSolicitud(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session,
+  inscripcionId: string,
+  buyerEmail: string
+) {
+  try {
+    const solicitudId = session.metadata?.solicitud_id || '';
+    const update = { inscripcion_id: inscripcionId, pagado_at: new Date().toISOString() };
+    const q = supabase.from('partners_solicitudes').update(update);
+    const { error } = /^[0-9a-f-]{36}$/i.test(solicitudId)
+      ? await q.eq('id', solicitudId)
+      : await q.eq('email', buyerEmail);
+    if (error) console.error('clase: link partners_solicitudes failed', error);
+  } catch (err) {
+    console.error('clase: link partners_solicitudes threw', err);
+  }
+}
+
+async function sendClasePurchaseCapi(
+  session: Stripe.Checkout.Session,
+  buyerEmail: string,
+  nombre: string,
+  telefono: string | null,
+  amountPaidCents: number,
+  eventId: string | null
+) {
+  try {
+    const md = session.metadata || {};
+    const adConsent = md.ad_consent === 'true' ? true : (md.ad_consent === 'false' ? false : null);
+    if (!eventId || !adConsentAllowed(adConsent, md.country || null)) return;
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://casacurino.com';
+    await sendMetaEvent({
+      eventName: 'Purchase',
+      eventId,
+      eventSourceUrl: `${siteUrl}/partners/gracias/`,
+      email: buyerEmail,
+      phone: telefono,
+      firstName: nombre,
+      country: md.country || null,
+      fbc: md.fbc || null,
+      fbp: md.fbp || null,
+      clientIp: md.client_ip || null,
+      clientUa: md.client_ua || null,
+      customData: {
+        value: amountPaidCents / 100,
+        currency: (session.currency || 'eur').toUpperCase(),
+        content_ids: ['intensivo-partners'],
+        content_type: 'product',
+        num_items: 1
+      }
+    });
+  } catch (err) {
+    console.error('clase: CAPI Purchase failed', err);
   }
 }
 

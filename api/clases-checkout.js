@@ -3,6 +3,8 @@
 // Proxy Vercel Edge → Supabase Edge Function `clases-checkout`.
 // Encapsula la URL de la function y la anon key para el frontend.
 // Valida el body en Node antes de reenviar (defensa en profundidad).
+// Añade pais (x-vercel-ip-country), IP y user-agent del comprador para
+// el Purchase por CAPI que manda stripe-webhook (solo con ad_consent).
 
 export const config = { runtime: 'edge' };
 
@@ -59,16 +61,21 @@ export default async function handler(request) {
   const nombre = trim(body?.nombre, 120);
   const email = trim(body?.email, 200).toLowerCase();
   const telefono = trim(body?.telefono, 40);
-  const desistimiento_renunciado = body?.desistimiento_renunciado === true;
   const event_id = trim(body?.event_id, 64);
   const utm_source = trim(body?.utm_source);
   const utm_medium = trim(body?.utm_medium);
   const utm_campaign = trim(body?.utm_campaign);
+  const solicitud_id = trim(body?.solicitud_id, 64);
+  const fbc = trim(body?.fbc, 400);
+  const fbp = trim(body?.fbp, 200);
+  const ad_consent = typeof body?.ad_consent === 'boolean' ? body.ad_consent : null;
+  const country = trim(request.headers.get('x-vercel-ip-country'), 2);
+  const client_ip = trim((request.headers.get('x-forwarded-for') || '').split(',')[0], 64);
+  const client_ua = trim(request.headers.get('user-agent'), 400);
 
   if (!UUID_RE.test(clase_id)) return jsonResponse({ error: 'invalid_clase_id' }, 400);
   if (nombre.length < 2) return jsonResponse({ error: 'invalid_nombre' }, 400);
   if (!EMAIL_RE.test(email)) return jsonResponse({ error: 'invalid_email' }, 400);
-  if (!desistimiento_renunciado) return jsonResponse({ error: 'desistimiento_required' }, 400);
   if (!UUID_RE.test(event_id)) return jsonResponse({ error: 'invalid_event_id' }, 400);
 
   try {
@@ -81,8 +88,8 @@ export default async function handler(request) {
       },
       body: JSON.stringify({
         clase_id, nombre, email, telefono,
-        desistimiento_renunciado: true,
-        event_id, utm_source, utm_medium, utm_campaign
+        event_id, utm_source, utm_medium, utm_campaign,
+        solicitud_id, fbc, fbp, ad_consent, country, client_ip, client_ua
       })
     });
 

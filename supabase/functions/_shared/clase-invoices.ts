@@ -1,11 +1,15 @@
 // supabase/functions/_shared/clase-invoices.ts
 //
 // Factura simplificada + emails para venta de plazas en clases en directo.
+// Desde 2026-10 el producto vendido es el Intensivo Curino Partners
+// (4 semanas, 8 clases por Zoom): la fila de `clases` representa la
+// promocion y `fecha` es la PRIMERA sesion. `meet_url` guarda el enlace
+// de Zoom (nombre de columna historico).
 // Reutiliza pdf-lib y el patrón de _shared/magazine-invoices.ts.
 //
 // - Factura al comprador (SISTEMA & CURINO SLU es el único cobrador).
 // - Bucket 'invoices' (compartido), prefijo 'clases/'.
-// - Emails: confirmación (con Meet + factura adjunta), recordatorio T-24h,
+// - Emails: confirmación (con Zoom + factura adjunta), recordatorio T-24h,
 //   recordatorio T-1h, reembolso automático (si se agota entre checkout
 //   y webhook).
 
@@ -122,10 +126,10 @@ export async function generateClaseInvoicePdf(
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
 
-  page.drawText(sanitizePdfText('Clase en directo (2 h): vender carpintería a medida sin ser carpintero'), { x: 50, y, font, size: 10 });
+  page.drawText(sanitizePdfText('Intensivo Curino Partners: 4 semanas, 8 clases en directo por Zoom'), { x: 50, y, font, size: 10 });
   page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
-  page.drawText(sanitizePdfText(`Fecha de la clase: ${fmtFechaClase(inv.clase_fecha)}`), { x: 50, y, font, size: 8, color: gray });
+  page.drawText(sanitizePdfText(`Inicio: ${fmtFechaClase(inv.clase_fecha)}`), { x: 50, y, font, size: 8, color: gray });
   y -= 30;
 
   page.drawText('Base imponible:', { x: 350, y, font, size: 10 });
@@ -188,6 +192,20 @@ async function resendSend(payload: Record<string, unknown>): Promise<void> {
   }
 }
 
+// Enlace al grupo de WhatsApp de la promocion. Secret de Edge Functions
+// (PARTNERS_WHATSAPP_GROUP_URL); si no esta definido el email lo omite.
+function whatsappGroupHtml(): string {
+  const url = Deno.env.get('PARTNERS_WHATSAPP_GROUP_URL');
+  if (!url) return '';
+  return `<p>Únete al grupo de WhatsApp de tu promoción:</p>
+  <p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Entrar al grupo de WhatsApp</a></p>`;
+}
+
+function zoomButtonHtml(url: string, label: string): string {
+  return `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">${label}</a></p>
+       <p style="font-size:13px;color:#555;">Enlace directo: <a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`;
+}
+
 export async function sendClaseConfirmationEmail(
   to: string,
   nombre: string,
@@ -197,27 +215,23 @@ export async function sendClaseConfirmationEmail(
 ): Promise<void> {
   const fechaSolo = fmtFechaSolo(clase.fecha);
   const horaSolo = fmtHoraSolo(clase.fecha);
-  const meetHtml = clase.meet_url
-    ? `<p><a href="${escapeHtml(clase.meet_url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Unirse a la clase por Google Meet</a></p>
-       <p style="font-size:13px;color:#555;">Enlace directo: <a href="${escapeHtml(clase.meet_url)}">${escapeHtml(clase.meet_url)}</a></p>`
-    : `<p style="color:#a00;">El enlace de Google Meet se te enviara antes de la clase.</p>`;
 
   const html = `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <h2 style="color:#000;margin-top:0;">Tu plaza en la clase está confirmada</h2>
+  <h2 style="color:#000;margin-top:0;">Tu plaza en el Intensivo Curino Partners está confirmada</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
-  <p>Tienes tu plaza reservada.</p>
-  <p>Nos vemos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular). Son 2 horas en directo y puedes preguntar lo que quieras durante la clase.</p>
-  <p>Enlace de acceso:</p>
-  ${meetHtml}
+  <p>Ya tienes tu plaza. Empezamos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular).</p>
+  <p>Son 4 semanas y 8 clases en directo por Zoom. Todas quedan grabadas, así que si te pierdes alguna puedes verla después.</p>
+  <p><strong>El enlace de Zoom te llega por email el día antes de la primera clase.</strong></p>
+  ${whatsappGroupHtml()}
   <p>Adjunto la factura (N.º ${escapeHtml(invoiceNumber)}).</p>
-  <h3 style="color:#000;margin-top:30px;">Antes de la clase</h3>
-  <p>No necesitas preparar nada ni saber de carpintería. Solo conéctate con papel y boli, y con ganas de preguntar.</p>
-  <p>Si ya tienes algún caso en mente —una cocina, un armario, un cliente potencial—, tráelo y lo vemos.</p>
-  <p style="margin-top:24px;">Recibirás un recordatorio 24 horas antes y otro 1 hora antes con el enlace.</p>
+  <h3 style="color:#000;margin-top:30px;">Antes de empezar</h3>
+  <p>No necesitas saber de carpintería. Si ya tienes algún caso en mente —una cocina, un armario, un cliente potencial—, apúntalo y lo trabajamos en clase.</p>
+  <p>Si cancelas antes de la primera clase te devolvemos el 100 %. Solo tienes que responder a este email.</p>
+  <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
 </body>
 </html>`;
@@ -226,7 +240,7 @@ export async function sendClaseConfirmationEmail(
     from: 'Curino <noreply@casacurino.com>',
     to: [to],
     reply_to: 'info@casacurino.com',
-    subject: 'Tu plaza en la clase esta confirmada — Curino',
+    subject: 'Tu plaza en el Intensivo Curino Partners está confirmada',
     html,
     attachments: [{
       filename: `factura-${invoiceNumber}.pdf`,
@@ -241,34 +255,34 @@ export async function sendClaseReminderEmail(
   clase: ClaseInfo,
   tipo: '24h' | '1h'
 ): Promise<void> {
-  const meetBlock = clase.meet_url
-    ? `<p><a href="${escapeHtml(clase.meet_url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Entrar a la clase (Google Meet)</a></p>
-       <p style="font-size:13px;color:#555;">Enlace directo: <a href="${escapeHtml(clase.meet_url)}">${escapeHtml(clase.meet_url)}</a></p>`
-    : `<p>Te compartimos el enlace de Meet en breve.</p>`;
+  const zoomBlock = clase.meet_url
+    ? zoomButtonHtml(clase.meet_url, 'Entrar a la clase (Zoom)')
+    : `<p>Te compartimos el enlace de Zoom en breve.</p>`;
 
   let subject: string;
   let html: string;
 
   if (tipo === '24h') {
     const horaSolo = fmtHoraSolo(clase.fecha);
-    subject = 'Mañana tenemos clase — Curino';
+    subject = 'Mañana empieza el Intensivo — tu enlace de Zoom';
     html = `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <h2 style="color:#000;margin-top:0;">Mañana tenemos clase</h2>
+  <h2 style="color:#000;margin-top:0;">Mañana empezamos</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
-  <p>Mañana a las ${escapeHtml(horaSolo)} tenemos la clase. 2 horas en directo.</p>
-  <p>Enlace de acceso:</p>
-  ${meetBlock}
-  <p>No hace falta que prepares nada.</p>
+  <p>Mañana a las ${escapeHtml(horaSolo)} (hora peninsular) es la primera clase del Intensivo Curino Partners.</p>
+  <p>Este es tu enlace de Zoom. Guárdalo: es el mismo para las 8 clases.</p>
+  ${zoomBlock}
+  ${whatsappGroupHtml()}
+  <p>No hace falta que prepares nada. Papel, boli y ganas de preguntar.</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático.</p>
 </body>
 </html>`;
   } else {
     const fechaLegible = fmtFechaClase(clase.fecha);
-    subject = 'En 1 hora empezamos — Curino';
+    subject = 'En 1 hora empezamos — Intensivo Curino Partners';
     html = `
 <!DOCTYPE html>
 <html lang="es">
@@ -276,10 +290,10 @@ export async function sendClaseReminderEmail(
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color:#000;margin-top:0;">En 1 hora empezamos</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
-  <p>Empezamos en aproximadamente 1 hora.</p>
+  <p>La primera clase del Intensivo empieza en aproximadamente 1 hora.</p>
   <p><strong>Cuando:</strong> ${escapeHtml(fechaLegible)}<br>
      <strong>Duracion:</strong> ${clase.duracion_min} minutos</p>
-  ${meetBlock}
+  ${zoomBlock}
   <p>Con la camara y el microfono a punto ya estamos.</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automatico.</p>
 </body>
@@ -307,7 +321,7 @@ export async function sendClaseRefundEmail(
   <h2 style="color:#000;margin-top:0;">Se agoto la plaza — te reembolsamos</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
   <p>La ultima plaza se ocupo justo mientras completabas el pago. Ya hemos iniciado el reembolso automatico en Stripe: veras el dinero de vuelta en 5-10 dias habiles, segun tu banco.</p>
-  <p>Vamos a abrir una nueva fecha pronto. Si quieres que te avisemos, responde a este email o apuntate en la lista de espera desde la pagina.</p>
+  <p>Vamos a abrir una nueva promocion del Intensivo pronto. Si quieres que te avisemos, responde a este email o apuntate en la lista de espera desde casacurino.com/partners.</p>
   <p>Perdona las molestias.</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automatico. Puedes responder.</p>
 </body>

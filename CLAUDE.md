@@ -18,7 +18,7 @@ Sin frameworks (ni React, ni build). Cada página es un HTML independiente. Los 
 - `/assets/js/main-footer.js` — inyecta `<div id="main-footer-mount">` con footer
 - `/assets/js/cookie-banner.js` — banner de consent propio, autocontenido
 
-Excepción: `/partners/` es autocontenida (HTML+CSS+JS inline sin dependencias del sistema shared) — decisión de portabilidad. Sí usa `cookie-banner.js` como única excepción. **La ruta pública anterior `/clases/*` redirige con 301 permanente a `/partners/*`** (ver `vercel.json`).
+`/partners/` y `/partners/gracias/` usan el sistema shared desde 2026-10 (antes eran autocontenidas); su CSS propio va inline con prefijo `pt-`/`gr-`. `/partners/acceso/` sigue autocontenida (estética antigua, solo para compradores del curso de 90 €). **La ruta pública anterior `/clases/*` redirige con 301 permanente a `/partners/*`**, y `/partners/clase` → `/partners/` (ver `vercel.json`).
 
 ## Estructura
 
@@ -35,13 +35,15 @@ curino-web/
 │   ├── clases-checkout.js                  ← proxy a Edge Function clases-checkout
 │   ├── clases-proxima.js                   ← consulta clases_public (anon key)
 │   ├── lista-espera.js                     ← proxy a Edge Function lista-espera-relay
+│   ├── partners-solicitud.js               ← proxy a Edge Function partners-solicitud (form /partners)
+│   ├── curso-acceso.js                     ← proxy a curso-acceso (acceso curso 90 € ya comprado)
 │   ├── solicitar-presupuesto.js            ← form leads con adjuntos
 │   ├── config.js                           ← devuelve claves públicas (Supabase anon, Google Maps)
 │   └── sitemap.js                          ← genera sitemap.xml (rewrite en vercel.json)
 ├── checkout/                               ← página de compra multi-armario
 ├── configurador-armarios-vestidores/       ← configurador 3D + confirmación
 ├── configurador-2d/                        ← configurador marketplace 2D
-├── clases/                                 ← landing venta plaza clase directo (2026-08)
+├── partners/                               ← landing solicitud Curino Partners + /gracias + /acceso
 ├── revista/                                ← revista editorial
 ├── mi-cuenta/, cuenta/, login/, registro/  ← área de usuario Supabase
 ├── maestro/, auth/                         ← onboarding + callback
@@ -77,7 +79,9 @@ Las migraciones son idempotentes por diseño: `create table if not exists`, `cre
 | Marketplace (piezas 3D) | `library_items`, `purchases`, `marketplace_orders`, `seller_accounts`, `marketplace_config` | `supabase-marketplace-fase-*.sql` |
 | Revista (editorial) | `magazine_articles`, `magazine_purchases`, `magazine_credits`, `magazine_boosts` | `supabase-revista-fase-g*.sql` |
 | Generador IA | `ai_articles`, `ai_generator_config`, etc. | `20260519_ai_*.sql` |
-| Clases (2026-08) | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` |
+| Clases / Intensivo Partners | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` |
+| Curso pregrabado (retirado 2026-10) | `inscripciones_curso` | `20260805_curso.sql` |
+| Solicitudes /partners (2026-10) | `partners_solicitudes` | `20261004000001_partners_solicitudes.sql` |
 | Carpintería tipos | `carpinteria_*` | `20260522_carpinteria_init.sql` |
 | Roles | `user_roles`, `is_admin()` | `supabase-user-roles.sql` |
 
@@ -91,7 +95,9 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 | `create-checkout-session` | sí | Cliente autenticado (marketplace) | Crea sesión con Connect + application fee. |
 | `magazine-checkout` | sí | Usuario logueado | Compra paquetes de créditos de revista. |
 | `magazine-boost-checkout` | sí | Usuario logueado | Boost/promoción de artículo. |
-| `clases-checkout` | no | Invitado (landing pública) | Crea Stripe session para plaza en clase directo. |
+| `clases-checkout` | no | Invitado (landing pública) | Crea Stripe session para plaza en el Intensivo Curino Partners (990 €, aforo 20, solo tarjeta, sin renuncia al desistimiento). La fila de `clases` es la promoción; `fecha` = primera sesión; `meet_url` guarda el enlace de **Zoom**. |
+| `partners-solicitud` | no | Vercel → Supabase | Formulario multipaso de `/partners/` (acciones `start`/`step`/`cta`, id + `edit_token`). Aviso Resend a `PARTNERS_NOTIFY_EMAIL` (defecto `juan@casacurino.com`) + Lead por CAPI. |
+| `curso-checkout`, `curso-acceso` | no | — / Vercel → Supabase | Curso pregrabado de 90 € **retirado de la venta** (2026-10). `curso-checkout` sin punto de entrada; `curso-acceso` sigue sirviendo `/partners/acceso/`. |
 | `presupuesto-form-relay` | no | Vercel → Supabase | Envía email Resend tras insertar solicitud de presupuesto. |
 | `lista-espera-relay` | no | Vercel → Supabase | Captura email + honeypot + rate limit para lista de espera de clases. |
 | `notify-class-reminder` | no | pg_cron cada 10 min | Envía recordatorios T-24h y T-1h de clases. Auth por header `X-Cron-Secret`. |
@@ -110,7 +116,8 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 - `_shared/invoices.ts` — marketplace (buyer + auto-factura seller).
 - `_shared/magazine-invoices.ts` — paquetes y boosts de revista.
 - `_shared/armario-invoices.ts` — pedido de armario configurado.
-- `_shared/clase-invoices.ts` — plaza en clase directo (2026-08).
+- `_shared/clase-invoices.ts` — plaza en clase directo / Intensivo Partners (factura + emails con Zoom; enlace al grupo de WhatsApp vía secret `PARTNERS_WHATSAPP_GROUP_URL`).
+- `_shared/meta-capi.ts` — envío a Meta Conversions API (no-op sin `META_CAPI_TOKEN`) + `adConsentAllowed()` que replica el Consent Mode v2 de la web.
 - `_shared/issuer.ts` — constante `ISSUER` central (2026-08). **Deuda técnica**: los 4 módulos de facturas anteriores tienen `ISSUER` duplicado inline; no se han refactorizado por riesgo.
 - `_shared/cors.ts` — cabeceras CORS shared (varias funciones las redeclaran inline igualmente).
 
@@ -194,10 +201,11 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 ## Tracking, consent y GTM
 
 - **GTM único**: `GTM-NZR7NNTC`. El tag GA4 vive dentro del contenedor GTM — **no** se carga `gtag.js` directo en el HTML.
-- **Meta Pixel y CAPI**: **no existen en el repo**. Documentado en `CONSENT_AUDIT.md §2.4` y en el commit `5c259cc`. Cualquier evento Pixel se dispara desde tags en la GTM Console (ver comentarios `Lead (Pixel via GTM)` en el código). Cuando se conecte Pixel/CAPI, la landing `/partners/` ya pushea `event_id` UUID a `dataLayer` para dedup.
+- **Meta Pixel** (`31730930696551488`): **no hay `fbq` en el repo**; vive en GTM como tags del template `__cvt_5RM3Q` con consent `ad_storage`: PageView, ViewContent (`view_content`), AddToCart (`add_to_cart`), InitiateCheckout (`begin_checkout`), Purchase (`purchase`), Lead (`generate_lead`). A 2026-10 **los tags no mandan `event_id`** y no existe tag Contact (`contact`): configurar en GTM para que funcione la deduplicación con CAPI.
+- **CAPI**: server-side desde Edge Functions con `_shared/meta-capi.ts` — Lead en `partners-solicitud` y Purchase en `handleClaseCompleted`, con el mismo `event_id` que el `dataLayer`. Solo con consentimiento publicitario (el cliente manda `ad_consent` leído de `curino_consent_v2`; sin decisión se aplica el default por país `x-vercel-ip-country`). Secrets: `META_CAPI_TOKEN` (sin él no envía nada), opcionales `META_PIXEL_ID`, `META_TEST_EVENT_CODE`, `META_GRAPH_VERSION`.
 - **Consent Mode v2**: bloque inline canónico en 49 páginas públicas (más `/partners/`, `/partners/gracias/` y `/partners/acceso/`). Defaults granted globales + denied en EEE+UK+CH+IS+LI+NO. Banner `cookie-banner.js` (propio, autocontenido) promueve via `gtag('consent','update')`. Bloqueantes B1/B2 documentados en `CONSENT_AUDIT.md` siguen abiertos.
-- **UTMs**: hasta 2026-08 no se capturaban en ninguna página. La landing `/partners/` es la primera; guarda `{utm_source, utm_medium, utm_campaign}` en `sessionStorage.curino_curso_utms` al aterrizar y los propaga como metadata Stripe hasta la fila `inscripciones_curso`.
-- **Eventos ecommerce actuales**: `add_to_cart`, `begin_checkout`, `purchase` (armarios y marketplace, sin `event_id`), `generate_lead`. En `/partners/`: `begin_checkout` y `purchase` con `event_id` e `item_id: 'curso-carpinteria'`.
+- **UTMs**: la landing `/partners/` captura `utm_source/medium/campaign/content/term` + `fbclid` en `sessionStorage.curino_partners_attr` al aterrizar y los guarda en `partners_solicitudes` (y los 3 primeros como metadata Stripe hasta `inscripciones`).
+- **Eventos ecommerce actuales**: `add_to_cart`, `begin_checkout`, `purchase` (armarios y marketplace, sin `event_id`), `generate_lead`. En `/partners/`: `generate_lead` (paso 0, `form_name: 'partners_solicitud'`), `begin_checkout` (ACCEDER AHORA), `contact` (WhatsApp) y en `/partners/gracias/` `purchase`, todos con `event_id` e `item_id: 'intensivo-partners'`.
 
 ## RLS — patrones vigentes
 
@@ -221,7 +229,7 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 - **`/configurador-armarios-vestidores/`** — configurador 3D single-page (~16MB con base64)
 - **`/configurador-2d/`** — configurador marketplace 2D
 - **`/checkout/`** — página de compra multi-armario
-- **`/partners/`** — landing programa Partners: curso pregrabado 24/7 (90 €), primera puerta de entrada. Autocontenida. Ruta anterior `/clases/*` redirige con 301 permanente.
+- **`/partners/`** — landing de **solicitud** Curino Partners (2026-10): formulario multipaso (contacto + 4 preguntas) → pantalla final con checkout del Intensivo (990 €) o WhatsApp. One-to-one (3.990 €) solo por WhatsApp. Ruta anterior `/clases/*` redirige con 301 permanente; `/partners/clase` → `/partners/`.
 - **`/revista/{seccion}/{slug}/`** — SSR revista editorial (rewrites en `vercel.json`)
 - **`/admin/`** — panel interno: presupuestos (CRUD + PDF Puppeteer), moderación revista, generador IA
 - **`/mi-cuenta/`, `/cuenta/`, `/login/`, `/registro/`, `/recuperar-contrasena/`, `/auth/`** — auth Supabase
@@ -237,3 +245,4 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 - Fase H (armarios, H2-H10): mayo-junio 2026.
 - Consent Mode v2 avanzado + banner blindado (#165): junio 2026.
 - Landing `/clases` (2026-08). Pivotada a curso pregrabado (agosto 2026). Movida a `/partners` (agosto 2026); `/clases/*` → `/partners/*` con 301 permanente.
+- `/partners` pasa a landing de solicitud del Intensivo Curino Partners (octubre 2026, rama `feat/partners-solicitud`): curso de 90 € retirado de la venta, `clases-checkout` reutilizado para el Intensivo (Zoom), tabla `partners_solicitudes`, CAPI Lead/Purchase.
