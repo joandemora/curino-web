@@ -6,6 +6,8 @@
 // - email.delivered        → partners_emails.estado = 'entregado'
 // - email.delivery_delayed → 'retrasado'
 // - email.opened           → 'abierto' + abierto_at (si Resend lo envia)
+// - email.clicked          → clicado_at (no cambia el estado; requiere el
+//                            seguimiento de clics activado en Resend)
 // - email.bounced          → 'rebotado'; si es permanente, baja del contacto
 //                            (partners_solicitudes.baja_at + motivo 'rebote')
 // - email.complained       → 'queja' + baja del contacto (motivo 'queja')
@@ -50,6 +52,9 @@ Deno.serve(async (req) => {
     'email.bounced': 'rebotado', 'email.complained': 'queja' } as Record<string, string>)[tipo];
 
   try {
+    if (tipo === 'email.clicked' && resendId) {
+      await supa.from('partners_emails').update({ clicado_at: ahora }).eq('resend_id', resendId).is('clicado_at', null);
+    }
     if (nuevo && resendId) {
       const { data: fila } = await supa.from('partners_emails').select('id, estado').eq('resend_id', resendId).maybeSingle();
       if (fila && (ORDEN[nuevo] ?? 0) >= (ORDEN[fila.estado] ?? 0)) {

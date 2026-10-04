@@ -75,13 +75,8 @@ details summary{cursor:pointer;font-size:12.5px}
           <button type="button" class="pa-btn" id="btnNuevaPl">Guardar como nueva</button>
         </div>
         <label class="em-field">Asunto<input type="text" id="asunto" maxlength="300"></label>
-        <div class="em-row">
-          <button type="button" class="em-chip" data-fmt="bold"><b>Negrita</b></button>
-          <button type="button" class="em-chip" data-fmt="link">Enlace</button>
-          <span class="pa-small">Variables:</span>
-          <div class="em-chips" id="vars"></div>
-        </div>
-        <label class="em-field">Cuerpo (línea en blanco = párrafo nuevo; {zoom} o {enlace_reserva} solos en una línea salen como botón; la firma «Juan de Mora · Curino» se añade sola)<textarea id="cuerpo"></textarea></label>
+        <div class="em-chips" id="vars" style="margin-bottom:.6rem"></div>
+        <label class="em-field">Cuerpo (línea en blanco = párrafo nuevo; {zoom} o {enlace_reserva} solos en una línea, o [[Texto]](enlace), salen como botón; la firma «Juan de Mora · Curino» se añade sola)<textarea id="cuerpo"></textarea></label>
       </section>
     </div>
 
@@ -116,7 +111,6 @@ details summary{cursor:pointer;font-size:12.5px}
   var supa, plantillas = [], dest = null;
   var $ = function (q) { return document.querySelector(q); };
   var qs = new URLSearchParams(location.search);
-  var VARS = ['nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes'];
   var idsContactos = (qs.get('ids') || '').split(',').filter(Boolean);
 
   initAdminShell({ activeSection: 'partners-emails', title: 'Partners · Emails' })
@@ -124,10 +118,7 @@ details summary{cursor:pointer;font-size:12.5px}
     .catch(function () {});
 
   function iniciar() {
-    VARS.forEach(function (v) {
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'em-chip'; b.textContent = '{' + v + '}';
-      b.addEventListener('click', function () { insertar('{' + v + '}', ''); }); $('#vars').appendChild(b);
-    });
+    PA.barraEditor($('#vars'), function () { return $('#cuerpo'); });
     Object.keys(PA.ESTADOS).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = PA.ESTADOS[k]; $('#lEstado').appendChild(o); });
     if (qs.get('tipo') === 'comercial') document.querySelector('input[name=tipo][value=comercial]').checked = true;
     if (idsContactos.length) $('#segTipo').value = 'contactos';
@@ -185,17 +176,6 @@ details summary{cursor:pointer;font-size:12.5px}
   $('#btnGuardarPl').addEventListener('click', function () { guardarPlantilla(false); });
   $('#btnNuevaPl').addEventListener('click', function () { guardarPlantilla(true); });
 
-  // Formato básico
-  function insertar(antes, despues) {
-    var ta = $('#cuerpo'), a = ta.selectionStart, b = ta.selectionEnd, sel = ta.value.slice(a, b);
-    ta.value = ta.value.slice(0, a) + antes + sel + despues + ta.value.slice(b);
-    ta.focus(); ta.selectionStart = a + antes.length; ta.selectionEnd = a + antes.length + sel.length;
-    invalidar();
-  }
-  document.querySelector('[data-fmt=bold]').addEventListener('click', function () { insertar('**', '**'); });
-  document.querySelector('[data-fmt=link]').addEventListener('click', function () {
-    var url = prompt('URL del enlace (https://…)'); if (!url) return; insertar('[', '](' + url.trim() + ')');
-  });
 
   function segUI() {
     var t = $('#segTipo').value;

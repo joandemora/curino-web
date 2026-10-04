@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Secuencias — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<style>
+[hidden]{display:none!important}
+.sq-list{display:grid;gap:.8rem}
+.sq-card{border:1px solid #e5e5e5;border-radius:10px;padding:1rem;background:#fff}
+.sq-card h3{margin:0 0 .3rem;font-size:16px}
+.sq-row{display:flex;flex-wrap:wrap;gap:.5rem .8rem;align-items:center;margin-bottom:.6rem}
+.sq-row label{font-size:13px;display:flex;gap:.35rem;align-items:center}
+.sq-row input[type=text],.sq-row input[type=number],.sq-row input[type=time],.sq-row select{font:inherit;font-size:13px;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;background:#fff}
+.sq-field{display:grid;gap:.25rem;font-size:12px;color:#666;margin-bottom:.6rem}
+.sq-field input,.sq-field textarea{font:inherit;font-size:14px;padding:.55rem .6rem;border:1px solid #ddd;border-radius:6px;width:100%}
+.sq-field textarea{min-height:220px;line-height:1.5;resize:vertical}
+.sq-paso{border:1px solid #e5e5e5;border-left:4px solid #12B76A;border-radius:10px;padding:1rem;background:#fff;margin-bottom:1rem}
+.sq-paso.off{border-left-color:#bbb;background:#fafafa}
+.sq-paso.dirty{box-shadow:0 0 0 2px #f5c26b}
+.sq-paso-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.5rem;align-items:baseline;margin-bottom:.6rem}
+.sq-paso-head h3{margin:0;font-size:15px}
+.sq-metrics{display:flex;flex-wrap:wrap;gap:.3rem;font-size:12px}
+.sq-metrics span{background:#f3f3ef;border-radius:999px;padding:.15rem .55rem}
+.sq-conds{display:grid;gap:.3rem;font-size:12.5px;margin:.4rem 0 .8rem}
+.sq-conds label{display:flex;gap:.4rem;align-items:center}
+.sq-preview{width:100%;height:460px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;margin-top:.5rem}
+.sq-info{font-size:12.5px;color:#555;line-height:1.5}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <!-- Lista -->
+  <div id="vLista" hidden>
+    <div class="pa-hero">
+      <div><h1>Secuencias</h1><p>Emails automáticos que salen solos desde el disparador. Los cambios de texto afectan solo a los envíos futuros.</p></div>
+      <div class="pa-btns"><button type="button" class="pa-btn primary" id="btnNueva">Nueva secuencia</button></div>
+    </div>
+    <div class="sq-list" id="lista"><p class="pa-muted">Cargando…</p></div>
+  </div>
+
+  <!-- Editor -->
+  <div id="vEditor" hidden>
+    <p><a href="/admin/partners/secuencias.html">← Secuencias</a></p>
+    <div class="pa-hero"><div><h1 id="sqTitulo">Secuencia</h1><p id="sqSub"></p></div></div>
+
+    <section class="pa-section">
+      <h2>Ajustes</h2>
+      <div class="sq-row">
+        <label>Nombre <input type="text" id="sqNombre" maxlength="120" style="min-width:280px"></label>
+        <label><input type="checkbox" id="sqActiva"> Activa</label>
+      </div>
+      <div class="sq-row">
+        <label>Entra quien… <select id="sqDisparador"><option value="solicitud_completa_sin_compra">Solicitud completa sin compra</option></select></label>
+      </div>
+      <div class="sq-row">
+        <span class="pa-small">Sale de la secuencia si:</span>
+        <label><input type="checkbox" id="sqSaleIntensivo"> Compra el intensivo</label>
+        <label><input type="checkbox" id="sqSaleSesion"> Compra la sesión 1:1</label>
+        <span class="pa-small pa-muted">La baja y el borrado del contacto siempre la cortan.</span>
+      </div>
+      <div class="sq-row">
+        <span class="pa-small">Franja de envío (hora de Madrid):</span>
+        <label>de <input type="time" id="sqFranjaIni"></label>
+        <label>a <input type="time" id="sqFranjaFin"></label>
+        <span class="pa-small pa-muted">Si un envío cae fuera, sale al inicio de la siguiente franja.</span>
+      </div>
+      <button type="button" class="pa-btn primary" id="btnGuardarSec">Guardar ajustes</button>
+      <p class="sq-info" style="margin-top:.6rem">Solo reciben la secuencia los contactos con consentimiento y sin baja. Cada paso cuenta su retraso desde que la persona entra en la secuencia; como mucho sale un email por persona cada 5 minutos, y si varios pasos vencen a la vez (por ejemplo, de noche) sale solo el más reciente.</p>
+    </section>
+
+    <section class="pa-section">
+      <h2>Pasos</h2>
+      <div class="sq-row">
+        <label>Contacto para vista previa y prueba <select id="sqContacto"></select></label>
+      </div>
+      <div id="pasos"></div>
+      <button type="button" class="pa-btn" id="btnAddPaso">Añadir paso</button>
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, sec = null, pasos = [], metricas = {}, dirty = {};
+  var $ = function (q) { return document.querySelector(q); };
+  var secId = new URLSearchParams(location.search).get('id');
+  var CONDS = [
+    ['req_comercial', 'Solo con consentimiento comercial'],
+    ['req_sesion_activa', 'Solo si la sesión 1:1 está activa'],
+    ['req_plazas', 'Solo si quedan plazas en el intensivo'],
+    ['no_si_sesion_comprada', 'No si ya compró la sesión 1:1'],
+    ['activa_oferta_sesion', 'Activa la oferta de la sesión (precio rebajado durante unas horas)']
+  ];
+
+  initAdminShell({ activeSection: 'partners-secuencias', title: 'Partners · Secuencias' })
+    .then(function (ctx) { supa = ctx.supabase; return secId ? cargarEditor() : cargarLista(); })
+    .catch(function () {});
+
+  // ── Lista ─────────────────────────────────────────────────────
+  function cargarLista() {
+    $('#vLista').hidden = false;
+    return Promise.all([
+      supa.from('partners_secuencias').select('*').order('created_at'),
+      supa.from('partners_secuencia_pasos').select('id, secuencia_id, activo'),
+      supa.from('crm_partners_secuencia_metricas').select('secuencia_id, enviados')
+    ]).then(function (r) {
+      if (r[0].error) { $('#lista').innerHTML = '<p class="pa-muted">Error: ' + PA.esc(r[0].error.message) + '</p>'; return; }
+      var secs = r[0].data || [];
+      $('#lista').innerHTML = secs.map(function (s) {
+        var ps = (r[1].data || []).filter(function (p) { return p.secuencia_id === s.id; });
+        var env = (r[2].data || []).filter(function (m) { return m.secuencia_id === s.id; }).reduce(function (a, m) { return a + m.enviados; }, 0);
+        return '<div class="sq-card"><h3><a href="?id=' + s.id + '">' + PA.esc(s.nombre) + '</a></h3>'
+          + '<div class="sq-row"><span class="pa-badge ' + (s.activa ? 'ok' : 'warn') + '">' + (s.activa ? 'Activa' : 'Pausada') + '</span>'
+          + '<span class="pa-small">' + ps.filter(function (p) { return p.activo; }).length + ' de ' + ps.length + ' pasos activos · ' + env + ' emails enviados · franja '
+          + String(s.franja_inicio).slice(0, 5) + '–' + String(s.franja_fin).slice(0, 5) + '</span>'
+          + '<label class="pa-small"><input type="checkbox" data-activa="' + s.id + '"' + (s.activa ? ' checked' : '') + '> Activa</label>'
+          + '<a class="pa-btn" href="?id=' + s.id + '">Editar</a></div></div>';
+      }).join('') || '<p class="pa-muted">Todavía no hay secuencias.</p>';
+    });
+  }
+  document.addEventListener('change', function (e) {
+    var cb = e.target.closest('[data-activa]');
+    if (!cb) return;
+    supa.from('partners_secuencias').update({ activa: cb.checked, updated_at: new Date().toISOString() }).eq('id', cb.dataset.activa).then(function (r) {
+      if (r.error) { cb.checked = !cb.checked; PA.toast('Error: ' + r.error.message); return; }
+      PA.toast(cb.checked ? 'Secuencia activada' : 'Secuencia pausada'); cargarLista();
+    });
+  });
+  $('#btnNueva').addEventListener('click', function () {
+    var nombre = prompt('Nombre de la nueva secuencia'); if (!nombre) return;
+    supa.from('partners_secuencias').insert({ nombre: nombre.trim(), activa: false }).select().single().then(function (r) {
+      if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+      location.href = '?id=' + r.data.id;
+    });
+  });
+
+  // ── Editor ────────────────────────────────────────────────────
+  function cargarEditor() {
+    $('#vEditor').hidden = false;
+    return Promise.all([
+      supa.from('partners_secuencias').select('*').eq('id', secId).maybeSingle(),
+      supa.from('partners_solicitudes').select('id, nombre, email').order('created_at', { ascending: false }).limit(300)
+    ]).then(function (r) {
+      sec = r[0].data;
+      if (!sec) { $('#sqTitulo').textContent = 'Secuencia no encontrada'; return; }
+      $('#sqContacto').innerHTML = (r[1].data || []).map(function (c) { return '<option value="' + c.id + '">' + PA.esc(c.nombre + ' · ' + c.email) + '</option>'; }).join('');
+      pintarAjustes();
+      return cargarPasos();
+    });
+  }
+  function pintarAjustes() {
+    $('#sqTitulo').textContent = sec.nombre;
+    $('#sqSub').textContent = sec.activa ? 'Activa' : 'Pausada: no envía nada (salvo «Enviarme una prueba»).';
+    $('#sqNombre').value = sec.nombre;
+    $('#sqActiva').checked = sec.activa;
+    $('#sqDisparador').value = sec.disparador;
+    $('#sqSaleIntensivo').checked = sec.sale_compra_intensivo;
+    $('#sqSaleSesion').checked = sec.sale_compra_sesion;
+    $('#sqFranjaIni').value = String(sec.franja_inicio).slice(0, 5);
+    $('#sqFranjaFin').value = String(sec.franja_fin).slice(0, 5);
+  }
+  $('#btnGuardarSec').addEventListener('click', function () {
+    var d = {
+      nombre: $('#sqNombre').value.trim(), activa: $('#sqActiva').checked, disparador: $('#sqDisparador').value,
+      sale_compra_intensivo: $('#sqSaleIntensivo').checked, sale_compra_sesion: $('#sqSaleSesion').checked,
+      franja_inicio: $('#sqFranjaIni').value || '09:00', franja_fin: $('#sqFranjaFin').value || '21:30',
+      updated_at: new Date().toISOString()
+    };
+    if (!d.nombre) { PA.toast('El nombre es obligatorio'); return; }
+    supa.from('partners_secuencias').update(d).eq('id', sec.id).select().single().then(function (r) {
+      if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+      sec = r.data; pintarAjustes(); PA.toast('Ajustes guardados');
+    });
+  });
+
+  function cargarPasos() {
+    return Promise.all([
+      supa.from('partners_secuencia_pasos').select('*').eq('secuencia_id', sec.id).order('retraso_minutos').order('orden'),
+      supa.from('crm_partners_secuencia_metricas').select('*').eq('secuencia_id', sec.id)
+    ]).then(function (r) {
+      pasos = r[0].data || [];
+      metricas = {};
+      (r[1].data || []).forEach(function (m) { metricas[m.paso_id] = m; });
+      dirty = {};
+      pintarPasos();
+    });
+  }
+
+  // Retraso: se muestra en la unidad más grande exacta
+  function retrasoUI(min) {
+    if (min > 0 && min % 1440 === 0) return [min / 1440, 'dias'];
+    if (min > 0 && min % 60 === 0) return [min / 60, 'horas'];
+    return [min, 'minutos'];
+  }
+  var MULT = { minutos: 1, horas: 60, dias: 1440 };
+  function retrasoTexto(min) {
+    var r = retrasoUI(min);
+    return r[0] + ' ' + (r[1] === 'dias' ? (r[0] === 1 ? 'día' : 'días') : r[1] === 'horas' ? (r[0] === 1 ? 'hora' : 'horas') : (r[0] === 1 ? 'minuto' : 'minutos'));
+  }
+  function enviadoAlguna(p) { var m = metricas[p.id]; return !!(m && (m.enviados > 0 || m.saltados > 0)); }
+
+  function pintarPasos() {
+    $('#pasos').innerHTML = pasos.map(function (p, i) {
+      var m = metricas[p.id] || {}, r = retrasoUI(p.retraso_minutos), bloq = enviadoAlguna(p);
+      var pct = function (n) { return m.enviados ? ' (' + Math.round(n * 100 / m.enviados) + ' %)' : ''; };
+      return '<div class="sq-paso' + (p.activo ? '' : ' off') + '" data-paso="' + p.id + '">'
+        + '<div class="sq-paso-head"><h3>Paso ' + (i + 1) + ' · ' + PA.esc(p.nombre || 'Sin nombre') + ' <span class="pa-small pa-muted">— a ' + retrasoTexto(p.retraso_minutos) + '</span></h3>'
+        + '<div class="sq-metrics"><span>Enviados ' + (m.enviados || 0) + '</span><span>Entregados ' + (m.entregados || 0) + pct(m.entregados || 0) + '</span>'
+        + '<span>Abiertos ' + (m.abiertos || 0) + pct(m.abiertos || 0) + '</span><span>Clics ' + (m.clics || 0) + pct(m.clics || 0) + '</span>'
+        + '<span>Bajas ' + (m.bajas || 0) + '</span><span>Compras ' + (m.compras || 0) + '</span><span>Saltados ' + (m.saltados || 0) + '</span></div></div>'
+        + '<div class="sq-row"><label>Nombre interno <input type="text" data-f="nombre" value="' + PA.esc(p.nombre) + '" maxlength="120"></label>'
+        + '<label>Retraso <input type="number" min="0" data-f="retraso_n" value="' + r[0] + '" style="width:90px">'
+        + '<select data-f="retraso_u"><option value="minutos"' + (r[1] === 'minutos' ? ' selected' : '') + '>minutos</option><option value="horas"' + (r[1] === 'horas' ? ' selected' : '') + '>horas</option><option value="dias"' + (r[1] === 'dias' ? ' selected' : '') + '>días</option></select> desde que entra</label>'
+        + '<label><input type="checkbox" data-f="activo"' + (p.activo ? ' checked' : '') + '> Activo</label></div>'
+        + '<label class="sq-field">Asunto<input type="text" data-f="asunto" value="' + PA.esc(p.asunto) + '" maxlength="300"></label>'
+        + '<div class="em-chips" data-barra style="margin-bottom:.5rem"></div>'
+        + '<label class="sq-field">Cuerpo (línea en blanco = párrafo nuevo; [[Texto]](enlace) solo en una línea = botón; la firma y el pie de baja se añaden solos)<textarea data-f="cuerpo">' + PA.esc(p.cuerpo) + '</textarea></label>'
+        + '<div class="sq-conds">' + CONDS.map(function (c) { return '<label><input type="checkbox" data-f="' + c[0] + '"' + (p[c[0]] ? ' checked' : '') + '> ' + c[1] + '</label>'; }).join('') + '</div>'
+        + '<div class="pa-btns">'
+        + '<button type="button" class="pa-btn primary" data-a="guardar">Guardar</button>'
+        + '<button type="button" class="pa-btn" data-a="arriba"' + (i === 0 ? ' disabled' : '') + ' title="Subir (intercambia el retraso con el paso anterior)">↑</button>'
+        + '<button type="button" class="pa-btn" data-a="abajo"' + (i === pasos.length - 1 ? ' disabled' : '') + ' title="Bajar (intercambia el retraso con el paso siguiente)">↓</button>'
+        + '<button type="button" class="pa-btn" data-a="duplicar">Duplicar</button>'
+        + '<button type="button" class="pa-btn" data-a="preview">Vista previa</button>'
+        + '<button type="button" class="pa-btn" data-a="prueba">Enviarme una prueba</button>'
+        + '<button type="button" class="pa-btn danger" data-a="borrar"' + (bloq ? ' disabled title="Ya se ha procesado para algún contacto: solo se puede desactivar"' : '') + '>Borrar</button>'
+        + '</div><div data-res></div><div data-prev hidden><div class="pa-small" data-prev-asunto></div><iframe class="sq-preview" sandbox="" title="Vista previa"></iframe></div></div>';
+    }).join('') || '<p class="pa-muted">Esta secuencia no tiene pasos.</p>';
+    document.querySelectorAll('[data-paso]').forEach(function (card) {
+      PA.barraEditor(card.querySelector('[data-barra]'), function () { return card.querySelector('textarea'); });
+    });
+  }
+
+  function leerPaso(card) {
+    var g = function (f) { return card.querySelector('[data-f="' + f + '"]'); };
+    var d = {
+      nombre: g('nombre').value.trim(), asunto: g('asunto').value.trim(), cuerpo: g('cuerpo').value,
+      retraso_minutos: Math.max(0, Math.round(Number(g('retraso_n').value) || 0) * MULT[g('retraso_u').value]),
+      activo: g('activo').checked, updated_at: new Date().toISOString()
+    };
+    CONDS.forEach(function (c) { d[c[0]] = g(c[0]).checked; });
+    return d;
+  }
+  document.addEventListener('input', function (e) {
+    var card = e.target.closest('[data-paso]'); if (!card) return;
+    dirty[card.dataset.paso] = true; card.classList.add('dirty');
+  });
+  document.addEventListener('change', function (e) {
+    var card = e.target.closest('[data-paso]'); if (!card || e.target.closest('[data-activa]')) return;
+    dirty[card.dataset.paso] = true; card.classList.add('dirty');
+  });
+  function hayCambios(exceptoId) { return Object.keys(dirty).some(function (k) { return k !== exceptoId; }); }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-a]'); if (!btn) return;
+    var card = btn.closest('[data-paso]'), id = card.dataset.paso;
+    var p = pasos.find(function (x) { return x.id === id; }), i = pasos.indexOf(p);
+    var a = btn.dataset.a, res = card.querySelector('[data-res]');
+
+    if (a === 'guardar') {
+      var d = leerPaso(card);
+      if (!d.asunto || !d.cuerpo.trim()) { PA.toast('Asunto y cuerpo obligatorios'); return; }
+      if (hayCambios(id) && !confirm('Hay otros pasos con cambios sin guardar; se perderán al recargar. ¿Guardar este de todas formas?')) return;
+      supa.from('partners_secuencia_pasos').update(d).eq('id', id).then(function (r) {
+        if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+        PA.toast('Paso guardado'); cargarPasos();
+      });
+      return;
+    }
+    if (a === 'preview' || a === 'prueba') {
+      var dp = leerPaso(card);
+      if (!$('#sqContacto').value) { PA.toast('Elige un contacto'); return; }
+      btn.disabled = true;
+      supa.functions.invoke('crm-email', { body: { action: a === 'preview' ? 'paso_preview' : 'paso_prueba', solicitud_id: $('#sqContacto').value, paso_id: id, asunto: dp.asunto, cuerpo: dp.cuerpo } })
+        .then(function (r) {
+          if (r.error) return (r.error.context && r.error.context.json ? r.error.context.json() : Promise.resolve({ error: r.error.message })).then(function (x) { throw x; });
+          return r.data;
+        })
+        .then(function (d) {
+          if (a === 'preview') {
+            var pv = card.querySelector('[data-prev]'); pv.hidden = false;
+            pv.querySelector('[data-prev-asunto]').innerHTML = '<b>Para:</b> ' + PA.esc(d.para) + ' · <b>Asunto:</b> ' + PA.esc(d.asunto);
+            pv.querySelector('iframe').srcdoc = d.html;
+            res.innerHTML = d.variables_vacias.length ? '<p class="pa-small" style="color:#912018">Variables vacías para este contacto: ' + d.variables_vacias.map(function (v) { return '{' + v + '}'; }).join(', ') + '. Con ellas el paso se salta para ese contacto.</p>' : '';
+          } else {
+            res.innerHTML = '<p class="pa-small" style="color:#0b5a35">Prueba enviada a ' + PA.esc(d.enviado_a) + ' con los datos de ' + PA.esc(d.con_datos_de) + '.</p>';
+          }
+        })
+        .catch(function (x) { res.innerHTML = '<p class="pa-small" style="color:#912018">Error: ' + PA.esc(x.error || 'no se pudo') + '</p>'; })
+        .then(function () { btn.disabled = false; });
+      return;
+    }
+    if (hayCambios()) { PA.toast('Guarda o descarta los cambios de los pasos antes'); return; }
+    if (a === 'arriba' || a === 'abajo') {
+      var q = pasos[a === 'arriba' ? i - 1 : i + 1];
+      // El orden lo marca el retraso: se intercambian retraso y orden.
+      Promise.all([
+        supa.from('partners_secuencia_pasos').update({ retraso_minutos: q.retraso_minutos, orden: q.orden }).eq('id', p.id),
+        supa.from('partners_secuencia_pasos').update({ retraso_minutos: p.retraso_minutos, orden: p.orden }).eq('id', q.id)
+      ]).then(function (r) {
+        var err = r.find(function (x) { return x.error; });
+        if (err) PA.toast('Error: ' + err.error.message); else PA.toast('Orden cambiado');
+        cargarPasos();
+      });
+    } else if (a === 'duplicar') {
+      var c = {}; Object.keys(p).forEach(function (k) { if (['id', 'created_at', 'updated_at'].indexOf(k) < 0) c[k] = p[k]; });
+      c.nombre = (p.nombre || 'Paso') + ' (copia)'; c.activo = false; c.orden = p.orden + 1;
+      supa.from('partners_secuencia_pasos').insert(c).then(function (r) {
+        if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+        PA.toast('Paso duplicado (inactivo)'); cargarPasos();
+      });
+    } else if (a === 'borrar') {
+      if (enviadoAlguna(p)) return;
+      if (!confirm('¿Borrar el paso «' + (p.nombre || 'sin nombre') + '»? No se ha enviado a nadie.')) return;
+      supa.from('partners_secuencia_pasos').delete().eq('id', p.id).select().then(function (r) {
+        if (r.error || !(r.data || []).length) { PA.toast('No se ha podido borrar (¿ya se ha enviado?). Desactívalo.'); return; }
+        PA.toast('Paso borrado'); cargarPasos();
+      });
+    }
+  });
+
+  $('#btnAddPaso').addEventListener('click', function () {
+    if (hayCambios()) { PA.toast('Guarda los cambios de los pasos antes'); return; }
+    var ultimo = pasos[pasos.length - 1];
+    supa.from('partners_secuencia_pasos').insert({
+      secuencia_id: sec.id, orden: ultimo ? ultimo.orden + 1 : 1, nombre: 'Nuevo paso',
+      retraso_minutos: ultimo ? ultimo.retraso_minutos + 1440 : 60, activo: false,
+      asunto: 'Asunto', cuerpo: 'Hola {nombre},\n\n'
+    }).then(function (r) {
+      if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+      PA.toast('Paso añadido (inactivo hasta que lo actives)'); cargarPasos();
+    });
+  });
+})();
+</script>
+</body>
+</html>

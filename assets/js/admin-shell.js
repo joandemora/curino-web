@@ -35,7 +35,8 @@
         { id: 'partners-contactos',   label: 'Contactos',   href: '/admin/partners/contactos.html' },
         { id: 'partners-ventas',      label: 'Ventas',      href: '/admin/partners/ventas.html' },
         { id: 'partners-formaciones', label: 'Formaciones', href: '/admin/partners/formaciones.html' },
-        { id: 'partners-emails',      label: 'Emails',      href: '/admin/partners/emails.html' }
+        { id: 'partners-emails',      label: 'Emails',      href: '/admin/partners/emails.html' },
+        { id: 'partners-secuencias',  label: 'Secuencias',  href: '/admin/partners/secuencias.html' }
       ]
     },
     { id: 'dashboard', label: 'Dashboard', href: '/admin/' },

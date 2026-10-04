@@ -72,3 +72,6 @@
 .pa-modal-warn{color:#912018}
 .pa-modal-input{display:block;width:100%;margin:.35rem 0 .8rem;font:inherit;font-size:14px;padding:.5rem .6rem;border:1px solid #ccc;border-radius:6px}
 .pa-aviso-compras{font-size:12px;color:#7a4500;margin-top:.3rem}
+.em-chips{display:flex;flex-wrap:wrap;gap:.3rem}
+.em-chip{font:inherit;font-size:11.5px;padding:.2rem .5rem;border-radius:999px;border:1px solid #ddd;background:#fafaf7;cursor:pointer}
+.em-chip:hover{border-color:#111}
