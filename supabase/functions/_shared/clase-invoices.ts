@@ -224,7 +224,7 @@ export async function sendClaseConfirmationEmail(
   <h2 style="color:#000;margin-top:0;">Tu plaza en el Intensivo Curino Partners está confirmada</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
   <p>Ya tienes tu plaza. Empezamos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular).</p>
-  <p>Son 4 semanas y 8 clases en directo por Zoom. Todas quedan grabadas, así que si te pierdes alguna puedes verla después.</p>
+  <p>Son 4 semanas y 8 clases en directo por Zoom, con tiempo para tus preguntas en cada una.</p>
   <p><strong>El enlace de Zoom te llega por email el día antes de la primera clase.</strong></p>
   ${whatsappGroupHtml()}
   <p>Adjunto la factura (N.º ${escapeHtml(invoiceNumber)}).</p>
