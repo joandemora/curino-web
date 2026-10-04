@@ -1464,6 +1464,10 @@ async function handleChargeRefunded(
   }
 
   console.log(`refund: inscripcion ${ins.id} reembolsada, plaza liberada`);
+  {
+    const { data: sol } = await supabase.from('partners_solicitudes').select('id').eq('inscripcion_id', ins.id).maybeSingle();
+    if (sol) await crmMarcarReembolso(supabase, sol.id);
+  }
   try {
     await sendClaseRefundConfirmationEmail(String(ins.email), String(ins.nombre), refunded, nuevas);
     await supabase
@@ -1551,7 +1555,7 @@ async function handleSesionCompleted(
 
   // Solicitud: sesion comprada (por id o, si no hay, por email)
   try {
-    const q = supabase.from('partners_solicitudes').update({ sesion_comprada_at: new Date().toISOString() });
+    const q = supabase.from('partners_solicitudes').update({ sesion_comprada_at: new Date().toISOString(), crm_estado: 'compro', crm_actualizado_at: new Date().toISOString() });
     if (solicitudId) await q.eq('id', solicitudId); else await q.eq('email', buyerEmail);
   } catch (e) { console.error('sesion: link solicitud fallo', e); }
 
@@ -1627,6 +1631,7 @@ async function handleSesionRefunded(
     .update({ estado: 'reembolsada', reembolsada_at: new Date().toISOString(), importe_reembolsado_cents: charge.amount_refunded ?? ses.importe_cents })
     .eq('id', ses.id).eq('estado', 'pagada').select('id');
   if (upd && upd.length) {
+    if (ses.solicitud_id) await crmMarcarReembolso(supabase, ses.solicitud_id);
     try {
       await resendSend({
         from: 'Curino <noreply@casacurino.com>', to: [ses.email], reply_to: 'info@casacurino.com',
@@ -1637,6 +1642,34 @@ async function handleSesionRefunded(
   }
 }
 
+// CRM: tras un reembolso TOTAL, el contacto pasa a "descartado" con nota
+// automatica "Reembolsado (fecha)", salvo que le quede otra compra pagada.
+async function crmMarcarReembolso(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  solicitudId: string
+) {
+  try {
+    const { data: sol } = await supabase.from('partners_solicitudes')
+      .select('id, crm_notas, inscripcion_id').eq('id', solicitudId).maybeSingle();
+    if (!sol) return;
+    const [{ data: insPagada }, { data: sesPagada }] = await Promise.all([
+      sol.inscripcion_id
+        ? supabase.from('inscripciones').select('id').eq('id', sol.inscripcion_id).eq('estado', 'pagada').maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('sesiones_1a1').select('id').eq('solicitud_id', solicitudId).eq('estado', 'pagada').limit(1).maybeSingle()
+    ]);
+    if (insPagada || sesPagada) return; // otra compra sigue activa: manda "compro"
+    const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+    const nota = `Reembolsado (${fecha})`;
+    await supabase.from('partners_solicitudes').update({
+      crm_estado: 'descartado',
+      crm_notas: sol.crm_notas ? `${sol.crm_notas}\n${nota}` : nota,
+      crm_actualizado_at: new Date().toISOString()
+    }).eq('id', solicitudId);
+  } catch (e) { console.error('crm: marcar reembolso fallo', solicitudId, e); }
+}
+
 async function linkPartnersSolicitud(
   supabase: ReturnType<typeof createClient>,
   session: Stripe.Checkout.Session,
@@ -1645,7 +1678,8 @@ async function linkPartnersSolicitud(
 ) {
   try {
     const solicitudId = session.metadata?.solicitud_id || '';
-    const update = { inscripcion_id: inscripcionId, pagado_at: new Date().toISOString() };
+    // CRM: una compra siempre pasa el contacto a "compro" (aunque estuviera descartado).
+    const update = { inscripcion_id: inscripcionId, pagado_at: new Date().toISOString(), crm_estado: 'compro', crm_actualizado_at: new Date().toISOString() };
     const q = supabase.from('partners_solicitudes').update(update);
     const { error } = /^[0-9a-f-]{36}$/i.test(solicitudId)
       ? await q.eq('id', solicitudId)

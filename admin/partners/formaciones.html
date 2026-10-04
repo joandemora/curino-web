@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Formaciones — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<style>
+.fo-card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1rem;margin-bottom:1rem}
+.fo-head{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:baseline;justify-content:space-between;margin-bottom:.7rem}
+.fo-head h2{font-size:16px;font-weight:600;margin:0}
+.fo-stats{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;font-size:13px;margin-bottom:.8rem}
+.fo-stats b{font-variant-numeric:tabular-nums}
+.fo-edit{display:grid;gap:.6rem;grid-template-columns:1fr;align-items:end}
+@media(min-width:760px){.fo-edit{grid-template-columns:220px 170px minmax(0,1fr) auto}}
+.fo-edit label{display:grid;gap:.25rem;font-size:12px;color:#666}
+.fo-edit input[type=datetime-local],.fo-edit input[type=url]{font:inherit;font-size:13px;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;width:100%}
+.fo-check{display:flex!important;align-items:center;gap:.45rem;font-size:13px!important;color:#222!important;padding-bottom:.45rem}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="pa-hero">
+    <div><h1>Formaciones</h1><p>Ediciones del Intensivo y Sesión 1:1. Fecha, confirmación y Zoom editables.</p></div>
+    <label class="pa-small"><input type="checkbox" id="verOcultas"> Ver ediciones ocultas (pruebas)</label>
+  </div>
+  <div id="ediciones"><div class="pa-empty">Cargando…</div></div>
+  <div class="fo-card" id="sesion"></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, clases = [], ventas = [];
+  var $ = function (q) { return document.querySelector(q); };
+  var ESTADO = { borrador: 'Borrador', abierta: 'Abierta', agotada: 'Agotada', cerrada: 'Cerrada', impartida: 'Impartida' };
+
+  initAdminShell({ activeSection: 'partners-formaciones', title: 'Partners · Formaciones' })
+    .then(function (ctx) { supa = ctx.supabase; return cargar(); })
+    .catch(function () {});
+  $('#verOcultas').addEventListener('change', pintar);
+
+  function cargar() {
+    return Promise.all([
+      supa.from('clases').select('*').eq('tipo', 'directo').order('fecha', { ascending: false }),
+      supa.from('crm_partners_ventas').select('producto, edicion_id, importe_cents, estado')
+    ]).then(function (r) {
+      if (r[0].error) { $('#ediciones').innerHTML = '<div class="pa-empty">Error: ' + PA.esc(r[0].error.message) + '</div>'; return; }
+      clases = r[0].data || []; ventas = r[1].data || [];
+      pintar();
+    });
+  }
+
+  // timestamptz → valor de <input type=datetime-local> en hora de Madrid
+  function aLocal(iso) {
+    var p = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+    return p.replace(' ', 'T');
+  }
+  // valor datetime-local (hora de Madrid) → ISO UTC
+  function desdeLocal(v) {
+    var guess = new Date(v + ':00Z');
+    var madrid = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));
+    var utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+    return new Date(guess.getTime() - (madrid - utc)).toISOString();
+  }
+
+  function pintar() {
+    var ver = $('#verOcultas').checked;
+    var lista = clases.filter(function (c) { return ver || !c.oculta; });
+    $('#ediciones').innerHTML = lista.map(function (c) {
+      var vs = ventas.filter(function (v) { return v.producto === 'intensivo' && v.edicion_id === c.id && v.estado === 'pagada'; });
+      var ingresos = vs.reduce(function (a, v) { return a + v.importe_cents; }, 0);
+      return '<div class="fo-card" data-id="' + c.id + '">'
+        + '<div class="fo-head"><h2>' + PA.esc(c.titulo || 'Intensivo Curino Partners') + (c.oculta ? ' <span class="pa-badge warn">oculta</span>' : '') + '</h2>'
+        +   '<span class="pa-badge ' + (c.estado === 'abierta' ? 'ok' : (c.estado === 'agotada' ? 'warn' : '')) + '">' + (ESTADO[c.estado] || c.estado) + '</span></div>'
+        + '<div class="fo-stats">'
+        +   '<span>Plazas: <b>' + c.plazas_ocupadas + ' / ' + c.plazas_totales + '</b></span>'
+        +   '<span>Ingresos: <b>' + PA.eur(ingresos) + '</b></span>'
+        +   '<span>Precio: <b>' + PA.eur(c.precio_cents) + '</b></span>'
+        +   '<span>Fecha: <b>' + PA.fecha(c.fecha, true) + '</b> ' + (c.fecha_confirmada ? '<span class="pa-badge ok">confirmada</span>' : '<span class="pa-badge warn">provisional</span>') + '</span>'
+        +   '<span>Zoom: ' + (c.meet_url ? '<a href="' + PA.esc(c.meet_url) + '" target="_blank" rel="noopener">enlace</a>' : '<span class="pa-badge warn">sin enlace</span>') + '</span>'
+        + '</div>'
+        + '<form class="fo-edit" data-form="' + c.id + '">'
+        +   '<label>Fecha primera clase (hora de Madrid)<input type="datetime-local" name="fecha" value="' + aLocal(c.fecha) + '" required></label>'
+        +   '<label class="fo-check"><input type="checkbox" name="confirmada"' + (c.fecha_confirmada ? ' checked' : '') + '> Fecha confirmada</label>'
+        +   '<label>Enlace de Zoom<input type="url" name="zoom" value="' + PA.esc(c.meet_url || '') + '" placeholder="https://zoom.us/j/…"></label>'
+        +   '<button type="submit" class="pa-btn primary">Guardar</button>'
+        + '</form></div>';
+    }).join('') || '<div class="pa-empty">No hay ediciones.</div>';
+
+    var ses = ventas.filter(function (v) { return v.producto === 'sesion'; });
+    var sesPag = ses.filter(function (v) { return v.estado === 'pagada'; });
+    $('#sesion').innerHTML = '<div class="fo-head"><h2>Sesión 1:1 con Juan · 30 min</h2><span class="pa-badge">producto continuo</span></div>'
+      + '<div class="fo-stats"><span>Vendidas: <b>' + sesPag.length + '</b></span><span>Reembolsadas: <b>' + (ses.length - sesPag.length) + '</b></span>'
+      + '<span>Ingresos: <b>' + PA.eur(sesPag.reduce(function (a, v) { return a + v.importe_cents; }, 0)) + '</b></span>'
+      + '<span class="pa-small">Precio: 150 € (60 € de oferta 3 h tras el email 3 de la secuencia)</span></div>';
+  }
+
+  document.addEventListener('submit', function (e) {
+    var f = e.target.closest('[data-form]');
+    if (!f) return;
+    e.preventDefault();
+    var c = clases.find(function (x) { return x.id === f.dataset.form; });
+    var fecha = desdeLocal(f.fecha.value);
+    var confirmada = f.confirmada.checked;
+    var zoom = f.zoom.value.trim();
+    if (confirmada && !c.fecha_confirmada && !confirm('Vas a CONFIRMAR la fecha: se mostrará en Stripe, emails y factura y se activarán los recordatorios. ¿Seguir?')) return;
+    var btn = f.querySelector('button'); btn.disabled = true;
+    supa.rpc('crm_partners_actualizar_edicion', { p_id: c.id, p_fecha: fecha, p_fecha_confirmada: confirmada, p_meet_url: zoom })
+      .then(function (r) {
+        btn.disabled = false;
+        if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+        Object.assign(c, r.data); pintar(); PA.toast('Edición guardada');
+      });
+  });
+})();
+</script>
+</body>
+</html>

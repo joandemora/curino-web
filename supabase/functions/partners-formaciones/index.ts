@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     if (action === 'baja') {
       if (!lead) return json({ error: 'invalid_token' }, 400);
       if (!lead.baja_at) {
-        await supabase.from('partners_solicitudes').update({ baja_at: new Date().toISOString() }).eq('id', lead.id);
+        await supabase.from('partners_solicitudes').update({ baja_at: new Date().toISOString(), motivo_baja: 'enlace' }).eq('id', lead.id);
       }
       return json({ ok: true });
     }

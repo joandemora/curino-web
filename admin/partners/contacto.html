@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Contacto — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<style>
+.ct-grid{display:grid;gap:1rem}
+@media(min-width:960px){.ct-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <p><a href="/admin/partners/contactos.html">← Contactos</a></p>
+  <div class="pa-hero">
+    <div><h1 id="ctNombre">Contacto</h1><p id="ctSub"></p></div>
+    <div class="pa-btns" id="ctBtns"></div>
+  </div>
+
+  <div class="ct-grid">
+    <section class="pa-section">
+      <h2>Datos y respuestas</h2>
+      <dl class="pa-dl" id="ctDatos"></dl>
+    </section>
+    <section class="pa-section">
+      <h2>Seguimiento</h2>
+      <div class="pa-form">
+        <label>Estado <span id="ctEstado"></span></label>
+        <label>Notas <textarea class="pa-notas" id="ctNotas" rows="4"></textarea></label>
+      </div>
+    </section>
+    <section class="pa-section">
+      <h2>Historial (solicitud y emails)</h2>
+      <ul class="pa-timeline" id="ctHistorial"></ul>
+    </section>
+    <section class="pa-section">
+      <h2>Compras</h2>
+      <div id="ctCompras" class="pa-small">Cargando…</div>
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, s;
+  var $ = function (q) { return document.querySelector(q); };
+  var id = new URLSearchParams(location.search).get('id') || '';
+
+  initAdminShell({ activeSection: 'partners-contactos', title: 'Partners · Contacto' })
+    .then(function (ctx) { supa = ctx.supabase; return cargar(); })
+    .catch(function () {});
+
+  function cargar() {
+    return supa.from('partners_solicitudes').select('*').eq('id', id).maybeSingle().then(function (r) {
+      if (r.error || !r.data) { $('#ctNombre').textContent = 'Contacto no encontrado'; return; }
+      s = r.data;
+      pintar();
+      return supa.from('crm_partners_ventas').select('*').or('solicitud_id.eq.' + s.id + ',email.eq."' + String(s.email).replace(/"/g, '') + '"').order('fecha', { ascending: false })
+        .then(function (v) { pintarCompras(v.data || []); });
+    });
+  }
+
+  function fila(k, v) { return '<dt>' + k + '</dt><dd>' + (v == null || v === '' ? '<span class="pa-muted">—</span>' : v) + '</dd>'; }
+
+  function pintar() {
+    $('#ctNombre').textContent = s.nombre;
+    $('#ctSub').textContent = 'Solicitud del ' + PA.fecha(s.created_at, true);
+    $('#ctBtns').innerHTML = '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
+      + '<a class="pa-btn" href="' + PA.esc(PA.mailUrl(s)) + '">Email</a>';
+    var R = PA.R;
+    $('#ctDatos').innerHTML = ''
+      + fila('Email', PA.esc(s.email))
+      + fila('Teléfono', PA.esc(PA.telefono(s)))
+      + fila('Cualificado', s.cualificado === true ? '<span class="pa-badge ok">Sí</span>' : (s.cualificado === false ? 'No' : null))
+      + fila('Perfil one-to-one', s.perfil_one_to_one ? '<span class="pa-badge info">Sí</span>' : 'No')
+      + (s.situacion_actual || s.inicio
+          ? fila('Situación', PA.esc(R.situacion_actual[s.situacion_actual])) + fila('Experiencia', PA.esc(R.experiencia[s.experiencia]))
+            + fila('Dedicación', PA.esc(R.dedicacion[s.dedicacion])) + fila('Cuándo empezar', PA.esc(R.inicio[s.inicio]))
+          : fila('A qué se dedica', PA.esc(R.p1_dedicacion[s.p1_dedicacion])) + fila('Situación', PA.esc(s.p2_situacion))
+            + fila('Instagram / web', PA.esc(s.p2_instagram_web)) + fila('Cuándo empezar', PA.esc(R.p3_inicio[s.p3_inicio]))
+            + fila('Inversión', PA.esc(R.p4_inversion[s.p4_inversion])))
+      + fila('Paso alcanzado', s.paso_alcanzado + ' de 4')
+      + fila('Botón final', s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : null)
+      + fila('Consentimiento comercial', s.consentimiento_comercial ? '<span class="pa-badge ok">Sí</span>' : 'No')
+      + fila('Baja', s.baja_at ? '<span class="pa-badge bad">' + PA.esc(s.motivo_baja || 'baja') + '</span> ' + PA.fecha(s.baja_at, true) : null)
+      + fila('Origen', PA.esc([s.utm_source, s.utm_medium, s.utm_campaign].filter(Boolean).join(' / ')))
+      + fila('Anuncio (utm_content)', PA.esc(s.utm_content))
+      + fila('fbclid', s.fbclid ? 'Sí' : null);
+    $('#ctEstado').innerHTML = PA.estadoSelect(s);
+    $('#ctNotas').value = s.crm_notas || '';
+
+    var ev = [
+      [s.created_at, 'Envía el contacto (paso 0)'],
+      [s.notificado_lead_at, 'Aviso a Juan: nueva solicitud'],
+      [s.completada_at, 'Completa la solicitud (4/4)'],
+      [s.notificado_completa_at, 'Aviso a Juan: solicitud completa'],
+      [s.precio_visto_at, 'Ve el precio en la pantalla final'],
+      [s.cta_final_at, 'Pulsa: ' + (PA.CTA[s.cta_final] || s.cta_final || '')],
+      [s.checkout_iniciado_at, 'Inicia un pago'],
+      [s.aviso_sin_compra_at, 'Aviso a Juan: sin comprar (+30 min)'],
+      [s.seguimiento_1_at, 'Secuencia · email 1 (+1 h)'],
+      [s.seguimiento_2_at, 'Secuencia · email 2 (+24 h)'],
+      [s.oferta_sesion_enviada_at, 'Secuencia · email 3 (oferta sesión 1:1)'],
+      [s.seguimiento_3_at && !s.oferta_sesion_enviada_at ? s.seguimiento_3_at : null, 'Secuencia · email 3 no enviado (saltado)'],
+      [s.seguimiento_4_at, 'Secuencia · email 4 (+72 h)'],
+      [s.pagado_at, 'Compra el Intensivo'],
+      [s.sesion_comprada_at, 'Compra la Sesión 1:1'],
+      [s.baja_at, 'Baja de emails (' + (s.motivo_baja || '') + ')'],
+      [s.crm_actualizado_at, 'Último cambio de estado/notas en el CRM']
+    ].filter(function (x) { return x[0]; }).sort(function (a, b) { return a[0] < b[0] ? 1 : -1; });
+    $('#ctHistorial').innerHTML = ev.map(function (x) { return '<li><time>' + PA.fecha(x[0], true) + '</time><span>' + PA.esc(x[1]) + '</span></li>'; }).join('')
+      || '<li class="pa-muted">Sin actividad.</li>';
+  }
+
+  function pintarCompras(v) {
+    if (!v.length) { $('#ctCompras').innerHTML = '<span class="pa-muted">Sin compras.</span>'; return; }
+    $('#ctCompras').innerHTML = '<table class="pa-table"><thead><tr><th>Fecha</th><th>Producto</th><th class="num">Importe</th><th>Factura</th><th>Estado</th></tr></thead><tbody>'
+      + v.map(function (c) {
+        return '<tr><td data-l="Fecha">' + PA.fecha(c.fecha, true) + '</td><td data-l="Producto">' + PA.esc(c.edicion) + '</td>'
+          + '<td data-l="Importe" class="num">' + PA.eur(c.importe_cents) + '</td>'
+          + '<td data-l="Factura">' + (c.pdf_url ? '<a href="#" data-pdf="' + PA.esc(c.pdf_url) + '">' + PA.esc(c.invoice_number || 'PDF') + '</a>' : PA.esc(c.invoice_number || '—'))
+          + (c.rect_numeros ? '<div class="pa-small">Rect.: ' + PA.esc(c.rect_numeros) + '</div>' : '') + '</td>'
+          + '<td data-l="Estado">' + (c.estado === 'pagada' ? '<span class="pa-badge ok">Pagado</span>' : '<span class="pa-badge bad">Reembolsado</span>') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-pdf]');
+    if (a) { e.preventDefault(); PA.abrirPdf(supa, a.dataset.pdf); }
+  });
+  document.addEventListener('change', function (e) {
+    var sel = e.target.closest('[data-estado]');
+    if (!sel) return;
+    PA.guardarContacto(supa, s.id, sel.value, s.crm_notas || null).then(function (row) { s = Object.assign(s, row); pintar(); PA.toast('Estado guardado'); })
+      .catch(function (err) { PA.toast('Error: ' + err.message); pintar(); });
+  });
+  $('#ctNotas').addEventListener('blur', function () {
+    var val = this.value.trim() || null;
+    if ((s.crm_notas || null) === val) return;
+    PA.guardarContacto(supa, s.id, s.crm_estado, val).then(function (row) { s = Object.assign(s, row); PA.toast('Notas guardadas'); })
+      .catch(function (err) { PA.toast('Error: ' + err.message); });
+  });
+})();
+</script>
+</body>
+</html>

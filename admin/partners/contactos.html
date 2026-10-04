@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Contactos — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="pa-hero">
+    <div>
+      <h1>Contactos</h1>
+      <p>Solicitudes de casacurino.com/partners, la más reciente primero.</p>
+    </div>
+  </div>
+
+  <div class="pa-filters" id="filtros">
+    <select id="fEstado"><option value="">Todos los estados</option></select>
+    <select id="fCualificado"><option value="">Cualificado: todos</option><option value="si">Cualificado</option><option value="no">No cualificado</option></select>
+    <select id="fConsent"><option value="">Consentimiento: todos</option><option value="si">Con consentimiento</option><option value="no">Sin consentimiento</option></select>
+    <select id="fCompro"><option value="">Compra: todos</option><option value="si">Compró</option><option value="no">No compró</option></select>
+    <select id="fAnuncio"><option value="">Todos los anuncios</option></select>
+    <label>Desde <input type="date" id="fDesde"></label>
+    <label>Hasta <input type="date" id="fHasta"></label>
+    <span class="pa-count" id="contador"></span>
+  </div>
+
+  <div class="pa-wrap">
+    <table class="pa-table">
+      <thead><tr>
+        <th>Fecha</th><th>Contacto</th><th>Cualif.</th><th>Respuestas</th><th>Botón final</th>
+        <th>Vio precio</th><th>Inició pago</th><th>Compró</th><th>Consent.</th><th>Baja</th><th>Anuncio</th>
+        <th>Estado</th><th>Notas</th><th>Acciones</th>
+      </tr></thead>
+      <tbody id="filas"><tr><td colspan="14" class="pa-empty">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, todos = [];
+  var $ = function (s) { return document.querySelector(s); };
+
+  initAdminShell({ activeSection: 'partners-contactos', title: 'Partners · Contactos' })
+    .then(function (ctx) { supa = ctx.supabase; return cargar(); })
+    .catch(function () {});
+
+  Object.keys(PA.ESTADOS).forEach(function (k) {
+    var o = document.createElement('option'); o.value = k; o.textContent = PA.ESTADOS[k]; $('#fEstado').appendChild(o);
+  });
+  ['fEstado', 'fCualificado', 'fConsent', 'fCompro', 'fAnuncio', 'fDesde', 'fHasta'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', pintar);
+  });
+
+  function cargar() {
+    return supa.from('partners_solicitudes').select('*').order('created_at', { ascending: false }).limit(2000)
+      .then(function (r) {
+        if (r.error) { $('#filas').innerHTML = '<tr><td colspan="14" class="pa-empty">Error: ' + PA.esc(r.error.message) + '</td></tr>'; return; }
+        todos = r.data || [];
+        var anuncios = {};
+        todos.forEach(function (s) { if (s.utm_content) anuncios[s.utm_content] = 1; });
+        Object.keys(anuncios).sort().forEach(function (a) {
+          var o = document.createElement('option'); o.value = a; o.textContent = a; $('#fAnuncio').appendChild(o);
+        });
+        pintar();
+      });
+  }
+
+  function filtrar() {
+    var e = $('#fEstado').value, q = $('#fCualificado').value, c = $('#fConsent').value, b = $('#fCompro').value,
+        a = $('#fAnuncio').value, d = $('#fDesde').value, h = $('#fHasta').value;
+    return todos.filter(function (s) {
+      if (e && s.crm_estado !== e) return false;
+      if (q === 'si' && s.cualificado !== true) return false;
+      if (q === 'no' && s.cualificado === true) return false;
+      if (c === 'si' && !s.consentimiento_comercial) return false;
+      if (c === 'no' && s.consentimiento_comercial) return false;
+      var compro = PA.compro(s).length > 0;
+      if (b === 'si' && !compro) return false;
+      if (b === 'no' && compro) return false;
+      if (a && s.utm_content !== a) return false;
+      if (d && s.created_at.slice(0, 10) < d) return false;
+      if (h && s.created_at.slice(0, 10) > h) return false;
+      return true;
+    });
+  }
+
+  function badge(v, si, no) { return v ? '<span class="pa-badge ok">' + si + '</span>' : '<span class="pa-muted">' + (no || '—') + '</span>'; }
+
+  function pintar() {
+    var lista = filtrar();
+    $('#contador').textContent = lista.length + ' de ' + todos.length + ' contactos';
+    if (!lista.length) { $('#filas').innerHTML = '<tr><td colspan="14" class="pa-empty">Sin contactos con estos filtros.</td></tr>'; return; }
+    $('#filas').innerHTML = lista.map(function (s) {
+      var compras = PA.compro(s);
+      var baja = s.baja_at ? '<span class="pa-badge bad">' + PA.esc(s.motivo_baja || 'baja') + '</span>' : '<span class="pa-muted">—</span>';
+      var cual = s.cualificado === true ? '<span class="pa-badge ok">Sí</span>' : (s.cualificado === false ? '<span class="pa-badge">No</span>' : '<span class="pa-muted">—</span>');
+      return '<tr>'
+        + '<td data-l="Fecha">' + PA.fecha(s.created_at, true) + '</td>'
+        + '<td data-l="Contacto"><a href="/admin/partners/contacto.html?id=' + s.id + '"><b>' + PA.esc(s.nombre) + '</b></a>'
+        +   '<div class="pa-small">' + PA.esc(PA.telefono(s)) + '<br>' + PA.esc(s.email) + '</div></td>'
+        + '<td data-l="Cualificado">' + cual + (s.perfil_one_to_one ? ' <span class="pa-badge info">1:1</span>' : '') + '</td>'
+        + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (s.paso_alcanzado < 4 ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/4</span>' : '') + '</td>'
+        + '<td data-l="Botón final">' + (s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : '<span class="pa-muted">—</span>') + '</td>'
+        + '<td data-l="Vio precio">' + badge(s.precio_visto_at, 'Sí') + '</td>'
+        + '<td data-l="Inició pago">' + badge(s.checkout_iniciado_at, 'Sí') + '</td>'
+        + '<td data-l="Compró">' + (compras.length ? '<span class="pa-badge ok">' + compras.join(' + ') + '</span>' : '<span class="pa-muted">—</span>') + '</td>'
+        + '<td data-l="Consentimiento">' + badge(s.consentimiento_comercial, 'Sí', 'No') + '</td>'
+        + '<td data-l="Baja">' + baja + '</td>'
+        + '<td data-l="Anuncio" class="pa-small">' + PA.esc(s.utm_content || '—') + '</td>'
+        + '<td data-l="Estado">' + PA.estadoSelect(s) + '</td>'
+        + '<td data-l="Notas" class="full"><textarea class="pa-notas" data-notas="' + s.id + '" rows="1">' + PA.esc(s.crm_notas || '') + '</textarea></td>'
+        + '<td data-l="Acciones"><div class="pa-btns">'
+        +   '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
+        +   '<a class="pa-btn" href="' + PA.esc(PA.mailUrl(s)) + '">Email</a>'
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  // Guardado inline: estado (change) y notas (blur)
+  document.addEventListener('change', function (e) {
+    var sel = e.target.closest('[data-estado]');
+    if (!sel) return;
+    var s = todos.find(function (x) { return x.id === sel.dataset.estado; });
+    var antes = s.crm_estado;
+    PA.guardarContacto(supa, s.id, sel.value, s.crm_notas || null).then(function (row) {
+      s.crm_estado = row.crm_estado; sel.classList.add('pa-saved'); setTimeout(function () { sel.classList.remove('pa-saved'); }, 900);
+      PA.toast('Estado guardado');
+    }).catch(function (err) { sel.value = antes; PA.toast('Error: ' + err.message); });
+  });
+  document.addEventListener('focusout', function (e) {
+    var ta = e.target.closest('[data-notas]');
+    if (!ta) return;
+    var s = todos.find(function (x) { return x.id === ta.dataset.notas; });
+    var val = ta.value.trim() || null;
+    if ((s.crm_notas || null) === val) return;
+    PA.guardarContacto(supa, s.id, s.crm_estado, val).then(function (row) {
+      s.crm_notas = row.crm_notas; ta.classList.add('pa-saved'); setTimeout(function () { ta.classList.remove('pa-saved'); }, 900);
+      PA.toast('Notas guardadas');
+    }).catch(function (err) { ta.value = s.crm_notas || ''; PA.toast('Error: ' + err.message); });
+  });
+})();
+</script>
+</body>
+</html>
