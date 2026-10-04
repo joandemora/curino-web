@@ -76,7 +76,8 @@
       items: [
         { id: 'partners-contactos',   label: 'Contactos',   href: '/admin/partners/contactos.html' },
         { id: 'partners-ventas',      label: 'Ventas',      href: '/admin/partners/ventas.html' },
-        { id: 'partners-formaciones', label: 'Formaciones', href: '/admin/partners/formaciones.html' }
+        { id: 'partners-formaciones', label: 'Formaciones', href: '/admin/partners/formaciones.html' },
+        { id: 'partners-emails',      label: 'Emails',      href: '/admin/partners/emails.html' }
       ]
     }
   ];

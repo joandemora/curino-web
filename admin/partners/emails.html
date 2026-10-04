@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Emails — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<style>
+.em-grid{display:grid;gap:1rem}
+@media(min-width:1100px){.em-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.em-row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.6rem}
+.em-row select,.em-row input[type=text],.em-row input[type=date],.em-row input[type=number]{font:inherit;font-size:13px;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;background:#fff}
+.em-field{display:grid;gap:.25rem;font-size:12px;color:#666;margin-bottom:.6rem}
+.em-field input,.em-field textarea{font:inherit;font-size:14px;padding:.55rem .6rem;border:1px solid #ddd;border-radius:6px;width:100%}
+.em-field textarea{min-height:260px;line-height:1.5;resize:vertical}
+.em-chips{display:flex;flex-wrap:wrap;gap:.3rem}
+.em-chip{font:inherit;font-size:11.5px;padding:.2rem .5rem;border-radius:999px;border:1px solid #ddd;background:#fafaf7;cursor:pointer}
+.em-chip:hover{border-color:#111}
+.em-radio{display:flex;gap:1rem;font-size:13px}
+.em-radio label{display:flex;gap:.35rem;align-items:center}
+.em-info{font-size:12.5px;color:#555;line-height:1.5}
+.em-warn{background:#fff4e0;color:#7a4500;border-radius:6px;padding:.5rem .65rem;font-size:12.5px;margin:.5rem 0}
+.em-ok{background:#e6f6ee;color:#0b5a35;border-radius:6px;padding:.5rem .65rem;font-size:12.5px;margin:.5rem 0}
+.em-err{background:#fde8e8;color:#912018;border-radius:6px;padding:.5rem .65rem;font-size:12.5px;margin:.5rem 0}
+.em-preview{width:100%;height:520px;border:1px solid #e5e5e5;border-radius:8px;background:#fff}
+.em-asunto{font-size:13px;margin:.3rem 0 .6rem}
+.em-confirm{border:2px solid #111;border-radius:8px;padding:.8rem;margin-top:.6rem}
+details summary{cursor:pointer;font-size:12.5px}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="pa-hero"><div><h1>Emails</h1><p>Envíos de servicio a alumnos y comerciales a leads, desde «Juan de Mora &lt;info@casacurino.com&gt;».</p></div></div>
+
+  <div class="em-grid">
+    <div>
+      <section class="pa-section">
+        <h2>1. Destinatarios</h2>
+        <div class="em-radio" style="margin-bottom:.7rem">
+          <label><input type="radio" name="tipo" value="servicio" checked> Servicio (alumnos con pago)</label>
+          <label><input type="radio" name="tipo" value="comercial"> Comercial (leads con consentimiento)</label>
+        </div>
+        <div class="em-row">
+          <select id="segTipo">
+            <option value="edicion">Alumnos de una edición</option>
+            <option value="sesion">Alumnos de la Sesión 1:1</option>
+            <option value="leads">Leads filtrados</option>
+            <option value="contactos">Contactos seleccionados</option>
+          </select>
+          <select id="segEdicion"></select>
+        </div>
+        <div class="em-row" id="segLeads" hidden>
+          <select id="lEstado"><option value="">Todos los estados</option></select>
+          <select id="lCualificado"><option value="">Cualificado: todos</option><option value="si">Cualificado</option><option value="no">No cualificado</option></select>
+          <select id="lCompro"><option value="">Compra: todos</option><option value="si">Compró</option><option value="no">No compró</option></select>
+          <input type="text" id="lAnuncio" placeholder="Anuncio (utm_content)">
+          <input type="date" id="lDesde" title="Desde"><input type="date" id="lHasta" title="Hasta">
+        </div>
+        <p class="em-info" id="segContactos" hidden></p>
+        <button type="button" class="pa-btn" id="btnCalcular">Calcular destinatarios</button>
+        <div id="resDest"></div>
+      </section>
+
+      <section class="pa-section">
+        <h2>2. Contenido</h2>
+        <div class="em-row">
+          <select id="plantilla"><option value="">— Sin plantilla —</option></select>
+          <button type="button" class="pa-btn" id="btnGuardarPl">Guardar plantilla</button>
+          <button type="button" class="pa-btn" id="btnNuevaPl">Guardar como nueva</button>
+        </div>
+        <label class="em-field">Asunto<input type="text" id="asunto" maxlength="300"></label>
+        <div class="em-row">
+          <button type="button" class="em-chip" data-fmt="bold"><b>Negrita</b></button>
+          <button type="button" class="em-chip" data-fmt="link">Enlace</button>
+          <span class="pa-small">Variables:</span>
+          <div class="em-chips" id="vars"></div>
+        </div>
+        <label class="em-field">Cuerpo (línea en blanco = párrafo nuevo; la firma «Juan de Mora · Curino» se añade sola)<textarea id="cuerpo"></textarea></label>
+      </section>
+    </div>
+
+    <div>
+      <section class="pa-section">
+        <h2>3. Vista previa</h2>
+        <div class="em-row">
+          <select id="prevDest"></select>
+          <button type="button" class="pa-btn" id="btnPreview">Actualizar vista previa</button>
+          <button type="button" class="pa-btn" id="btnPrueba">Enviarme una prueba</button>
+        </div>
+        <div class="em-asunto" id="prevAsunto"></div>
+        <iframe class="em-preview" id="prevFrame" title="Vista previa" sandbox=""></iframe>
+        <div id="resPrueba"></div>
+      </section>
+      <section class="pa-section">
+        <h2>4. Enviar</h2>
+        <button type="button" class="pa-btn primary" id="btnEnviar" disabled>Enviar</button>
+        <div id="confirmar"></div>
+        <div id="resEnvio"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, plantillas = [], dest = null;
+  var $ = function (q) { return document.querySelector(q); };
+  var qs = new URLSearchParams(location.search);
+  var VARS = ['nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes'];
+  var idsContactos = (qs.get('ids') || '').split(',').filter(Boolean);
+
+  initAdminShell({ activeSection: 'partners-emails', title: 'Partners · Emails' })
+    .then(function (ctx) { supa = ctx.supabase; return iniciar(); })
+    .catch(function () {});
+
+  function iniciar() {
+    VARS.forEach(function (v) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'em-chip'; b.textContent = '{' + v + '}';
+      b.addEventListener('click', function () { insertar('{' + v + '}', ''); }); $('#vars').appendChild(b);
+    });
+    Object.keys(PA.ESTADOS).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = PA.ESTADOS[k]; $('#lEstado').appendChild(o); });
+    if (qs.get('tipo') === 'comercial') document.querySelector('input[name=tipo][value=comercial]').checked = true;
+    if (idsContactos.length) $('#segTipo').value = 'contactos';
+    else if (qs.get('sesion')) $('#segTipo').value = 'sesion';
+    else if (qs.get('leads')) { $('#segTipo').value = 'leads'; try { var f = JSON.parse(qs.get('leads')); ['Estado', 'Cualificado', 'Compro', 'Anuncio', 'Desde', 'Hasta'].forEach(function (k) { if (f[k.toLowerCase()]) $('#l' + k).value = f[k.toLowerCase()]; }); } catch (_e) {} }
+    $('#segContactos').textContent = idsContactos.length + ' contacto(s) seleccionado(s) en Contactos.';
+    return Promise.all([
+      supa.from('clases').select('id, titulo, fecha, oculta').eq('tipo', 'directo').order('fecha', { ascending: false }),
+      supa.from('partners_email_plantillas').select('*').order('nombre')
+    ]).then(function (r) {
+      (r[0].data || []).forEach(function (c) {
+        var o = document.createElement('option'); o.value = c.id; o.textContent = (c.titulo || 'Intensivo') + (c.oculta ? ' (oculta)' : '');
+        $('#segEdicion').appendChild(o);
+      });
+      if (qs.get('edicion')) $('#segEdicion').value = qs.get('edicion');
+      plantillas = r[1].data || [];
+      pintarPlantillas();
+      segUI();
+    });
+  }
+
+  function pintarPlantillas() {
+    var sel = $('#plantilla'), actual = sel.value;
+    sel.innerHTML = '<option value="">— Sin plantilla —</option>' + plantillas.map(function (p) {
+      return '<option value="' + p.id + '">' + PA.esc(p.nombre) + ' (' + p.tipo + ')</option>';
+    }).join('');
+    sel.value = actual;
+  }
+  $('#plantilla').addEventListener('change', function () {
+    var p = plantillas.find(function (x) { return x.id === this.value; }, this);
+    if (!p) return;
+    $('#asunto').value = p.asunto; $('#cuerpo').value = p.cuerpo;
+    document.querySelector('input[name=tipo][value=' + p.tipo + ']').checked = true;
+    invalidar();
+  });
+  function tipoEnvio() { return document.querySelector('input[name=tipo]:checked').value; }
+  function guardarPlantilla(nueva) {
+    var datos = { asunto: $('#asunto').value.trim(), cuerpo: $('#cuerpo').value, tipo: tipoEnvio(), updated_at: new Date().toISOString() };
+    if (!datos.asunto || !datos.cuerpo.trim()) { PA.toast('Asunto y cuerpo obligatorios'); return; }
+    var id = $('#plantilla').value;
+    var q;
+    if (nueva || !id) {
+      var nombre = prompt('Nombre de la plantilla');
+      if (!nombre) return;
+      q = supa.from('partners_email_plantillas').insert(Object.assign({ nombre: nombre.trim() }, datos)).select().single();
+    } else {
+      q = supa.from('partners_email_plantillas').update(datos).eq('id', id).select().single();
+    }
+    q.then(function (r) {
+      if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+      plantillas = plantillas.filter(function (p) { return p.id !== r.data.id; }).concat([r.data]).sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
+      pintarPlantillas(); $('#plantilla').value = r.data.id; PA.toast('Plantilla guardada');
+    });
+  }
+  $('#btnGuardarPl').addEventListener('click', function () { guardarPlantilla(false); });
+  $('#btnNuevaPl').addEventListener('click', function () { guardarPlantilla(true); });
+
+  // Formato básico
+  function insertar(antes, despues) {
+    var ta = $('#cuerpo'), a = ta.selectionStart, b = ta.selectionEnd, sel = ta.value.slice(a, b);
+    ta.value = ta.value.slice(0, a) + antes + sel + despues + ta.value.slice(b);
+    ta.focus(); ta.selectionStart = a + antes.length; ta.selectionEnd = a + antes.length + sel.length;
+    invalidar();
+  }
+  document.querySelector('[data-fmt=bold]').addEventListener('click', function () { insertar('**', '**'); });
+  document.querySelector('[data-fmt=link]').addEventListener('click', function () {
+    var url = prompt('URL del enlace (https://…)'); if (!url) return; insertar('[', '](' + url.trim() + ')');
+  });
+
+  function segUI() {
+    var t = $('#segTipo').value;
+    $('#segEdicion').hidden = t !== 'edicion';
+    $('#segLeads').hidden = t !== 'leads';
+    $('#segContactos').hidden = t !== 'contactos';
+    invalidar();
+  }
+  $('#segTipo').addEventListener('change', segUI);
+  ['segEdicion', 'lEstado', 'lCualificado', 'lCompro', 'lAnuncio', 'lDesde', 'lHasta', 'asunto', 'cuerpo'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', invalidar);
+  });
+  document.querySelectorAll('input[name=tipo]').forEach(function (r) { r.addEventListener('change', invalidar); });
+
+  function segmento() {
+    var t = $('#segTipo').value;
+    if (t === 'edicion') return { tipo: 'edicion', clase_id: $('#segEdicion').value };
+    if (t === 'sesion') return { tipo: 'sesion' };
+    if (t === 'contactos') return { tipo: 'contactos', ids: idsContactos };
+    return { tipo: 'leads', filtros: { estado: $('#lEstado').value, cualificado: $('#lCualificado').value, compro: $('#lCompro').value,
+      anuncio: $('#lAnuncio').value.trim(), desde: $('#lDesde').value, hasta: $('#lHasta').value } };
+  }
+  function invalidar() { dest = null; $('#btnEnviar').disabled = true; $('#btnEnviar').textContent = 'Enviar (calcula los destinatarios)'; $('#confirmar').innerHTML = ''; }
+
+  function llamar(body) {
+    return supa.functions.invoke('crm-email', { body: body }).then(function (r) {
+      if (r.error) {
+        return (r.error.context && r.error.context.json ? r.error.context.json() : Promise.resolve({ error: r.error.message }))
+          .then(function (d) { throw d; });
+      }
+      return r.data;
+    });
+  }
+  function base() { return { segmento: segmento(), tipo: tipoEnvio(), asunto: $('#asunto').value.trim(), cuerpo: $('#cuerpo').value, plantilla_id: $('#plantilla').value || null }; }
+
+  $('#btnCalcular').addEventListener('click', function () {
+    $('#resDest').innerHTML = '<p class="em-info">Calculando…</p>';
+    llamar(Object.assign(base(), { action: 'destinatarios' })).then(function (d) {
+      dest = d;
+      var excl = d.excluidos.length
+        ? '<details><summary>' + d.excluidos.length + ' excluidos</summary><ul class="pa-small">' + d.excluidos.map(function (x) {
+            return '<li>' + PA.esc(x.nombre || x.email) + ' — ' + PA.esc(x.motivo) + '</li>'; }).join('') + '</ul></details>' : '';
+      $('#resDest').innerHTML = '<div class="em-ok"><b>' + d.incluidos.length + '</b> destinatarios' + (d.excluidos.length ? ' · ' + d.excluidos.length + ' quedan fuera' : '') + '</div>' + excl
+        + (d.variables_vacias.length ? '<div class="em-warn">Variables sin valor para algún destinatario: ' + d.variables_vacias.map(function (v) { return '{' + v + '}'; }).join(', ') + '</div>' : '');
+      $('#prevDest').innerHTML = d.incluidos.map(function (x, i) { return '<option value="' + i + '">' + PA.esc(x.nombre + ' · ' + x.email) + '</option>'; }).join('');
+      $('#btnEnviar').disabled = !d.incluidos.length;
+      $('#btnEnviar').textContent = 'Enviar a ' + d.incluidos.length + ' destinatario' + (d.incluidos.length === 1 ? '' : 's');
+      if (d.incluidos.length && $('#asunto').value.trim()) preview();
+    }).catch(function (e) { $('#resDest').innerHTML = '<div class="em-err">Error: ' + PA.esc(e.error || JSON.stringify(e)) + '</div>'; });
+  });
+
+  function preview() {
+    llamar(Object.assign(base(), { action: 'preview', indice: Number($('#prevDest').value) || 0 })).then(function (d) {
+      $('#prevAsunto').innerHTML = '<b>Para:</b> ' + PA.esc(d.para) + '<br><b>Asunto:</b> ' + PA.esc(d.asunto);
+      $('#prevFrame').srcdoc = d.html;
+    }).catch(function (e) { $('#prevAsunto').innerHTML = '<span class="em-err">' + PA.esc(e.error || 'Error') + '</span>'; });
+  }
+  $('#btnPreview').addEventListener('click', preview);
+  $('#prevDest').addEventListener('change', preview);
+
+  $('#btnPrueba').addEventListener('click', function () {
+    var b = this; b.disabled = true;
+    llamar(Object.assign(base(), { action: 'prueba', indice: Number($('#prevDest').value) || 0 })).then(function (d) {
+      $('#resPrueba').innerHTML = '<div class="em-ok">Prueba enviada a ' + PA.esc(d.enviado_a) + ' con los datos de ' + PA.esc(d.con_datos_de) + '.</div>';
+    }).catch(function (e) { $('#resPrueba').innerHTML = '<div class="em-err">Error: ' + PA.esc(e.error || 'no enviada') + '</div>'; })
+      .then(function () { b.disabled = false; });
+  });
+
+  // Envío con confirmación: hay que escribir el número de destinatarios.
+  $('#btnEnviar').addEventListener('click', function () {
+    if (!dest) return;
+    var n = dest.incluidos.length;
+    $('#confirmar').innerHTML = '<div class="em-confirm"><p class="em-info">Vas a enviar <b>' + n + '</b> emails de tipo <b>' + tipoEnvio() + '</b> con el asunto «' + PA.esc($('#asunto').value) + '». '
+      + 'Escribe <b>' + n + '</b> para confirmar.</p>'
+      + (dest.variables_vacias.length ? '<label class="em-info"><input type="checkbox" id="cfVacias"> Enviar aunque haya variables vacías (' + dest.variables_vacias.join(', ') + ')</label>' : '')
+      + '<div class="em-row"><input type="number" id="cfNum" style="width:110px"><button type="button" class="pa-btn primary" id="cfOk">Confirmar envío</button><button type="button" class="pa-btn" id="cfNo">Cancelar</button></div></div>';
+    $('#cfNo').addEventListener('click', function () { $('#confirmar').innerHTML = ''; });
+    $('#cfOk').addEventListener('click', function () {
+      if (Number($('#cfNum').value) !== n) { PA.toast('El número no coincide'); return; }
+      var b = this; b.disabled = true; b.textContent = 'Enviando…';
+      llamar(Object.assign(base(), { action: 'enviar', confirmacion: n, ignorar_vacias: !!($('#cfVacias') && $('#cfVacias').checked) })).then(function (d) {
+        $('#confirmar').innerHTML = '';
+        $('#resEnvio').innerHTML = '<div class="em-ok">Enviados: <b>' + d.enviados + '</b>' + (d.errores ? ' · errores: ' + d.errores : '') + (d.excluidos ? ' · excluidos: ' + d.excluidos : '') + '. Quedan registrados en la ficha de cada contacto.</div>';
+        invalidar();
+      }).catch(function (e) {
+        b.disabled = false; b.textContent = 'Confirmar envío';
+        $('#resEnvio').innerHTML = '<div class="em-err">No enviado: ' + PA.esc(e.error || JSON.stringify(e)) + '</div>';
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

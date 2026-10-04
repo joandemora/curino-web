@@ -60,14 +60,18 @@ function esc(s: unknown): string {
 }
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 
-async function resend(payload: Record<string, unknown>): Promise<boolean> {
+async function resendId(payload: Record<string, unknown>): Promise<string | null> {
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-  if (!r.ok) console.error('seguimiento: Resend', r.status, await r.text());
-  return r.ok;
+  if (!r.ok) { console.error('seguimiento: Resend', r.status, await r.text()); return null; }
+  const d = await r.json().catch(() => ({}));
+  return d?.id || 'sin-id';
+}
+async function resend(payload: Record<string, unknown>): Promise<boolean> {
+  return (await resendId(payload)) !== null;
 }
 
 // ── Plantilla "email personal": texto sencillo, un boton discreto ────────
@@ -231,8 +235,21 @@ async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: nu
   const email = await construir(ultimo.n, lead, supabase);
   if (!email) { await marca({ [ultimo.col]: now() }); log.push(`email_${ultimo.n}:no_enviado_agotado`); return log; }
 
-  const ok = await resend({ from: FROM_JUAN, to: [lead.email], reply_to: 'info@casacurino.com', subject: email.subject, html: email.html });
+  // Baja en un clic (List-Unsubscribe) + registro en partners_emails (CRM).
+  const token = await signLeadToken(lead.id);
+  const id = await resendId({
+    from: FROM_JUAN, to: [lead.email], reply_to: 'info@casacurino.com', subject: email.subject, html: email.html,
+    headers: {
+      'List-Unsubscribe': `<${Deno.env.get('SUPABASE_URL')}/functions/v1/partners-formaciones?accion=baja&t=${encodeURIComponent(token)}>, <mailto:info@casacurino.com?subject=baja>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+    }
+  });
+  const ok = id !== null;
   if (ok) {
+    await supabase.from('partners_emails').insert({
+      tipo: 'secuencia', asunto: email.subject, email: lead.email, nombre: lead.nombre, solicitud_id: lead.id,
+      resend_id: id === 'sin-id' ? null : id, estado: 'enviado'
+    });
     const cols: Record<string, string> = { [ultimo.col]: now() };
     if (ultimo.n === 3) cols.oferta_sesion_enviada_at = now();
     await marca(cols);

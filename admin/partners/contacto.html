@@ -43,6 +43,10 @@
       <h2>Compras</h2>
       <div id="ctCompras" class="pa-small">Cargando…</div>
     </section>
+    <section class="pa-section">
+      <h2>Emails enviados</h2>
+      <div id="ctEmails" class="pa-small">Cargando…</div>
+    </section>
   </div>
 </main>
 
@@ -66,7 +70,13 @@
       s = r.data;
       pintar();
       return supa.from('crm_partners_ventas').select('*').or('solicitud_id.eq.' + s.id + ',email.eq."' + String(s.email).replace(/"/g, '') + '"').order('fecha', { ascending: false })
-        .then(function (v) { pintarCompras(v.data || []); });
+        .then(function (v) { pintarCompras(v.data || []); })
+        .then(function () {
+          return supa.from('partners_emails').select('created_at, tipo, asunto, estado, estado_at, abierto_at, error')
+            .or('solicitud_id.eq.' + s.id + ',email.eq."' + String(s.email).replace(/"/g, '') + '"')
+            .neq('tipo', 'prueba').order('created_at', { ascending: false }).limit(200);
+        })
+        .then(function (m) { pintarEmails(m.data || []); });
     });
   }
 
@@ -76,7 +86,7 @@
     $('#ctNombre').textContent = s.nombre;
     $('#ctSub').textContent = 'Solicitud del ' + PA.fecha(s.created_at, true);
     $('#ctBtns').innerHTML = '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
-      + '<a class="pa-btn" href="' + PA.esc(PA.mailUrl(s)) + '">Email</a>';
+      + '<a class="pa-btn" href="/admin/partners/emails.html?tipo=' + (PA.compro(s).length ? 'servicio' : 'comercial') + '&ids=' + s.id + '">Email</a>';
     var R = PA.R;
     $('#ctDatos').innerHTML = ''
       + fila('Email', PA.esc(s.email))
@@ -120,6 +130,22 @@
     ].filter(function (x) { return x[0]; }).sort(function (a, b) { return a[0] < b[0] ? 1 : -1; });
     $('#ctHistorial').innerHTML = ev.map(function (x) { return '<li><time>' + PA.fecha(x[0], true) + '</time><span>' + PA.esc(x[1]) + '</span></li>'; }).join('')
       || '<li class="pa-muted">Sin actividad.</li>';
+  }
+
+  var TIPO_EMAIL = { servicio: 'Servicio', comercial: 'Comercial', secuencia: 'Secuencia' };
+  var ESTADO_EMAIL = { enviado: ['Enviado', ''], entregado: ['Entregado', 'ok'], abierto: ['Abierto', 'ok'], retrasado: ['Retrasado', 'warn'],
+    rebotado: ['Rebotado', 'bad'], queja: ['Spam', 'bad'], error: ['Error', 'bad'] };
+  function pintarEmails(m) {
+    if (!m.length) { $('#ctEmails').innerHTML = '<span class="pa-muted">Sin emails registrados.</span>'; return; }
+    $('#ctEmails').innerHTML = '<table class="pa-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Asunto</th><th>Estado</th></tr></thead><tbody>'
+      + m.map(function (e) {
+        var st = ESTADO_EMAIL[e.estado] || [e.estado, ''];
+        return '<tr><td data-l="Fecha">' + PA.fecha(e.created_at, true) + '</td><td data-l="Tipo">' + PA.esc(TIPO_EMAIL[e.tipo] || e.tipo) + '</td>'
+          + '<td data-l="Asunto">' + PA.esc(e.asunto) + '</td>'
+          + '<td data-l="Estado"><span class="pa-badge ' + st[1] + '">' + st[0] + '</span>'
+          + (e.abierto_at ? '<div class="pa-small">abierto ' + PA.fecha(e.abierto_at, true) + '</div>' : '')
+          + (e.error ? '<div class="pa-small">' + PA.esc(e.error) + '</div>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
 
   function pintarCompras(v) {
