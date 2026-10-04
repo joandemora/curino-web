@@ -1094,7 +1094,11 @@ async function handleClaseCompleted(
 ) {
   const claseId = session.metadata?.clase_id;
   const nombre = session.metadata?.nombre;
-  const telefono = session.metadata?.telefono || null;
+  // Contacto: manda lo que el comprador confirma en Checkout (email y
+  // telefono obligatorios alli). Lo del formulario queda como referencia.
+  const telefonoFormulario = session.metadata?.telefono || null;
+  const telefono = session.customer_details?.phone || telefonoFormulario;
+  const emailFormulario = (session.metadata?.email_formulario || '').toLowerCase() || null;
   const desistimientoRenunciado = session.metadata?.desistimiento_renunciado === 'true';
   const eventId = session.metadata?.event_id || null;
   const utmSource = session.metadata?.utm_source || null;
@@ -1186,6 +1190,8 @@ async function handleClaseCompleted(
       nombre,
       email: buyerEmail,
       telefono,
+      telefono_formulario: telefonoFormulario && telefonoFormulario !== telefono ? telefonoFormulario : null,
+      email_formulario: emailFormulario,
       stripe_session_id: session.id,
       stripe_payment_intent: paymentIntentId,
       importe_cents: amountPaidCents,
