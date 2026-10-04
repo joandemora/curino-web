@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Alumnos — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<style>
+.al-check{display:inline-flex;align-items:center;gap:.35rem;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.al-check input{width:17px;height:17px;accent-color:#12B76A}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <p><a href="/admin/partners/formaciones.html">← Formaciones</a></p>
+  <div class="pa-hero">
+    <div><h1 id="alTitulo">Alumnos</h1><p id="alSub">Alumnos con pago activo (sin reembolsos).</p></div>
+    <div class="pa-btns">
+      <a class="pa-btn" id="alEmail" href="#" hidden>Enviar email a estos alumnos</a>
+      <button type="button" class="pa-btn primary" id="alCsv">Exportar CSV</button>
+    </div>
+  </div>
+  <div class="pa-wrap">
+    <table class="pa-table">
+      <thead><tr id="alHead"></tr></thead>
+      <tbody id="filas"><tr><td class="pa-empty">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, alumnos = [], titulo = '';
+  var $ = function (q) { return document.querySelector(q); };
+  var qs = new URLSearchParams(location.search);
+  var edicion = qs.get('edicion');          // uuid de clases
+  var tipo = edicion ? 'intensivo' : 'sesion';
+
+  // Columnas de marcas por producto
+  var MARCAS = tipo === 'intensivo'
+    ? [['materiales_enviados_at', 'Materiales enviados'], ['grupo_whatsapp_at', 'En el grupo']]
+    : [['materiales_enviados_at', 'Recursos enviados'], ['sesion_reservada_at', 'Sesión reservada']];
+
+  initAdminShell({ activeSection: 'partners-formaciones', title: 'Partners · Alumnos' })
+    .then(function (ctx) { supa = ctx.supabase; return cargar(); })
+    .catch(function () {});
+
+  function cargar() {
+    var q = tipo === 'intensivo'
+      ? Promise.all([
+          supa.from('clases').select('titulo, fecha, fecha_confirmada').eq('id', edicion).maybeSingle(),
+          supa.from('inscripciones').select('id, nombre, email, telefono, created_at, estado, confirmation_sent_at, materiales_enviados_at, grupo_whatsapp_at').eq('clase_id', edicion).eq('estado', 'pagada').order('created_at')
+        ])
+      : Promise.all([
+          Promise.resolve({ data: { titulo: 'Sesión 1:1 con Juan · 30 min' } }),
+          supa.from('sesiones_1a1').select('id, nombre, email, telefono, created_at, estado, confirmation_sent_at, materiales_enviados_at, sesion_reservada_at').eq('estado', 'pagada').order('created_at')
+        ]);
+    return q.then(function (r) {
+      if (r[1].error) { $('#filas').innerHTML = '<tr><td class="pa-empty">Error: ' + PA.esc(r[1].error.message) + '</td></tr>'; return; }
+      titulo = (r[0].data && r[0].data.titulo) || 'Intensivo Curino Partners';
+      alumnos = r[1].data || [];
+      $('#alTitulo').textContent = titulo;
+      $('#alSub').textContent = alumnos.length + ' alumnos con pago activo (sin reembolsos).';
+      var seg = tipo === 'intensivo' ? 'edicion=' + edicion : 'sesion=1';
+      $('#alEmail').href = '/admin/partners/emails.html?' + seg + '&tipo=servicio';
+      $('#alEmail').hidden = !alumnos.length;
+      pintar();
+    });
+  }
+
+  function pintar() {
+    $('#alHead').innerHTML = '<th>Alumno</th><th>Teléfono</th><th>Compra</th><th>Email de compra</th>'
+      + MARCAS.map(function (m) { return '<th>' + m[1] + '</th>'; }).join('') + '<th>Acciones</th>';
+    if (!alumnos.length) { $('#filas').innerHTML = '<tr><td colspan="7" class="pa-empty">Todavía no hay alumnos.</td></tr>'; return; }
+    $('#filas').innerHTML = alumnos.map(function (a) {
+      var wa = 'https://wa.me/' + String(a.telefono || '').replace(/\D/g, '');
+      return '<tr><td data-l="Alumno"><b>' + PA.esc(a.nombre) + '</b><div class="pa-small">' + PA.esc(a.email) + '</div></td>'
+        + '<td data-l="Teléfono">' + PA.esc(a.telefono || '—') + '</td>'
+        + '<td data-l="Compra">' + PA.fecha(a.created_at, true) + '</td>'
+        + '<td data-l="Email de compra">' + (a.confirmation_sent_at ? '<span class="pa-badge ok">enviado</span>' : '<span class="pa-badge warn">no</span>') + '</td>'
+        + MARCAS.map(function (m) {
+            return '<td data-l="' + m[1] + '"><label class="al-check"><input type="checkbox" data-alumno="' + a.id + '" data-campo="' + m[0] + '"' + (a[m[0]] ? ' checked' : '') + '>'
+              + '<span class="pa-small">' + (a[m[0]] ? PA.fecha(a[m[0]]) : '') + '</span></label></td>';
+          }).join('')
+        + '<td data-l="Acciones"><div class="pa-btns">' + (a.telefono ? '<a class="pa-btn wa" href="' + PA.esc(wa) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') + '</div></td></tr>';
+    }).join('');
+  }
+
+  document.addEventListener('change', function (e) {
+    var cb = e.target.closest('[data-alumno]');
+    if (!cb) return;
+    var a = alumnos.find(function (x) { return x.id === cb.dataset.alumno; });
+    var campo = cb.dataset.campo, valor = cb.checked;
+    supa.rpc('crm_partners_marcar_alumno', { p_tipo: tipo, p_id: a.id, p_campo: campo, p_valor: valor }).then(function (r) {
+      if (r.error) { cb.checked = !valor; PA.toast('Error: ' + r.error.message); return; }
+      a[campo] = r.data; pintar(); PA.toast('Guardado');
+    });
+  });
+
+  // CSV: separador ';' y BOM para que Excel en español lo abra bien.
+  $('#alCsv').addEventListener('click', function () {
+    var cols = [['nombre', 'Nombre'], ['email', 'Email'], ['telefono', 'Teléfono'], ['created_at', 'Fecha de compra']].concat(MARCAS);
+    var celda = function (v) { v = v == null ? '' : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var lineas = [cols.map(function (c) { return c[1]; }).join(';')].concat(alumnos.map(function (a) {
+      return cols.map(function (c) {
+        var v = a[c[0]];
+        if (c[0] === 'created_at') v = PA.fecha(v, true);
+        else if (/_at$/.test(c[0])) v = v ? 'Sí (' + PA.fecha(v) + ')' : 'No';
+        return celda(v);
+      }).join(';');
+    }));
+    var blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'alumnos-' + titulo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.csv';
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  });
+})();
+</script>
+</body>
+</html>
