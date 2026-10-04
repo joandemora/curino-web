@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Ventas — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="pa-hero">
+    <div><h1>Ventas</h1><p>Intensivo y Sesión 1:1. Los totales cuentan solo lo cobrado y no reembolsado.</p></div>
+  </div>
+
+  <div class="pa-kpis" id="kpis"></div>
+
+  <section class="pa-section">
+    <h2>Por mes</h2>
+    <div class="pa-wrap"><table class="pa-table">
+      <thead><tr><th>Mes</th><th>Producto</th><th class="num">Ventas</th><th class="num">Bruto</th><th class="num">Base</th><th class="num">IVA</th></tr></thead>
+      <tbody id="meses"></tbody>
+    </table></div>
+  </section>
+
+  <div class="pa-filters">
+    <select id="fProducto"><option value="">Todos los productos</option><option value="intensivo">Intensivo</option><option value="sesion">Sesión 1:1</option></select>
+    <select id="fEstado"><option value="">Todos los estados</option><option value="pagada">Pagado</option><option value="reembolsada">Reembolsado</option></select>
+    <span class="pa-count" id="contador"></span>
+  </div>
+  <div class="pa-wrap">
+    <table class="pa-table">
+      <thead><tr><th>Fecha</th><th>Producto / edición</th><th>Cliente</th><th class="num">Importe</th><th class="num">Base</th><th class="num">IVA</th><th>Factura</th><th>Estado</th><th>Rectificativa</th></tr></thead>
+      <tbody id="filas"><tr><td colspan="9" class="pa-empty">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, ventas = [];
+  var $ = function (q) { return document.querySelector(q); };
+  var NOMBRE = { intensivo: 'Intensivo', sesion: 'Sesión 1:1' };
+
+  initAdminShell({ activeSection: 'partners-ventas', title: 'Partners · Ventas' })
+    .then(function (ctx) { supa = ctx.supabase; return cargar(); })
+    .catch(function () {});
+  ['fProducto', 'fEstado'].forEach(function (i) { document.getElementById(i).addEventListener('change', pintarLista); });
+
+  function cargar() {
+    return supa.from('crm_partners_ventas').select('*').order('fecha', { ascending: false }).then(function (r) {
+      if (r.error) { $('#filas').innerHTML = '<tr><td colspan="9" class="pa-empty">Error: ' + PA.esc(r.error.message) + '</td></tr>'; return; }
+      ventas = r.data || [];
+      pintarTotales(); pintarLista();
+    });
+  }
+
+  function pintarTotales() {
+    var cobradas = ventas.filter(function (v) { return v.estado === 'pagada'; });
+    var por = {};
+    cobradas.forEach(function (v) {
+      var p = por[v.producto] || (por[v.producto] = { n: 0, bruto: 0, base: 0, iva: 0 });
+      p.n++; p.bruto += v.importe_cents; p.base += v.base_cents; p.iva += v.iva_cents;
+    });
+    var tot = { n: 0, bruto: 0, base: 0, iva: 0 };
+    Object.keys(por).forEach(function (k) { ['n', 'bruto', 'base', 'iva'].forEach(function (f) { tot[f] += por[k][f]; }); });
+    var reemb = ventas.filter(function (v) { return v.estado === 'reembolsada'; }).length;
+    var kpi = function (t, v, sub) { return '<div class="pa-kpi"><span>' + t + '</span><b>' + v + '</b><span>' + (sub || '') + '</span></div>'; };
+    $('#kpis').innerHTML = kpi('Total cobrado', PA.eur(tot.bruto), tot.n + ' ventas · base ' + PA.eur(tot.base) + ' · IVA ' + PA.eur(tot.iva))
+      + ['intensivo', 'sesion'].map(function (k) {
+          var p = por[k] || { n: 0, bruto: 0, base: 0, iva: 0 };
+          return kpi(NOMBRE[k], PA.eur(p.bruto), p.n + ' ventas · base ' + PA.eur(p.base) + ' · IVA ' + PA.eur(p.iva));
+        }).join('')
+      + kpi('Reembolsadas', String(reemb), 'no cuentan en los totales');
+
+    var mes = {};
+    cobradas.forEach(function (v) {
+      var m = new Date(v.fecha).toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'Europe/Madrid' });
+      var key = v.fecha.slice(0, 7) + '|' + v.producto;
+      var x = mes[key] || (mes[key] = { mes: m, producto: NOMBRE[v.producto], n: 0, bruto: 0, base: 0, iva: 0 });
+      x.n++; x.bruto += v.importe_cents; x.base += v.base_cents; x.iva += v.iva_cents;
+    });
+    var filas = Object.keys(mes).sort().reverse().map(function (k) {
+      var x = mes[k];
+      return '<tr><td data-l="Mes">' + PA.esc(x.mes) + '</td><td data-l="Producto">' + x.producto + '</td><td data-l="Ventas" class="num">' + x.n + '</td>'
+        + '<td data-l="Bruto" class="num">' + PA.eur(x.bruto) + '</td><td data-l="Base" class="num">' + PA.eur(x.base) + '</td><td data-l="IVA" class="num">' + PA.eur(x.iva) + '</td></tr>';
+    });
+    $('#meses').innerHTML = filas.join('') || '<tr><td colspan="6" class="pa-empty">Todavía no hay ventas cobradas.</td></tr>';
+  }
+
+  function pintarLista() {
+    var p = $('#fProducto').value, e = $('#fEstado').value;
+    var lista = ventas.filter(function (v) { return (!p || v.producto === p) && (!e || v.estado === e); });
+    $('#contador').textContent = lista.length + ' ventas';
+    $('#filas').innerHTML = lista.map(function (v) {
+      var cliente = v.solicitud_id
+        ? '<a href="/admin/partners/contacto.html?id=' + v.solicitud_id + '"><b>' + PA.esc(v.nombre) + '</b></a>'
+        : '<b>' + PA.esc(v.nombre) + '</b>';
+      var rect = v.rect_numeros
+        ? (v.rect_pdfs || []).map(function (pdf, i) { return '<a href="#" data-pdf="' + PA.esc(pdf) + '">' + PA.esc(v.rect_numeros.split(', ')[i] || 'PDF') + '</a>'; }).join('<br>')
+        : '<span class="pa-muted">—</span>';
+      return '<tr><td data-l="Fecha">' + PA.fecha(v.fecha, true) + '</td>'
+        + '<td data-l="Producto">' + PA.esc(v.edicion) + '</td>'
+        + '<td data-l="Cliente">' + cliente + '<div class="pa-small">' + PA.esc(v.email) + '</div></td>'
+        + '<td data-l="Importe" class="num">' + PA.eur(v.importe_cents) + '</td>'
+        + '<td data-l="Base" class="num">' + PA.eur(v.base_cents) + '</td>'
+        + '<td data-l="IVA" class="num">' + PA.eur(v.iva_cents) + '</td>'
+        + '<td data-l="Factura">' + (v.pdf_url ? '<a href="#" data-pdf="' + PA.esc(v.pdf_url) + '">' + PA.esc(v.invoice_number || 'PDF') + '</a>' : PA.esc(v.invoice_number || '—')) + '</td>'
+        + '<td data-l="Estado">' + (v.estado === 'pagada' ? '<span class="pa-badge ok">Pagado</span>' : '<span class="pa-badge bad">Reembolsado</span>') + '</td>'
+        + '<td data-l="Rectificativa">' + rect + '</td></tr>';
+    }).join('') || '<tr><td colspan="9" class="pa-empty">Sin ventas.</td></tr>';
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-pdf]');
+    if (a) { e.preventDefault(); PA.abrirPdf(supa, a.dataset.pdf); }
+  });
+})();
+</script>
+</body>
+</html>
