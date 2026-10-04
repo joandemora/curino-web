@@ -382,22 +382,22 @@ function whatsappGroupHtml(): string {
   <p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Entrar al grupo de WhatsApp</a></p>`;
 }
 
-// Entrega inmediata (renuncia al desistimiento, art. 103 m TRLGDCU): el
-// email de confirmacion debe dar YA el acceso al contenido y al grupo.
-// Secrets de Edge Functions: PARTNERS_MATERIALES_URL (materiales y
-// plantillas) y PARTNERS_WHATSAPP_GROUP_URL. Sin ellos no se deben abrir
-// ventas (se avisa en el log en cada envio).
+// Acceso del alumno tras la compra (renuncia al desistimiento, art. 103 m
+// TRLGDCU). Secrets de Edge Functions:
+//   PARTNERS_MATERIALES_URL     OPCIONAL. Con valor → boton al contenido; sin
+//                               valor → texto "te llegan por email".
+//   PARTNERS_WHATSAPP_GROUP_URL enlace al grupo de la promocion.
 function accesoInmediatoHtml(): string {
   const materiales = Deno.env.get('PARTNERS_MATERIALES_URL');
   const grupo = Deno.env.get('PARTNERS_WHATSAPP_GROUP_URL');
-  if (!materiales) console.warn('clase-invoices: PARTNERS_MATERIALES_URL sin configurar — el email de compra sale sin acceso al contenido');
   if (!grupo) console.warn('clase-invoices: PARTNERS_WHATSAPP_GROUP_URL sin configurar — el email de compra sale sin grupo de WhatsApp');
   const btn = (url: string, label: string) =>
     `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:12px 22px;text-decoration:none;border-radius:4px;">${label}</a></p>`;
   const partes: string[] = [];
-  if (materiales) partes.push(`<p><strong>Contenido del curso:</strong> materiales, plantillas y catálogo, disponibles desde ahora.</p>${btn(materiales, 'Acceder al contenido del curso')}`);
+  partes.push(materiales
+    ? `<p><strong>Contenido del curso:</strong> materiales, plantillas y catálogo, disponibles desde ahora.</p>${btn(materiales, 'Acceder al contenido del curso')}`
+    : `<p><strong>Contenido del curso:</strong> los materiales, plantillas y catálogo te llegan por email.</p>`);
   if (grupo) partes.push(`<p><strong>Grupo de tu promoción:</strong> avisos, materiales y dudas entre clases.</p>${btn(grupo, 'Entrar al grupo de WhatsApp')}`);
-  if (!partes.length) return '';
   return `<h3 style="color:#000;margin-top:24px;">Tu acceso, desde ya</h3>${partes.join('')}`;
 }
 
