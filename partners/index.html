@@ -977,6 +977,12 @@ body{color:var(--ink)}
       });
     });
   }
+  // Metricas de embudo (precio_visto_at / checkout_iniciado_at), una vez.
+  function sendEvento(evento) {
+    if (!state.id || !state.token || state['ev_' + evento]) return;
+    state['ev_' + evento] = true; save();
+    api({ action: 'evento', id: state.id, token: state.token, evento: evento }, { keepalive: true }).catch(function () {});
+  }
   function sendCta(cta) {
     if (!state.id || !state.token) return;
     api({ action: 'cta', id: state.id, token: state.token, cta: cta }, { keepalive: true }).catch(function () {});
@@ -1104,6 +1110,7 @@ body{color:var(--ink)}
     $('#pt-final-note').hidden = ok;
     $('#pt-oto-final').hidden = !(ok && state.answers.dedicacion === 'tiempo_completo');
     if (ok) {
+      sendEvento('precio_visto');
       claseLoaded.then(function () {
         if (!clase || plazasLibres() <= 0) showWaitlist();
       });
@@ -1134,6 +1141,7 @@ body{color:var(--ink)}
       }
     });
     sendCta('checkout');
+    sendEvento('checkout_iniciado');
 
     var t = trackingFields();
     fetch('/api/clases-checkout', {

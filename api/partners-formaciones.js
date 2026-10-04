@@ -1,20 +1,16 @@
-// /api/partners-solicitud.js
+// /api/partners-formaciones.js
 //
-// Proxy Vercel Edge → Supabase Edge Function `partners-solicitud`
-// (formulario multipaso de /partners/). Encapsula la URL de la function y
-// la anon key, y añade pais (x-vercel-ip-country), IP y user-agent del
-// visitante para el rate limit y el Lead por CAPI. La validacion completa
-// vive en la Edge Function; aqui solo se filtra lo grosero.
-//
-// Ocupa el slot de la antigua /api/curso-checkout (curso de 90 EUR
-// retirado en 2026-10) para no sumar rutas al cap de Vercel.
+// Proxy Vercel Edge → Supabase Edge Function `partners-formaciones`
+// (/partners/formaciones y enlaces de los emails de seguimiento). Añade
+// pais (x-vercel-ip-country), IP y user-agent para el checkout/CAPI.
+// Acciones: info, checkout, baja.
 
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://fsfminynxnmhsagqenat.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-const ACTIONS = new Set(['start', 'step', 'cta', 'evento']);
+const ACTIONS = new Set(['info', 'checkout', 'baja']);
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -33,7 +29,7 @@ export default async function handler(request) {
   if (request.method !== 'POST') return jsonResponse({ error: 'method_not_allowed' }, 405);
 
   if (!SUPABASE_ANON_KEY) {
-    console.error('partners-solicitud: SUPABASE_ANON_KEY missing');
+    console.error('partners-formaciones: SUPABASE_ANON_KEY missing');
     return jsonResponse({ error: 'server_not_configured' }, 500);
   }
 
@@ -56,7 +52,7 @@ export default async function handler(request) {
   };
 
   try {
-    const upstream = await fetch(`${SUPABASE_URL}/functions/v1/partners-solicitud`, {
+    const upstream = await fetch(`${SUPABASE_URL}/functions/v1/partners-formaciones`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -68,7 +64,7 @@ export default async function handler(request) {
     const data = await upstream.json().catch(() => ({}));
     return jsonResponse(data, upstream.status);
   } catch (err) {
-    console.error('partners-solicitud proxy error:', err);
+    console.error('partners-formaciones proxy error:', err);
     return jsonResponse({ error: 'internal_error' }, 500);
   }
 }

@@ -33,6 +33,8 @@ export interface ClaseInvoiceData {
   buyer_nombre_fiscal?: string | null;
   buyer_nif?: string | null;
   buyer_direccion?: string[] | null;   // lineas ya formateadas
+  // Otros productos (Sesion 1:1): concepto propio y sin linea "Inicio".
+  concepto?: string;
 }
 
 // Formatea la direccion de Stripe (customer_details.address) en lineas.
@@ -131,7 +133,7 @@ function fmtHoraSolo(iso: string): string {
   } catch { return ''; }
 }
 
-function escapeHtml(s: string | null | undefined): string {
+export function escapeHtml(s: string | null | undefined): string {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -199,10 +201,10 @@ export async function generateClaseInvoicePdf(
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
 
-  page.drawText(sanitizePdfText('Intensivo Curino Partners: 4 semanas, 8 clases en directo por Zoom'), { x: 50, y, font, size: 10 });
+  page.drawText(sanitizePdfText(inv.concepto || 'Intensivo Curino Partners: 4 semanas, 8 clases en directo por Zoom'), { x: 50, y, font, size: 10 });
   page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
-  if (inv.clase_fecha_confirmada !== false) {
+  if (!inv.concepto && inv.clase_fecha_confirmada !== false) {
     page.drawText(sanitizePdfText(`Inicio: ${fmtFechaClase(inv.clase_fecha)}`), { x: 50, y, font, size: 8, color: gray });
   }
   y -= 30;
@@ -237,6 +239,7 @@ export interface ClaseRectificativaData {
   comprador_email?: string | null;
   comprador_nif?: string | null;
   comprador_direccion?: string[] | null;
+  concepto?: string;                 // por defecto, el del Intensivo
 }
 
 export async function generateClaseRectificativaPdf(
@@ -297,7 +300,7 @@ export async function generateClaseRectificativaPdf(
   y -= 15;
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
-  page.drawText(sanitizePdfText('Devolución: Intensivo Curino Partners (4 semanas, 8 clases en directo por Zoom)'), { x: 50, y, font, size: 10 });
+  page.drawText(sanitizePdfText(`Devolución: ${r.concepto || 'Intensivo Curino Partners (4 semanas, 8 clases en directo por Zoom)'}`), { x: 50, y, font, size: 10 });
   page.drawText(neg(baseCents), { x: 475, y, font, size: 10 });
   y -= 30;
 
@@ -316,6 +319,15 @@ export async function generateClaseRectificativaPdf(
   page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
 
   return await doc.save();
+}
+
+// Subida generica al bucket privado 'invoices' (p. ej. sesiones/<id>.pdf).
+export async function uploadPdfToInvoices(supabase: any, path: string, pdfBytes: Uint8Array): Promise<string> {
+  const { error } = await supabase.storage
+    .from('invoices')
+    .upload(path, pdfBytes, { contentType: 'application/pdf', upsert: true });
+  if (error) throw error;
+  return path;
 }
 
 export async function uploadClaseRectificativaPdf(
@@ -349,7 +361,7 @@ export async function uploadClaseInvoicePdf(
 // =============================================================
 // Emails
 // =============================================================
-function pdfBytesToBase64(bytes: Uint8Array): string {
+export function pdfBytesToBase64(bytes: Uint8Array): string {
   // Chunked para evitar stack overflow con adjuntos grandes.
   let bin = '';
   const chunk = 0x8000;
@@ -359,7 +371,7 @@ function pdfBytesToBase64(bytes: Uint8Array): string {
   return btoa(bin);
 }
 
-async function resendSend(payload: Record<string, unknown>): Promise<void> {
+export async function resendSend(payload: Record<string, unknown>): Promise<void> {
   const apiKey = Deno.env.get('RESEND_API_KEY');
   if (!apiKey) {
     console.error('RESEND_API_KEY not configured');

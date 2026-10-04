@@ -97,6 +97,8 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 | `magazine-boost-checkout` | sí | Usuario logueado | Boost/promoción de artículo. |
 | `clases-checkout` | no | Invitado (landing pública) | Crea Stripe session para plaza en el Intensivo Curino Partners (990 €, aforo por fila, `card` + `link` con reintento solo `card`, dirección de facturación obligatoria, NIF opcional → factura completa, **email y teléfono obligatorios y editables en Checkout**, **casilla obligatoria de condiciones** (`consent_collection.terms_of_service`) con renuncia expresa al desistimiento (art. 103 m TRLGDCU) → `inscripciones.terminos_aceptados(_at)`; **sin devoluciones** (2026-10): la lógica de `charge.refunded` y rectificativas se mantiene solo para contracargos o devoluciones excepcionales (sin `customer_email`/`customer`, que bloquean el email; el webhook usa `customer_details.email/.phone` y guarda los del formulario en `email_formulario`/`telefono_formulario`); sin renuncia al desistimiento). La fila de `clases` es la promoción; `fecha` = primera sesión; `meet_url` guarda el enlace de **Zoom**. |
 | `partners-solicitud` | no | Vercel → Supabase | Formulario multipaso de `/partners/` (acciones `start`/`step`/`cta`, id + `edit_token`). Acepta respuestas v1 y v2 (por nombre de campo); v2: cualificado = `inicio <> 'informandome'`. Aviso Resend a `PARTNERS_NOTIFY_EMAIL` (defecto `juan@casacurino.com`, marca ⭐ one-to-one) + Lead por CAPI. |
+| `partners-formaciones` | no | Vercel → Supabase | `/partners/formaciones` y enlaces de emails: `info` (precios/plazas; con token HMAC `PARTNERS_LEAD_SECRET` reconoce al lead y su oferta), `checkout` (Sesión 1:1 o Intensivo; **precio de la sesión siempre en servidor**: 60 € si `oferta_sesion_enviada_at` < 3 h, si no 150 €), `baja`. |
+| `partners-seguimiento` | no | pg_cron cada 15 min (`X-Cron-Secret`) | Secuencia a solicitudes completas sin compra: aviso a info@ (+30 min) y emails +1/+24/+48 (oferta sesión)/+72 h desde «Juan de Mora <info@casacurino.com>». **Apagada** salvo `PARTNERS_SEGUIMIENTO_ACTIVO=true`; modo prueba acelerado solo para solicitudes «PRUEBA». |
 | `curso-checkout`, `curso-acceso` | no | — / Vercel → Supabase | Curso pregrabado de 90 € **retirado de la venta** (2026-10). `curso-checkout` sin punto de entrada; `curso-acceso` sigue sirviendo `/partners/acceso/`. |
 | `presupuesto-form-relay` | no | Vercel → Supabase | Envía email Resend tras insertar solicitud de presupuesto. |
 | `lista-espera-relay` | no | Vercel → Supabase | Captura email + honeypot + rate limit para lista de espera de clases. |
@@ -142,6 +144,7 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 - `magazine_boost` → `handleMagazineBoostCompleted`
 - `armario` → `handleArmarioCompleted`
 - `clase` → `handleClaseCompleted` (con **refund automático** si la plaza se agota entre checkout y webhook)
+- `sesion` → `handleSesionCompleted` (Sesión 1:1: tabla `sesiones_1a1`, factura `SESION`, email con recursos de `partners-recursos/sesion/` + `SESION_RESERVA_URL`)
 - `charge.refunded` (fuera del switch de purpose) → `handleChargeRefunded`: reembolso **total** de una inscripción del Intensivo → RPC `liberar_plaza_clase` (idempotente: pagada→reembolsada, −1 plaza, reabre si estaba agotada y no ha empezado) + email; **parcial** → solo `importe_reembolsado_cents`. A 2026-10 el evento **no está suscrito** todavía en el endpoint de Stripe.
 - resto → `handleCheckoutCompleted` (marketplace legacy sin `purpose`)
 
@@ -161,6 +164,8 @@ Serie única `invoice_counters (invoice_type, year, last_number)` con RPC `assig
 | `armario` | `AR` | configurador armarios |
 | `clase` | `CLASE` | plaza en clase directo (2026-08) |
 | `clase_rect` | `R-CLASE` | factura rectificativa de un reembolso del Intensivo (2026-10), tabla `facturas_rectificativas_clase` (una por `stripe_refund_id`) |
+| `sesion` | `SESION` | Sesión 1:1 con Juan · 30 min (2026-10) |
+| `sesion_rect` | `R-SESION` | rectificativa de la sesión (misma tabla `facturas_rectificativas_clase`, `serie='sesion'`) |
 
 Formato final `<PREFIX>-YYYY-NNNNNN` (6 dígitos). Extender esta RPC = `create or replace function assign_invoice_number` re-declarando el `case` completo con el tipo nuevo (patrón `20260526_armario_orders.sql:112-146`).
 
