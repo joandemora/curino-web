@@ -56,7 +56,7 @@ const P3: Record<string, string> = {
   '1_2_horas': '1-2 horas al día', media_jornada: 'Media jornada', tiempo_completo: 'Quiero dedicarme a tiempo completo'
 };
 const P4: Record<string, string> = {
-  noviembre: 'Ya, en el intensivo de noviembre', proximos_meses: 'En los próximos meses', informandome: 'Solo estoy informándome'
+  octubre: 'Ya, en el intensivo de octubre', noviembre: 'Ya, en el intensivo de noviembre', proximos_meses: 'En los próximos meses', informandome: 'Solo estoy informándome'
 };
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });

@@ -25,7 +25,7 @@ const WA = '34611965612';
 export const VARS = [
   'nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes',
   'enlace_plaza', 'enlace_formaciones', 'enlace_whatsapp', 'plazas_libres', 'plazas_totales',
-  'precio_oferta_sesion', 'precio_sesion', 'horas_oferta'
+  'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas'
 ];
 
 export function esc(s: unknown) {
@@ -84,7 +84,7 @@ export function layout(cuerpoHtml: string, tipo: string, bajaUrl: string | null)
 <body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px;margin:0 auto;padding:16px">
 ${cuerpoHtml}
 <p style="margin:0 0 14px">Juan de Mora · Curino</p>
-<p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">${pie} SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
+<p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">${pie} SISTEMA &amp; CURINO SLU · <a href="${SITE}/aviso-legal/" style="color:#999">Aviso legal</a></p>
 </body></html>`;
 }
 
@@ -142,6 +142,8 @@ export async function construirVars(
     plazas_totales: abierta ? String(abierta.plazas_totales) : '',
     precio_oferta_sesion: eur(SESION.precioOfertaCents),
     precio_sesion: eur(SESION.precioNormalCents),
-    horas_oferta: String(SESION.ofertaHoras)
+    horas_oferta: String(SESION.ofertaHoras),
+    // «Quedan 3 plazas» / «Queda 1 plaza» (vacía sin plazas o sin edición)
+    quedan_plazas: !libres ? '' : libres === 1 ? 'Queda 1 plaza' : `Quedan ${libres} plazas`
   };
 }

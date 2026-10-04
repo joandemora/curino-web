@@ -144,8 +144,8 @@ Deno.serve(async (req) => {
       } catch { return null; }
     })();
     const descripcion = claseFechaLegible
-      ? `4 semanas, 8 clases en directo por Zoom. Inicio: ${claseFechaLegible} (hora peninsular).`
-      : '4 semanas, 8 clases en directo por Zoom.';
+      ? `4 clases en directo por Zoom, una por semana. Inicio: ${claseFechaLegible} (hora peninsular).`
+      : '4 clases en directo por Zoom, una por semana.';
 
     // Pago unico: tarjeta (con Apple Pay / Google Pay) + Link. Sin metodos
     // a plazos. Checkout pide direccion de facturacion siempre y NIF/CIF
