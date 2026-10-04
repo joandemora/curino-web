@@ -280,9 +280,9 @@ Deno.serve(async (req) => {
         nombre, email,
         telefono_prefijo: prefijo, telefono,
         consentimiento_privacidad: true, consentimiento_at: now,
-        // Casilla v2 (email y WhatsApp sobre la solicitud y las formaciones).
-        // Nunca se pone a false si ya estaba en true.
-        ...(body?.consentimiento_comercial === true ? { consentimiento_comercial: true } : {}),
+        // Casilla comercial (opcional): se guarda la ultima eleccion del lead.
+        // Si no viene (frontend antiguo en cache) no se toca.
+        ...(typeof body?.consentimiento_comercial === 'boolean' ? { consentimiento_comercial: body.consentimiento_comercial } : {}),
         edit_token: token,
         user_agent: str(body?.client_ua, 500) || null,
         ip_hash: ipHash
@@ -297,6 +297,14 @@ Deno.serve(async (req) => {
       if (referrer) record.referrer = referrer;
       if (eventId) record.event_id_lead = eventId;
 
+      // ¿Ya habia una solicitud con este email? (upsert por email: la fila se
+      // reutiliza y conserva su created_at original).
+      const { data: previo } = await supabase
+        .from('partners_solicitudes')
+        .select('id, created_at, notificado_lead_at')
+        .eq('email', email)
+        .maybeSingle();
+
       const { data: saved, error } = await supabase
         .from('partners_solicitudes')
         .upsert(record, { onConflict: 'email' })
@@ -307,17 +315,28 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'internal_error' }, 500);
       }
 
-      // Best-effort: aviso a Juan (solo la primera vez) + Lead por CAPI.
+      // Best-effort: aviso a Juan + Lead por CAPI.
+      // Aviso: la primera vez y tambien en cada REENVIO del mismo email
+      // (antes solo se avisaba la primera vez y los reenvios pasaban
+      // desapercibidos). No se repite si ya se aviso hace < 30 min (p. ej. el
+      // lead vuelve con "Atras" al paso 0 y reenvia).
       try {
-        if (!saved.notificado_lead_at) {
+        const REAVISO_MS = 30 * 60 * 1000;
+        const ultimoAviso = saved.notificado_lead_at ? new Date(saved.notificado_lead_at).getTime() : 0;
+        const esReenvio = !!previo;
+        if (!ultimoAviso || (esReenvio && Date.now() - ultimoAviso > REAVISO_MS)) {
+          const primera = previo ? new Date(previo.created_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) : '';
           const ok = await notify(
-            `Nueva solicitud Partners: ${nombre}`,
-            solicitudHtml(saved, 'Nueva solicitud — Curino Partners (contacto)'),
+            esReenvio ? `Nueva solicitud Partners (repetida): ${nombre}` : `Nueva solicitud Partners: ${nombre}`,
+            solicitudHtml(saved, esReenvio
+              ? `Solicitud repetida — Curino Partners (contacto). Primera solicitud: ${primera}`
+              : 'Nueva solicitud — Curino Partners (contacto)'),
             email
           );
           if (ok) {
+            // En un reenvio se rearma tambien el aviso de "solicitud completa".
             await supabase.from('partners_solicitudes')
-              .update({ notificado_lead_at: new Date().toISOString() })
+              .update({ notificado_lead_at: new Date().toISOString(), ...(esReenvio ? { notificado_completa_at: null } : {}) })
               .eq('id', saved.id);
           }
         }
@@ -426,9 +445,14 @@ Deno.serve(async (req) => {
       if (paso === 4 && !saved.notificado_completa_at) {
         try {
           const tag = (result?.cualificado ? '✅ CUALIFICADO' : (SEGMENTO_LABEL[saved.segmento] || ''))
-            + (saved.perfil_one_to_one ? ' · ⭐ one-to-one' : '');
+            + (saved.perfil_one_to_one ? ' · ⭐ one-to-one' : '')
+            + (!saved.consentimiento_comercial ? ' · sin consentimiento comercial' : '');
+          // Reenvio del mismo email: la fila es antigua pero el aviso de
+          // contacto es de este ciclo.
+          const repetida = saved.notificado_lead_at && saved.created_at
+            && new Date(saved.notificado_lead_at).getTime() - new Date(saved.created_at).getTime() > 60_000;
           const ok = await notify(
-            `Solicitud completa Partners: ${saved.nombre} — ${tag}`,
+            `Solicitud completa Partners${repetida ? ' (repetida)' : ''}: ${saved.nombre} — ${tag}`,
             solicitudHtml(saved, 'Solicitud completa — Curino Partners'),
             saved.email
           );
