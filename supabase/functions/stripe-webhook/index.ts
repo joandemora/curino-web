@@ -52,6 +52,8 @@ import {
   sendClaseRefundEmail,
   sendClaseRefundConfirmationEmail,
   formatStripeAddress,
+  generateClaseRectificativaPdf,
+  uploadClaseRectificativaPdf,
   ClaseInvoiceData,
   ClaseInfo
 } from '../_shared/clase-invoices.ts'
@@ -180,7 +182,7 @@ Deno.serve(async (req) => {
       // Reembolsos del Intensivo (inscripciones). Otros productos: no-op.
       // OJO: el evento aun no esta suscrito en el endpoint de Stripe.
       case 'charge.refunded': {
-        await handleChargeRefunded(supabase, event.data.object as Stripe.Charge);
+        await handleChargeRefunded(supabase, stripe, event.data.object as Stripe.Charge);
         break;
       }
 
@@ -1264,18 +1266,116 @@ async function handleClaseCompleted(
 // ============================================================================
 // CHARGE.REFUNDED — reembolsos del Intensivo (tabla inscripciones).
 //
+// - Factura rectificativa (serie R-CLASE) por cada reembolso de Stripe del
+//   cargo, por su importe (total o parcial). Idempotente por
+//   stripe_refund_id (UNIQUE en facturas_rectificativas_clase): un evento
+//   repetido no crea otro documento ni consume otro numero.
 // - Total (charge.refunded = true): RPC liberar_plaza_clase pasa la
 //   inscripcion de 'pagada' a 'reembolsada', resta 1 plaza (min. 0) y
-//   reabre la edicion si estaba agotada y no ha empezado. La guarda
-//   estado='pagada' la hace idempotente: un reintento del mismo evento no
-//   libera otra plaza ni reenvia el email.
-// - Parcial: solo registra importe_reembolsado_cents; no libera plaza.
-// - Cargos de otros productos (sin inscripcion con ese payment_intent) o el
-//   reembolso automatico por "agotada mid-checkout" (sin inscripcion): no-op.
+//   reabre la edicion si estaba agotada y no ha empezado. Idempotente por
+//   la guarda estado='pagada'. Email de confirmacion con la rectificativa.
+// - Parcial: registra importe_reembolsado_cents + rectificativa; no libera
+//   plaza ni envia email.
+// - Cargos sin inscripcion (otros productos, reembolso automatico por
+//   "agotada mid-checkout"): no-op.
 // ============================================================================
+type Rectificativa = { invoice_number: string; pdfBytes: Uint8Array };
+
+async function emitirRectificativaClase(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  // deno-lint-ignore no-explicit-any
+  ins: any,
+  refund: Stripe.Refund,
+  chargeId: string
+): Promise<Rectificativa | null> {
+  if (!ins.invoice_number) {
+    console.error(`rectificativa: inscripcion ${ins.id} sin factura original; no se emite`);
+    return null;
+  }
+  const direccion = ins.cliente_direccion ? String(ins.cliente_direccion).split(' · ') : [];
+
+  // 1. Reclamar el refund (UNIQUE). Si ya existe y esta completa → nada.
+  const { data: claimed, error: claimErr } = await supabase
+    .from('facturas_rectificativas_clase')
+    .upsert({
+      stripe_refund_id: refund.id,
+      stripe_charge_id: chargeId,
+      inscripcion_id: ins.id,
+      importe_cents: refund.amount,
+      factura_original: ins.invoice_number,
+      factura_original_fecha: ins.created_at,
+      comprador_nombre: ins.cliente_nombre_fiscal || ins.nombre,
+      comprador_email: ins.email,
+      comprador_nif: ins.cliente_nif,
+      comprador_direccion: ins.cliente_direccion
+    }, { onConflict: 'stripe_refund_id', ignoreDuplicates: true })
+    .select('id');
+  if (claimErr) {
+    console.error('rectificativa: error reclamando refund', refund.id, claimErr);
+    return null;
+  }
+  const { data: row } = await supabase
+    .from('facturas_rectificativas_clase')
+    .select('*')
+    .eq('stripe_refund_id', refund.id)
+    .single();
+  if (!row) return null;
+  if (!(claimed && claimed.length) && row.invoice_number && row.pdf_url) {
+    console.log(`rectificativa: ${row.invoice_number} ya emitida para refund ${refund.id}`);
+    return null;
+  }
+
+  // 2. Numero (solo si aun no tiene; reintento tras fallo parcial).
+  let number = row.invoice_number as string | null;
+  if (!number) {
+    const { data: n, error: nErr } = await supabase.rpc('assign_invoice_number', {
+      p_type: 'clase_rect',
+      p_year: new Date().getFullYear()
+    });
+    if (nErr || !n) {
+      console.error('rectificativa: error asignando numero', refund.id, nErr);
+      return null;
+    }
+    const { data: upd } = await supabase
+      .from('facturas_rectificativas_clase')
+      .update({ invoice_number: n })
+      .eq('id', row.id)
+      .is('invoice_number', null)
+      .select('invoice_number');
+    number = (upd && upd[0]?.invoice_number) || null;
+    if (!number) {
+      // Otra ejecucion concurrente gano: usar su numero.
+      const { data: again } = await supabase
+        .from('facturas_rectificativas_clase').select('invoice_number').eq('id', row.id).single();
+      number = again?.invoice_number || null;
+      if (!number) return null;
+    }
+  }
+
+  // 3. PDF + storage
+  const pdfBytes = await generateClaseRectificativaPdf({
+    invoice_number: number,
+    fecha: row.created_at,
+    factura_original: row.factura_original,
+    factura_original_fecha: row.factura_original_fecha,
+    motivo: row.motivo,
+    importe_cents: row.importe_cents,
+    comprador_nombre: row.comprador_nombre,
+    comprador_email: row.comprador_email,
+    comprador_nif: row.comprador_nif,
+    comprador_direccion: direccion
+  });
+  const path = await uploadClaseRectificativaPdf(supabase, String(ins.id), refund.id, pdfBytes);
+  await supabase.from('facturas_rectificativas_clase').update({ pdf_url: path }).eq('id', row.id);
+  console.log(`rectificativa: ${number} emitida (${row.importe_cents} cents) para inscripcion ${ins.id}`);
+  return { invoice_number: number, pdfBytes };
+}
+
 async function handleChargeRefunded(
   // deno-lint-ignore no-explicit-any
   supabase: any,   // cliente sin tipos generados (igual que el resto del webhook)
+  stripe: Stripe,
   charge: Stripe.Charge
 ) {
   const paymentIntent = typeof charge.payment_intent === 'string'
@@ -1285,7 +1385,7 @@ async function handleChargeRefunded(
 
   const { data: ins, error } = await supabase
     .from('inscripciones')
-    .select('id, nombre, email, estado, importe_cents, importe_reembolsado_cents, refund_email_sent_at')
+    .select('id, nombre, email, estado, importe_cents, importe_reembolsado_cents, refund_email_sent_at, invoice_number, created_at, cliente_nombre_fiscal, cliente_nif, cliente_direccion')
     .eq('stripe_payment_intent', paymentIntent)
     .maybeSingle();
   if (error) {
@@ -1297,8 +1397,25 @@ async function handleChargeRefunded(
   const refunded = charge.amount_refunded ?? 0;
   const isFull = charge.refunded === true || refunded >= (charge.amount ?? Infinity);
 
+  // Rectificativas: una por refund de Stripe (el objeto Charge del evento no
+  // trae la lista de refunds en las versiones actuales de la API).
+  const nuevas: Rectificativa[] = [];
+  try {
+    const refunds = await stripe.refunds.list({ charge: charge.id, limit: 100 });
+    for (const rf of refunds.data) {
+      if (rf.status === 'failed' || rf.status === 'canceled') continue;
+      try {
+        const r = await emitirRectificativaClase(supabase, ins, rf, charge.id);
+        if (r) nuevas.push(r);
+      } catch (rErr) {
+        console.error('rectificativa: fallo emitiendo', rf.id, rErr);
+      }
+    }
+  } catch (listErr) {
+    console.error('refund: error listando refunds del cargo', charge.id, listErr);
+  }
+
   if (!isFull) {
-    // Parcial: registrar sin liberar plaza.
     if (refunded > (ins.importe_reembolsado_cents ?? 0)) {
       const { error: upErr } = await supabase
         .from('inscripciones')
@@ -1323,7 +1440,7 @@ async function handleChargeRefunded(
 
   console.log(`refund: inscripcion ${ins.id} reembolsada, plaza liberada`);
   try {
-    await sendClaseRefundConfirmationEmail(String(ins.email), String(ins.nombre), refunded);
+    await sendClaseRefundConfirmationEmail(String(ins.email), String(ins.nombre), refunded, nuevas);
     await supabase
       .from('inscripciones')
       .update({ refund_email_sent_at: new Date().toISOString() })

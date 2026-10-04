@@ -182,6 +182,116 @@ export async function generateClaseInvoicePdf(
   return await doc.save();
 }
 
+// =============================================================
+// Factura rectificativa (serie R-CLASE) — reembolsos
+// =============================================================
+export interface ClaseRectificativaData {
+  invoice_number: string;            // R-CLASE-AAAA-NNNNNN
+  fecha: string;                     // ISO de emision
+  factura_original: string;          // CLASE-AAAA-NNNNNN
+  factura_original_fecha: string;    // ISO
+  motivo: string;
+  importe_cents: number;             // importe reembolsado, en positivo
+  comprador_nombre: string;
+  comprador_email?: string | null;
+  comprador_nif?: string | null;
+  comprador_direccion?: string[] | null;
+}
+
+export async function generateClaseRectificativaPdf(
+  r: ClaseRectificativaData
+): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([595, 842]); // A4
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const black = rgb(0, 0, 0);
+  const gray = rgb(0.4, 0.4, 0.4);
+
+  // Mismo desglose que la factura original, en negativo.
+  const taxRatePct = 21;
+  const baseCents = Math.round(r.importe_cents / (1 + taxRatePct / 100));
+  const taxCents = r.importe_cents - baseCents;
+  const neg = (c: number) => `-${fmtEur(c)}`;
+  const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+
+  let y = 800;
+  page.drawText('FACTURA RECTIFICATIVA', { x: 50, y, font: fontBold, size: 18, color: black });
+  y -= 30;
+  page.drawText(`N.o ${sanitizePdfText(r.invoice_number)}`, { x: 50, y, font, size: 10, color: gray });
+  page.drawText(`Fecha: ${fecha(r.fecha)}`, { x: 350, y, font, size: 10, color: gray });
+  y -= 14;
+  page.drawText(sanitizePdfText(`Rectifica a la factura N.o ${r.factura_original} de fecha ${fecha(r.factura_original_fecha)}`), { x: 50, y, font, size: 10, color: black });
+  y -= 14;
+  page.drawText(sanitizePdfText(`Motivo: ${r.motivo}`), { x: 50, y, font, size: 10, color: black });
+  y -= 30;
+
+  const yTop = y;
+  page.drawText('EMISOR', { x: 50, y, font: fontBold, size: 10 });
+  y -= 15;
+  page.drawText(ISSUER.name, { x: 50, y, font, size: 10 });
+  y -= 12;
+  page.drawText(`NIF: ${ISSUER.taxId}`, { x: 50, y, font, size: 10 });
+  y -= 12;
+  page.drawText(ISSUER.address, { x: 50, y, font, size: 10 });
+  y -= 12;
+  page.drawText(ISSUER.city, { x: 50, y, font, size: 10 });
+
+  let yb = yTop;
+  page.drawText(r.comprador_nif ? 'CLIENTE' : 'COMPRADOR', { x: 320, y: yb, font: fontBold, size: 10 });
+  yb -= 15;
+  page.drawText(sanitizePdfText(r.comprador_nombre).slice(0, 60), { x: 320, y: yb, font, size: 10 });
+  if (r.comprador_nif) {
+    yb -= 12;
+    page.drawText(sanitizePdfText(`NIF: ${r.comprador_nif}`), { x: 320, y: yb, font, size: 10 });
+  }
+  for (const line of (r.comprador_direccion || []).filter(Boolean).slice(0, 3)) {
+    yb -= 12;
+    page.drawText(sanitizePdfText(line).slice(0, 60), { x: 320, y: yb, font, size: 10 });
+  }
+  y = Math.min(y, yb) - 30;
+
+  page.drawText('CONCEPTO', { x: 50, y, font: fontBold, size: 10 });
+  page.drawText('IMPORTE', { x: 480, y, font: fontBold, size: 10 });
+  y -= 15;
+  page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
+  y -= 15;
+  page.drawText(sanitizePdfText('Devolución: Intensivo Curino Partners (4 semanas, 8 clases en directo por Zoom)'), { x: 50, y, font, size: 10 });
+  page.drawText(neg(baseCents), { x: 475, y, font, size: 10 });
+  y -= 30;
+
+  page.drawText('Base imponible:', { x: 350, y, font, size: 10 });
+  page.drawText(neg(baseCents), { x: 485, y, font, size: 10 });
+  y -= 15;
+  page.drawText(`IVA (${taxRatePct}%):`, { x: 350, y, font, size: 10 });
+  page.drawText(neg(taxCents), { x: 485, y, font, size: 10 });
+  y -= 15;
+  page.drawText('TOTAL:', { x: 350, y, font: fontBold, size: 12 });
+  page.drawText(neg(r.importe_cents), { x: 485, y, font: fontBold, size: 12 });
+
+  if (r.comprador_email) {
+    page.drawText(sanitizePdfText(`Email del comprador: ${r.comprador_email}`), { x: 50, y: 100, font, size: 9, color: gray });
+  }
+  page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
+
+  return await doc.save();
+}
+
+export async function uploadClaseRectificativaPdf(
+  supabase: any,
+  inscripcionId: string,
+  refundId: string,
+  pdfBytes: Uint8Array
+): Promise<string> {
+  // Junto a la original: invoices/clases/<inscripcion>.pdf
+  const path = `clases/${inscripcionId}-rect-${refundId}.pdf`;
+  const { error } = await supabase.storage
+    .from('invoices')
+    .upload(path, pdfBytes, { contentType: 'application/pdf', upsert: true });
+  if (error) throw error;
+  return path;
+}
+
 export async function uploadClaseInvoicePdf(
   supabase: any,
   inscripcionId: string,
@@ -347,7 +457,8 @@ export async function sendClaseReminderEmail(
 export async function sendClaseRefundConfirmationEmail(
   to: string,
   nombre: string,
-  importeCents: number
+  importeCents: number,
+  rectificativas: { invoice_number: string; pdfBytes: Uint8Array }[] = []
 ): Promise<void> {
   const html = `
 <!DOCTYPE html>
@@ -359,6 +470,7 @@ export async function sendClaseRefundConfirmationEmail(
   <p>Hemos procesado el reembolso de tu plaza en el Intensivo Curino Partners por un importe de <strong>${escapeHtml(fmtEur(importeCents))}</strong>.</p>
   <p>Lo verás en tu cuenta en 5-10 días hábiles, según tu banco, en el mismo método de pago que usaste.</p>
   <p>Tu plaza queda liberada. Si más adelante quieres apuntarte a otra edición, escríbenos y te avisamos.</p>
+  ${rectificativas.length ? `<p>Adjunto la factura rectificativa (N.º ${rectificativas.map((r) => escapeHtml(r.invoice_number)).join(', ')}).</p>` : ''}
   <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
 </body>
@@ -369,7 +481,13 @@ export async function sendClaseRefundConfirmationEmail(
     to: [to],
     reply_to: 'info@casacurino.com',
     subject: 'Reembolso confirmado — Intensivo Curino Partners',
-    html
+    html,
+    ...(rectificativas.length ? {
+      attachments: rectificativas.map((r) => ({
+        filename: `factura-rectificativa-${r.invoice_number}.pdf`,
+        content: pdfBytesToBase64(r.pdfBytes)
+      }))
+    } : {})
   });
 }
 

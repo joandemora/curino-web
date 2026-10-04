@@ -160,6 +160,7 @@ Serie única `invoice_counters (invoice_type, year, last_number)` con RPC `assig
 | `magazine` | `REVISTA` | paquetes y boosts de revista |
 | `armario` | `AR` | configurador armarios |
 | `clase` | `CLASE` | plaza en clase directo (2026-08) |
+| `clase_rect` | `R-CLASE` | factura rectificativa de un reembolso del Intensivo (2026-10), tabla `facturas_rectificativas_clase` (una por `stripe_refund_id`) |
 
 Formato final `<PREFIX>-YYYY-NNNNNN` (6 dígitos). Extender esta RPC = `create or replace function assign_invoice_number` re-declarando el `case` completo con el tipo nuevo (patrón `20260526_armario_orders.sql:112-146`).
 
@@ -169,6 +170,7 @@ Bucket **`invoices`** privado (Fase E marketplace). Convención de rutas:
 - Magazine boost: `invoices/magazine-boost/<boost_id>.pdf`
 - Armario: `invoices/armario/<order_id>.pdf`
 - Clase: `invoices/clases/<inscripcion_id>.pdf`
+- Rectificativa de clase: `invoices/clases/<inscripcion_id>-rect-<refund_id>.pdf`
 
 Policies: buyer lee su propia factura, admin lee todo, `service_role` bypasea RLS para subir. PDFs generados con **pdf-lib** (nunca Puppeteer para facturas — Helvetica StandardFonts con `sanitizePdfText` para caracteres fuera de WinAnsi).
 
