@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Novedades — Curino Partners | Curino</title>
+<meta name="description" content="Alta en las formaciones y novedades de Curino.">
+<link rel="canonical" href="https://www.casacurino.com/partners/novedades/">
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Schibsted+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site-shell.css">
+
+<style>
+:root{--ink:#161616;--green-dark:#0E9F5C;--head:'Schibsted Grotesk',system-ui,sans-serif}
+.bj-page{padding:96px 16px 4rem}
+@media(min-width:1201px){.bj-page{padding-top:136px}}
+.bj-wrap{max-width:560px;margin:0 auto}
+.bj-h1{font-family:var(--head);font-weight:800;font-size:clamp(28px,5vw,40px);line-height:1.05;letter-spacing:-.02em;margin:0 0 1rem;color:var(--ink)}
+.bj-wrap p{font-size:16px;line-height:1.6;color:#333}
+</style>
+</head>
+<body>
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
+<main class="bj-page">
+  <div class="bj-wrap">
+    <h1 class="bj-h1" id="bj-titulo">Procesando…</h1>
+    <p id="bj-texto"></p>
+  </div>
+</main>
+<div id="main-footer-mount"></div>
+<script src="/assets/js/main-footer.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '';
+  var titulo = document.getElementById('bj-titulo'), texto = document.getElementById('bj-texto');
+  fetch('/api/partners-formaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'comercial', token: t }) })
+    .then(function (r) { return r.json().then(function (d) { return r.ok ? d : {}; }); })
+    .then(function (d) {
+      if (d.ok) {
+        titulo.textContent = 'Hecho, te avisaré.';
+        texto.innerHTML = 'Recibirás también las próximas formaciones y novedades de Curino por email. Puedes darte de baja en cualquier momento desde el pie de cada email.';
+      } else if (d.baja) {
+        titulo.textContent = 'Te diste de baja de nuestros emails.';
+        texto.innerHTML = 'Si quieres volver a recibirlos, escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>.';
+      } else {
+        titulo.textContent = 'No hemos podido procesarlo.';
+        texto.innerHTML = 'El enlace no es válido. Escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a> y lo hacemos a mano.';
+      }
+    })
+    .catch(function () { titulo.textContent = 'No hemos podido procesarlo.'; texto.innerHTML = 'Escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>.'; });
+})();
+</script>
+</body>
+</html>

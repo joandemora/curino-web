@@ -61,3 +61,5 @@
   .pa-notas{min-width:0}
   .pa-count{margin-left:0;width:100%}
 }
+.pa-consent{display:flex;align-items:center;gap:.3rem;font-size:12.5px;white-space:nowrap;cursor:pointer;margin:.1rem 0}
+.pa-consent input{width:16px;height:16px;accent-color:#12B76A}
