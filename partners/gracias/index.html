@@ -80,6 +80,12 @@
         <span>Te acabamos de enviar la confirmación de tu plaza con la factura adjunta.</span>
       </li>
       <li>
+        <strong>Accede ya al contenido del curso</strong>
+        <span>Materiales, plantillas y catálogo, disponibles desde este momento. También tienes el enlace en el email.</span><br>
+        <a class="gr-btn" id="gr-materiales" href="#" target="_blank" rel="noopener">Acceder al contenido</a>
+        <span class="gr-pending" id="gr-materiales-pending" hidden>[ENLACE A LOS MATERIALES POR CONFIRMAR]</span>
+      </li>
+      <li>
         <strong>Únete al grupo de WhatsApp de tu promoción</strong>
         <span>Ahí compartimos avisos, materiales y dudas entre clases.</span><br>
         <a class="gr-btn" id="gr-wa-group" href="#" target="_blank" rel="noopener">
@@ -94,7 +100,7 @@
       </li>
     </ol>
 
-    <p class="gr-hint">¿No ves el email? Revisa spam o promociones, o escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>. Si cancelas antes de la primera clase te devolvemos el 100 %.</p>
+    <p class="gr-hint">¿No ves el email? Revisa spam o promociones, o escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>. <a href="/partners/condiciones/">Condiciones de contratación</a>.</p>
   </div>
 </main>
 
@@ -111,9 +117,20 @@
   var CONFIG = {
     // Enlace de invitacion al grupo de WhatsApp de la promocion.
     // [POR CONFIRMAR] Mientras sea null se muestra el aviso en rojo.
-    WHATSAPP_GROUP_URL: null
+    WHATSAPP_GROUP_URL: null,
+    // Enlace a los materiales del curso (entrega inmediata).
+    // [POR CONFIRMAR] Debe coincidir con el secret PARTNERS_MATERIALES_URL.
+    MATERIALES_URL: null
   };
   // ==========================================================
+
+  var m = document.getElementById('gr-materiales');
+  if (CONFIG.MATERIALES_URL) {
+    m.href = CONFIG.MATERIALES_URL;
+  } else {
+    m.hidden = true;
+    document.getElementById('gr-materiales-pending').hidden = false;
+  }
 
   var a = document.getElementById('gr-wa-group');
   if (CONFIG.WHATSAPP_GROUP_URL) {

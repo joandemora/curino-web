@@ -6,8 +6,12 @@
 // Desde 2026-10 vende el Intensivo Curino Partners (990 EUR, aforo por fila
 // en clases.plazas_totales: 3 en la 1a edicion, 20 por defecto,
 // pago unico solo con tarjeta) desde el formulario de /partners/. Sin
-// casilla de renuncia al desistimiento: la politica es devolucion del
-// 100 % si se cancela antes de la primera clase (FAQ de la landing).
+// Sin devoluciones (2026-10): Checkout exige marcar la casilla de
+// condiciones (consent_collection.terms_of_service = 'required') con el
+// texto de solicitud de entrega inmediata y renuncia expresa al derecho de
+// desistimiento (art. 103 m TRLGDCU). Requiere la URL de condiciones
+// configurada en el panel de Stripe (Ajustes > Datos públicos). El webhook
+// guarda la aceptación en la inscripción.
 //
 // Flow:
 //   1. Body: { clase_id, nombre, email, telefono?, event_id,
@@ -162,6 +166,12 @@ Deno.serve(async (req) => {
       }],
       customer_creation: 'always',
       phone_number_collection: { enabled: true },
+      consent_collection: { terms_of_service: 'required' },
+      custom_text: {
+        terms_of_service_acceptance: {
+          message: 'Solicito recibir de inmediato el contenido del curso y el acceso al grupo, y acepto que al hacerlo pierdo mi derecho de desistimiento. Acepto las [condiciones de contratación](https://casacurino.com/partners/condiciones/).'
+        }
+      },
       billing_address_collection: 'required',
       tax_id_collection: { enabled: true },
       success_url: `${siteUrl}/partners/gracias/?session_id={CHECKOUT_SESSION_ID}`,
@@ -172,7 +182,8 @@ Deno.serve(async (req) => {
         nombre,
         telefono,
         email_formulario: email,
-        desistimiento_renunciado: 'false',
+        // La renuncia real es la casilla de Checkout (session.consent).
+        desistimiento_renunciado: 'checkout_consent',
         event_id,
         utm_source,
         utm_medium,

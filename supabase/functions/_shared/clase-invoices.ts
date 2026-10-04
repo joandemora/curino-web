@@ -382,6 +382,25 @@ function whatsappGroupHtml(): string {
   <p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">Entrar al grupo de WhatsApp</a></p>`;
 }
 
+// Entrega inmediata (renuncia al desistimiento, art. 103 m TRLGDCU): el
+// email de confirmacion debe dar YA el acceso al contenido y al grupo.
+// Secrets de Edge Functions: PARTNERS_MATERIALES_URL (materiales y
+// plantillas) y PARTNERS_WHATSAPP_GROUP_URL. Sin ellos no se deben abrir
+// ventas (se avisa en el log en cada envio).
+function accesoInmediatoHtml(): string {
+  const materiales = Deno.env.get('PARTNERS_MATERIALES_URL');
+  const grupo = Deno.env.get('PARTNERS_WHATSAPP_GROUP_URL');
+  if (!materiales) console.warn('clase-invoices: PARTNERS_MATERIALES_URL sin configurar — el email de compra sale sin acceso al contenido');
+  if (!grupo) console.warn('clase-invoices: PARTNERS_WHATSAPP_GROUP_URL sin configurar — el email de compra sale sin grupo de WhatsApp');
+  const btn = (url: string, label: string) =>
+    `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:12px 22px;text-decoration:none;border-radius:4px;">${label}</a></p>`;
+  const partes: string[] = [];
+  if (materiales) partes.push(`<p><strong>Contenido del curso:</strong> materiales, plantillas y catálogo, disponibles desde ahora.</p>${btn(materiales, 'Acceder al contenido del curso')}`);
+  if (grupo) partes.push(`<p><strong>Grupo de tu promoción:</strong> avisos, materiales y dudas entre clases.</p>${btn(grupo, 'Entrar al grupo de WhatsApp')}`);
+  if (!partes.length) return '';
+  return `<h3 style="color:#000;margin-top:24px;">Tu acceso, desde ya</h3>${partes.join('')}`;
+}
+
 function zoomButtonHtml(url: string, label: string): string {
   return `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0a0a0a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;">${label}</a></p>
        <p style="font-size:13px;color:#555;">Enlace directo: <a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`;
@@ -406,12 +425,11 @@ export async function sendClaseConfirmationEmail(
   <p>Hola ${escapeHtml(nombre)},</p>
   <p>Ya tienes tu plaza. Empezamos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular).</p>
   <p>Son 4 semanas y 8 clases en directo por Zoom, con tiempo para tus preguntas en cada una.</p>
-  <p><strong>El enlace de Zoom te llega por email el día antes de la primera clase.</strong></p>
-  ${whatsappGroupHtml()}
+  ${accesoInmediatoHtml()}
+  <p><strong>El enlace de Zoom de las clases en directo te llega por email el día antes de la primera clase.</strong></p>
   <p>Adjunto la factura (N.º ${escapeHtml(invoiceNumber)}).</p>
   <h3 style="color:#000;margin-top:30px;">Antes de empezar</h3>
   <p>No necesitas saber de carpintería. Si ya tienes algún caso en mente —una cocina, un armario, un cliente potencial—, apúntalo y lo trabajamos en clase.</p>
-  <p>Si cancelas antes de la primera clase te devolvemos el 100 %. Solo tienes que responder a este email.</p>
   <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
   <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
 </body>

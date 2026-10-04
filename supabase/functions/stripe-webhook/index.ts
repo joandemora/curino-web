@@ -1099,7 +1099,10 @@ async function handleClaseCompleted(
   const telefonoFormulario = session.metadata?.telefono || null;
   const telefono = session.customer_details?.phone || telefonoFormulario;
   const emailFormulario = (session.metadata?.email_formulario || '').toLowerCase() || null;
-  const desistimientoRenunciado = session.metadata?.desistimiento_renunciado === 'true';
+  // Renuncia al desistimiento: casilla obligatoria de condiciones en
+  // Checkout (consent_collection). Se guarda la marca y la fecha/hora.
+  const terminosAceptados = session.consent?.terms_of_service === 'accepted';
+  const desistimientoRenunciado = terminosAceptados || session.metadata?.desistimiento_renunciado === 'true';
   const eventId = session.metadata?.event_id || null;
   const utmSource = session.metadata?.utm_source || null;
   const utmMedium = session.metadata?.utm_medium || null;
@@ -1196,6 +1199,8 @@ async function handleClaseCompleted(
       stripe_payment_intent: paymentIntentId,
       importe_cents: amountPaidCents,
       desistimiento_renunciado: desistimientoRenunciado,
+      terminos_aceptados: terminosAceptados,
+      terminos_aceptados_at: terminosAceptados ? new Date().toISOString() : null,
       utm_source: utmSource,
       utm_medium: utmMedium,
       utm_campaign: utmCampaign,
