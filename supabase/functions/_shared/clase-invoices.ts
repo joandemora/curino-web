@@ -35,12 +35,49 @@ export interface ClaseInvoiceData {
 }
 
 // Formatea la direccion de Stripe (customer_details.address) en lineas.
+// Provincias de España: Stripe devuelve address.state con el codigo
+// ISO 3166-2:ES sin prefijo ("B", "M", "GC"…). En factura va el nombre.
+const PROVINCIAS_ES: Record<string, string> = {
+  A: 'Alicante', AB: 'Albacete', AL: 'Almería', AV: 'Ávila', B: 'Barcelona',
+  BA: 'Badajoz', BI: 'Bizkaia', BU: 'Burgos', C: 'A Coruña', CA: 'Cádiz',
+  CC: 'Cáceres', CE: 'Ceuta', CO: 'Córdoba', CR: 'Ciudad Real', CS: 'Castellón',
+  CU: 'Cuenca', GC: 'Las Palmas', GI: 'Girona', GR: 'Granada', GU: 'Guadalajara',
+  H: 'Huelva', HU: 'Huesca', J: 'Jaén', L: 'Lleida', LE: 'León', LO: 'La Rioja',
+  LU: 'Lugo', M: 'Madrid', MA: 'Málaga', ML: 'Melilla', MU: 'Murcia',
+  NA: 'Navarra', O: 'Asturias', OR: 'Ourense', P: 'Palencia', PM: 'Illes Balears',
+  PO: 'Pontevedra', S: 'Cantabria', SA: 'Salamanca', SE: 'Sevilla', SG: 'Segovia',
+  SO: 'Soria', SS: 'Gipuzkoa', T: 'Tarragona', TE: 'Teruel',
+  TF: 'Santa Cruz de Tenerife', TO: 'Toledo', V: 'Valencia', VA: 'Valladolid',
+  VI: 'Araba/Álava', Z: 'Zaragoza', ZA: 'Zamora'
+};
+
+function nombrePais(code: string | null | undefined): string {
+  const c = String(code || '').trim().toUpperCase();
+  if (!c) return '';
+  if (c === 'ES') return 'España';
+  try {
+    return new Intl.DisplayNames(['es'], { type: 'region' }).of(c) || c;
+  } catch { return c; }
+}
+
+function nombreProvincia(state: string | null | undefined, country: string | null | undefined): string {
+  const st = String(state || '').trim();
+  if (!st) return '';
+  if (String(country || '').toUpperCase() === 'ES') return PROVINCIAS_ES[st.toUpperCase()] || st;
+  return st;
+}
+
+// Formatea la direccion de Stripe (customer_details.address) en lineas:
+//   1. "Calle 1, piso"
+//   2. "CP Ciudad, Provincia, País"  (provincia omitida si no hay)
+// Nunca codigos sueltos tipo "B, ES".
 export function formatStripeAddress(addr: any): string[] {
   if (!addr) return [];
   const l1 = [addr.line1, addr.line2].filter(Boolean).join(', ');
-  const l2 = [addr.postal_code, addr.city].filter(Boolean).join(' ');
-  const l3 = [addr.state, addr.country].filter(Boolean).join(', ');
-  return [l1, l2, l3].map((x: string) => String(x || '').trim()).filter(Boolean);
+  const ciudad = [addr.postal_code, addr.city].filter(Boolean).join(' ');
+  const l2 = [ciudad, nombreProvincia(addr.state, addr.country), nombrePais(addr.country)]
+    .map((x: string) => String(x || '').trim()).filter(Boolean).join(', ');
+  return [l1, l2].map((x: string) => String(x || '').trim()).filter(Boolean);
 }
 
 export interface ClaseInfo {
