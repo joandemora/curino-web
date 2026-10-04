@@ -18,7 +18,7 @@ Sin frameworks (ni React, ni build). Cada página es un HTML independiente. Los 
 - `/assets/js/main-footer.js` — inyecta `<div id="main-footer-mount">` con footer
 - `/assets/js/cookie-banner.js` — banner de consent propio, autocontenido
 
-`/partners/` y `/partners/gracias/` usan el sistema shared desde 2026-10 (antes eran autocontenidas); su CSS propio va inline con prefijo `pt-`/`gr-`. `/partners/acceso/` sigue autocontenida (estética antigua, solo para compradores del curso de 90 €). **La ruta pública anterior `/clases/*` redirige con 301 permanente a `/partners/*`**, y `/partners/clase` → `/partners/` (ver `vercel.json`).
+`/partners/` y `/partners/gracias/` usan el sistema shared desde 2026-10 (antes eran autocontenidas); su CSS propio va inline con prefijo `pt-`/`gr-`. Desde v2 (2026-10) usan la estética de los one-pagers de Partners (negro `#161616`, verde `#12B76A`, papel `#F7F7F2`, titulares Schibsted Grotesk 800) dentro del header/footer de la web. **Sin precios en la página**: el importe solo se ve en Stripe. `/partners/acceso/` sigue autocontenida (estética antigua, solo para compradores del curso de 90 €). **La ruta pública anterior `/clases/*` redirige con 301 permanente a `/partners/*`**, y `/partners/clase` → `/partners/` (ver `vercel.json`).
 
 ## Estructura
 
@@ -81,7 +81,7 @@ Las migraciones son idempotentes por diseño: `create table if not exists`, `cre
 | Generador IA | `ai_articles`, `ai_generator_config`, etc. | `20260519_ai_*.sql` |
 | Clases / Intensivo Partners | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` |
 | Curso pregrabado (retirado 2026-10) | `inscripciones_curso` | `20260805_curso.sql` |
-| Solicitudes /partners (2026-10) | `partners_solicitudes` | `20261004000001_partners_solicitudes.sql` |
+| Solicitudes /partners (2026-10) | `partners_solicitudes` | `20261004000001_partners_solicitudes.sql` + `20261005000001_partners_solicitudes_v2.sql` (preguntas v2: `situacion_actual`, `experiencia`, `dedicacion`, `inicio`, `perfil_one_to_one`; columnas `p1_…`–`p4_…` de v1 conservadas) |
 | Carpintería tipos | `carpinteria_*` | `20260522_carpinteria_init.sql` |
 | Roles | `user_roles`, `is_admin()` | `supabase-user-roles.sql` |
 
@@ -96,7 +96,7 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 | `magazine-checkout` | sí | Usuario logueado | Compra paquetes de créditos de revista. |
 | `magazine-boost-checkout` | sí | Usuario logueado | Boost/promoción de artículo. |
 | `clases-checkout` | no | Invitado (landing pública) | Crea Stripe session para plaza en el Intensivo Curino Partners (990 €, aforo 20, solo tarjeta, sin renuncia al desistimiento). La fila de `clases` es la promoción; `fecha` = primera sesión; `meet_url` guarda el enlace de **Zoom**. |
-| `partners-solicitud` | no | Vercel → Supabase | Formulario multipaso de `/partners/` (acciones `start`/`step`/`cta`, id + `edit_token`). Aviso Resend a `PARTNERS_NOTIFY_EMAIL` (defecto `juan@casacurino.com`) + Lead por CAPI. |
+| `partners-solicitud` | no | Vercel → Supabase | Formulario multipaso de `/partners/` (acciones `start`/`step`/`cta`, id + `edit_token`). Acepta respuestas v1 y v2 (por nombre de campo); v2: cualificado = `inicio <> 'informandome'`. Aviso Resend a `PARTNERS_NOTIFY_EMAIL` (defecto `juan@casacurino.com`, marca ⭐ one-to-one) + Lead por CAPI. |
 | `curso-checkout`, `curso-acceso` | no | — / Vercel → Supabase | Curso pregrabado de 90 € **retirado de la venta** (2026-10). `curso-checkout` sin punto de entrada; `curso-acceso` sigue sirviendo `/partners/acceso/`. |
 | `presupuesto-form-relay` | no | Vercel → Supabase | Envía email Resend tras insertar solicitud de presupuesto. |
 | `lista-espera-relay` | no | Vercel → Supabase | Captura email + honeypot + rate limit para lista de espera de clases. |
@@ -229,7 +229,7 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 - **`/configurador-armarios-vestidores/`** — configurador 3D single-page (~16MB con base64)
 - **`/configurador-2d/`** — configurador marketplace 2D
 - **`/checkout/`** — página de compra multi-armario
-- **`/partners/`** — landing de **solicitud** Curino Partners (2026-10): formulario multipaso (contacto + 4 preguntas) → pantalla final con checkout del Intensivo (990 €) o WhatsApp. One-to-one (3.990 €) solo por WhatsApp. Ruta anterior `/clases/*` redirige con 301 permanente; `/partners/clase` → `/partners/`.
+- **`/partners/`** — landing de **solicitud** Curino Partners (2026-10, v2): formulario multipaso (contacto + 4 preguntas: situación, experiencia, dedicación, inicio) → pantalla final con checkout del Intensivo o WhatsApp (+ WhatsApp one-to-one si quiere dedicarse a tiempo completo). Sin precios visibles. Huecos configurables en `CONFIG`: `VSL_URL`, `RESENAS`; fotos de clientes en `assets/imagenes/partners/`. Ruta anterior `/clases/*` redirige con 301 permanente; `/partners/clase` → `/partners/`.
 - **`/revista/{seccion}/{slug}/`** — SSR revista editorial (rewrites en `vercel.json`)
 - **`/admin/`** — panel interno: presupuestos (CRUD + PDF Puppeteer), moderación revista, generador IA
 - **`/mi-cuenta/`, `/cuenta/`, `/login/`, `/registro/`, `/recuperar-contrasena/`, `/auth/`** — auth Supabase
