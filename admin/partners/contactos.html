@@ -29,12 +29,13 @@
     <label>Desde <input type="date" id="fDesde"></label>
     <label>Hasta <input type="date" id="fHasta"></label>
     <span class="pa-count" id="contador"></span>
+    <button type="button" class="pa-btn primary" id="btnEmailSel" disabled>Enviar email a seleccionados</button>
   </div>
 
   <div class="pa-wrap">
     <table class="pa-table">
       <thead><tr>
-        <th>Fecha</th><th>Contacto</th><th>Cualif.</th><th>Respuestas</th><th>Botón final</th>
+        <th><input type="checkbox" id="selTodos" title="Seleccionar todos los visibles"></th><th>Fecha</th><th>Contacto</th><th>Cualif.</th><th>Respuestas</th><th>Botón final</th>
         <th>Vio precio</th><th>Inició pago</th><th>Compró</th><th>Consent.</th><th>Baja</th><th>Anuncio</th>
         <th>Estado</th><th>Notas</th><th>Acciones</th>
       </tr></thead>
@@ -101,12 +102,13 @@
   function pintar() {
     var lista = filtrar();
     $('#contador').textContent = lista.length + ' de ' + todos.length + ' contactos';
-    if (!lista.length) { $('#filas').innerHTML = '<tr><td colspan="14" class="pa-empty">Sin contactos con estos filtros.</td></tr>'; return; }
+    if (!lista.length) { $('#filas').innerHTML = '<tr><td colspan="15" class="pa-empty">Sin contactos con estos filtros.</td></tr>'; return; }
     $('#filas').innerHTML = lista.map(function (s) {
       var compras = PA.compro(s);
       var baja = s.baja_at ? '<span class="pa-badge bad">' + PA.esc(s.motivo_baja || 'baja') + '</span>' : '<span class="pa-muted">—</span>';
       var cual = s.cualificado === true ? '<span class="pa-badge ok">Sí</span>' : (s.cualificado === false ? '<span class="pa-badge">No</span>' : '<span class="pa-muted">—</span>');
       return '<tr>'
+        + '<td data-l="Seleccionar"><input type="checkbox" data-sel="' + s.id + '"' + (sel[s.id] ? ' checked' : '') + '></td>'
         + '<td data-l="Fecha">' + PA.fecha(s.created_at, true) + '</td>'
         + '<td data-l="Contacto"><a href="/admin/partners/contacto.html?id=' + s.id + '"><b>' + PA.esc(s.nombre) + '</b></a>'
         +   '<div class="pa-small">' + PA.esc(PA.telefono(s)) + '<br>' + PA.esc(s.email) + '</div></td>'
@@ -123,11 +125,31 @@
         + '<td data-l="Notas" class="full"><textarea class="pa-notas" data-notas="' + s.id + '" rows="1">' + PA.esc(s.crm_notas || '') + '</textarea></td>'
         + '<td data-l="Acciones"><div class="pa-btns">'
         +   '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
-        +   '<a class="pa-btn" href="' + PA.esc(PA.mailUrl(s)) + '">Email</a>'
+        +   '<a class="pa-btn" href="/admin/partners/emails.html?tipo=comercial&ids=' + s.id + '">Email</a>'
         + '</div></td>'
         + '</tr>';
     }).join('');
   }
+
+  // Selección para envío de email (emails.html?ids=…)
+  var sel = {};
+  function pintarSel() {
+    var n = Object.keys(sel).length;
+    $('#btnEmailSel').disabled = !n;
+    $('#btnEmailSel').textContent = n ? 'Enviar email a ' + n + ' seleccionado' + (n === 1 ? '' : 's') : 'Enviar email a seleccionados';
+  }
+  document.addEventListener('change', function (e) {
+    var cb = e.target.closest('[data-sel]');
+    if (cb) { if (cb.checked) sel[cb.dataset.sel] = true; else delete sel[cb.dataset.sel]; pintarSel(); return; }
+    if (e.target.id === 'selTodos') {
+      var on = e.target.checked;
+      document.querySelectorAll('[data-sel]').forEach(function (c) { c.checked = on; if (on) sel[c.dataset.sel] = true; else delete sel[c.dataset.sel]; });
+      pintarSel();
+    }
+  });
+  $('#btnEmailSel').addEventListener('click', function () {
+    location.href = '/admin/partners/emails.html?tipo=comercial&ids=' + Object.keys(sel).join(',');
+  });
 
   // Guardado inline: estado (change) y notas (blur)
   document.addEventListener('change', function (e) {

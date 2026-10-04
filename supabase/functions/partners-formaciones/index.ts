@@ -61,6 +61,17 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // Baja en un clic (RFC 8058): cabecera List-Unsubscribe de los emails
+    // comerciales → POST ?accion=baja&t=<token> (cuerpo form, sin JSON).
+    const url = new URL(req.url);
+    if (url.searchParams.get('accion') === 'baja') {
+      const id = await verifyLeadToken(url.searchParams.get('t'));
+      if (!id) return json({ error: 'invalid_token' }, 400);
+      await supabase.from('partners_solicitudes').update({ baja_at: new Date().toISOString(), motivo_baja: 'enlace' })
+        .eq('id', id).is('baja_at', null);
+      return json({ ok: true });
+    }
     const body = await req.json().catch(() => ({}));
     const action = str(body?.action, 12);
 

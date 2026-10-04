@@ -157,3 +157,18 @@ entrypoint = "./functions/partners-seguimiento/index.ts"
 # verify_jwt=false: invocada por pg_cron cada 15 min. Auth propia por
 # X-Cron-Secret. No envia nada mientras PARTNERS_SEGUIMIENTO_ACTIVO != 'true'
 # (salvo modo prueba sobre solicitudes "PRUEBA").
+
+[functions.crm-email]
+enabled = true
+verify_jwt = true
+import_map = "./functions/crm-email/deno.json"
+entrypoint = "./functions/crm-email/index.ts"
+# verify_jwt=true + comprobacion propia de user_roles.role = 'admin'.
+# Invocada desde /admin/partners/emails.html con el JWT del admin.
+
+[functions.resend-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/resend-webhook/deno.json"
+entrypoint = "./functions/resend-webhook/index.ts"
+# verify_jwt=false: lo llama Resend. Firma Svix con RESEND_WEBHOOK_SECRET.
