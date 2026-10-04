@@ -10,7 +10,9 @@
 //                   HTML renderizados con un destinatario real.
 //   'prueba'        idem → se envia a joandemora@gmail.com ("[PRUEBA] …").
 //   'enviar'        { segmento, tipo, asunto, cuerpo, plantilla_id?,
-//                   confirmacion: N, ignorar_vacias? } → envio por lotes.
+//                   confirmacion: N } → envio por lotes. Bloqueado si alguna
+//                   variable usada sale vacia para algun destinatario
+//                   (preview y prueba si se permiten, marcando el hueco).
 //
 // segmento: { tipo: 'contactos', ids: [...] } | { tipo: 'edicion', clase_id }
 //         | { tipo: 'sesion' } | { tipo: 'leads', filtros: {...} }
@@ -22,7 +24,8 @@
 // Variables: {nombre} {email} {curso} {fecha_inicio} {hora} {zoom}
 //            {enlace_reserva} {plazas_restantes}
 // Formato del cuerpo: **negrita**, [texto](url), URLs sueltas y saltos de
-// linea. Firma «Juan de Mora · Curino» automatica.
+// linea. {zoom} o {enlace_reserva} solos en una linea → boton verde con el
+// enlace en texto debajo. Firma «Juan de Mora · Curino» automatica.
 // Envio: Resend /emails/batch (100 por llamada, pausa entre lotes), desde
 // «Juan de Mora <info@casacurino.com>», reply_to info@. Cada email queda en
 // partners_emails (el webhook de Resend actualiza su estado).
@@ -57,15 +60,35 @@ function esc(s: unknown) {
 }
 
 // ── Render ───────────────────────────────────────────────────
-function sustituir(texto: string, vars: Record<string, string>, html: boolean) {
-  return texto.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? (html ? esc(vars[k]) : vars[k]) : m));
+// marcar: en vista previa y prueba, una variable vacia se ve como
+// «[{zoom} vacío]» en vez de desaparecer (el envio real esta bloqueado).
+function sustituir(texto: string, vars: Record<string, string>, html: boolean, marcar = false) {
+  return texto.replace(/\{(\w+)\}/g, (m, k) => {
+    if (!(k in vars)) return m;
+    if (!vars[k] && marcar) return html ? `<span style="background:#fde8e8;color:#912018">[{${k}} vacío]</span>` : `[{${k}} vacío]`;
+    return html ? esc(vars[k]) : vars[k];
+  });
 }
-export function renderCuerpo(cuerpo: string, vars: Record<string, string>): string {
-  let h = sustituir(esc(cuerpo), vars, true);  // vars ya escapadas dentro del texto escapado
+const BOTONES: Record<string, string> = { zoom: 'Entrar a la clase en Zoom', enlace_reserva: 'Reservar mi sesión' };
+function boton(url: string, texto: string) {
+  const u = esc(url);
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px"><tr><td style="background:#12B76A;border-radius:8px">`
+    + `<a href="${u}" style="display:inline-block;padding:13px 24px;color:#ffffff;font-weight:bold;font-size:15px;text-decoration:none;border-radius:8px">${esc(texto)}</a></td></tr></table>`
+    + `<p style="margin:0 0 14px;font-size:12px;color:#666">Si no ves el botón, copia este enlace: <a href="${u}" style="color:#666;word-break:break-all">${u}</a></p>`;
+}
+export function renderCuerpo(cuerpo: string, vars: Record<string, string>, marcar = false): string {
+  // {zoom} / {enlace_reserva} solos en su linea → parrafo propio que luego
+  // se cambia por el boton (solo si el valor es una URL).
+  const conBotones = cuerpo.replace(/^[ \t]*\{(zoom|enlace_reserva)\}[ \t]*$/gm, (m, k) =>
+    /^https?:\/\//.test(vars[k] || '') ? `\n\n\u0000BTN_${k}\u0000\n\n` : m);
+  let h = sustituir(esc(conBotones), vars, true, marcar);  // vars ya escapadas dentro del texto escapado
   h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2">$1</a>');
   h = h.replace(/(?<!href=")(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>');
   h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  return h.split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${p.replace(/\n/g, '<br>')}</p>`).join('');
+  return h.trim().split(/\n{2,}/).map((p) => {
+    const b = p.trim().match(/^\u0000BTN_(zoom|enlace_reserva)\u0000$/);
+    return b ? boton(vars[b[1]], BOTONES[b[1]]) : `<p style="margin:0 0 14px">${p.trim().replace(/\n/g, '<br>')}</p>`;
+  }).join('');
 }
 function layout(cuerpoHtml: string, tipo: string, bajaUrl: string | null): string {
   const pie = tipo === 'comercial'
@@ -86,7 +109,8 @@ function variablesUsadas(asunto: string, cuerpo: string): string[] {
 
 // ── Datos de ediciones ──────────────────────────────────────────
 function fechaHora(c: Any) {
-  if (!c?.fecha || c.fecha_confirmada === false) return { fecha_inicio: 'por confirmar', hora: 'por confirmar' };
+  // Fecha no confirmada = variable vacia (bloquea el envio real).
+  if (!c?.fecha || c.fecha_confirmada === false) return { fecha_inicio: '', hora: '' };
   const d = new Date(c.fecha);
   return {
     fecha_inicio: new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Madrid' }).format(d),
@@ -207,13 +231,13 @@ async function resolver(supa: Any, segmento: Any, tipo: string) {
 }
 
 // ── Construccion y envio ───────────────────────────────────────
-async function construir(d: Dest, tipo: string, asunto: string, cuerpo: string) {
+async function construir(d: Dest, tipo: string, asunto: string, cuerpo: string, marcar = false) {
   const token = d.solicitud_id ? await signLeadToken(d.solicitud_id) : null;
   const bajaUrl = token ? `${SITE}/partners/baja/?t=${encodeURIComponent(token)}` : null;
   const msg: Any = {
     from: FROM, to: [d.email], reply_to: 'info@casacurino.com',
-    subject: sustituir(asunto, d.vars, false),
-    html: layout(renderCuerpo(cuerpo, d.vars), tipo, bajaUrl)
+    subject: sustituir(asunto, d.vars, false, marcar),
+    html: layout(renderCuerpo(cuerpo, d.vars, marcar), tipo, bajaUrl)
   };
   if (tipo === 'comercial' && token) {
     msg.headers = {
@@ -257,12 +281,15 @@ Deno.serve(async (req) => {
     const asunto = String(body?.asunto || '').trim().slice(0, 300);
     const cuerpo = String(body?.cuerpo || '').slice(0, 20000);
     const usadas = variablesUsadas(asunto, cuerpo);
-    const vacias = usadas.filter((v) => incluidos.some((d) => !d.vars[v]));
+    const vaciasDetalle = usadas
+      .map((v) => ({ variable: v, destinatarios: incluidos.filter((d) => !d.vars[v]).length }))
+      .filter((x) => x.destinatarios > 0);
+    const vacias = vaciasDetalle.map((x) => x.variable);
 
     if (action === 'destinatarios') {
       return json({
         incluidos: incluidos.map((d) => ({ email: d.email, nombre: d.nombre, vars: d.vars })),
-        excluidos, variables_vacias: vacias
+        excluidos, variables_vacias: vacias, variables_vacias_detalle: vaciasDetalle
       });
     }
 
@@ -271,8 +298,8 @@ Deno.serve(async (req) => {
     if (action === 'preview' || action === 'prueba') {
       const d = incluidos[Math.max(0, Math.min(incluidos.length - 1, Number(body?.indice) || 0))];
       if (!d) return json({ error: 'sin destinatarios' }, 400);
-      const msg = await construir(d, tipo, asunto, cuerpo);
-      if (action === 'preview') return json({ para: d.email, asunto: msg.subject, html: msg.html, variables_vacias: vacias });
+      const msg = await construir(d, tipo, asunto, cuerpo, true);
+      if (action === 'preview') return json({ para: d.email, asunto: msg.subject, html: msg.html, variables_vacias: vacias, variables_vacias_detalle: vaciasDetalle });
       msg.to = [PRUEBA_TO];
       msg.subject = `[PRUEBA] ${msg.subject}`;
       const r = await resendBatch([msg]);
@@ -287,7 +314,8 @@ Deno.serve(async (req) => {
       if (Number(body?.confirmacion) !== incluidos.length) {
         return json({ error: 'confirmacion_no_coincide', destinatarios: incluidos.length }, 409);
       }
-      if (vacias.length && body?.ignorar_vacias !== true) return json({ error: 'variables_vacias', variables_vacias: vacias }, 409);
+      // Sin excepciones: con una variable vacia no se envia a nadie.
+      if (vacias.length) return json({ error: 'variables_vacias', variables_vacias: vacias, variables_vacias_detalle: vaciasDetalle }, 409);
       const envioId = crypto.randomUUID();
       let enviados = 0, errores = 0;
       for (let i = 0; i < incluidos.length; i += 100) {
