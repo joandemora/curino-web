@@ -189,6 +189,8 @@ body{color:var(--ink)}
 .pt-opt:hover{border-color:var(--ink)}
 .pt-opt.selected{border-color:var(--green);background:#ECFDF3}
 .pt-opt.selected::after{content:'✓';color:var(--green-dark)}
+.pt-opt-body{display:flex;flex-direction:column;gap:.2rem}
+.pt-urg{font-family:var(--head);font-size:12.5px;font-weight:800;line-height:1.25;color:var(--green)}
 
 /* Pantalla final */
 .pt-final-title{font-family:var(--head);font-weight:800;font-size:clamp(25px,3.4vw,30px);letter-spacing:-.02em;line-height:1.08;margin:0 0 1.1rem}
@@ -360,7 +362,7 @@ body{color:var(--ink)}
         <!-- Paso 0: contacto -->
         <form class="pt-step" data-step="0" id="pt-step-0" novalidate>
           <h2 class="pt-card-title">Solicita tu plaza</h2>
-          <p class="pt-card-sub">Intensivo en directo · Máximo 20 plazas · Inicio <span data-fecha-inicio>[FECHA DE INICIO POR CONFIRMAR]</span></p>
+          <p class="pt-card-sub">Intensivo en directo · Máximo 20 plazas</p>
           <div class="pt-field">
             <label for="pt-nombre">Nombre</label>
             <input id="pt-nombre" name="nombre" type="text" autocomplete="given-name" maxlength="120" required>
@@ -455,7 +457,12 @@ body{color:var(--ink)}
           <div class="pt-progress"><span style="width:100%"></span></div>
           <h2 class="pt-q">¿Cuándo quieres empezar?</h2>
           <div class="pt-opts" data-field="inicio">
-            <button type="button" class="pt-opt" data-value="noviembre">Ya, en el intensivo de noviembre</button>
+            <button type="button" class="pt-opt" data-value="noviembre">
+              <span class="pt-opt-body">Ya, en el intensivo de noviembre
+                <!-- Texto real segun plazas libres (renderUrgencia). Por defecto, el generico. -->
+                <span class="pt-urg" id="pt-urg">Plazas limitadas: máximo 20 alumnos</span>
+              </span>
+            </button>
             <button type="button" class="pt-opt" data-value="proximos_meses">En los próximos meses</button>
             <button type="button" class="pt-opt" data-value="informandome">Solo estoy informándome</button>
           </div>
@@ -567,7 +574,7 @@ body{color:var(--ink)}
     </div>
 
     <div class="pt-metrics">
-      <span class="pt-eyebrow">Curino este año</span>
+      <span class="pt-eyebrow">Con tu ordenador y teléfono móvil</span>
       <div class="pt-metric-main">
         <span class="pt-metric-main-n">2 horas al día</span>
         <span class="pt-metric-main-l">Yo solo, sin equipo.</span>
@@ -595,9 +602,7 @@ body{color:var(--ink)}
     <div class="pt-meta">
       <span class="pt-chip">4 semanas</span>
       <span class="pt-chip">8 clases en directo por Zoom</span>
-      <span class="pt-chip">Todas grabadas</span>
       <span class="pt-chip is-green">Máximo 20 plazas</span>
-      <span class="pt-chip">Inicio: <span data-fecha-inicio>[FECHA DE INICIO POR CONFIRMAR]</span></span>
     </div>
     <div class="pt-weeks">
       <div class="pt-week">
@@ -704,7 +709,7 @@ body{color:var(--ink)}
       </details>
       <details>
         <summary>No tengo mucho tiempo. ¿Me va a dar?</summary>
-        <p>Son 8 clases en directo en 4 semanas, dos por semana, y todas quedan grabadas. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias y aplicar lo que veamos.</p>
+        <p>Son 8 clases en directo en 4 semanas, dos por semana. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias y aplicar lo que veamos.</p>
       </details>
       <details>
         <summary>¿Por qué enseñas esto si es tu negocio?</summary>
@@ -719,8 +724,8 @@ body{color:var(--ink)}
         <p>Devolución del 100 % si cancelas antes de la primera clase. Solo tienes que responder al email de confirmación o escribirme por WhatsApp.</p>
       </details>
       <details>
-        <summary>¿Qué pasa si no puedo asistir a alguna clase?</summary>
-        <p>Todas las clases se graban y las tienes disponibles después. El enlace de Zoom te llega por email el día antes de la primera clase.</p>
+        <summary>¿Cómo son las clases?</summary>
+        <p>Son 8 clases en directo por Zoom, dos por semana durante 4 semanas, y puedes preguntar en cada una. El enlace de Zoom te llega por email el día antes de la primera clase.</p>
       </details>
     </div>
   </div>
@@ -729,7 +734,7 @@ body{color:var(--ink)}
 <!-- ═════════════ CTA FINAL ═════════════ -->
 <section class="pt-sec pt-sec--ink pt-cta">
   <div class="pt-wrap">
-    <span class="pt-eyebrow">Máximo 20 plazas · Inicio <span data-fecha-inicio>[FECHA DE INICIO POR CONFIRMAR]</span></span>
+    <span class="pt-eyebrow">Máximo 20 plazas</span>
     <h2 class="pt-h2">¿Empezamos a montar tu negocio?</h2>
     <p class="pt-lead">Rellena la solicitud en menos de un minuto y elige si reservas tu plaza o prefieres hablar antes conmigo.</p>
     <button type="button" class="pt-btn" data-scroll-form>Quiero mi plaza</button>
@@ -853,28 +858,39 @@ body{color:var(--ink)}
   if (!state.answers) state.answers = {};
   function save() { ssSet(STORE_FORM, state); }
 
-  // ── Promocion abierta (fecha + plazas) ───────────────────
+  // ── Promocion abierta (plazas). La fecha de inicio no se muestra. ──
   var clase = null;
   var claseLoaded = fetch('/api/clases-proxima', { headers: { 'Accept': 'application/json' } })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       clase = d && d.clase ? d.clase : null;
       if (clase) renderPromo();
+      renderUrgencia(d ? d.plazas_restantes : null);
       return clase;
     })
-    .catch(function () { return null; });
+    .catch(function () { renderUrgencia(null); return null; });
 
-  function fmtFecha(iso) {
-    try {
-      return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', timeZone: 'Europe/Madrid' }).format(new Date(iso));
-    } catch (_e) { return ''; }
+  // Etiqueta de urgencia del paso 4 con las plazas libres reales de la
+  // edicion activa (RPC plazas_intensivo_disponibles via /api/clases-proxima).
+  // Sin dato (sin edicion activa o error): texto generico del HTML.
+  function renderUrgencia(n) {
+    var el = $('#pt-urg');
+    if (!el) return;
+    if (typeof n !== 'number' || n < 0 || n > 5) {
+      el.textContent = 'Plazas limitadas: máximo 20 alumnos';
+    } else if (n === 0) {
+      el.textContent = 'Plazas agotadas — apúntate a la lista de espera';
+    } else if (n === 1) {
+      el.textContent = 'Solo queda 1 plaza';
+    } else {
+      el.textContent = 'Solo quedan ' + n + ' plazas';
+    }
   }
+
   function plazasLibres() {
     return clase ? Math.max(0, clase.plazas_totales - clase.plazas_ocupadas) : 0;
   }
   function renderPromo() {
-    var f = fmtFecha(clase.fecha);
-    if (f) $$('[data-fecha-inicio]').forEach(function (el) { el.textContent = f; });
     var libres = plazasLibres();
     $$('[data-plazas-txt]').forEach(function (el) {
       el.textContent = libres > 0 ? ('quedan ' + libres + ' de ' + clase.plazas_totales + ' plazas') : 'plazas agotadas';

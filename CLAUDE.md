@@ -33,7 +33,7 @@ curino-web/
 │   ├── checkout.js                         ← crea Stripe session para armarios
 │   ├── stripe-session.js                   ← read-only, alimenta purchase de GA4
 │   ├── clases-checkout.js                  ← proxy a Edge Function clases-checkout
-│   ├── clases-proxima.js                   ← consulta clases_public (anon key)
+│   ├── clases-proxima.js                   ← clases_public + plazas_restantes (RPC plazas_intensivo_disponibles)
 │   ├── lista-espera.js                     ← proxy a Edge Function lista-espera-relay
 │   ├── partners-solicitud.js               ← proxy a Edge Function partners-solicitud (form /partners)
 │   ├── curso-acceso.js                     ← proxy a curso-acceso (acceso curso 90 € ya comprado)
@@ -79,7 +79,7 @@ Las migraciones son idempotentes por diseño: `create table if not exists`, `cre
 | Marketplace (piezas 3D) | `library_items`, `purchases`, `marketplace_orders`, `seller_accounts`, `marketplace_config` | `supabase-marketplace-fase-*.sql` |
 | Revista (editorial) | `magazine_articles`, `magazine_purchases`, `magazine_credits`, `magazine_boosts` | `supabase-revista-fase-g*.sql` |
 | Generador IA | `ai_articles`, `ai_generator_config`, etc. | `20260519_ai_*.sql` |
-| Clases / Intensivo Partners | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` |
+| Clases / Intensivo Partners | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` (+ RPC solo lectura `plazas_intensivo_disponibles()` en `20261006000001_…`: plazas libres de la edición activa, incluye 'agotada' → 0, NULL sin edición) |
 | Curso pregrabado (retirado 2026-10) | `inscripciones_curso` | `20260805_curso.sql` |
 | Solicitudes /partners (2026-10) | `partners_solicitudes` | `20261004000001_partners_solicitudes.sql` + `20261005000001_partners_solicitudes_v2.sql` (preguntas v2: `situacion_actual`, `experiencia`, `dedicacion`, `inicio`, `perfil_one_to_one`; columnas `p1_…`–`p4_…` de v1 conservadas) |
 | Carpintería tipos | `carpinteria_*` | `20260522_carpinteria_init.sql` |
@@ -229,7 +229,7 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 - **`/configurador-armarios-vestidores/`** — configurador 3D single-page (~16MB con base64)
 - **`/configurador-2d/`** — configurador marketplace 2D
 - **`/checkout/`** — página de compra multi-armario
-- **`/partners/`** — landing de **solicitud** Curino Partners (2026-10, v2): formulario multipaso (contacto + 4 preguntas: situación, experiencia, dedicación, inicio) → pantalla final con checkout del Intensivo o WhatsApp (+ WhatsApp one-to-one si quiere dedicarse a tiempo completo). Sin precios visibles. Huecos configurables en `CONFIG`: `VSL_URL`, `RESENAS`; fotos en `assets/imagenes/partners/`, vídeos MP4 (H.264+AAC, faststart) en `assets/video/partners/` — el del hero (`video-curino-hero.mp4`) solo se crea al pulsar play (evento `video_play`), el viral (`viral-cris-armario.mp4`) con `preload="none"` + IntersectionObserver. Si los vídeos de la página superan 20 MB, moverlos a Supabase Storage (bucket público `partners-media`). Ruta anterior `/clases/*` redirige con 301 permanente; `/partners/clase` → `/partners/`.
+- **`/partners/`** — landing de **solicitud** Curino Partners (2026-10, v2): formulario multipaso (contacto + 4 preguntas: situación, experiencia, dedicación, inicio) → pantalla final con checkout del Intensivo o WhatsApp (+ WhatsApp one-to-one si quiere dedicarse a tiempo completo). Sin precios, fechas de inicio ni menciones a grabaciones visibles. Etiqueta de urgencia del paso 4 con plazas reales (`plazas_restantes`; ≤5 → «Solo quedan X plazas», 0 → agotadas, resto/sin dato → «Plazas limitadas: máximo 20 alumnos»). Huecos configurables en `CONFIG`: `VSL_URL`, `RESENAS`; fotos en `assets/imagenes/partners/`, vídeos MP4 (H.264+AAC, faststart) en `assets/video/partners/` — el del hero (`video-curino-hero.mp4`) solo se crea al pulsar play (evento `video_play`), el viral (`viral-cris-armario.mp4`) con `preload="none"` + IntersectionObserver. Si los vídeos de la página superan 20 MB, moverlos a Supabase Storage (bucket público `partners-media`). Ruta anterior `/clases/*` redirige con 301 permanente; `/partners/clase` → `/partners/`.
 - **`/revista/{seccion}/{slug}/`** — SSR revista editorial (rewrites en `vercel.json`)
 - **`/admin/`** — panel interno: presupuestos (CRUD + PDF Puppeteer), moderación revista, generador IA
 - **`/mi-cuenta/`, `/cuenta/`, `/login/`, `/registro/`, `/recuperar-contrasena/`, `/auth/`** — auth Supabase
