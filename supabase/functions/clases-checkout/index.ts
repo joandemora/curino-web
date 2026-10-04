@@ -3,7 +3,8 @@
 // Edge Function: crea Stripe Checkout Session para reservar una plaza en
 // una clase en directo. Producto inline (price_data), sin login (invitado).
 //
-// Desde 2026-10 vende el Intensivo Curino Partners (990 EUR, aforo 20,
+// Desde 2026-10 vende el Intensivo Curino Partners (990 EUR, aforo por fila
+// en clases.plazas_totales: 3 en la 1a edicion, 20 por defecto,
 // pago unico solo con tarjeta) desde el formulario de /partners/. Sin
 // casilla de renuncia al desistimiento: la politica es devolucion del
 // 100 % si se cancela antes de la primera clase (FAQ de la landing).
