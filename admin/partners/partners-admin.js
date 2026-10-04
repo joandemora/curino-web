@@ -99,6 +99,32 @@ window.PA = (function () {
     });
   }
 
-  return { ESTADOS: ESTADOS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
+  // Borrado de contactos: confirmación escribiendo «BORRAR». lista = [{nombre,
+  // email}] (borrables); bloqueados = los que tienen compras (solo se avisan).
+  // Resuelve true si se confirma.
+  function confirmarBorrado(lista, bloqueados) {
+    return new Promise(function (resolve) {
+      var ov = document.createElement('div');
+      ov.className = 'pa-modal';
+      ov.innerHTML = '<div class="pa-modal-box" role="dialog" aria-modal="true" aria-labelledby="paBorrarT">'
+        + '<h3 id="paBorrarT">Borrar ' + (lista.length === 1 ? 'contacto' : lista.length + ' contactos') + '</h3>'
+        + '<p class="pa-small">Se elimina la solicitud y su historial de emails, y se cancela la secuencia. No se puede deshacer.</p>'
+        + '<ul class="pa-modal-list">' + lista.map(function (c) { return '<li><b>' + esc(c.nombre) + '</b> · ' + esc(c.email) + '</li>'; }).join('') + '</ul>'
+        + (bloqueados && bloqueados.length ? '<p class="pa-small pa-modal-warn">No se borran (tienen compras): ' + bloqueados.map(function (c) { return esc(c.nombre); }).join(', ') + '</p>' : '')
+        + '<label class="pa-small">Escribe <b>BORRAR</b> para confirmar<input type="text" class="pa-modal-input" autocomplete="off"></label>'
+        + '<div class="pa-btns"><button type="button" class="pa-btn danger" data-ok disabled>Borrar</button><button type="button" class="pa-btn" data-no>Cancelar</button></div></div>';
+      document.body.appendChild(ov);
+      var inp = ov.querySelector('input'), ok = ov.querySelector('[data-ok]');
+      var cerrar = function (v) { ov.remove(); resolve(v); };
+      inp.addEventListener('input', function () { ok.disabled = inp.value.trim() !== 'BORRAR'; });
+      ok.addEventListener('click', function () { if (inp.value.trim() === 'BORRAR') cerrar(true); });
+      ov.querySelector('[data-no]').addEventListener('click', function () { cerrar(false); });
+      ov.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrar(false); });
+      inp.focus();
+    });
+  }
+  var AVISO_COMPRAS = 'Tiene compras: no se puede borrar. Puedes marcarlo como Descartado y darlo de baja';
+
+  return { ESTADOS: ESTADOS, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
     compro: compro, waUrl: waUrl, mailUrl: mailUrl, toast: toast, estadoSelect: estadoSelect, guardarContacto: guardarContacto, abrirPdf: abrirPdf };
 })();

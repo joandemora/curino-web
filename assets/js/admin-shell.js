@@ -29,6 +29,15 @@
   'use strict';
 
   var MENU = [
+    {
+      group: 'Partners',
+      items: [
+        { id: 'partners-contactos',   label: 'Contactos',   href: '/admin/partners/contactos.html' },
+        { id: 'partners-ventas',      label: 'Ventas',      href: '/admin/partners/ventas.html' },
+        { id: 'partners-formaciones', label: 'Formaciones', href: '/admin/partners/formaciones.html' },
+        { id: 'partners-emails',      label: 'Emails',      href: '/admin/partners/emails.html' }
+      ]
+    },
     { id: 'dashboard', label: 'Dashboard', href: '/admin/' },
     {
       group: 'Armarios',
@@ -69,15 +78,6 @@
         { id: 'crm-prescriptores',  label: 'Prescriptores',    href: '/admin/crm/prescriptores.html' },
         { id: 'crm-clientes',       label: 'Clientes',         href: '/admin/crm/clientes.html' },
         { id: 'crm-metricas',       label: 'Métricas',         href: '/admin/crm/metricas.html' }
-      ]
-    },
-    {
-      group: 'Partners',
-      items: [
-        { id: 'partners-contactos',   label: 'Contactos',   href: '/admin/partners/contactos.html' },
-        { id: 'partners-ventas',      label: 'Ventas',      href: '/admin/partners/ventas.html' },
-        { id: 'partners-formaciones', label: 'Formaciones', href: '/admin/partners/formaciones.html' },
-        { id: 'partners-emails',      label: 'Emails',      href: '/admin/partners/emails.html' }
       ]
     }
   ];

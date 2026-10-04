@@ -59,6 +59,7 @@
   var supa, s;
   var $ = function (q) { return document.querySelector(q); };
   var id = new URLSearchParams(location.search).get('id') || '';
+  var tieneCompras = null;   // null = aún no se sabe → botón Borrar desactivado
 
   initAdminShell({ activeSection: 'partners-contactos', title: 'Partners · Contacto' })
     .then(function (ctx) { supa = ctx.supabase; return cargar(); })
@@ -69,6 +70,11 @@
       if (r.error || !r.data) { $('#ctNombre').textContent = 'Contacto no encontrado'; return; }
       s = r.data;
       pintar();
+      supa.rpc('crm_partners_contactos_con_compras').then(function (c) {
+        if (c.error) return;
+        tieneCompras = (c.data || []).indexOf(s.id) >= 0;
+        pintar();
+      });
       return supa.from('crm_partners_ventas').select('*').or('solicitud_id.eq.' + s.id + ',email.eq."' + String(s.email).replace(/"/g, '') + '"').order('fecha', { ascending: false })
         .then(function (v) { pintarCompras(v.data || []); })
         .then(function () {
@@ -86,7 +92,9 @@
     $('#ctNombre').textContent = s.nombre;
     $('#ctSub').textContent = 'Solicitud del ' + PA.fecha(s.created_at, true);
     $('#ctBtns').innerHTML = '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
-      + '<a class="pa-btn" href="/admin/partners/emails.html?tipo=' + (PA.compro(s).length ? 'servicio' : 'comercial') + '&ids=' + s.id + '">Email</a>';
+      + '<a class="pa-btn" href="/admin/partners/emails.html?tipo=' + (PA.compro(s).length ? 'servicio' : 'comercial') + '&ids=' + s.id + '">Email</a>'
+      + '<button type="button" class="pa-btn danger" id="ctBorrar"' + (tieneCompras === false ? '' : ' disabled') + (tieneCompras ? ' title="' + PA.AVISO_COMPRAS + '"' : '') + '>Borrar</button>'
+      + (tieneCompras ? '<div class="pa-aviso-compras" style="flex-basis:100%">' + PA.AVISO_COMPRAS + '.</div>' : '');
     var R = PA.R;
     $('#ctDatos').innerHTML = ''
       + fila('Email', PA.esc(s.email))
@@ -167,6 +175,17 @@
   document.addEventListener('click', function (e) {
     var a = e.target.closest('[data-pdf]');
     if (a) { e.preventDefault(); PA.abrirPdf(supa, a.dataset.pdf); }
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#ctBorrar') || tieneCompras !== false) return;
+    PA.confirmarBorrado([s], []).then(function (ok) {
+      if (!ok) return;
+      supa.rpc('crm_partners_borrar_contactos', { p_ids: [s.id] }).then(function (r) {
+        var x = r.data && r.data[0];
+        if (r.error || !x || !x.ok) { PA.toast('No se ha borrado: ' + (r.error ? r.error.message : (x && x.motivo) || 'error')); return; }
+        location.href = '/admin/partners/contactos.html';
+      });
+    });
   });
   document.addEventListener('change', function (e) {
     var cc = e.target.closest('[data-consent]');
