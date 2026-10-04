@@ -87,6 +87,7 @@
         +   '<span>Precio: <b>' + PA.eur(c.precio_cents) + '</b></span>'
         +   '<span>Fecha: <b>' + PA.fecha(c.fecha, true) + '</b> ' + (c.fecha_confirmada ? '<span class="pa-badge ok">confirmada</span>' : '<span class="pa-badge warn">provisional</span>') + '</span>'
         +   '<span>Zoom: ' + (c.meet_url ? '<a href="' + PA.esc(c.meet_url) + '" target="_blank" rel="noopener">enlace</a>' : '<span class="pa-badge warn">sin enlace</span>') + '</span>'
+        +   '<a class="pa-btn" href="/admin/partners/alumnos.html?edicion=' + c.id + '">Ver alumnos (' + vs.length + ')</a>'
         + '</div>'
         + '<form class="fo-edit" data-form="' + c.id + '">'
         +   '<label>Fecha primera clase (hora de Madrid)<input type="datetime-local" name="fecha" value="' + aLocal(c.fecha) + '" required></label>'
@@ -101,7 +102,8 @@
     $('#sesion').innerHTML = '<div class="fo-head"><h2>Sesión 1:1 con Juan · 30 min</h2><span class="pa-badge">producto continuo</span></div>'
       + '<div class="fo-stats"><span>Vendidas: <b>' + sesPag.length + '</b></span><span>Reembolsadas: <b>' + (ses.length - sesPag.length) + '</b></span>'
       + '<span>Ingresos: <b>' + PA.eur(sesPag.reduce(function (a, v) { return a + v.importe_cents; }, 0)) + '</b></span>'
-      + '<span class="pa-small">Precio: 150 € (60 € de oferta 3 h tras el email 3 de la secuencia)</span></div>';
+      + '<span class="pa-small">Precio: 150 € (60 € de oferta 3 h tras el email 3 de la secuencia)</span>'
+      + '<a class="pa-btn" href="/admin/partners/alumnos.html?producto=sesion">Ver alumnos (' + sesPag.length + ')</a></div>';
   }
 
   document.addEventListener('submit', function (e) {
