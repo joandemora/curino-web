@@ -93,13 +93,28 @@ details summary{cursor:pointer;font-size:12.5px}
         <div id="resPrueba"></div>
       </section>
       <section class="pa-section">
-        <h2>4. Enviar</h2>
-        <button type="button" class="pa-btn primary" id="btnEnviar" disabled>Enviar</button>
+        <h2>4. Enviar o programar</h2>
+        <div class="em-warn" id="editando" hidden></div>
+        <div class="em-row">
+          <button type="button" class="pa-btn primary" id="btnEnviar" disabled>Enviar</button>
+          <span class="pa-small">o</span>
+          <input type="datetime-local" id="progCuando" title="Fecha y hora (Madrid)">
+          <button type="button" class="pa-btn" id="btnProgramar" disabled>Programar</button>
+        </div>
+        <p class="pa-small pa-muted">Programado: al llegar la hora (hora de Madrid, ±5 min) se recalculan los destinatarios con las reglas de consentimiento y bajas; si alguna variable sale vacía no se envía y te aviso por email.</p>
         <div id="confirmar"></div>
         <div id="resEnvio"></div>
       </section>
     </div>
   </div>
+
+  <section class="pa-section">
+    <h2>Envíos programados</h2>
+    <div class="pa-wrap"><table class="pa-table">
+      <thead><tr><th>Cuándo (Madrid)</th><th>Tipo</th><th>Asunto</th><th>Destinatarios</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody id="programados"><tr><td colspan="6" class="pa-empty">Cargando…</td></tr></tbody>
+    </table></div>
+  </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -108,7 +123,7 @@ details summary{cursor:pointer;font-size:12.5px}
 <script>
 (function () {
   'use strict';
-  var supa, plantillas = [], dest = null;
+  var supa, plantillas = [], dest = null, editId = null;
   var $ = function (q) { return document.querySelector(q); };
   var qs = new URLSearchParams(location.search);
   var idsContactos = (qs.get('ids') || '').split(',').filter(Boolean);
@@ -137,6 +152,8 @@ details summary{cursor:pointer;font-size:12.5px}
       plantillas = r[1].data || [];
       pintarPlantillas();
       segUI();
+      $('#progCuando').value = cuandoPorDefecto();
+      return cargarProgramados();
     });
   }
 
@@ -198,7 +215,7 @@ details summary{cursor:pointer;font-size:12.5px}
     return { tipo: 'leads', filtros: { estado: $('#lEstado').value, cualificado: $('#lCualificado').value, compro: $('#lCompro').value,
       anuncio: $('#lAnuncio').value.trim(), desde: $('#lDesde').value, hasta: $('#lHasta').value } };
   }
-  function invalidar() { dest = null; $('#btnEnviar').disabled = true; $('#btnEnviar').textContent = 'Enviar (calcula los destinatarios)'; $('#confirmar').innerHTML = ''; }
+  function invalidar() { dest = null; $('#btnEnviar').disabled = true; $('#btnProgramar').disabled = true; $('#btnEnviar').textContent = 'Enviar (calcula los destinatarios)'; $('#confirmar').innerHTML = ''; }
 
   function llamar(body) {
     return supa.functions.invoke('crm-email', { body: body }).then(function (r) {
@@ -221,6 +238,7 @@ details summary{cursor:pointer;font-size:12.5px}
       $('#resDest').innerHTML = '<div class="em-ok"><b>' + d.incluidos.length + '</b> destinatarios' + (d.excluidos.length ? ' · ' + d.excluidos.length + ' quedan fuera' : '') + '</div>' + excl
         + avisoVacias(d.variables_vacias_detalle);
       $('#prevDest').innerHTML = d.incluidos.map(function (x, i) { return '<option value="' + i + '">' + PA.esc(x.nombre + ' · ' + x.email) + '</option>'; }).join('');
+      $('#btnProgramar').disabled = false;
       var bloqueado = d.variables_vacias_detalle.length > 0;
       $('#btnEnviar').disabled = !d.incluidos.length || bloqueado;
       $('#btnEnviar').textContent = bloqueado ? 'Envío bloqueado: hay variables vacías'
@@ -276,6 +294,106 @@ details summary{cursor:pointer;font-size:12.5px}
       });
     });
   });
+
+  // ── Envíos programados ────────────────────────────────────────
+  // Fecha/hora de Madrid como «YYYY-MM-DDTHH:MM» (para el input).
+  function madridLocal(d) {
+    var p = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      .formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+    return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
+  }
+  function cuandoPorDefecto() { return madridLocal(new Date(Date.now() + 24 * 3600 * 1000)).slice(0, 11) + '09:00'; }
+  function fechaMadrid(iso) { return new Date(iso).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+  function segmentoDesc() {
+    var t = $('#segTipo').value;
+    if (t === 'edicion') return 'Alumnos de ' + $('#segEdicion').selectedOptions[0].textContent;
+    if (t === 'sesion') return 'Alumnos de la Sesión 1:1';
+    if (t === 'contactos') return idsContactos.length + ' contacto' + (idsContactos.length === 1 ? '' : 's') + ' seleccionado' + (idsContactos.length === 1 ? '' : 's');
+    var f = segmento().filtros, partes = [];
+    if (f.estado) partes.push('estado ' + PA.ESTADOS[f.estado]);
+    if (f.cualificado) partes.push(f.cualificado === 'si' ? 'cualificados' : 'no cualificados');
+    if (f.compro) partes.push(f.compro === 'si' ? 'compraron' : 'no compraron');
+    if (f.anuncio) partes.push('anuncio ' + f.anuncio);
+    if (f.desde) partes.push('desde ' + f.desde);
+    if (f.hasta) partes.push('hasta ' + f.hasta);
+    return 'Leads' + (partes.length ? ' (' + partes.join(', ') + ')' : ' (todos)');
+  }
+
+  $('#btnProgramar').addEventListener('click', function () {
+    if (!dest) return;
+    var cuando = $('#progCuando').value;
+    if (!cuando) { PA.toast('Elige fecha y hora'); return; }
+    var n = dest.incluidos.length, vac = dest.variables_vacias_detalle;
+    $('#confirmar').innerHTML = '<div class="em-confirm"><p class="em-info">' + (editId ? 'Guardar cambios del envío programado' : 'Programar envío') + ' de tipo <b>' + tipoEnvio() + '</b> con el asunto «' + PA.esc($('#asunto').value) + '» para el <b>'
+      + PA.esc(fechaMadrid(cuando)) + '</b> (hora de Madrid). Ahora serían <b>' + n + '</b> destinatarios; se recalculan al enviarse.</p>'
+      + (vac.length ? '<div class="em-warn">Ahora mismo hay variables vacías (' + vac.map(function (x) { return '{' + x.variable + '}'; }).join(', ') + '). Si siguen vacías a esa hora, no se enviará y te avisaré por email.</div>' : '')
+      + '<div class="em-row"><button type="button" class="pa-btn primary" id="pgOk">Confirmar</button><button type="button" class="pa-btn" id="pgNo">Cancelar</button></div></div>';
+    $('#pgNo').addEventListener('click', function () { $('#confirmar').innerHTML = ''; });
+    $('#pgOk').addEventListener('click', function () {
+      var b = this; b.disabled = true;
+      llamar(Object.assign(base(), { action: 'programar', cuando: cuando, segmento_desc: segmentoDesc(), id: editId })).then(function (d) {
+        $('#confirmar').innerHTML = '';
+        $('#resEnvio').innerHTML = '<div class="em-ok">' + (editId ? 'Cambios guardados' : 'Envío programado') + ' para el ' + PA.esc(fechaMadrid(d.programado_para)) + '.</div>';
+        salirEdicion(); cargarProgramados();
+      }).catch(function (e) {
+        b.disabled = false;
+        $('#resEnvio').innerHTML = '<div class="em-err">No programado: ' + PA.esc(e.error === 'no_pendiente' ? 'ese envío ya no está pendiente' : (e.error || JSON.stringify(e))) + '</div>';
+      });
+    });
+  });
+
+  var ESTADO_PROG = { pendiente: ['Pendiente', 'info'], enviando: ['Enviando', 'warn'], enviado: ['Enviado', 'ok'], cancelado: ['Cancelado', ''], bloqueado: ['Bloqueado', 'bad'], error: ['Error', 'bad'] };
+  var programados = [];
+  function cargarProgramados() {
+    return supa.from('partners_envios_programados').select('*').order('programado_para', { ascending: false }).limit(50).then(function (r) {
+      programados = r.data || [];
+      $('#programados').innerHTML = programados.map(function (p) {
+        var st = ESTADO_PROG[p.estado] || [p.estado, ''], res = p.resultado || {};
+        var detalle = p.estado === 'enviado' ? 'Enviados ' + (res.enviados || 0) + (res.errores ? ' · errores ' + res.errores : '') + (res.excluidos ? ' · excluidos ' + res.excluidos : '')
+          : p.estado === 'bloqueado' ? (res.variables_vacias_detalle || []).map(function (x) { return '{' + x.variable + '} vacía para ' + x.destinatarios; }).join(', ')
+          : p.estado === 'error' ? (res.error || '') : '';
+        return '<tr><td data-l="Cuándo">' + PA.esc(fechaMadrid(p.programado_para)) + '</td><td data-l="Tipo">' + PA.esc(p.tipo) + '</td>'
+          + '<td data-l="Asunto">' + PA.esc(p.asunto) + '</td><td data-l="Destinatarios">' + PA.esc(p.segmento_desc || '') + '</td>'
+          + '<td data-l="Estado"><span class="pa-badge ' + st[1] + '">' + st[0] + '</span>' + (detalle ? '<div class="pa-small">' + PA.esc(detalle) + '</div>' : '') + '</td>'
+          + '<td data-l="Acciones">' + (p.estado === 'pendiente'
+            ? '<div class="pa-btns"><button type="button" class="pa-btn" data-prog-edit="' + p.id + '">Editar</button><button type="button" class="pa-btn danger" data-prog-cancel="' + p.id + '">Cancelar</button></div>' : '') + '</td></tr>';
+      }).join('') || '<tr><td colspan="6" class="pa-empty">No hay envíos programados.</td></tr>';
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-prog-cancel]');
+    if (c) {
+      // Doble clic de confirmación (sin ventanas del navegador)
+      if (!c.dataset.seguro) { c.dataset.seguro = '1'; c.textContent = '¿Seguro? Cancelar envío'; return; }
+      c.disabled = true;
+      llamar({ action: 'programado_cancelar', id: c.dataset.progCancel }).then(function () { PA.toast('Envío cancelado'); if (editId === c.dataset.progCancel) salirEdicion(); cargarProgramados(); })
+        .catch(function () { PA.toast('Ya no está pendiente'); cargarProgramados(); });
+      return;
+    }
+    var ed = e.target.closest('[data-prog-edit]');
+    if (!ed) return;
+    var p = programados.find(function (x) { return x.id === ed.dataset.progEdit; });
+    var sg = p.segmento || {};
+    editId = p.id;
+    document.querySelector('input[name=tipo][value=' + p.tipo + ']').checked = true;
+    $('#segTipo').value = sg.tipo || 'edicion';
+    if (sg.tipo === 'edicion') $('#segEdicion').value = sg.clase_id;
+    if (sg.tipo === 'contactos') { idsContactos = sg.ids || []; $('#segContactos').textContent = idsContactos.length + ' contacto(s) seleccionado(s).'; }
+    if (sg.tipo === 'leads') { var f = sg.filtros || {}; $('#lEstado').value = f.estado || ''; $('#lCualificado').value = f.cualificado || ''; $('#lCompro').value = f.compro || ''; $('#lAnuncio').value = f.anuncio || ''; $('#lDesde').value = f.desde || ''; $('#lHasta').value = f.hasta || ''; }
+    $('#plantilla').value = p.plantilla_id || '';
+    $('#asunto').value = p.asunto; $('#cuerpo').value = p.cuerpo;
+    $('#progCuando').value = madridLocal(new Date(p.programado_para));
+    segUI();
+    $('#editando').hidden = false;
+    $('#editando').innerHTML = 'Editando el envío programado del ' + PA.esc(fechaMadrid(p.programado_para)) + '. Calcula los destinatarios y pulsa «Programar» para guardar los cambios. <button type="button" class="pa-btn" id="btnSalirEd">Salir sin guardar</button>';
+    $('#btnSalirEd').addEventListener('click', salirEdicion);
+    $('#btnProgramar').textContent = 'Guardar cambios';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  function salirEdicion() {
+    editId = null; $('#editando').hidden = true; $('#btnProgramar').textContent = 'Programar';
+  }
 })();
 </script>
 </body>

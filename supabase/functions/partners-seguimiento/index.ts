@@ -23,6 +23,10 @@
 //     se reserva antes de enviar y se libera si Resend falla.
 // Aparte, aviso a Juan (info@) +30 min de cada solicitud completa sin compra
 // (solo en los 4 dias siguientes a completada_at).
+// Y los envios programados de la pantalla Emails (partners_envios_programados)
+// que ya han llegado a su hora: recalcula destinatarios con las reglas de
+// consentimiento y bajas; con alguna variable vacia no envia ('bloqueado') y
+// avisa por email a quien lo programo. Sin franja: salen a la hora elegida.
 //
 // Modo prueba: { modo: 'prueba', solicitud_id, secuencia_id?,
 // segundos_por_hora } procesa solo esa solicitud (nombre «PRUEBA…») con los
@@ -33,6 +37,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { signLeadToken } from '../_shared/lead-token.ts'
+import { MAX_DEST, enviarLotes, resolver, vaciasDetalle } from '../_shared/crm-envio.ts'
 import { SITE, construirVars, edicionAbierta, esc, layout, plazasLibres, renderCuerpo, sustituir, variablesUsadas } from '../_shared/crm-render.ts'
 
 const FROM_JUAN = 'Juan de Mora <info@casacurino.com>';
@@ -191,6 +196,58 @@ async function procesar(supabase: Any, sec: Any, pasos: Any[], lead: Lead, hecho
   return log;
 }
 
+// ── Envios programados ─────────────────────────────────────────────
+async function avisoProgramado(p: Any, titulo: string, detalle: string) {
+  await resendId({
+    from: 'Curino Partners — CRM <noreply@casacurino.com>', to: [p.creado_por_email || AVISO_TO], reply_to: 'info@casacurino.com',
+    subject: `${titulo}: ${p.asunto}`,
+    html: `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:16px;color:#1a1a1a">
+<h2 style="margin:0 0 12px">${esc(titulo)}</h2>
+<p><b>Asunto:</b> ${esc(p.asunto)}<br><b>Destinatarios:</b> ${esc(p.segmento_desc || '')}<br><b>Programado para:</b> ${esc(new Date(p.programado_para).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }))}</p>
+<p>${detalle}</p>
+<p><a href="${SITE}/admin/partners/emails.html">Abrir Emails en el panel</a></p></body></html>`
+  });
+}
+async function ejecutarProgramados(supabase: Any, ahora: number): Promise<string[]> {
+  const log: string[] = [];
+  const { data: due } = await supabase.from('partners_envios_programados').select('*').eq('estado', 'pendiente')
+    .lte('programado_para', new Date(ahora).toISOString()).order('programado_para').limit(10);
+  for (const p of due || []) {
+    // Reserva (evita que dos ejecuciones lo envien)
+    const { data: claim } = await supabase.from('partners_envios_programados').update({ estado: 'enviando', updated_at: new Date().toISOString() })
+      .eq('id', p.id).eq('estado', 'pendiente').select('id');
+    if (!(claim || []).length) continue;
+    const fin = (estado: string, resultado: Record<string, unknown>) => supabase.from('partners_envios_programados')
+      .update({ estado, resultado, procesado_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', p.id);
+    try {
+      const { incluidos, excluidos } = await resolver(supabase, p.segmento, p.tipo);
+      if (incluidos.length > MAX_DEST) {
+        await fin('error', { error: `demasiados destinatarios (max ${MAX_DEST})`, destinatarios: incluidos.length });
+        await avisoProgramado(p, 'Envío programado no enviado', `Hay ${incluidos.length} destinatarios y el máximo es ${MAX_DEST}.`);
+        log.push(`programado ${p.id}: error`); continue;
+      }
+      const det = vaciasDetalle(incluidos, p.asunto, p.cuerpo);
+      if (det.length) {
+        await fin('bloqueado', { variables_vacias_detalle: det, destinatarios: incluidos.length, excluidos: excluidos.length });
+        await avisoProgramado(p, 'Envío programado bloqueado', 'No se ha enviado a nadie porque hay variables vacías:<br>'
+          + det.map((x: Any) => `· La variable <b>{${esc(x.variable)}}</b> está vacía para ${x.destinatarios} destinatario${x.destinatarios === 1 ? '' : 's'}.`).join('<br>')
+          + '<br><br>Complétalas (Formaciones: fecha confirmada, Zoom…) o quítalas del texto y vuelve a programarlo.');
+        log.push(`programado ${p.id}: bloqueado`); continue;
+      }
+      const r = await enviarLotes(supabase, { incluidos, tipo: p.tipo, asunto: p.asunto, cuerpo: p.cuerpo,
+        plantilla_id: p.plantilla_id, enviado_por: p.creado_por, programado_id: p.id });
+      await fin('enviado', { ...r, excluidos: excluidos.length });
+      log.push(`programado ${p.id}: enviados ${r.enviados}`);
+    } catch (e) {
+      console.error('seguimiento: programado', p.id, e);
+      await fin('error', { error: String(e).slice(0, 300) });
+      await avisoProgramado(p, 'Envío programado con error', 'Ha fallado al enviarse. Revísalo en el panel.');
+      log.push(`programado ${p.id}: error`);
+    }
+  }
+  return log;
+}
+
 async function cargarPasos(supabase: Any, secId: string): Promise<Any[]> {
   const { data } = await supabase.from('partners_secuencia_pasos').select('*').eq('secuencia_id', secId).eq('activo', true)
     .order('retraso_minutos').order('orden');
@@ -228,6 +285,9 @@ Deno.serve(async (req) => {
 
   const resumen: Record<string, string[]> = {};
   const add = (id: string, l: string[]) => { if (l.length) resumen[id] = [...(resumen[id] || []), ...l]; };
+
+  // Envios programados que ya han llegado a su hora
+  try { add('programados', await ejecutarProgramados(supabase, ahora)); } catch (e) { console.error('seguimiento: programados', e); }
 
   // Aviso a Juan (independiente de las secuencias)
   const desdeAviso = new Date(ahora - 4 * 24 * 3600_000).toISOString();
