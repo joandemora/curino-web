@@ -26,6 +26,21 @@ export interface ClaseInvoiceData {
   amount_paid_cents: number;
   invoice_number: string;
   created_at: string;
+  // Datos de facturacion de Stripe Checkout (billing_address_collection +
+  // tax_id_collection). Con NIF → factura completa; sin NIF → simplificada
+  // con nombre y direccion del comprador.
+  buyer_nombre_fiscal?: string | null;
+  buyer_nif?: string | null;
+  buyer_direccion?: string[] | null;   // lineas ya formateadas
+}
+
+// Formatea la direccion de Stripe (customer_details.address) en lineas.
+export function formatStripeAddress(addr: any): string[] {
+  if (!addr) return [];
+  const l1 = [addr.line1, addr.line2].filter(Boolean).join(', ');
+  const l2 = [addr.postal_code, addr.city].filter(Boolean).join(' ');
+  const l3 = [addr.state, addr.country].filter(Boolean).join(', ');
+  return [l1, l2, l3].map((x: string) => String(x || '').trim()).filter(Boolean);
 }
 
 export interface ClaseInfo {
@@ -102,8 +117,11 @@ export async function generateClaseInvoicePdf(
   const baseCents = Math.round(inv.amount_paid_cents / (1 + taxRatePct / 100));
   const taxCents = inv.amount_paid_cents - baseCents;
 
+  const completa = !!(inv.buyer_nif && inv.buyer_nif.trim());
+  const direccion = (inv.buyer_direccion || []).filter(Boolean);
+
   let y = 800;
-  page.drawText('FACTURA SIMPLIFICADA', { x: 50, y, font: fontBold, size: 18, color: black });
+  page.drawText(completa ? 'FACTURA' : 'FACTURA SIMPLIFICADA', { x: 50, y, font: fontBold, size: 18, color: black });
   y -= 30;
   page.drawText(`N.o ${sanitizePdfText(inv.invoice_number)}`, { x: 50, y, font, size: 10, color: gray });
   page.drawText(`Fecha: ${new Date(inv.created_at).toLocaleDateString('es-ES')}`, { x: 350, y, font, size: 10, color: gray });
@@ -118,7 +136,23 @@ export async function generateClaseInvoicePdf(
   page.drawText(ISSUER.address, { x: 50, y, font, size: 10 });
   y -= 12;
   page.drawText(ISSUER.city, { x: 50, y, font, size: 10 });
-  y -= 30;
+
+  // Destinatario: completa → razon social + NIF + direccion (obligatorios);
+  // simplificada → nombre y direccion si los hay.
+  let yb = 800 - 70;
+  page.drawText(completa ? 'CLIENTE' : 'COMPRADOR', { x: 320, y: yb, font: fontBold, size: 10 });
+  yb -= 15;
+  const nombreDest = inv.buyer_nombre_fiscal || inv.nombre || '';
+  page.drawText(sanitizePdfText(nombreDest).slice(0, 60), { x: 320, y: yb, font, size: 10 });
+  if (completa) {
+    yb -= 12;
+    page.drawText(sanitizePdfText(`NIF: ${inv.buyer_nif}`), { x: 320, y: yb, font, size: 10 });
+  }
+  for (const line of direccion.slice(0, 3)) {
+    yb -= 12;
+    page.drawText(sanitizePdfText(line).slice(0, 60), { x: 320, y: yb, font, size: 10 });
+  }
+  y = Math.min(y, yb) - 30;
 
   page.drawText('CONCEPTO', { x: 50, y, font: fontBold, size: 10 });
   page.drawText('IMPORTE', { x: 480, y, font: fontBold, size: 10 });
@@ -141,7 +175,7 @@ export async function generateClaseInvoicePdf(
   page.drawText('TOTAL:', { x: 350, y, font: fontBold, size: 12 });
   page.drawText(`${fmtEur(inv.amount_paid_cents)}`, { x: 490, y, font: fontBold, size: 12 });
 
-  page.drawText(sanitizePdfText(`Comprador: ${inv.nombre} — ${inv.email}`), { x: 50, y: 100, font, size: 9, color: gray });
+  page.drawText(sanitizePdfText(`Email del comprador: ${inv.email}`), { x: 50, y: 100, font, size: 9, color: gray });
   page.drawText(`ID inscripcion: ${inv.id}`, { x: 50, y: 85, font, size: 9, color: gray });
   page.drawText(`${ISSUER.name} — ${ISSUER.email}`, { x: 50, y: 60, font, size: 9, color: gray });
 
@@ -305,6 +339,36 @@ export async function sendClaseReminderEmail(
     to: [to],
     reply_to: 'info@casacurino.com',
     subject,
+    html
+  });
+}
+
+// Confirmacion de reembolso total solicitado por el alumno (charge.refunded).
+export async function sendClaseRefundConfirmationEmail(
+  to: string,
+  nombre: string,
+  importeCents: number
+): Promise<void> {
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <h2 style="color:#000;margin-top:0;">Reembolso confirmado</h2>
+  <p>Hola ${escapeHtml(nombre)},</p>
+  <p>Hemos procesado el reembolso de tu plaza en el Intensivo Curino Partners por un importe de <strong>${escapeHtml(fmtEur(importeCents))}</strong>.</p>
+  <p>Lo verás en tu cuenta en 5-10 días hábiles, según tu banco, en el mismo método de pago que usaste.</p>
+  <p>Tu plaza queda liberada. Si más adelante quieres apuntarte a otra edición, escríbenos y te avisamos.</p>
+  <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
+</body>
+</html>`;
+
+  await resendSend({
+    from: 'Curino <noreply@casacurino.com>',
+    to: [to],
+    reply_to: 'info@casacurino.com',
+    subject: 'Reembolso confirmado — Intensivo Curino Partners',
     html
   });
 }

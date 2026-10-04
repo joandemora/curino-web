@@ -50,6 +50,8 @@ import {
   uploadClaseInvoicePdf,
   sendClaseConfirmationEmail,
   sendClaseRefundEmail,
+  sendClaseRefundConfirmationEmail,
+  formatStripeAddress,
   ClaseInvoiceData,
   ClaseInfo
 } from '../_shared/clase-invoices.ts'
@@ -172,6 +174,13 @@ Deno.serve(async (req) => {
         } else {
           await handleCheckoutCompleted(supabase, stripe, session);
         }
+        break;
+      }
+
+      // Reembolsos del Intensivo (inscripciones). Otros productos: no-op.
+      // OJO: el evento aun no esta suscrito en el endpoint de Stripe.
+      case 'charge.refunded': {
+        await handleChargeRefunded(supabase, event.data.object as Stripe.Charge);
         break;
       }
 
@@ -1157,10 +1166,21 @@ async function handleClaseCompleted(
     ? session.payment_intent
     : (session.payment_intent?.id ?? null);
 
+  // Datos de facturacion recogidos por Checkout (billing_address_collection
+  // + tax_id_collection). Con NIF/CIF → factura completa.
+  const cd = session.customer_details;
+  const taxId = (cd?.tax_ids || []).find((t: Stripe.Checkout.Session.CustomerDetails.TaxId) => t && t.value)?.value || null;
+  const nombreFiscal = (cd?.name || '').trim() || null;
+  const direccionLineas = formatStripeAddress(cd?.address);
+
   const { data: inscripcion, error: insError } = await supabase
     .from('inscripciones')
     .insert({
       clase_id: claseId,
+      factura_tipo: taxId ? 'completa' : 'simplificada',
+      cliente_nombre_fiscal: nombreFiscal,
+      cliente_nif: taxId,
+      cliente_direccion: direccionLineas.length ? direccionLineas.join(' · ') : null,
       nombre,
       email: buyerEmail,
       telefono,
@@ -1212,7 +1232,10 @@ async function handleClaseCompleted(
       email: buyerEmail,
       amount_paid_cents: amountPaidCents,
       invoice_number: invoiceNum || `CLASE-${inscripcion.id.slice(0, 8)}`,
-      created_at: inscripcion.created_at
+      created_at: String(inscripcion.created_at),
+      buyer_nombre_fiscal: nombreFiscal,
+      buyer_nif: taxId,
+      buyer_direccion: direccionLineas
     };
 
     const pdfBytes = await generateClaseInvoicePdf(invoiceData);
@@ -1235,6 +1258,78 @@ async function handleClaseCompleted(
     console.log(`clase: invoice + confirmation sent for inscripcion ${inscripcion.id}`);
   } catch (invoiceError) {
     console.error(`clase: invoice/email failed for inscripcion ${inscripcion.id}`, invoiceError);
+  }
+}
+
+// ============================================================================
+// CHARGE.REFUNDED — reembolsos del Intensivo (tabla inscripciones).
+//
+// - Total (charge.refunded = true): RPC liberar_plaza_clase pasa la
+//   inscripcion de 'pagada' a 'reembolsada', resta 1 plaza (min. 0) y
+//   reabre la edicion si estaba agotada y no ha empezado. La guarda
+//   estado='pagada' la hace idempotente: un reintento del mismo evento no
+//   libera otra plaza ni reenvia el email.
+// - Parcial: solo registra importe_reembolsado_cents; no libera plaza.
+// - Cargos de otros productos (sin inscripcion con ese payment_intent) o el
+//   reembolso automatico por "agotada mid-checkout" (sin inscripcion): no-op.
+// ============================================================================
+async function handleChargeRefunded(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,   // cliente sin tipos generados (igual que el resto del webhook)
+  charge: Stripe.Charge
+) {
+  const paymentIntent = typeof charge.payment_intent === 'string'
+    ? charge.payment_intent
+    : charge.payment_intent?.id;
+  if (!paymentIntent) return;
+
+  const { data: ins, error } = await supabase
+    .from('inscripciones')
+    .select('id, nombre, email, estado, importe_cents, importe_reembolsado_cents, refund_email_sent_at')
+    .eq('stripe_payment_intent', paymentIntent)
+    .maybeSingle();
+  if (error) {
+    console.error('refund: error buscando inscripcion', paymentIntent, error);
+    return;
+  }
+  if (!ins) return; // no es del Intensivo
+
+  const refunded = charge.amount_refunded ?? 0;
+  const isFull = charge.refunded === true || refunded >= (charge.amount ?? Infinity);
+
+  if (!isFull) {
+    // Parcial: registrar sin liberar plaza.
+    if (refunded > (ins.importe_reembolsado_cents ?? 0)) {
+      const { error: upErr } = await supabase
+        .from('inscripciones')
+        .update({ importe_reembolsado_cents: refunded })
+        .eq('id', ins.id);
+      if (upErr) console.error('refund: error registrando parcial', ins.id, upErr);
+    }
+    console.log(`refund: parcial ${refunded} en inscripcion ${ins.id} (plaza no liberada)`);
+    return;
+  }
+
+  const { data: liberada, error: rpcErr } = await supabase
+    .rpc('liberar_plaza_clase', { p_inscripcion_id: ins.id, p_importe_reembolsado_cents: refunded });
+  if (rpcErr) {
+    console.error('refund: liberar_plaza_clase fallo', ins.id, rpcErr);
+    return;
+  }
+  if (!liberada) {
+    console.log(`refund: inscripcion ${ins.id} ya estaba reembolsada (evento repetido)`);
+    return;
+  }
+
+  console.log(`refund: inscripcion ${ins.id} reembolsada, plaza liberada`);
+  try {
+    await sendClaseRefundConfirmationEmail(String(ins.email), String(ins.nombre), refunded);
+    await supabase
+      .from('inscripciones')
+      .update({ refund_email_sent_at: new Date().toISOString() })
+      .eq('id', ins.id);
+  } catch (mailErr) {
+    console.error('refund: email de confirmacion fallo', ins.id, mailErr);
   }
 }
 
