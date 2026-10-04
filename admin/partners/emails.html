@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/assets/css/admin-shell.css">
 <link rel="stylesheet" href="/admin/partners/partners-admin.css">
 <style>
+[hidden]{display:none!important}
 .em-grid{display:grid;gap:1rem}
 @media(min-width:1100px){.em-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 .em-row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.6rem}
@@ -138,7 +139,7 @@ details summary{cursor:pointer;font-size:12.5px}
       supa.from('partners_email_plantillas').select('*').order('nombre')
     ]).then(function (r) {
       (r[0].data || []).forEach(function (c) {
-        var o = document.createElement('option'); o.value = c.id; o.textContent = (c.titulo || 'Intensivo') + (c.oculta ? ' (oculta)' : '');
+        var o = document.createElement('option'); o.value = c.id; o.textContent = (c.titulo || 'Intensivo') + ' · ' + PA.fecha(c.fecha) + (c.oculta ? ' (oculta)' : '');
         $('#segEdicion').appendChild(o);
       });
       if (qs.get('edicion')) $('#segEdicion').value = qs.get('edicion');
