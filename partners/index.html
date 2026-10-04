@@ -10,19 +10,19 @@
 <meta property="og:title" content="Curino Partners — Crea tu negocio de alta carpintería a medida">
 <meta property="og:description" content="Te enseño a crear desde cero tu negocio de alta carpintería y mobiliario a medida de alta gama, para empezar a facturar desde el primer mes.">
 <meta property="og:url" content="https://www.casacurino.com/partners/">
-<meta property="og:image" content="https://www.casacurino.com/assets/imagenes/nosotros/founder.webp">
+<meta property="og:image" content="https://www.casacurino.com/assets/imagenes/partners/juan-hero.webp">
 <meta property="og:site_name" content="Curino">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Curino Partners — Crea tu negocio de alta carpintería a medida">
 <meta name="twitter:description" content="Intensivo en directo con Juan de Mora. 4 semanas, máximo 20 plazas.">
-<meta name="twitter:image" content="https://www.casacurino.com/assets/imagenes/nosotros/founder.webp">
+<meta name="twitter:image" content="https://www.casacurino.com/assets/imagenes/partners/juan-hero.webp">
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Schibsted+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/site-shell.css">
-<link rel="preload" as="image" href="/assets/imagenes/nosotros/founder.webp">
+<link rel="preload" as="image" href="/assets/imagenes/partners/juan-hero.webp">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -132,10 +132,7 @@ body{color:var(--ink)}
 
 /* Foto de Juan grande + clientes */
 .pt-photo{position:relative;width:100%;aspect-ratio:4/5;max-height:640px;overflow:hidden;border-radius:6px;background:#222;margin:0}
-.pt-photo img{width:100%;height:100%;object-fit:cover;object-position:72% 30%;display:block}
-/* Encuadre provisional sobre Juan en founder.webp (3:4, Juan a la derecha).
-   Quitar la clase pt-photo--founder al cambiar a la foto definitiva. */
-.pt-photo--founder img{position:absolute;width:134%;height:auto;max-width:none;left:-33.5%;top:-42.9%;object-fit:fill}
+.pt-photo img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block}
 .pt-photo figcaption{position:absolute;left:12px;bottom:12px;background:rgba(22,22,22,.86);color:#fff;font-size:13px;padding:.45rem .75rem;border-radius:4px}
 .pt-photo figcaption b{font-family:var(--head);font-weight:800}
 .pt-clients{display:flex;align-items:center;gap:.9rem;margin-top:1.2rem}
@@ -465,17 +462,15 @@ body{color:var(--ink)}
     </div>
 
     <div class="pt-hero-media">
-      <figure class="pt-photo pt-photo--founder">
-        <!-- Foto grande de Juan. Sustituir por /assets/imagenes/partners/juan-hero.webp cuando este. -->
-        <img src="/assets/imagenes/nosotros/founder.webp" alt="Juan de Mora, fundador de Curino" width="1500" height="2000" fetchpriority="high">
+      <figure class="pt-photo">
+        <img src="/assets/imagenes/partners/juan-hero.webp" alt="Juan de Mora, fundador de Curino" width="1076" height="1345" fetchpriority="high">
         <figcaption><b>Juan de Mora</b> · fundador de Curino</figcaption>
       </figure>
       <div class="pt-clients">
-        <!-- Fotos redondas: la imagen se pinta encima de las iniciales solo si existe el archivo. -->
-        <div class="pt-avs" aria-hidden="true">
-          <span class="pt-av" data-foto="/assets/imagenes/partners/maria-alcalde.webp">MA</span>
-          <span class="pt-av" data-foto="/assets/imagenes/partners/paucho.webp">P</span>
-          <span class="pt-av" data-foto="/assets/imagenes/partners/maria-ccm.webp">MC</span>
+        <div class="pt-avs">
+          <span class="pt-av"><img src="/assets/imagenes/partners/maria-alcalde.webp" alt="Maria Alcalde" width="400" height="400" loading="lazy"></span>
+          <span class="pt-av"><img src="/assets/imagenes/partners/paucho.webp" alt="Paucho" width="400" height="400" loading="lazy"></span>
+          <span class="pt-av"><img src="/assets/imagenes/partners/maria-ccm.webp" alt="Maria CCM" width="400" height="400" loading="lazy"></span>
         </div>
         <div class="pt-clients-txt">
           <b>Han confiado en Curino para sus casas</b>
@@ -1101,14 +1096,6 @@ body{color:var(--ink)}
       });
     }).observe(card);
   }
-
-  // ── Fotos redondas de clientes: se pintan solo si la imagen existe ──
-  $$('.pt-av[data-foto]').forEach(function (av) {
-    var img = new Image();
-    img.onload = function () { av.textContent = ''; av.appendChild(img); };
-    img.alt = '';
-    img.src = av.dataset.foto;
-  });
 
   // ── Reseñas (ocultas mientras CONFIG.RESENAS este vacio) ──
   (function renderResenas() {
