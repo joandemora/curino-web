@@ -421,12 +421,7 @@ body{color:var(--ink)}
           </div>
           <label class="pt-check" id="pt-privacidad-wrap">
             <input id="pt-privacidad" type="checkbox" required>
-            <span>He leído y acepto la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a>.</span>
-          </label>
-          <!-- Opcional: solo con esta casilla entra en la secuencia de emails. -->
-          <label class="pt-check" id="pt-comercial-wrap">
-            <input id="pt-comercial" type="checkbox">
-            <span>Acepto que Curino contacte conmigo por email y WhatsApp sobre mi solicitud y sobre sus formaciones. Puedo darme de baja en cualquier momento.</span>
+            <span>He leído y acepto la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a> y que Curino contacte conmigo por email y WhatsApp sobre mi solicitud del intensivo.</span>
           </label>
           <button type="submit" class="pt-btn" id="pt-start-btn">Quiero mi plaza</button>
           <p class="pt-error" id="pt-error-0" role="alert"></p>
@@ -1054,10 +1049,9 @@ body{color:var(--ink)}
     var payload = Object.assign({
       action: 'start',
       nombre: nombre, email: email, telefono_prefijo: prefijo, telefono: telefono,
+      // Casilla unica obligatoria: privacidad + contacto sobre la solicitud
+      // del intensivo (consentimiento_solicitud en el servidor).
       privacidad: true,
-      // Casilla comercial (opcional): contacto sobre la solicitud y las
-      // formaciones; sin ella no entra en la secuencia de emails.
-      consentimiento_comercial: $('#pt-comercial').checked,
       website: $('#pt-website').value,
       event_id: leadEventId,
       landing_url: attr.landing_url || window.location.href,

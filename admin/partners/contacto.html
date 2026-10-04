@@ -101,7 +101,11 @@
             + fila('Inversión', PA.esc(R.p4_inversion[s.p4_inversion])))
       + fila('Paso alcanzado', s.paso_alcanzado + ' de 4')
       + fila('Botón final', s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : null)
-      + fila('Consentimiento comercial', s.consentimiento_comercial ? '<span class="pa-badge ok">Sí</span>' : 'No')
+      + fila('Consentimiento', PA.consentChecks(s)
+          + '<div class="pa-small">' + [['solicitud', 'Solicitud'], ['comercial', 'Comercial']].map(function (x) {
+              var at = s['consentimiento_' + x[0] + '_at'];
+              return at ? x[1] + ': ' + PA.esc(s['consentimiento_' + x[0] + '_origen'] || '') + ' · ' + PA.fecha(at, true) : '';
+            }).filter(Boolean).join('<br>') + '</div>')
       + fila('Baja', s.baja_at ? '<span class="pa-badge bad">' + PA.esc(s.motivo_baja || 'baja') + '</span> ' + PA.fecha(s.baja_at, true) : null)
       + fila('Origen', PA.esc([s.utm_source, s.utm_medium, s.utm_campaign].filter(Boolean).join(' / ')))
       + fila('Anuncio (utm_content)', PA.esc(s.utm_content))
@@ -165,6 +169,8 @@
     if (a) { e.preventDefault(); PA.abrirPdf(supa, a.dataset.pdf); }
   });
   document.addEventListener('change', function (e) {
+    var cc = e.target.closest('[data-consent]');
+    if (cc) { PA.guardarConsent(supa, cc, s).then(function (row) { if (row) pintar(); }); return; }
     var sel = e.target.closest('[data-estado]');
     if (!sel) return;
     PA.guardarContacto(supa, s.id, sel.value, s.crm_notas || null).then(function (row) { s = Object.assign(s, row); pintar(); PA.toast('Estado guardado'); })

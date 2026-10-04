@@ -13,6 +13,9 @@
 //              prellenado en Stripe (bloqueado). Sin token: Stripe pide los
 //              datos. El precio de la sesion SIEMPRE se calcula aqui.
 //   'baja'     { token } → no mas emails de seguimiento.
+//   'comercial' { token } → consentimiento_comercial (enlace «Quiero recibir
+//              también otras formaciones…» de los emails 1 y 2). Con baja
+//              no se toca nada (responde { ok:false, baja:true }).
 //
 // Secrets: PARTNERS_LEAD_SECRET (token), STRIPE_SECRET_KEY, SUPABASE_ANON_KEY.
 // verify_jwt=false.
@@ -112,6 +115,15 @@ Deno.serve(async (req) => {
       if (!lead.baja_at) {
         await supabase.from('partners_solicitudes').update({ baja_at: new Date().toISOString(), motivo_baja: 'enlace' }).eq('id', lead.id);
       }
+      return json({ ok: true });
+    }
+
+    if (action === 'comercial') {
+      if (!lead) return json({ error: 'invalid_token' }, 400);
+      if (lead.baja_at) return json({ ok: false, baja: true });
+      await supabase.from('partners_solicitudes')
+        .update({ consentimiento_comercial: true, consentimiento_comercial_at: new Date().toISOString(), consentimiento_comercial_origen: 'enlace' })
+        .eq('id', lead.id).eq('consentimiento_comercial', false);
       return json({ ok: true });
     }
 

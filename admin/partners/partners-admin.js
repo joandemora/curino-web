@@ -80,6 +80,25 @@ window.PA = (function () {
       if (w) w.location = r.data.signedUrl; else location.href = r.data.signedUrl;
     });
   }
-  return { ESTADOS: ESTADOS, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
+  // Consentimientos (solicitud / comercial) como checks editables.
+  function consentChecks(s) {
+    var c = function (campo, valor, label, title) {
+      return '<label class="pa-consent" title="' + title + '"><input type="checkbox" data-consent="' + campo + '" data-id="' + esc(s.id) + '"' + (valor ? ' checked' : '') + '> ' + label + '</label>';
+    };
+    return c('solicitud', s.consentimiento_solicitud, 'Solicitud', 'Emails 1, 2 y 4 de la secuencia (sobre el intensivo)')
+      + c('comercial', s.consentimiento_comercial, 'Comercial', 'Oferta de la sesión 1:1 y envíos comerciales del CRM');
+  }
+  // Cambio manual (RPC solo admin); revierte el check si falla.
+  function guardarConsent(supa, cb, s) {
+    var campo = cb.dataset.consent, valor = cb.checked;
+    return supa.rpc('crm_partners_consentimiento', { p_id: s.id, p_campo: campo, p_valor: valor }).then(function (r) {
+      if (r.error) { cb.checked = !valor; toast('Error: ' + r.error.message); return null; }
+      Object.assign(s, r.data);
+      toast('Consentimiento ' + campo + (valor ? ' activado' : ' quitado'));
+      return r.data;
+    });
+  }
+
+  return { ESTADOS: ESTADOS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
     compro: compro, waUrl: waUrl, mailUrl: mailUrl, toast: toast, estadoSelect: estadoSelect, guardarContacto: guardarContacto, abrirPdf: abrirPdf };
 })();

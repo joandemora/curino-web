@@ -3,14 +3,14 @@
 // Proxy Vercel Edge → Supabase Edge Function `partners-formaciones`
 // (/partners/formaciones y enlaces de los emails de seguimiento). Añade
 // pais (x-vercel-ip-country), IP y user-agent para el checkout/CAPI.
-// Acciones: info, checkout, baja.
+// Acciones: info, checkout, baja, comercial.
 
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://fsfminynxnmhsagqenat.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-const ACTIONS = new Set(['info', 'checkout', 'baja']);
+const ACTIONS = new Set(['info', 'checkout', 'baja', 'comercial']);
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {

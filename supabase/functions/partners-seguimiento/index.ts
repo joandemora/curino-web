@@ -3,7 +3,9 @@
 // Seguimiento automatico de quien completa la solicitud de /partners y no
 // compra. Invocada por pg_cron cada 15 min (X-Cron-Secret = CRON_SECRET).
 //
-// Por solicitud completa (completada_at) sin compra del Intensivo:
+// Por solicitud completa sin compra del Intensivo. Los plazos cuentan desde
+// secuencia_inicio_at si existe (solicitudes anteriores a 2026-10 o
+// consentimiento activado a mano) y si no desde completada_at:
 //   +30 min  aviso a Juan (info@casacurino.com) "Sin comprar: …"   aviso_sin_compra_at
 //   +1 h     email 1: enlace por si se cerro                     seguimiento_1_at
 //   +24 h    email 2: caso Maria Alcalde + 3 dudas               seguimiento_2_at
@@ -18,8 +20,13 @@
 //     (p. ej. el cron estuvo parado) solo se envia el mas reciente y los
 //     anteriores se marcan como procesados sin enviar.
 //   - Las marcas *_at evitan repetir (tambien cuando un paso se salta).
-//   - Solo leads con consentimiento_comercial (casilla v2). El aviso a Juan
-//     sale para todas las solicitudes completas.
+//   - Emails 1, 2 y 4 (sobre el intensivo solicitado): leads con
+//     consentimiento_solicitud (casilla unica del formulario).
+//   - Email 3 (oferta sesion 1:1): ademas consentimiento_comercial; sin el se
+//     salta. Los emails 1 y 2 llevan al pie, si aun no lo tiene, el enlace
+//     «Quiero recibir también otras formaciones…» (/partners/novedades/).
+//   - El aviso a Juan sale para todas las solicitudes completas, solo en los
+//     4 dias siguientes a completada_at.
 //   - Email 3 (oferta sesion) solo si PARTNERS_SEGUIMIENTO_SESION_ACTIVO='true'.
 //
 // Interruptor: no envia nada mientras PARTNERS_SEGUIMIENTO_ACTIVO !== 'true'.
@@ -75,7 +82,7 @@ async function resend(payload: Record<string, unknown>): Promise<boolean> {
 }
 
 // ── Plantilla "email personal": texto sencillo, un boton discreto ────────
-function personal(parrafos: string[], boton: { url: string; label: string } | null, bajaUrl: string): string {
+function personal(parrafos: string[], boton: { url: string; label: string } | null, bajaUrl: string, novedadesUrl: string | null = null): string {
   const ps = parrafos.map((p) => `<p style="margin:0 0 14px">${p}</p>`).join('');
   const btn = boton
     ? `<p style="margin:18px 0"><a href="${esc(boton.url)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:11px 20px;text-decoration:none;border-radius:4px">${esc(boton.label)}</a></p>`
@@ -84,7 +91,8 @@ function personal(parrafos: string[], boton: { url: string; label: string } | nu
 <body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px;margin:0 auto;padding:16px">
 ${ps}${btn}
 <p style="margin:0 0 14px">Juan de Mora · Curino</p>
-<p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">Recibes este email porque solicitaste información sobre Curino Partners en casacurino.com. Si no quieres recibir más, <a href="${esc(bajaUrl)}" style="color:#999">date de baja aquí</a>. SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
+${novedadesUrl ? `<p style="margin:22px 0 0;font-size:13px"><a href="${esc(novedadesUrl)}" style="color:#0E9F5C">Quiero recibir también otras formaciones y novedades de Curino</a></p>` : ''}
+<p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">Recibes este email porque solicitaste información sobre el Intensivo Curino Partners en casacurino.com. Si no quieres recibir más, <a href="${esc(bajaUrl)}" style="color:#999">date de baja aquí</a>. SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
 </body></html>`;
 }
 
@@ -109,17 +117,25 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
   const checkoutUrl = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}&ir=intensivo`;
   const formacionesUrl = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}`;
   const bajaUrl = `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`;
+  // Alta comercial en un clic (solo emails 1 y 2, si aun no la tiene).
+  const novedadesUrl = lead.consentimiento_comercial ? null : `${SITE}/partners/novedades/?t=${encodeURIComponent(token)}`;
+  // Solicitudes antiguas incorporadas despues: el email 1 no habla de
+  // «se te cerro la pagina».
+  const antigua = !!lead.secuencia_inicio_at && lead.completada_at
+    && new Date(lead.secuencia_inicio_at).getTime() - new Date(lead.completada_at).getTime() > 24 * 3600_000;
   const waUrl = `https://wa.me/${WA}?text=${encodeURIComponent(`Hola Juan, soy ${nombre}. Tengo una duda sobre el intensivo Curino Partners.`)}`;
 
   if (n === 1) {
     return {
-      subject: `${nombre}, te dejo el enlace por si se te cerró`,
+      subject: antigua ? `${nombre}, sobre tu solicitud del intensivo` : `${nombre}, te dejo el enlace por si se te cerró`,
       html: personal([
         `Hola ${esc(nombre)},`,
-        'Te escribo por si se te cerró la página después de rellenar la solicitud del Intensivo Curino Partners.',
+        antigua
+          ? 'Te escribo por la solicitud que hiciste para el Intensivo Curino Partners, por si sigues con la idea de empezar.'
+          : 'Te escribo por si se te cerró la página después de rellenar la solicitud del Intensivo Curino Partners.',
         'Te recuerdo lo que incluye:<br>· 4 semanas y 8 clases en directo por Zoom conmigo.<br>· El negocio, producto y producción, diseño y presupuesto, y cómo vender y entregar.<br>· Plantilla de presupuesto, contrato de venta, catálogo y acceso al CAD de Curino.<br>· El grupo de WhatsApp de tu promoción.',
         'Aquí tienes el enlace para reservar tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
+      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl, novedadesUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
         `<p style="margin:0 0 14px">Si tienes cualquier duda, respóndeme a este email o <a href="${esc(waUrl)}">escríbeme por WhatsApp</a>.</p><p style="margin:0 0 14px">Juan de Mora · Curino</p>`)
     };
   }
@@ -135,7 +151,7 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
         '<strong>«No tengo mucho tiempo.»</strong> Son 8 clases en directo en 4 semanas, dos por semana. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias.',
         '<strong>«¿Cómo son las clases?»</strong> En directo por Zoom, con tiempo para tus preguntas en cada una, y con el grupo de WhatsApp de la promoción entre clase y clase.',
         'Si lo tienes claro, aquí tienes tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl)
+      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl, novedadesUrl)
     };
   }
   if (n === 3) {
@@ -191,7 +207,8 @@ ${row('utm_source / campaign', [lead.utm_source, lead.utm_campaign].filter(Boole
 async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: number): Promise<string[]> {
   const log: string[] = [];
   if (lead.pagado_at) return log; // compro el intensivo → nada
-  const base = new Date(lead.completada_at).getTime();
+  const completada = new Date(lead.completada_at).getTime();
+  const base = lead.secuencia_inicio_at ? new Date(lead.secuencia_inicio_at).getTime() : completada;
   const vencido = (horas: number) => ahora >= base + horas * segPorHora * 1000;
   const marca = async (cols: Record<string, string>) => {
     await supabase.from('partners_solicitudes').update(cols).eq('id', lead.id);
@@ -200,7 +217,8 @@ async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: nu
   const now = () => new Date().toISOString();
 
   // Aviso a Juan (+30 min). Tambien si el lead se dio de baja.
-  if (!lead.aviso_sin_compra_at && vencido(0.5)) {
+  if (!lead.aviso_sin_compra_at && ahora >= completada + 0.5 * segPorHora * 1000
+      && ahora < completada + 96 * segPorHora * 1000) {
     const ok = await resend({
       from: 'Curino Partners — Solicitudes <noreply@casacurino.com>', to: [AVISO_TO], reply_to: lead.email,
       subject: `Sin comprar: ${lead.nombre} (${lead.cualificado ? 'cualificado' : 'no cualificado'})`,
@@ -209,8 +227,8 @@ async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: nu
     if (ok) { await marca({ aviso_sin_compra_at: now() }); log.push('aviso_juan'); }
   }
 
-  // Emails al lead: solo con la casilla v2 (consentimiento_comercial) y sin baja.
-  if (lead.baja_at || !lead.consentimiento_comercial) return log;
+  // Emails al lead: con consentimiento_solicitud y sin baja.
+  if (lead.baja_at || !lead.consentimiento_solicitud) return log;
 
   // Pasos vencidos y pendientes
   const pasos: { n: 1 | 2 | 3 | 4; horas: number; col: string }[] = [
@@ -224,6 +242,10 @@ async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: nu
   const ultimo = pendientes[pendientes.length - 1];
   for (const p of pendientes.slice(0, -1)) { await marca({ [p.col]: now() }); log.push(`email_${p.n}:saltado_por_retraso`); }
 
+  // La oferta de la sesion es comercial: sin consentimiento_comercial no sale.
+  if (ultimo.n === 3 && !lead.consentimiento_comercial) {
+    await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sin_comercial'); return log;
+  }
   if (ultimo.n === 3 && lead.sesion_comprada_at) {
     await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sesion_comprada'); return log;
   }
@@ -275,9 +297,11 @@ Deno.serve(async (req) => {
 
   if (Deno.env.get('PARTNERS_SEGUIMIENTO_ACTIVO') !== 'true') return json({ ok: true, activo: false });
 
+  const desde = new Date(ahora - 4 * 24 * 3600_000).toISOString();
   const { data: leads, error } = await supabase.from('partners_solicitudes').select(sel)
     .not('completada_at', 'is', null).is('pagado_at', null)
-    .gt('completada_at', new Date(ahora - 4 * 24 * 3600_000).toISOString())   // ventana de la secuencia
+    // ventana de la secuencia (4 dias desde secuencia_inicio_at o completada_at)
+    .or(`secuencia_inicio_at.gt.${desde},and(secuencia_inicio_at.is.null,completada_at.gt.${desde})`)
     .order('completada_at', { ascending: true }).limit(200);
   if (error) { console.error('seguimiento: select', error); return json({ error: 'select' }, 500); }
   const resumen: Record<string, string[]> = {};
