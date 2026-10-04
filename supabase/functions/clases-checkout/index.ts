@@ -139,8 +139,12 @@ Deno.serve(async (req) => {
     // Pago unico: tarjeta (con Apple Pay / Google Pay) + Link. Sin metodos
     // a plazos. Checkout pide direccion de facturacion siempre y NIF/CIF
     // opcional (el comprador marca "compro como empresa"); con NIF el
-    // webhook emite factura completa. El telefono llega del formulario
-    // (metadata), no se pide aqui.
+    // webhook emite factura completa.
+    // Email y telefono: visibles y obligatorios en Checkout. No se pasa
+    // customer_email ni customer (ambos dejan el email prellenado pero
+    // BLOQUEADO): el comprador lo escribe y puede corregirlo. El webhook usa
+    // customer_details.email/.phone; los del formulario van en metadata
+    // solo como referencia.
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       payment_method_types: ['card', 'link'],
@@ -156,8 +160,8 @@ Deno.serve(async (req) => {
         },
         quantity: 1
       }],
-      customer_email: email,
       customer_creation: 'always',
+      phone_number_collection: { enabled: true },
       billing_address_collection: 'required',
       tax_id_collection: { enabled: true },
       success_url: `${siteUrl}/partners/gracias/?session_id={CHECKOUT_SESSION_ID}`,
@@ -167,6 +171,7 @@ Deno.serve(async (req) => {
         clase_id,
         nombre,
         telefono,
+        email_formulario: email,
         desistimiento_renunciado: 'false',
         event_id,
         utm_source,
