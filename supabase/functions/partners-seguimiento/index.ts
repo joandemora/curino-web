@@ -27,6 +27,9 @@
 //     «Quiero recibir también otras formaciones…» (/partners/novedades/).
 //   - El aviso a Juan sale para todas las solicitudes completas, solo en los
 //     4 dias siguientes a completada_at.
+//   - Lista de supresion (partners_supresion, hash SHA-256 del email): no se
+//     procesa una solicitud de un email borrado desde el CRM si se creo antes
+//     del borrado (reimportacion). Si vuelve a rellenar el formulario, entra.
 //   - Email 3 (oferta sesion) solo si PARTNERS_SEGUIMIENTO_SESION_ACTIVO='true'.
 //
 // Interruptor: no envia nada mientras PARTNERS_SEGUIMIENTO_ACTIVO !== 'true'.
@@ -202,6 +205,11 @@ ${row('utm_source / campaign', [lead.utm_source, lead.utm_campaign].filter(Boole
 </body></html>`;
 }
 
+async function emailHash(email: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(email || '').trim().toLowerCase()));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 // ── Procesar una solicitud ─────────────────────────────────────────
 // deno-lint-ignore no-explicit-any
 async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: number): Promise<string[]> {
@@ -304,8 +312,16 @@ Deno.serve(async (req) => {
     .or(`secuencia_inicio_at.gt.${desde},and(secuencia_inicio_at.is.null,completada_at.gt.${desde})`)
     .order('completada_at', { ascending: true }).limit(200);
   if (error) { console.error('seguimiento: select', error); return json({ error: 'select' }, 500); }
+  // Supresion: hash del email de cada lead → fecha del borrado
+  const hashes = await Promise.all((leads || []).map((l: Lead) => emailHash(l.email)));
+  const { data: sup } = hashes.length
+    ? await supabase.from('partners_supresion').select('email_hash, created_at').in('email_hash', hashes)
+    : { data: [] };
+  const supMap = new Map<string, string>((sup || []).map((x: Lead) => [x.email_hash, x.created_at]));
   const resumen: Record<string, string[]> = {};
-  for (const lead of leads || []) {
+  for (const [i, lead] of (leads || []).entries()) {
+    const borrado = supMap.get(hashes[i]);
+    if (borrado && new Date(lead.created_at) < new Date(borrado)) { resumen[lead.id] = ['suprimido']; continue; }
     try {
       const l = await procesar(supabase, lead, 3600, ahora);
       if (l.length) resumen[lead.id] = l;

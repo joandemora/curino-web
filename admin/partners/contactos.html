@@ -30,6 +30,7 @@
     <label>Hasta <input type="date" id="fHasta"></label>
     <span class="pa-count" id="contador"></span>
     <button type="button" class="pa-btn primary" id="btnEmailSel" disabled>Enviar email a seleccionados</button>
+    <button type="button" class="pa-btn danger" id="btnBorrarSel" disabled>Borrar seleccionados</button>
   </div>
 
   <div class="pa-wrap">
@@ -50,7 +51,7 @@
 <script>
 (function () {
   'use strict';
-  var supa, todos = [];
+  var supa, todos = [], conCompras = {};
   var $ = function (s) { return document.querySelector(s); };
 
   initAdminShell({ activeSection: 'partners-contactos', title: 'Partners · Contactos' })
@@ -65,7 +66,11 @@
   });
 
   function cargar() {
-    return supa.from('partners_solicitudes').select('*').order('created_at', { ascending: false }).limit(2000)
+    return supa.rpc('crm_partners_contactos_con_compras').then(function (c) {
+      conCompras = {};
+      (c.data || []).forEach(function (id) { conCompras[id] = true; });
+      return supa.from('partners_solicitudes').select('*').order('created_at', { ascending: false }).limit(2000);
+    })
       .then(function (r) {
         if (r.error) { $('#filas').innerHTML = '<tr><td colspan="14" class="pa-empty">Error: ' + PA.esc(r.error.message) + '</td></tr>'; return; }
         todos = r.data || [];
@@ -139,6 +144,7 @@
     var n = Object.keys(sel).length;
     $('#btnEmailSel').disabled = !n;
     $('#btnEmailSel').textContent = n ? 'Enviar email a ' + n + ' seleccionado' + (n === 1 ? '' : 's') : 'Enviar email a seleccionados';
+    $('#btnBorrarSel').disabled = !n;
   }
   document.addEventListener('change', function (e) {
     var cc = e.target.closest('[data-consent]');
@@ -151,6 +157,23 @@
       pintarSel();
     }
   });
+  // Borrado (solo admin; la RPC rechaza los que tienen compras)
+  $('#btnBorrarSel').addEventListener('click', function () {
+    var elegidos = todos.filter(function (s) { return sel[s.id]; });
+    var borrables = elegidos.filter(function (s) { return !conCompras[s.id]; });
+    var bloqueados = elegidos.filter(function (s) { return conCompras[s.id]; });
+    if (!borrables.length) { PA.toast(PA.AVISO_COMPRAS); return; }
+    PA.confirmarBorrado(borrables, bloqueados).then(function (ok) {
+      if (!ok) return;
+      supa.rpc('crm_partners_borrar_contactos', { p_ids: borrables.map(function (s) { return s.id; }) }).then(function (r) {
+        if (r.error) { PA.toast('Error: ' + r.error.message); return; }
+        var hechos = (r.data || []).filter(function (x) { return x.ok; }).length;
+        PA.toast(hechos + ' contacto' + (hechos === 1 ? '' : 's') + ' borrado' + (hechos === 1 ? '' : 's'));
+        sel = {}; pintarSel(); cargar();
+      });
+    });
+  });
+
   $('#btnEmailSel').addEventListener('click', function () {
     location.href = '/admin/partners/emails.html?tipo=comercial&ids=' + Object.keys(sel).join(',');
   });
