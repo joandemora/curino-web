@@ -15,7 +15,14 @@
 //   'step'  — pasos 1-4: { id, token, paso, ...respuesta del paso }
 //             Al completar el paso 4 calcula cualificado/segmento y manda
 //             el email "solicitud completa" con todas las respuestas.
-//   'cta'   — pantalla final: { id, token, cta: 'checkout'|'whatsapp' }
+//             Acepta dos formatos (transicion v1 → v2, 2026-10):
+//               v2 (vigente): situacion_actual, experiencia, dedicacion,
+//                  inicio. cualificado = inicio <> 'informandome'.
+//               v1 (landing anterior): p1_dedicacion, p2_situacion +
+//                  p2_instagram_web, p3_inicio, p4_inversion.
+//             Se distingue por el nombre del campo, no por `paso`.
+//   'cta'   — pantalla final: { id, token,
+//             cta: 'checkout'|'whatsapp'|'whatsapp_one_to_one' }
 //
 // Hardening: honeypot, rate limit por hash IP (max 5 'start'/hora),
 // validacion estricta de valores de opcion (CHECK en la tabla tambien).
@@ -64,11 +71,46 @@ const P4: Record<string, string> = {
   semanas: 'Necesito unas semanas para organizarme',
   no: 'Ahora mismo no'
 };
+// v2
+const SITUACION: Record<string, string> = {
+  cuenta_ajena: 'Trabajo por cuenta ajena',
+  autonomo_negocio: 'Soy autónomo o tengo un negocio',
+  cambio_profesional: 'Busco un cambio profesional',
+  estudiando: 'Estoy estudiando'
+};
+const EXPERIENCIA: Record<string, string> = {
+  reformas_carpinteria: 'Reformas o carpintería',
+  interiorismo_arquitectura: 'Interiorismo o arquitectura',
+  ventas_atencion: 'Ventas o atención al cliente',
+  desde_cero: 'No, empiezo desde cero'
+};
+const DEDICACION: Record<string, string> = {
+  '1_2_horas': '1-2 horas al día',
+  media_jornada: 'Media jornada',
+  tiempo_completo: 'Quiero dedicarme a tiempo completo'
+};
+const INICIO: Record<string, string> = {
+  noviembre: 'Ya, en el intensivo de noviembre',
+  proximos_meses: 'En los próximos meses',
+  informandome: 'Solo estoy informándome'
+};
+const V2_FIELDS: Record<string, Record<string, string>> = {
+  situacion_actual: SITUACION,
+  experiencia: EXPERIENCIA,
+  dedicacion: DEDICACION,
+  inicio: INICIO
+};
+
 const SEGMENTO_LABEL: Record<string, string> = {
   cualificado: 'CUALIFICADO',
   necesita_semanas: 'Necesita unas semanas (seguimiento)',
   informandose: 'Solo informándose',
   sin_presupuesto: 'Sin presupuesto ahora'
+};
+const CTA_LABEL: Record<string, string> = {
+  checkout: 'Acceder ahora (checkout)',
+  whatsapp: 'WhatsApp (dudas)',
+  whatsapp_one_to_one: 'WhatsApp (one-to-one)'
 };
 
 function str(v: unknown, max = 480): string {
@@ -93,6 +135,12 @@ function generateToken(): string {
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function segmentoV2(inicio: string): { cualificado: boolean; segmento: string } {
+  return inicio === 'informandome'
+    ? { cualificado: false, segmento: 'informandose' }
+    : { cualificado: true, segmento: 'cualificado' };
 }
 
 function segmentoDe(p3: string | null, p4: string | null): { cualificado: boolean; segmento: string } {
@@ -137,6 +185,10 @@ function waLink(prefijo: string, telefono: string): string {
   return `https://wa.me/${(prefijo + telefono).replace(/\D/g, '')}`;
 }
 
+function esV1(s: any): boolean {
+  return !!(s.p1_dedicacion || s.p2_situacion || s.p3_inicio || s.p4_inversion);
+}
+
 function solicitudHtml(s: any, titulo: string): string {
   const tel = `${s.telefono_prefijo} ${s.telefono}`;
   const origen = [s.utm_source, s.utm_medium, s.utm_campaign, s.utm_content, s.utm_term]
@@ -149,11 +201,18 @@ function solicitudHtml(s: any, titulo: string): string {
     ${row('Email', s.email)}
     ${row('Teléfono', tel)}
     ${s.segmento ? row('Resultado', SEGMENTO_LABEL[s.segmento] || s.segmento) : ''}
+    ${s.perfil_one_to_one ? row('Perfil', '⭐ Perfil one-to-one (quiere dedicarse a tiempo completo)') : ''}
+    ${esV1(s) ? `
     ${row('1. A qué se dedica', P1[s.p1_dedicacion] || null)}
     ${row('2. Situación', s.p2_situacion)}
     ${row('2. Instagram / web', s.p2_instagram_web)}
     ${row('3. Cuándo empezar', P3[s.p3_inicio] || null)}
-    ${row('4. Inversión', P4[s.p4_inversion] || null)}
+    ${row('4. Inversión', P4[s.p4_inversion] || null)}` : `
+    ${row('1. Situación actual', SITUACION[s.situacion_actual] || null)}
+    ${row('2. Experiencia', EXPERIENCIA[s.experiencia] || null)}
+    ${row('3. Tiempo que puede dedicar', DEDICACION[s.dedicacion] || null)}
+    ${row('4. Cuándo empezar', INICIO[s.inicio] || null)}`}
+    ${s.cta_final ? row('Eligió', CTA_LABEL[s.cta_final] || s.cta_final) : ''}
     ${row('Paso alcanzado', `${s.paso_alcanzado} de 4`)}
     ${row('Origen (UTM)', origen || null)}
     ${row('fbclid', s.fbclid ? 'sí' : null)}
@@ -304,8 +363,15 @@ Deno.serve(async (req) => {
 
     if (action === 'step') {
       const paso = Number(body?.paso);
+      if (!Number.isInteger(paso) || paso < 1 || paso > 4) return jsonResponse({ error: 'invalid_paso' }, 400);
       const update: Record<string, unknown> = {};
-      if (paso === 1) {
+      const v2Field = Object.keys(V2_FIELDS).find(k => body?.[k] != null);
+      if (v2Field) {
+        const v = str(body?.[v2Field], 40);
+        if (!V2_FIELDS[v2Field][v]) return jsonResponse({ error: `invalid_${v2Field}` }, 400);
+        update[v2Field] = v;
+        if (v2Field === 'dedicacion') update.perfil_one_to_one = v === 'tiempo_completo';
+      } else if (paso === 1) {
         const v = str(body?.p1_dedicacion, 40);
         if (!P1[v]) return jsonResponse({ error: 'invalid_p1' }, 400);
         update.p1_dedicacion = v;
@@ -330,7 +396,11 @@ Deno.serve(async (req) => {
 
       const merged = { ...current, ...update };
       let result: { cualificado: boolean; segmento: string } | null = null;
-      if (merged.p3_inicio && merged.p4_inversion) {
+      if (v2Field && merged.inicio) {
+        result = segmentoV2(merged.inicio);
+        update.cualificado = result.cualificado;
+        update.segmento = result.segmento;
+      } else if (!v2Field && merged.p3_inicio && merged.p4_inversion) {
         result = segmentoDe(merged.p3_inicio, merged.p4_inversion);
         update.cualificado = result.cualificado;
         update.segmento = result.segmento;
@@ -349,7 +419,8 @@ Deno.serve(async (req) => {
 
       if (paso === 4 && !saved.notificado_completa_at) {
         try {
-          const tag = result?.cualificado ? '✅ CUALIFICADO' : (SEGMENTO_LABEL[saved.segmento] || '');
+          const tag = (result?.cualificado ? '✅ CUALIFICADO' : (SEGMENTO_LABEL[saved.segmento] || ''))
+            + (saved.perfil_one_to_one ? ' · ⭐ one-to-one' : '');
           const ok = await notify(
             `Solicitud completa Partners: ${saved.nombre} — ${tag}`,
             solicitudHtml(saved, 'Solicitud completa — Curino Partners'),
@@ -374,7 +445,7 @@ Deno.serve(async (req) => {
 
     if (action === 'cta') {
       const cta = str(body?.cta, 20);
-      if (cta !== 'checkout' && cta !== 'whatsapp') return jsonResponse({ error: 'invalid_cta' }, 400);
+      if (!CTA_LABEL[cta]) return jsonResponse({ error: 'invalid_cta' }, 400);
       const { error } = await supabase
         .from('partners_solicitudes')
         .update({ cta_final: cta, cta_final_at: new Date().toISOString() })
