@@ -1,54 +1,43 @@
 // supabase/functions/partners-seguimiento/index.ts
 //
-// Seguimiento automatico de quien completa la solicitud de /partners y no
-// compra. Invocada por pg_cron cada 15 min (X-Cron-Secret = CRON_SECRET).
+// Motor de las secuencias de Partners (editables en /admin/partners/
+// secuencias.html). Invocada por pg_cron cada 5 min (X-Cron-Secret).
 //
-// Por solicitud completa sin compra del Intensivo. Los plazos cuentan desde
-// secuencia_inicio_at si existe (solicitudes anteriores a 2026-10 o
-// consentimiento activado a mano) y si no desde completada_at:
-//   +30 min  aviso a Juan (info@casacurino.com) "Sin comprar: …"   aviso_sin_compra_at
-//   +1 h     email 1: enlace por si se cerro                     seguimiento_1_at
-//   +24 h    email 2: caso Maria Alcalde + 3 dudas               seguimiento_2_at
-//   +48 h    email 3: oferta Sesion 1:1 (60 € durante 3 h)       seguimiento_3_at + oferta_sesion_enviada_at
-//   +72 h    email 4: plazas reales del Intensivo (ultimo)        seguimiento_4_at
-// Reglas:
-//   - Compra del Intensivo (pagado_at) → se cancela todo.
-//   - Compra de la Sesion (sesion_comprada_at) → se salta el email 3.
-//   - Baja (baja_at) → no mas emails al lead (el aviso a Juan si sale).
-//   - Intensivo agotado o sin edicion → el email 4 no se envia.
-//   - Como mucho un email al lead por ejecucion; si hay varios vencidos
-//     (p. ej. el cron estuvo parado) solo se envia el mas reciente y los
-//     anteriores se marcan como procesados sin enviar.
-//   - Las marcas *_at evitan repetir (tambien cuando un paso se salta).
-//   - Emails 1, 2 y 4 (sobre el intensivo solicitado): leads con
-//     consentimiento_solicitud (casilla unica del formulario).
-//   - Email 3 (oferta sesion 1:1): ademas consentimiento_comercial; sin el se
-//     salta. Desde la casilla unica (2026-10) el formulario marca los dos;
-//     solo las solicitudes anteriores tienen «solo solicitud».
-//   - El aviso a Juan sale para todas las solicitudes completas, solo en los
-//     4 dias siguientes a completada_at.
-//   - Lista de supresion (partners_supresion, hash SHA-256 del email): no se
-//     procesa una solicitud de un email borrado desde el CRM si se creo antes
-//     del borrado (reimportacion). Si vuelve a rellenar el formulario, entra.
-//   - Email 3 (oferta sesion) solo si PARTNERS_SEGUIMIENTO_SESION_ACTIVO='true'.
+// Por cada secuencia activa (partners_secuencias) y cada solicitud que cumple
+// su disparador («solicitud completa sin compra»: completada_at, sin
+// pagado_at si sale_compra_intensivo, consentimiento_solicitud, sin baja):
+//   - Los plazos de cada paso (retraso_minutos) cuentan desde
+//     secuencia_inicio_at si existe, si no desde completada_at.
+//   - Solo envia dentro de la franja de la secuencia (hora de Madrid); fuera
+//     de ella espera a la siguiente.
+//   - Como mucho un email por solicitud y secuencia en cada ejecucion: si hay
+//     varios pasos vencidos, sale el mas reciente y los anteriores se marcan
+//     como saltados («retraso»).
+//   - Condiciones del paso (si no se cumplen se salta para ese contacto):
+//     req_comercial, req_sesion_activa (PARTNERS_SEGUIMIENTO_SESION_ACTIVO),
+//     req_plazas, no_si_sesion_comprada. Una variable vacia tambien lo salta.
+//   - activa_oferta_sesion marca oferta_sesion_enviada_at (precio 60 € 3 h).
+//   - Salidas: compra del intensivo / de la sesion segun la secuencia; baja
+//     y borrado siempre; lista de supresion (partners_supresion).
+//   - partners_secuencia_estado (unico por solicitud y paso) evita repetir:
+//     se reserva antes de enviar y se libera si Resend falla.
+// Aparte, aviso a Juan (info@) +30 min de cada solicitud completa sin compra
+// (solo en los 4 dias siguientes a completada_at).
 //
-// Interruptor: no envia nada mientras PARTNERS_SEGUIMIENTO_ACTIVO !== 'true'.
-// Modo prueba: { modo: 'prueba', solicitud_id, segundos_por_hora } procesa
-// solo esa solicitud (nombre debe empezar por "PRUEBA") con los plazos
-// acelerados (1 h → segundos_por_hora segundos), aunque el interruptor este
-// apagado.
+// Modo prueba: { modo: 'prueba', solicitud_id, secuencia_id?,
+// segundos_por_hora } procesa solo esa solicitud (nombre «PRUEBA…») con los
+// plazos acelerados (1 h → segundos_por_hora s), sin franja y aunque la
+// secuencia este pausada.
 //
-// Remitente: "Juan de Mora <info@casacurino.com>", reply_to info@.
+// Remitente: «Juan de Mora <info@casacurino.com>», reply_to info@.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { signLeadToken } from '../_shared/lead-token.ts'
-import { SESION } from '../_shared/sesion-config.ts'
+import { SITE, construirVars, edicionAbierta, esc, layout, plazasLibres, renderCuerpo, sustituir, variablesUsadas } from '../_shared/crm-render.ts'
 
-const SITE = 'https://www.casacurino.com';
-const WA = '34611965612';
-const IG_MARIA = 'https://www.instagram.com/p/DZNH1qfMFY0/';
 const FROM_JUAN = 'Juan de Mora <info@casacurino.com>';
 const AVISO_TO = 'info@casacurino.com';
+const SECUENCIA_DEFECTO = '5e9a0001-0000-4000-8000-000000000001';
 
 const P1: Record<string, string> = {
   cuenta_ajena: 'Trabajo por cuenta ajena', autonomo_negocio: 'Soy autónomo o tengo un negocio',
@@ -65,10 +54,12 @@ const P4: Record<string, string> = {
   noviembre: 'Ya, en el intensivo de noviembre', proximos_meses: 'En los próximos meses', informandome: 'Solo estoy informándome'
 };
 
-function esc(s: unknown): string {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
+
+// deno-lint-ignore no-explicit-any
+type Lead = any;
+// deno-lint-ignore no-explicit-any
+type Any = any;
 
 async function resendId(payload: Record<string, unknown>): Promise<string | null> {
   const r = await fetch('https://api.resend.com/emails', {
@@ -79,107 +70,6 @@ async function resendId(payload: Record<string, unknown>): Promise<string | null
   if (!r.ok) { console.error('seguimiento: Resend', r.status, await r.text()); return null; }
   const d = await r.json().catch(() => ({}));
   return d?.id || 'sin-id';
-}
-async function resend(payload: Record<string, unknown>): Promise<boolean> {
-  return (await resendId(payload)) !== null;
-}
-
-// ── Plantilla "email personal": texto sencillo, un boton discreto ────────
-function personal(parrafos: string[], boton: { url: string; label: string } | null, bajaUrl: string): string {
-  const ps = parrafos.map((p) => `<p style="margin:0 0 14px">${p}</p>`).join('');
-  const btn = boton
-    ? `<p style="margin:18px 0"><a href="${esc(boton.url)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:11px 20px;text-decoration:none;border-radius:4px">${esc(boton.label)}</a></p>`
-    : '';
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px;margin:0 auto;padding:16px">
-${ps}${btn}
-<p style="margin:0 0 14px">Juan de Mora · Curino</p>
-<p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">Recibes este email porque solicitaste información sobre el Intensivo Curino Partners en casacurino.com. Si no quieres recibir más, <a href="${esc(bajaUrl)}" style="color:#999">date de baja aquí</a>. SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
-</body></html>`;
-}
-
-// deno-lint-ignore no-explicit-any
-type Lead = any;
-
-// deno-lint-ignore no-explicit-any
-async function intensivo(supabase: any) {
-  const { data } = await supabase.from('clases')
-    .select('plazas_totales, plazas_ocupadas, estado')
-    .eq('tipo', 'directo').eq('oculta', false).in('estado', ['abierta', 'agotada'])
-    .gt('fecha', new Date().toISOString()).order('fecha', { ascending: true }).limit(1).maybeSingle();
-  if (!data) return null;
-  return { libres: Math.max(0, data.plazas_totales - data.plazas_ocupadas), total: data.plazas_totales, abierta: data.estado === 'abierta' };
-}
-
-// ── Contenido de cada email ──────────────────────────────────────────
-// deno-lint-ignore no-explicit-any
-async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{ subject: string; html: string } | null> {
-  const nombre = String(lead.nombre || '').split(' ')[0] || 'hola';
-  const token = await signLeadToken(lead.id);
-  const checkoutUrl = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}&ir=intensivo`;
-  const formacionesUrl = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}`;
-  const bajaUrl = `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`;
-  // Solicitudes antiguas incorporadas despues: el email 1 no habla de
-  // «se te cerro la pagina».
-  const antigua = !!lead.secuencia_inicio_at && lead.completada_at
-    && new Date(lead.secuencia_inicio_at).getTime() - new Date(lead.completada_at).getTime() > 24 * 3600_000;
-  const waUrl = `https://wa.me/${WA}?text=${encodeURIComponent(`Hola Juan, soy ${nombre}. Tengo una duda sobre el intensivo Curino Partners.`)}`;
-
-  if (n === 1) {
-    return {
-      subject: antigua ? `${nombre}, sobre tu solicitud del intensivo` : `${nombre}, te dejo el enlace por si se te cerró`,
-      html: personal([
-        `Hola ${esc(nombre)},`,
-        antigua
-          ? 'Te escribo por la solicitud que hiciste para el Intensivo Curino Partners, por si sigues con la idea de empezar.'
-          : 'Te escribo por si se te cerró la página después de rellenar la solicitud del Intensivo Curino Partners.',
-        'Te recuerdo lo que incluye:<br>· 4 semanas y 8 clases en directo por Zoom conmigo.<br>· El negocio, producto y producción, diseño y presupuesto, y cómo vender y entregar.<br>· Plantilla de presupuesto, contrato de venta, catálogo y acceso al CAD de Curino.<br>· El grupo de WhatsApp de tu promoción.',
-        'Aquí tienes el enlace para reservar tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
-        `<p style="margin:0 0 14px">Si tienes cualquier duda, respóndeme a este email o <a href="${esc(waUrl)}">escríbeme por WhatsApp</a>.</p><p style="margin:0 0 14px">Juan de Mora · Curino</p>`)
-    };
-  }
-  if (n === 2) {
-    return {
-      subject: 'El tipo de proyecto que vas a aprender a vender',
-      html: personal([
-        `Hola ${esc(nombre)},`,
-        `Te enseño un proyecto real: el armario a medida que hicimos para Maria Alcalde. Ella misma lo enseñó en su Instagram: <a href="${esc(IG_MARIA)}">${esc(IG_MARIA)}</a>`,
-        'Este es el tipo de proyecto que se vende en este sector, y lo que aprenderás a vender en el intensivo: diseño, presupuesto y entrega, sin taller propio.',
-        'Las tres dudas que más me preguntan:',
-        '<strong>«No sé nada de carpintería.»</strong> No vas a fabricar nada: tu trabajo es diseñar, presupuestar y vender. Lo que necesitas saber de materiales, acabados y herrajes lo vemos en la semana 2.',
-        '<strong>«No tengo mucho tiempo.»</strong> Son 8 clases en directo en 4 semanas, dos por semana. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias.',
-        '<strong>«¿Cómo son las clases?»</strong> En directo por Zoom, con tiempo para tus preguntas en cada una, y con el grupo de WhatsApp de la promoción entre clase y clase.',
-        'Si lo tienes claro, aquí tienes tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl)
-    };
-  }
-  if (n === 3) {
-    const oferta = (SESION.precioOfertaCents / 100).toLocaleString('es-ES');
-    const normal = (SESION.precioNormalCents / 100).toLocaleString('es-ES');
-    return {
-      subject: 'Si aún no es tu momento para el intensivo',
-      html: personal([
-        `Hola ${esc(nombre)},`,
-        `Si aún no es tu momento para el intensivo, empieza con una sesión 1:1 conmigo de 30 min y llévate los recursos iniciales para arrancar en el sector.`,
-        'En 30 minutos vemos tu situación y tu plan para empezar, y te llevas los recursos iniciales: la plantilla de presupuesto, la lista de proveedores con los que empezar y los primeros pasos para conseguir tu primer cliente.',
-        `Solo para ti: <strong>${oferta} € durante las próximas ${SESION.ofertaHoras} horas</strong> (después, ${normal} €).`
-      ], { url: formacionesUrl, label: `Quiero mi sesión por ${oferta} €` }, bajaUrl)
-    };
-  }
-  // n === 4
-  const int = await intensivo(supabase);
-  if (!int || !int.abierta || int.libres <= 0) return null; // agotado o sin edicion → no se envia
-  return {
-    subject: `Quedan ${int.libres} de ${int.total} plazas`,
-    html: personal([
-      `Hola ${esc(nombre)},`,
-      `Último email sobre esto: en la primera edición del Intensivo Curino Partners quedan <strong>${int.libres} de ${int.total} plazas</strong>.`,
-      'Es el mismo modelo con el que hemos hecho proyectos como el de Maria Alcalde.',
-      'Aquí tienes todas las formaciones, por si quieres empezar por el intensivo o con una sesión conmigo:',
-    ], { url: formacionesUrl, label: 'Ver las formaciones' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
-      '<p style="margin:0 0 14px">Si no es tu momento, no pasa nada. Cuando quieras, respóndeme a este email.</p><p style="margin:0 0 14px">Juan de Mora · Curino</p>')
-  };
 }
 
 function avisoJuanHtml(lead: Lead): string {
@@ -202,87 +92,116 @@ ${row('utm_source / campaign', [lead.utm_source, lead.utm_campaign].filter(Boole
 </body></html>`;
 }
 
+// Minutos del dia en Madrid
+function minutosMadrid(ahora: number): number {
+  const p = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Madrid' }).formatToParts(new Date(ahora));
+  return Number(p.find((x) => x.type === 'hour')?.value) * 60 + Number(p.find((x) => x.type === 'minute')?.value);
+}
+const aMin = (t: string) => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+function enFranja(sec: Any, ahora: number): boolean {
+  const m = minutosMadrid(ahora), ini = aMin(sec.franja_inicio), fin = aMin(sec.franja_fin);
+  return ini <= fin ? m >= ini && m < fin : m >= ini || m < fin;   // franja que cruza medianoche
+}
+
 async function emailHash(email: string): Promise<string> {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(email || '').trim().toLowerCase()));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Procesar una solicitud ─────────────────────────────────────────
-// deno-lint-ignore no-explicit-any
-async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: number): Promise<string[]> {
-  const log: string[] = [];
-  if (lead.pagado_at) return log; // compro el intensivo → nada
+// ── Aviso a Juan (+30 min) ────────────────────────────────────────
+async function avisoJuan(supabase: Any, lead: Lead, segPorHora: number, ahora: number): Promise<boolean> {
+  if (lead.aviso_sin_compra_at || lead.pagado_at) return false;
   const completada = new Date(lead.completada_at).getTime();
-  const base = lead.secuencia_inicio_at ? new Date(lead.secuencia_inicio_at).getTime() : completada;
-  const vencido = (horas: number) => ahora >= base + horas * segPorHora * 1000;
-  const marca = async (cols: Record<string, string>) => {
-    await supabase.from('partners_solicitudes').update(cols).eq('id', lead.id);
-    Object.assign(lead, cols);
-  };
-  const now = () => new Date().toISOString();
-
-  // Aviso a Juan (+30 min). Tambien si el lead se dio de baja.
-  if (!lead.aviso_sin_compra_at && ahora >= completada + 0.5 * segPorHora * 1000
-      && ahora < completada + 96 * segPorHora * 1000) {
-    const ok = await resend({
-      from: 'Curino Partners — Solicitudes <noreply@casacurino.com>', to: [AVISO_TO], reply_to: lead.email,
-      subject: `Sin comprar: ${lead.nombre} (${lead.cualificado ? 'cualificado' : 'no cualificado'})`,
-      html: avisoJuanHtml(lead)
-    });
-    if (ok) { await marca({ aviso_sin_compra_at: now() }); log.push('aviso_juan'); }
-  }
-
-  // Emails al lead: con consentimiento_solicitud y sin baja.
-  if (lead.baja_at || !lead.consentimiento_solicitud) return log;
-
-  // Pasos vencidos y pendientes
-  const pasos: { n: 1 | 2 | 3 | 4; horas: number; col: string }[] = [
-    { n: 1, horas: 1, col: 'seguimiento_1_at' },
-    { n: 2, horas: 24, col: 'seguimiento_2_at' },
-    { n: 3, horas: 48, col: 'seguimiento_3_at' },
-    { n: 4, horas: 72, col: 'seguimiento_4_at' }
-  ];
-  const pendientes = pasos.filter((p) => !lead[p.col] && vencido(p.horas));
-  if (!pendientes.length) return log;
-  const ultimo = pendientes[pendientes.length - 1];
-  for (const p of pendientes.slice(0, -1)) { await marca({ [p.col]: now() }); log.push(`email_${p.n}:saltado_por_retraso`); }
-
-  // La oferta de la sesion es comercial: sin consentimiento_comercial no sale.
-  if (ultimo.n === 3 && !lead.consentimiento_comercial) {
-    await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sin_comercial'); return log;
-  }
-  if (ultimo.n === 3 && lead.sesion_comprada_at) {
-    await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sesion_comprada'); return log;
-  }
-  // Activacion por partes: sin PARTNERS_SEGUIMIENTO_SESION_ACTIVO la oferta
-  // de la sesion (email 3) no se envia.
-  if (ultimo.n === 3 && Deno.env.get('PARTNERS_SEGUIMIENTO_SESION_ACTIVO') !== 'true') {
-    await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sesion_inactiva'); return log;
-  }
-  const email = await construir(ultimo.n, lead, supabase);
-  if (!email) { await marca({ [ultimo.col]: now() }); log.push(`email_${ultimo.n}:no_enviado_agotado`); return log; }
-
-  // Baja en un clic (List-Unsubscribe) + registro en partners_emails (CRM).
-  const token = await signLeadToken(lead.id);
+  if (ahora < completada + 0.5 * segPorHora * 1000 || ahora >= completada + 96 * segPorHora * 1000) return false;
   const id = await resendId({
-    from: FROM_JUAN, to: [lead.email], reply_to: 'info@casacurino.com', subject: email.subject, html: email.html,
+    from: 'Curino Partners — Solicitudes <noreply@casacurino.com>', to: [AVISO_TO], reply_to: lead.email,
+    subject: `Sin comprar: ${lead.nombre} (${lead.cualificado ? 'cualificado' : 'no cualificado'})`,
+    html: avisoJuanHtml(lead)
+  });
+  if (!id) return false;
+  await supabase.from('partners_solicitudes').update({ aviso_sin_compra_at: new Date().toISOString() }).eq('id', lead.id);
+  return true;
+}
+
+// ── Una solicitud en una secuencia ────────────────────────────────
+async function procesar(supabase: Any, sec: Any, pasos: Any[], lead: Lead, hechos: Set<string>,
+  abierta: Any, segPorHora: number, ahora: number): Promise<string[]> {
+  const log: string[] = [];
+  if (lead.baja_at || !lead.consentimiento_solicitud) return log;
+  if (sec.sale_compra_intensivo && lead.pagado_at) return log;
+  if (sec.sale_compra_sesion && lead.sesion_comprada_at) return log;
+  const base = new Date(lead.secuencia_inicio_at || lead.completada_at).getTime();
+  const pendientes = pasos.filter((p) => !hechos.has(p.id) && ahora >= base + p.retraso_minutos * 60 * segPorHora / 3600 * 1000);
+  if (!pendientes.length) return log;
+
+  const marcar = async (paso: Any, estado: string, motivo: string | null, emailId: string | null = null) => {
+    const { error } = await supabase.from('partners_secuencia_estado')
+      .insert({ solicitud_id: lead.id, secuencia_id: sec.id, paso_id: paso.id, estado, motivo, email_id: emailId });
+    return !error;   // error = ya existia (otra ejecucion)
+  };
+  const ultimo = pendientes[pendientes.length - 1];
+  for (const p of pendientes.slice(0, -1)) { if (await marcar(p, 'saltado', 'retraso')) log.push(`${p.orden}:saltado_retraso`); }
+
+  // Condiciones del paso
+  const libres = plazasLibres(abierta);
+  const motivo =
+    ultimo.req_comercial && !lead.consentimiento_comercial ? 'sin consentimiento comercial'
+    : ultimo.no_si_sesion_comprada && lead.sesion_comprada_at ? 'sesión comprada'
+    : ultimo.req_sesion_activa && Deno.env.get('PARTNERS_SEGUIMIENTO_SESION_ACTIVO') !== 'true' ? 'sesión inactiva'
+    : ultimo.req_plazas && !(abierta && abierta.estado === 'abierta' && (libres || 0) > 0) ? 'sin plazas'
+    : null;
+  if (motivo) { if (await marcar(ultimo, 'saltado', motivo)) log.push(`${ultimo.orden}:saltado (${motivo})`); return log; }
+
+  const vars = await construirVars({ nombre: lead.nombre, email: lead.email, solicitud_id: lead.id },
+    abierta, abierta?.titulo || 'Intensivo Curino Partners', abierta);
+  const vacias = variablesUsadas(ultimo.asunto, ultimo.cuerpo).filter((v) => !vars[v]);
+  if (vacias.length) {
+    const m = `variable vacía: ${vacias.map((v) => `{${v}}`).join(', ')}`;
+    if (await marcar(ultimo, 'saltado', m)) log.push(`${ultimo.orden}:saltado (${m})`);
+    return log;
+  }
+
+  // Reserva el paso antes de enviar (evita duplicados entre ejecuciones)
+  if (!(await marcar(ultimo, 'enviado', null))) return log;
+  const token = await signLeadToken(lead.id);
+  const subject = sustituir(ultimo.asunto, vars, false);
+  const id = await resendId({
+    from: FROM_JUAN, to: [lead.email], reply_to: 'info@casacurino.com', subject,
+    html: layout(renderCuerpo(ultimo.cuerpo, vars), 'secuencia', `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`),
     headers: {
       'List-Unsubscribe': `<${Deno.env.get('SUPABASE_URL')}/functions/v1/partners-formaciones?accion=baja&t=${encodeURIComponent(token)}>, <mailto:info@casacurino.com?subject=baja>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
     }
   });
-  const ok = id !== null;
-  if (ok) {
-    await supabase.from('partners_emails').insert({
-      tipo: 'secuencia', asunto: email.subject, email: lead.email, nombre: lead.nombre, solicitud_id: lead.id,
-      resend_id: id === 'sin-id' ? null : id, estado: 'enviado'
-    });
-    const cols: Record<string, string> = { [ultimo.col]: now() };
-    if (ultimo.n === 3) cols.oferta_sesion_enviada_at = now();
-    await marca(cols);
-    log.push(`email_${ultimo.n}:enviado`);
+  if (!id) {
+    // Resend fallo: se libera la reserva y se reintenta en la siguiente ejecucion
+    await supabase.from('partners_secuencia_estado').delete().eq('solicitud_id', lead.id).eq('paso_id', ultimo.id);
+    log.push(`${ultimo.orden}:error_resend`);
+    return log;
   }
+  const { data: em } = await supabase.from('partners_emails').insert({
+    tipo: 'secuencia', secuencia_id: sec.id, paso_id: ultimo.id, asunto: subject, email: lead.email, nombre: lead.nombre,
+    solicitud_id: lead.id, resend_id: id === 'sin-id' ? null : id, estado: 'enviado'
+  }).select('id').single();
+  await supabase.from('partners_secuencia_estado').update({ email_id: em?.id || null }).eq('solicitud_id', lead.id).eq('paso_id', ultimo.id);
+  if (ultimo.activa_oferta_sesion) {
+    await supabase.from('partners_solicitudes').update({ oferta_sesion_enviada_at: new Date().toISOString() }).eq('id', lead.id);
+  }
+  log.push(`${ultimo.orden}:enviado`);
   return log;
+}
+
+async function cargarPasos(supabase: Any, secId: string): Promise<Any[]> {
+  const { data } = await supabase.from('partners_secuencia_pasos').select('*').eq('secuencia_id', secId).eq('activo', true)
+    .order('retraso_minutos').order('orden');
+  return data || [];
+}
+async function hechosDe(supabase: Any, secId: string, leadIds: string[]): Promise<Map<string, Set<string>>> {
+  const m = new Map<string, Set<string>>();
+  if (!leadIds.length) return m;
+  const { data } = await supabase.from('partners_secuencia_estado').select('solicitud_id, paso_id').eq('secuencia_id', secId).in('solicitud_id', leadIds);
+  for (const x of data || []) { if (!m.has(x.solicitud_id)) m.set(x.solicitud_id, new Set()); m.get(x.solicitud_id)!.add(x.paso_id); }
+  return m;
 }
 
 Deno.serve(async (req) => {
@@ -290,39 +209,65 @@ Deno.serve(async (req) => {
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const body = await req.json().catch(() => ({}));
   const ahora = Date.now();
-  const sel = '*';
+  const abierta = await edicionAbierta(supabase);
 
-  // Modo prueba: una sola solicitud "PRUEBA", plazos acelerados.
+  // Modo prueba: una sola solicitud "PRUEBA", plazos acelerados, sin franja.
   if (body?.modo === 'prueba') {
     const segPorHora = Math.max(1, Math.min(3600, Number(body?.segundos_por_hora) || 10));
-    const { data: lead } = await supabase.from('partners_solicitudes').select(sel).eq('id', String(body?.solicitud_id || '')).maybeSingle();
+    const { data: lead } = await supabase.from('partners_solicitudes').select('*').eq('id', String(body?.solicitud_id || '')).maybeSingle();
     if (!lead || !/^PRUEBA/i.test(String(lead.nombre || '')) || !lead.completada_at) return json({ error: 'solo_solicitudes_prueba_completas' }, 400);
-    return json({ ok: true, modo: 'prueba', log: await procesar(supabase, lead, segPorHora, ahora) });
+    const { data: sec } = await supabase.from('partners_secuencias').select('*').eq('id', String(body?.secuencia_id || SECUENCIA_DEFECTO)).maybeSingle();
+    if (!sec) return json({ error: 'secuencia_no_encontrada' }, 404);
+    const log: string[] = [];
+    if (await avisoJuan(supabase, lead, segPorHora, ahora)) log.push('aviso_juan');
+    const pasos = await cargarPasos(supabase, sec.id);
+    const hechos = (await hechosDe(supabase, sec.id, [lead.id])).get(lead.id) || new Set<string>();
+    log.push(...await procesar(supabase, sec, pasos, lead, hechos, abierta, segPorHora, ahora));
+    return json({ ok: true, modo: 'prueba', log });
   }
 
-  if (Deno.env.get('PARTNERS_SEGUIMIENTO_ACTIVO') !== 'true') return json({ ok: true, activo: false });
-
-  const desde = new Date(ahora - 4 * 24 * 3600_000).toISOString();
-  const { data: leads, error } = await supabase.from('partners_solicitudes').select(sel)
-    .not('completada_at', 'is', null).is('pagado_at', null)
-    // ventana de la secuencia (4 dias desde secuencia_inicio_at o completada_at)
-    .or(`secuencia_inicio_at.gt.${desde},and(secuencia_inicio_at.is.null,completada_at.gt.${desde})`)
-    .order('completada_at', { ascending: true }).limit(200);
-  if (error) { console.error('seguimiento: select', error); return json({ error: 'select' }, 500); }
-  // Supresion: hash del email de cada lead → fecha del borrado
-  const hashes = await Promise.all((leads || []).map((l: Lead) => emailHash(l.email)));
-  const { data: sup } = hashes.length
-    ? await supabase.from('partners_supresion').select('email_hash, created_at').in('email_hash', hashes)
-    : { data: [] };
-  const supMap = new Map<string, string>((sup || []).map((x: Lead) => [x.email_hash, x.created_at]));
   const resumen: Record<string, string[]> = {};
-  for (const [i, lead] of (leads || []).entries()) {
-    const borrado = supMap.get(hashes[i]);
-    if (borrado && new Date(lead.created_at) < new Date(borrado)) { resumen[lead.id] = ['suprimido']; continue; }
-    try {
-      const l = await procesar(supabase, lead, 3600, ahora);
-      if (l.length) resumen[lead.id] = l;
-    } catch (e) { console.error('seguimiento: lead', lead.id, e); }
+  const add = (id: string, l: string[]) => { if (l.length) resumen[id] = [...(resumen[id] || []), ...l]; };
+
+  // Aviso a Juan (independiente de las secuencias)
+  const desdeAviso = new Date(ahora - 4 * 24 * 3600_000).toISOString();
+  const { data: paraAviso } = await supabase.from('partners_solicitudes').select('*')
+    .not('completada_at', 'is', null).is('pagado_at', null).is('aviso_sin_compra_at', null).gt('completada_at', desdeAviso).limit(200);
+  for (const lead of paraAviso || []) {
+    try { if (await avisoJuan(supabase, lead, 3600, ahora)) add(lead.id, ['aviso_juan']); } catch (e) { console.error('seguimiento: aviso', lead.id, e); }
   }
-  return json({ ok: true, activo: true, procesados: (leads || []).length, resumen });
+
+  // Secuencias activas
+  const { data: secs } = await supabase.from('partners_secuencias').select('*').eq('activa', true);
+  for (const sec of secs || []) {
+    if (!enFranja(sec, ahora)) { add(sec.id, ['fuera_de_franja']); continue; }
+    const pasos = await cargarPasos(supabase, sec.id);
+    if (!pasos.length) continue;
+    // Ventana: hasta el ultimo paso + 2 dias de margen
+    const maxMin = Math.max(...pasos.map((p) => p.retraso_minutos));
+    const desde = new Date(ahora - (maxMin + 2 * 24 * 60) * 60_000).toISOString();
+    let q = supabase.from('partners_solicitudes').select('*')
+      .not('completada_at', 'is', null).eq('consentimiento_solicitud', true).is('baja_at', null)
+      .or(`secuencia_inicio_at.gt.${desde},and(secuencia_inicio_at.is.null,completada_at.gt.${desde})`);
+    if (sec.sale_compra_intensivo) q = q.is('pagado_at', null);
+    const { data: leads, error } = await q.order('completada_at', { ascending: true }).limit(500);
+    if (error) { console.error('seguimiento: select', error); continue; }
+
+    // Supresion: email borrado desde el CRM y solicitud creada antes del borrado
+    const hashes = await Promise.all((leads || []).map((l: Lead) => emailHash(l.email)));
+    const { data: sup } = hashes.length
+      ? await supabase.from('partners_supresion').select('email_hash, created_at').in('email_hash', hashes)
+      : { data: [] };
+    const supMap = new Map<string, string>((sup || []).map((x: Any) => [x.email_hash, x.created_at]));
+    const hechos = await hechosDe(supabase, sec.id, (leads || []).map((l: Lead) => l.id));
+
+    for (const [i, lead] of (leads || []).entries()) {
+      const borrado = supMap.get(hashes[i]);
+      if (borrado && new Date(lead.created_at) < new Date(borrado)) continue;
+      try {
+        add(lead.id, await procesar(supabase, sec, pasos, lead, hechos.get(lead.id) || new Set(), abierta, 3600, ahora));
+      } catch (e) { console.error('seguimiento: lead', lead.id, e); }
+    }
+  }
+  return json({ ok: true, resumen });
 });

@@ -126,6 +126,29 @@ window.PA = (function () {
   }
   var AVISO_COMPRAS = 'Tiene compras: no se puede borrar. Puedes marcarlo como Descartado y darlo de baja';
 
-  return { ESTADOS: ESTADOS, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
+  // Variables de los emails (mismas que _shared/crm-render.ts) y barra de
+  // formato del editor: negrita, enlace, botón y chips de variables.
+  var VARS = ['nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes',
+    'enlace_plaza', 'enlace_formaciones', 'enlace_whatsapp', 'plazas_libres', 'plazas_totales',
+    'precio_oferta_sesion', 'precio_sesion', 'horas_oferta'];
+  function insertar(ta, antes, despues) {
+    var a = ta.selectionStart, b = ta.selectionEnd, sel = ta.value.slice(a, b);
+    ta.value = ta.value.slice(0, a) + antes + sel + despues + ta.value.slice(b);
+    ta.focus(); ta.selectionStart = a + antes.length; ta.selectionEnd = a + antes.length + sel.length;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function barraEditor(cont, getTa) {
+    var b = function (html, fn) { var x = document.createElement('button'); x.type = 'button'; x.className = 'em-chip'; x.innerHTML = html; x.addEventListener('click', fn); cont.appendChild(x); };
+    b('<b>Negrita</b>', function () { insertar(getTa(), '**', '**'); });
+    b('Enlace', function () { var u = prompt('URL del enlace (https://… o una variable como {enlace_plaza})'); if (u) insertar(getTa(), '[', '](' + u.trim() + ')'); });
+    b('Botón', function () {
+      var t = prompt('Texto del botón', 'Reservar mi plaza'); if (!t) return;
+      var u = prompt('Enlace del botón (https://… o una variable)', '{enlace_plaza}'); if (!u) return;
+      insertar(getTa(), '\n[[' + t.trim() + ']](' + u.trim() + ')\n', '');
+    });
+    VARS.forEach(function (v) { b('{' + v + '}', function () { insertar(getTa(), '{' + v + '}', ''); }); });
+  }
+
+  return { ESTADOS: ESTADOS, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
     compro: compro, waUrl: waUrl, mailUrl: mailUrl, toast: toast, estadoSelect: estadoSelect, guardarContacto: guardarContacto, abrirPdf: abrirPdf };
 })();

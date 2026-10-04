@@ -32,6 +32,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { signLeadToken } from '../_shared/lead-token.ts'
+import { SITE, construirVars, edicionAbierta, layout, renderCuerpo, sustituir, variablesUsadas } from '../_shared/crm-render.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -42,10 +43,8 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 
 const FROM = 'Juan de Mora <info@casacurino.com>';
 const PRUEBA_TO = 'joandemora@gmail.com';
-const SITE = 'https://www.casacurino.com';
 const FN_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const MAX_DEST = 1000;
-const VARS = ['nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes'];
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -55,89 +54,12 @@ interface Dest {
   vars: Record<string, string>;
 }
 
-function esc(s: unknown) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// ── Render ───────────────────────────────────────────────────
-// marcar: en vista previa y prueba, una variable vacia se ve como
-// «[{zoom} vacío]» en vez de desaparecer (el envio real esta bloqueado).
-function sustituir(texto: string, vars: Record<string, string>, html: boolean, marcar = false) {
-  return texto.replace(/\{(\w+)\}/g, (m, k) => {
-    if (!(k in vars)) return m;
-    if (!vars[k] && marcar) return html ? `<span style="background:#fde8e8;color:#912018">[{${k}} vacío]</span>` : `[{${k}} vacío]`;
-    return html ? esc(vars[k]) : vars[k];
-  });
-}
-const BOTONES: Record<string, string> = { zoom: 'Entrar a la clase en Zoom', enlace_reserva: 'Reservar mi sesión' };
-function boton(url: string, texto: string) {
-  const u = esc(url);
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px"><tr><td style="background:#12B76A;border-radius:8px">`
-    + `<a href="${u}" style="display:inline-block;padding:13px 24px;color:#ffffff;font-weight:bold;font-size:15px;text-decoration:none;border-radius:8px">${esc(texto)}</a></td></tr></table>`
-    + `<p style="margin:0 0 14px;font-size:12px;color:#666">Si no ves el botón, copia este enlace: <a href="${u}" style="color:#666;word-break:break-all">${u}</a></p>`;
-}
-export function renderCuerpo(cuerpo: string, vars: Record<string, string>, marcar = false): string {
-  // {zoom} / {enlace_reserva} solos en su linea → parrafo propio que luego
-  // se cambia por el boton (solo si el valor es una URL).
-  const conBotones = cuerpo.replace(/^[ \t]*\{(zoom|enlace_reserva)\}[ \t]*$/gm, (m, k) =>
-    /^https?:\/\//.test(vars[k] || '') ? `\n\n\u0000BTN_${k}\u0000\n\n` : m);
-  let h = sustituir(esc(conBotones), vars, true, marcar);  // vars ya escapadas dentro del texto escapado
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2">$1</a>');
-  h = h.replace(/(?<!href=")(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>');
-  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  return h.trim().split(/\n{2,}/).map((p) => {
-    const b = p.trim().match(/^\u0000BTN_(zoom|enlace_reserva)\u0000$/);
-    return b ? boton(vars[b[1]], BOTONES[b[1]]) : `<p style="margin:0 0 14px">${p.trim().replace(/\n/g, '<br>')}</p>`;
-  }).join('');
-}
-function layout(cuerpoHtml: string, tipo: string, bajaUrl: string | null): string {
-  const pie = tipo === 'comercial'
-    ? `Recibes este email porque solicitaste información sobre Curino Partners en casacurino.com. Si no quieres recibir más, <a href="${esc(bajaUrl || SITE + '/partners/baja/')}" style="color:#999">date de baja aquí</a>.`
-    : 'Recibes este email porque estás inscrito en una formación de Curino Partners.';
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px;margin:0 auto;padding:16px">
-${cuerpoHtml}
-<p style="margin:0 0 14px">Juan de Mora · Curino</p>
-<p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">${pie} SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
-</body></html>`;
-}
-function variablesUsadas(asunto: string, cuerpo: string): string[] {
-  const s = new Set<string>();
-  for (const m of (asunto + ' ' + cuerpo).matchAll(/\{(\w+)\}/g)) if (VARS.includes(m[1])) s.add(m[1]);
-  return [...s];
-}
-
-// ── Datos de ediciones ──────────────────────────────────────────
-function fechaHora(c: Any) {
-  // Fecha no confirmada = variable vacia (bloquea el envio real).
-  if (!c?.fecha || c.fecha_confirmada === false) return { fecha_inicio: '', hora: '' };
-  const d = new Date(c.fecha);
-  return {
-    fecha_inicio: new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Madrid' }).format(d),
-    hora: new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Madrid' }).format(d)
-  };
-}
-function varsBase(nombre: string, email: string, clase: Any, curso: string, plazas: string): Record<string, string> {
-  return {
-    nombre: String(nombre || '').split(' ')[0] || '',
-    email,
-    curso,
-    ...fechaHora(clase),
-    zoom: clase?.meet_url || '',
-    enlace_reserva: Deno.env.get('SESION_RESERVA_URL') || '',
-    plazas_restantes: plazas
-  };
-}
-
 // ── Resolucion de destinatarios ──────────────────────────────────
 async function resolver(supa: Any, segmento: Any, tipo: string) {
   const incluidos: Dest[] = [];
   const excluidos: { email: string; nombre: string; motivo: string }[] = [];
 
-  const { data: abiertas } = await supa.from('clases').select('*').eq('tipo', 'directo').eq('oculta', false)
-    .in('estado', ['abierta', 'agotada']).gt('fecha', new Date().toISOString()).order('fecha').limit(1);
-  const abierta = abiertas?.[0] || null;
-  const plazas = abierta ? String(Math.max(0, abierta.plazas_totales - abierta.plazas_ocupadas)) : '';
+  const abierta = await edicionAbierta(supa);
   const solPorEmail = async (emails: string[]) => {
     if (!emails.length) return new Map<string, Any>();
     const { data } = await supa.from('partners_solicitudes').select('*').in('email', emails);
@@ -175,10 +97,11 @@ async function resolver(supa: Any, segmento: Any, tipo: string) {
       const motivo = motivoExclusion(sol, true);
       if (motivo) { excluidos.push({ email, nombre: f.nombre, motivo }); continue; }
       const curso = segmento.tipo === 'edicion' ? (clase?.titulo || 'Intensivo Curino Partners') : 'Sesión 1:1 con Juan · 30 min';
+      const solicitudId = sol?.id || f.solicitud_id || null;
       incluidos.push({
-        email, nombre: f.nombre, solicitud_id: sol?.id || f.solicitud_id || null,
+        email, nombre: f.nombre, solicitud_id: solicitudId,
         inscripcion_id: segmento.tipo === 'edicion' ? f.id : null, sesion_id: segmento.tipo === 'sesion' ? f.id : null,
-        vars: varsBase(f.nombre, email, segmento.tipo === 'edicion' ? clase : abierta, curso, plazas)
+        vars: await construirVars({ nombre: f.nombre, email, solicitud_id: solicitudId }, segmento.tipo === 'edicion' ? clase : abierta, curso, abierta)
       });
     }
   } else if (segmento?.tipo === 'contactos' || segmento?.tipo === 'leads') {
@@ -220,7 +143,7 @@ async function resolver(supa: Any, segmento: Any, tipo: string) {
       incluidos.push({
         email: s.email, nombre: s.nombre, solicitud_id: s.id,
         inscripcion_id: inscPagada?.id || null, sesion_id: ses?.id || null,
-        vars: varsBase(s.nombre, s.email, clase, curso, plazas)
+        vars: await construirVars({ nombre: s.nombre, email: s.email, solicitud_id: s.id }, clase, curso, abierta)
       });
     }
   }
@@ -274,6 +197,34 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || '');
+
+    // Pasos de secuencia (pantalla Secuencias): vista previa y prueba con un
+    // contacto real. Nunca envia al contacto: la prueba va a PRUEBA_TO.
+    if (action === 'paso_preview' || action === 'paso_prueba') {
+      const asuntoP = String(body?.asunto || '').trim().slice(0, 300);
+      const cuerpoP = String(body?.cuerpo || '').slice(0, 20000);
+      if (!asuntoP || !cuerpoP.trim()) return json({ error: 'asunto y cuerpo obligatorios' }, 400);
+      const { data: sol } = await supa.from('partners_solicitudes').select('id, nombre, email').eq('id', String(body?.solicitud_id || '')).maybeSingle();
+      if (!sol) return json({ error: 'contacto no encontrado' }, 404);
+      const abierta = await edicionAbierta(supa);
+      const vars = await construirVars({ nombre: sol.nombre, email: sol.email, solicitud_id: sol.id }, abierta, abierta?.titulo || 'Intensivo Curino Partners', abierta);
+      const vacias = variablesUsadas(asuntoP, cuerpoP).filter((v) => !vars[v]);
+      const token = await signLeadToken(sol.id);
+      const msg: Any = {
+        from: FROM, to: [PRUEBA_TO], reply_to: 'info@casacurino.com',
+        subject: sustituir(asuntoP, vars, false, true),
+        html: layout(renderCuerpo(cuerpoP, vars, true), 'secuencia', `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`)
+      };
+      if (action === 'paso_preview') return json({ para: sol.email, asunto: msg.subject, html: msg.html, variables_vacias: vacias });
+      msg.subject = `[PRUEBA] ${msg.subject}`;
+      const r = await resendBatch([msg]);
+      await supa.from('partners_emails').insert({
+        tipo: 'prueba', asunto: msg.subject, email: PRUEBA_TO, nombre: sol.nombre, paso_id: body?.paso_id || null,
+        resend_id: r.ids[0], estado: r.ids[0] ? 'enviado' : 'error', error: r.error || null, enviado_por: u.user.id
+      });
+      return r.ids[0] ? json({ ok: true, enviado_a: PRUEBA_TO, con_datos_de: sol.email }) : json({ error: r.error }, 502);
+    }
+
     const tipo = body?.tipo === 'comercial' ? 'comercial' : 'servicio';
     const { incluidos, excluidos } = await resolver(supa, body?.segmento, tipo);
     if (incluidos.length > MAX_DEST) return json({ error: `demasiados destinatarios (max ${MAX_DEST})` }, 400);
