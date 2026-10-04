@@ -421,7 +421,7 @@ body{color:var(--ink)}
           </div>
           <label class="pt-check" id="pt-privacidad-wrap">
             <input id="pt-privacidad" type="checkbox" required>
-            <span>He leído y acepto la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a> y que Curino contacte conmigo por email y WhatsApp sobre mi solicitud del intensivo.</span>
+            <span>He leído y acepto la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a>, y que Curino me contacte por email y WhatsApp sobre mi solicitud y me envíe información y ofertas de sus formaciones. Puedo darme de baja en cualquier momento.</span>
           </label>
           <button type="submit" class="pt-btn" id="pt-start-btn">Quiero mi plaza</button>
           <p class="pt-error" id="pt-error-0" role="alert"></p>
@@ -1049,8 +1049,9 @@ body{color:var(--ink)}
     var payload = Object.assign({
       action: 'start',
       nombre: nombre, email: email, telefono_prefijo: prefijo, telefono: telefono,
-      // Casilla unica obligatoria: privacidad + contacto sobre la solicitud
-      // del intensivo (consentimiento_solicitud en el servidor).
+      // Casilla unica obligatoria: privacidad + contacto sobre la solicitud +
+      // informacion y ofertas de formaciones (consentimiento_solicitud y
+      // consentimiento_comercial en el servidor).
       privacidad: true,
       website: $('#pt-website').value,
       event_id: leadEventId,

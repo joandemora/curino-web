@@ -23,7 +23,7 @@
   <div class="pa-filters" id="filtros">
     <select id="fEstado"><option value="">Todos los estados</option></select>
     <select id="fCualificado"><option value="">Cualificado: todos</option><option value="si">Cualificado</option><option value="no">No cualificado</option></select>
-    <select id="fConsent"><option value="">Consentimiento: todos</option><option value="sol_si">Solicitud: sí</option><option value="sol_no">Solicitud: no</option><option value="com_si">Comercial: sí</option><option value="com_no">Comercial: no</option></select>
+    <select id="fConsent"><option value="">Consentimiento: todos</option><option value="si">Consentimiento: sí</option><option value="solo">Solo solicitud</option><option value="no">Consentimiento: no</option></select>
     <select id="fCompro"><option value="">Compra: todos</option><option value="si">Compró</option><option value="no">No compró</option></select>
     <select id="fAnuncio"><option value="">Todos los anuncios</option></select>
     <label>Desde <input type="date" id="fDesde"></label>
@@ -37,7 +37,7 @@
     <table class="pa-table">
       <thead><tr>
         <th><input type="checkbox" id="selTodos" title="Seleccionar todos los visibles"></th><th>Fecha</th><th>Contacto</th><th>Cualif.</th><th>Respuestas</th><th>Botón final</th>
-        <th>Vio precio</th><th>Inició pago</th><th>Compró</th><th>Solicitud / Comercial</th><th>Baja</th><th>Anuncio</th>
+        <th>Vio precio</th><th>Inició pago</th><th>Compró</th><th>Consentimiento</th><th>Baja</th><th>Anuncio</th>
         <th>Estado</th><th>Notas</th><th>Acciones</th>
       </tr></thead>
       <tbody id="filas"><tr><td colspan="14" class="pa-empty">Cargando…</td></tr></tbody>
@@ -90,10 +90,8 @@
       if (e && s.crm_estado !== e) return false;
       if (q === 'si' && s.cualificado !== true) return false;
       if (q === 'no' && s.cualificado === true) return false;
-      if (c === 'sol_si' && !s.consentimiento_solicitud) return false;
-      if (c === 'sol_no' && s.consentimiento_solicitud) return false;
-      if (c === 'com_si' && !s.consentimiento_comercial) return false;
-      if (c === 'com_no' && s.consentimiento_comercial) return false;
+      var cs = s.consentimiento_solicitud && s.consentimiento_comercial ? 'si' : (s.consentimiento_solicitud ? 'solo' : 'no');
+      if (c && c !== cs) return false;
       var compro = PA.compro(s).length > 0;
       if (b === 'si' && !compro) return false;
       if (b === 'no' && compro) return false;
@@ -125,7 +123,7 @@
         + '<td data-l="Vio precio">' + badge(s.precio_visto_at, 'Sí') + '</td>'
         + '<td data-l="Inició pago">' + badge(s.checkout_iniciado_at, 'Sí') + '</td>'
         + '<td data-l="Compró">' + (compras.length ? '<span class="pa-badge ok">' + compras.join(' + ') + '</span>' : '<span class="pa-muted">—</span>') + '</td>'
-        + '<td data-l="Solicitud / Comercial">' + PA.consentChecks(s) + '</td>'
+        + '<td data-l="Consentimiento">' + PA.consentChecks(s) + '</td>'
         + '<td data-l="Baja">' + baja + '</td>'
         + '<td data-l="Anuncio" class="pa-small">' + PA.esc(s.utm_content || '—') + '</td>'
         + '<td data-l="Estado">' + PA.estadoSelect(s) + '</td>'
@@ -148,7 +146,7 @@
   }
   document.addEventListener('change', function (e) {
     var cc = e.target.closest('[data-consent]');
-    if (cc) { PA.guardarConsent(supa, cc, todos.find(function (x) { return x.id === cc.dataset.id; })); return; }
+    if (cc) { PA.guardarConsent(supa, cc, todos.find(function (x) { return x.id === cc.dataset.id; })).then(function (row) { if (row) pintar(); }); return; }
     var cb = e.target.closest('[data-sel]');
     if (cb) { if (cb.checked) sel[cb.dataset.sel] = true; else delete sel[cb.dataset.sel]; pintarSel(); return; }
     if (e.target.id === 'selTodos') {
