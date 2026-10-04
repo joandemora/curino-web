@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     // Cargar inscripciones pendientes de recordatorio 24h
     const { data: rows24h, error: err24h } = await supabase
       .from('inscripciones')
-      .select('id, email, nombre, clase_id, reminder_24h_sent_at, clases!inner(id, fecha, duracion_min, meet_url, estado)')
+      .select('id, email, nombre, clase_id, reminder_24h_sent_at, clases!inner(id, fecha, duracion_min, meet_url, estado, fecha_confirmada)')
       .eq('estado', 'pagada')
       .is('reminder_24h_sent_at', null)
       .gte('clases.fecha', in24hMin)
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     // Cargar inscripciones pendientes de recordatorio 1h
     const { data: rows1h, error: err1h } = await supabase
       .from('inscripciones')
-      .select('id, email, nombre, clase_id, reminder_1h_sent_at, clases!inner(id, fecha, duracion_min, meet_url, estado)')
+      .select('id, email, nombre, clase_id, reminder_1h_sent_at, clases!inner(id, fecha, duracion_min, meet_url, estado, fecha_confirmada)')
       .eq('estado', 'pagada')
       .is('reminder_1h_sent_at', null)
       .gte('clases.fecha', in1hMin)
@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
     const pending: Pending[] = [];
     for (const r of rows24h || []) {
       const c = (r as any).clases;
-      if (!c || c.estado === 'cerrada') continue;
+      // Sin fecha confirmada (fecha provisional) no hay recordatorios.
+      if (!c || c.estado === 'cerrada' || c.fecha_confirmada === false) continue;
       pending.push({
         inscripcion_id: r.id, email: r.email, nombre: r.nombre,
         clase_id: c.id, fecha: c.fecha, duracion_min: c.duracion_min,
@@ -107,7 +108,8 @@ Deno.serve(async (req) => {
     }
     for (const r of rows1h || []) {
       const c = (r as any).clases;
-      if (!c || c.estado === 'cerrada') continue;
+      // Sin fecha confirmada (fecha provisional) no hay recordatorios.
+      if (!c || c.estado === 'cerrada' || c.fecha_confirmada === false) continue;
       pending.push({
         inscripcion_id: r.id, email: r.email, nombre: r.nombre,
         clase_id: c.id, fecha: c.fecha, duracion_min: c.duracion_min,

@@ -21,6 +21,7 @@ export interface ClaseInvoiceData {
   id: string;              // inscripcion_id
   clase_id: string;
   clase_fecha: string;     // ISO 8601
+  clase_fecha_confirmada?: boolean;  // false → la factura no muestra "Inicio"
   nombre: string;
   email: string;
   amount_paid_cents: number;
@@ -85,6 +86,7 @@ export interface ClaseInfo {
   fecha: string;           // ISO 8601
   duracion_min: number;
   meet_url: string | null;
+  fecha_confirmada?: boolean;   // false → fecha provisional, no se muestra
 }
 
 // pdf-lib usa StandardFonts.Helvetica con WinAnsiEncoding — sanea
@@ -200,7 +202,9 @@ export async function generateClaseInvoicePdf(
   page.drawText(sanitizePdfText('Intensivo Curino Partners: 4 semanas, 8 clases en directo por Zoom'), { x: 50, y, font, size: 10 });
   page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
-  page.drawText(sanitizePdfText(`Inicio: ${fmtFechaClase(inv.clase_fecha)}`), { x: 50, y, font, size: 8, color: gray });
+  if (inv.clase_fecha_confirmada !== false) {
+    page.drawText(sanitizePdfText(`Inicio: ${fmtFechaClase(inv.clase_fecha)}`), { x: 50, y, font, size: 8, color: gray });
+  }
   y -= 30;
 
   page.drawText('Base imponible:', { x: 350, y, font, size: 10 });
@@ -423,10 +427,14 @@ export async function sendClaseConfirmationEmail(
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color:#000;margin-top:0;">Tu plaza en el Intensivo Curino Partners está confirmada</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
-  <p>Ya tienes tu plaza. Empezamos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular).</p>
+  ${clase.fecha_confirmada === false
+    ? `<p>Ya tienes tu plaza. Te confirmaremos por email y en el grupo de WhatsApp la fecha y el horario de las 8 clases.</p>`
+    : `<p>Ya tienes tu plaza. Empezamos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular).</p>`}
   <p>Son 4 semanas y 8 clases en directo por Zoom, con tiempo para tus preguntas en cada una.</p>
   ${accesoInmediatoHtml()}
-  <p><strong>El enlace de Zoom de las clases en directo te llega por email el día antes de la primera clase.</strong></p>
+  ${clase.fecha_confirmada === false
+    ? `<p><strong>El enlace de Zoom de las clases en directo te llegará por email antes de la primera clase.</strong></p>`
+    : `<p><strong>El enlace de Zoom de las clases en directo te llega por email el día antes de la primera clase.</strong></p>`}
   <p>Adjunto la factura (N.º ${escapeHtml(invoiceNumber)}).</p>
   <h3 style="color:#000;margin-top:30px;">Antes de empezar</h3>
   <p>No necesitas saber de carpintería. Si ya tienes algún caso en mente —una cocina, un armario, un cliente potencial—, apúntalo y lo trabajamos en clase.</p>
