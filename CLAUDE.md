@@ -79,7 +79,7 @@ Las migraciones son idempotentes por diseño: `create table if not exists`, `cre
 | Marketplace (piezas 3D) | `library_items`, `purchases`, `marketplace_orders`, `seller_accounts`, `marketplace_config` | `supabase-marketplace-fase-*.sql` |
 | Revista (editorial) | `magazine_articles`, `magazine_purchases`, `magazine_credits`, `magazine_boosts` | `supabase-revista-fase-g*.sql` |
 | Generador IA | `ai_articles`, `ai_generator_config`, etc. | `20260519_ai_*.sql` |
-| Clases / Intensivo Partners | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` (+ RPC solo lectura `plazas_intensivo_disponibles()` en `20261006000001_…`: plazas libres de la edición activa, incluye 'agotada' → 0, NULL sin edición) |
+| Clases / Intensivo Partners | `clases`, `inscripciones`, `lista_espera` | `20260802_clases.sql` (+ `oculta`/`titulo` en `20261008000001`, `fecha_confirmada` en `20261012000001`: con `false` la fecha es provisional — no se muestra en landing/Stripe/email/factura y no hay recordatorios) (+ RPC solo lectura `plazas_intensivo_disponibles()` en `20261006000001_…`: plazas libres de la edición activa, incluye 'agotada' → 0, NULL sin edición) |
 | Curso pregrabado (retirado 2026-10) | `inscripciones_curso` | `20260805_curso.sql` |
 | Solicitudes /partners (2026-10) | `partners_solicitudes` | `20261004000001_partners_solicitudes.sql` + `20261005000001_partners_solicitudes_v2.sql` (preguntas v2: `situacion_actual`, `experiencia`, `dedicacion`, `inicio`, `perfil_one_to_one`; columnas `p1_…`–`p4_…` de v1 conservadas) |
 | Carpintería tipos | `carpinteria_*` | `20260522_carpinteria_init.sql` |

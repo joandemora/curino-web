@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: clase, error: claseError } = await supabase
       .from('clases')
-      .select('id, fecha, precio_cents, plazas_totales, plazas_ocupadas, estado, titulo')
+      .select('id, fecha, precio_cents, plazas_totales, plazas_ocupadas, estado, titulo, fecha_confirmada')
       .eq('id', clase_id)
       .maybeSingle();
 
@@ -125,7 +125,8 @@ Deno.serve(async (req) => {
     // Fecha legible solo si la edicion tiene fecha valida; si no, la
     // descripcion del producto en Stripe no menciona el inicio.
     const claseFechaLegible = (() => {
-      if (!clase.fecha) return null;
+      // Fecha provisional (fecha_confirmada = false): no se muestra.
+      if (!clase.fecha || clase.fecha_confirmada === false) return null;
       const d = new Date(clase.fecha);
       if (isNaN(d.getTime())) return null;
       try {

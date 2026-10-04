@@ -1234,13 +1234,15 @@ async function handleClaseCompleted(
       id: claseAfter.id,
       fecha: claseAfter.fecha,
       duracion_min: claseAfter.duracion_min,
-      meet_url: claseAfter.meet_url
+      meet_url: claseAfter.meet_url,
+      fecha_confirmada: (claseAfter as { fecha_confirmada?: boolean }).fecha_confirmada !== false
     };
 
     const invoiceData: ClaseInvoiceData = {
       id: inscripcion.id,
       clase_id: claseAfter.id,
       clase_fecha: claseAfter.fecha,
+      clase_fecha_confirmada: (claseAfter as { fecha_confirmada?: boolean }).fecha_confirmada !== false,
       nombre,
       email: buyerEmail,
       amount_paid_cents: amountPaidCents,
