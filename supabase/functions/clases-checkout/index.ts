@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: clase, error: claseError } = await supabase
       .from('clases')
-      .select('id, fecha, precio_cents, plazas_totales, plazas_ocupadas, estado')
+      .select('id, fecha, precio_cents, plazas_totales, plazas_ocupadas, estado, titulo')
       .eq('id', clase_id)
       .maybeSingle();
 
@@ -148,7 +148,8 @@ Deno.serve(async (req) => {
         price_data: {
           currency: 'eur',
           product_data: {
-            name: 'Intensivo Curino Partners',
+            // titulo solo existe en ediciones especiales (p. ej. pruebas ocultas).
+            name: (clase.titulo && String(clase.titulo).trim()) || 'Intensivo Curino Partners',
             description: descripcion
           },
           unit_amount: clase.precio_cents
