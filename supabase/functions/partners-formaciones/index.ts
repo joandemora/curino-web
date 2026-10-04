@@ -14,8 +14,9 @@
 //              datos. El precio de la sesion SIEMPRE se calcula aqui.
 //   'baja'     { token } → no mas emails de seguimiento.
 //   'comercial' { token } → consentimiento_comercial (enlace «Quiero recibir
-//              también otras formaciones…» de los emails 1 y 2). Con baja
-//              no se toca nada (responde { ok:false, baja:true }).
+//              también otras formaciones…» que llevaron los emails 1 y 2 hasta
+//              la casilla unica; se mantiene para los emails ya enviados). Con
+//              baja no se toca nada (responde { ok:false, baja:true }).
 //
 // Secrets: PARTNERS_LEAD_SECRET (token), STRIPE_SECRET_KEY, SUPABASE_ANON_KEY.
 // verify_jwt=false.

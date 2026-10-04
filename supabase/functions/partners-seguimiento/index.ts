@@ -23,8 +23,8 @@
 //   - Emails 1, 2 y 4 (sobre el intensivo solicitado): leads con
 //     consentimiento_solicitud (casilla unica del formulario).
 //   - Email 3 (oferta sesion 1:1): ademas consentimiento_comercial; sin el se
-//     salta. Los emails 1 y 2 llevan al pie, si aun no lo tiene, el enlace
-//     «Quiero recibir también otras formaciones…» (/partners/novedades/).
+//     salta. Desde la casilla unica (2026-10) el formulario marca los dos;
+//     solo las solicitudes anteriores tienen «solo solicitud».
 //   - El aviso a Juan sale para todas las solicitudes completas, solo en los
 //     4 dias siguientes a completada_at.
 //   - Lista de supresion (partners_supresion, hash SHA-256 del email): no se
@@ -85,7 +85,7 @@ async function resend(payload: Record<string, unknown>): Promise<boolean> {
 }
 
 // ── Plantilla "email personal": texto sencillo, un boton discreto ────────
-function personal(parrafos: string[], boton: { url: string; label: string } | null, bajaUrl: string, novedadesUrl: string | null = null): string {
+function personal(parrafos: string[], boton: { url: string; label: string } | null, bajaUrl: string): string {
   const ps = parrafos.map((p) => `<p style="margin:0 0 14px">${p}</p>`).join('');
   const btn = boton
     ? `<p style="margin:18px 0"><a href="${esc(boton.url)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:11px 20px;text-decoration:none;border-radius:4px">${esc(boton.label)}</a></p>`
@@ -94,7 +94,6 @@ function personal(parrafos: string[], boton: { url: string; label: string } | nu
 <body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px;margin:0 auto;padding:16px">
 ${ps}${btn}
 <p style="margin:0 0 14px">Juan de Mora · Curino</p>
-${novedadesUrl ? `<p style="margin:22px 0 0;font-size:13px"><a href="${esc(novedadesUrl)}" style="color:#0E9F5C">Quiero recibir también otras formaciones y novedades de Curino</a></p>` : ''}
 <p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">Recibes este email porque solicitaste información sobre el Intensivo Curino Partners en casacurino.com. Si no quieres recibir más, <a href="${esc(bajaUrl)}" style="color:#999">date de baja aquí</a>. SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
 </body></html>`;
 }
@@ -120,8 +119,6 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
   const checkoutUrl = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}&ir=intensivo`;
   const formacionesUrl = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}`;
   const bajaUrl = `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`;
-  // Alta comercial en un clic (solo emails 1 y 2, si aun no la tiene).
-  const novedadesUrl = lead.consentimiento_comercial ? null : `${SITE}/partners/novedades/?t=${encodeURIComponent(token)}`;
   // Solicitudes antiguas incorporadas despues: el email 1 no habla de
   // «se te cerro la pagina».
   const antigua = !!lead.secuencia_inicio_at && lead.completada_at
@@ -138,7 +135,7 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
           : 'Te escribo por si se te cerró la página después de rellenar la solicitud del Intensivo Curino Partners.',
         'Te recuerdo lo que incluye:<br>· 4 semanas y 8 clases en directo por Zoom conmigo.<br>· El negocio, producto y producción, diseño y presupuesto, y cómo vender y entregar.<br>· Plantilla de presupuesto, contrato de venta, catálogo y acceso al CAD de Curino.<br>· El grupo de WhatsApp de tu promoción.',
         'Aquí tienes el enlace para reservar tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl, novedadesUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
+      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
         `<p style="margin:0 0 14px">Si tienes cualquier duda, respóndeme a este email o <a href="${esc(waUrl)}">escríbeme por WhatsApp</a>.</p><p style="margin:0 0 14px">Juan de Mora · Curino</p>`)
     };
   }
@@ -154,7 +151,7 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
         '<strong>«No tengo mucho tiempo.»</strong> Son 8 clases en directo en 4 semanas, dos por semana. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias.',
         '<strong>«¿Cómo son las clases?»</strong> En directo por Zoom, con tiempo para tus preguntas en cada una, y con el grupo de WhatsApp de la promoción entre clase y clase.',
         'Si lo tienes claro, aquí tienes tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl, novedadesUrl)
+      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl)
     };
   }
   if (n === 3) {

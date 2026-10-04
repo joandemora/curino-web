@@ -80,13 +80,14 @@ window.PA = (function () {
       if (w) w.location = r.data.signedUrl; else location.href = r.data.signedUrl;
     });
   }
-  // Consentimientos (solicitud / comercial) como checks editables.
+  // Consentimiento único (solicitud + comercial) como check editable.
+  // «Sí» = los dos; «solo solicitud» = solicitudes anteriores a la casilla
+  // única (emails 1, 2 y 4, sin oferta 1:1 ni envíos comerciales).
   function consentChecks(s) {
-    var c = function (campo, valor, label, title) {
-      return '<label class="pa-consent" title="' + title + '"><input type="checkbox" data-consent="' + campo + '" data-id="' + esc(s.id) + '"' + (valor ? ' checked' : '') + '> ' + label + '</label>';
-    };
-    return c('solicitud', s.consentimiento_solicitud, 'Solicitud', 'Emails 1, 2 y 4 de la secuencia (sobre el intensivo)')
-      + c('comercial', s.consentimiento_comercial, 'Comercial', 'Oferta de la sesión 1:1 y envíos comerciales del CRM');
+    var si = s.consentimiento_solicitud && s.consentimiento_comercial;
+    var solo = !si && s.consentimiento_solicitud;
+    return '<label class="pa-consent" title="Secuencia completa y envíos comerciales del CRM"><input type="checkbox" data-consent="ambos" data-id="' + esc(s.id) + '"' + (si ? ' checked' : '') + '> ' + (si ? 'Sí' : 'No') + '</label>'
+      + (solo ? '<div class="pa-small pa-muted">solo solicitud</div>' : '');
   }
   // Cambio manual (RPC solo admin); revierte el check si falla.
   function guardarConsent(supa, cb, s) {
@@ -94,7 +95,7 @@ window.PA = (function () {
     return supa.rpc('crm_partners_consentimiento', { p_id: s.id, p_campo: campo, p_valor: valor }).then(function (r) {
       if (r.error) { cb.checked = !valor; toast('Error: ' + r.error.message); return null; }
       Object.assign(s, r.data);
-      toast('Consentimiento ' + campo + (valor ? ' activado' : ' quitado'));
+      toast('Consentimiento ' + (valor ? 'activado' : 'quitado'));
       return r.data;
     });
   }

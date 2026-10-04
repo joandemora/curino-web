@@ -280,13 +280,11 @@ Deno.serve(async (req) => {
         nombre, email,
         telefono_prefijo: prefijo, telefono,
         // Casilla unica obligatoria (2026-10): privacidad + contacto por email
-        // y WhatsApp sobre la solicitud del intensivo → consentimiento_solicitud.
+        // y WhatsApp sobre la solicitud + informacion y ofertas de formaciones
+        // → consentimiento_solicitud y consentimiento_comercial a la vez.
         consentimiento_privacidad: true, consentimiento_at: now,
         consentimiento_solicitud: true, consentimiento_solicitud_at: now, consentimiento_solicitud_origen: 'formulario',
-        // Casilla comercial antigua: solo si llega marcada (frontend en cache);
-        // nunca se desmarca desde el formulario.
-        ...(body?.consentimiento_comercial === true
-          ? { consentimiento_comercial: true, consentimiento_comercial_at: now, consentimiento_comercial_origen: 'formulario' } : {}),
+        consentimiento_comercial: true, consentimiento_comercial_at: now, consentimiento_comercial_origen: 'formulario',
         edit_token: token,
         user_agent: str(body?.client_ua, 500) || null,
         ip_hash: ipHash
