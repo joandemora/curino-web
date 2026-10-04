@@ -86,6 +86,9 @@ Deno.serve(async (req) => {
     const country = trimSlice(body?.country, 2).toUpperCase();
     const client_ip = trimSlice(body?.client_ip, 64);
     const client_ua = trimSlice(body?.client_ua, 400);
+    // Enlaces personales (/partners/formaciones con token): email prellenado
+    // en Stripe. OJO: Stripe lo muestra BLOQUEADO (no editable).
+    const prefill_email = body?.prefill_email === true;
     // Sin consentimiento publicitario no guardamos identificadores de
     // atribucion en Stripe (y el webhook no mandara Purchase por CAPI).
     const capiOk = adConsentAllowed(
@@ -94,8 +97,11 @@ Deno.serve(async (req) => {
     );
 
     if (!UUID_RE.test(clase_id)) return jsonResponse({ error: 'invalid_clase_id' }, 400);
-    if (nombre.length < 2) return jsonResponse({ error: 'invalid_nombre' }, 400);
-    if (!EMAIL_RE.test(email)) return jsonResponse({ error: 'invalid_email' }, 400);
+    // sin_formulario: compra desde /partners/formaciones sin token de lead;
+    // Stripe pide nombre (facturacion) y email, el webhook los toma de ahi.
+    const sin_formulario = body?.sin_formulario === true;
+    if (!sin_formulario && nombre.length < 2) return jsonResponse({ error: 'invalid_nombre' }, 400);
+    if (!sin_formulario && !EMAIL_RE.test(email)) return jsonResponse({ error: 'invalid_email' }, 400);
     if (!UUID_RE.test(event_id)) return jsonResponse({ error: 'invalid_event_id' }, 400);
 
     // 2. Verificar clase con service_role
@@ -165,6 +171,7 @@ Deno.serve(async (req) => {
         },
         quantity: 1
       }],
+      ...(prefill_email ? { customer_email: email } : {}),
       customer_creation: 'always',
       phone_number_collection: { enabled: true },
       consent_collection: { terms_of_service: 'required' },

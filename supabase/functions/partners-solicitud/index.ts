@@ -21,6 +21,7 @@
 //               v1 (landing anterior): p1_dedicacion, p2_situacion +
 //                  p2_instagram_web, p3_inicio, p4_inversion.
 //             Se distingue por el nombre del campo, no por `paso`.
+//   'evento'— metricas: { id, token, evento: 'precio_visto'|'checkout_iniciado' }
 //   'cta'   — pantalla final: { id, token,
 //             cta: 'checkout'|'whatsapp'|'whatsapp_one_to_one' }
 //
@@ -279,6 +280,9 @@ Deno.serve(async (req) => {
         nombre, email,
         telefono_prefijo: prefijo, telefono,
         consentimiento_privacidad: true, consentimiento_at: now,
+        // Casilla v2 (email y WhatsApp sobre la solicitud y las formaciones).
+        // Nunca se pone a false si ya estaba en true.
+        ...(body?.consentimiento_comercial === true ? { consentimiento_comercial: true } : {}),
         edit_token: token,
         user_agent: str(body?.client_ua, 500) || null,
         ip_hash: ipHash
@@ -393,6 +397,8 @@ Deno.serve(async (req) => {
       }
       // El paso alcanzado nunca retrocede (si vuelve "Atras" y reenvia).
       update.paso_alcanzado = Math.max(current.paso_alcanzado || 0, paso);
+      // Solicitud completa: arranca la secuencia de seguimiento (partners-seguimiento).
+      if (paso === 4 && !current.completada_at) update.completada_at = new Date().toISOString();
 
       const merged = { ...current, ...update };
       let result: { cualificado: boolean; segmento: string } | null = null;
@@ -454,6 +460,14 @@ Deno.serve(async (req) => {
         console.error('partners-solicitud: cta update failed', error);
         return jsonResponse({ error: 'internal_error' }, 500);
       }
+      return jsonResponse({ ok: true }, 200);
+    }
+
+    // Metricas de embudo: primera vez que ve el precio / inicia un checkout.
+    if (action === 'evento') {
+      const col = ({ precio_visto: 'precio_visto_at', checkout_iniciado: 'checkout_iniciado_at' } as Record<string, string>)[str(body?.evento, 30)];
+      if (!col) return jsonResponse({ error: 'invalid_evento' }, 400);
+      await supabase.from('partners_solicitudes').update({ [col]: new Date().toISOString() }).eq('id', id).is(col, null);
       return jsonResponse({ ok: true }, 200);
     }
 

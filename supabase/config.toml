@@ -139,3 +139,21 @@ entrypoint = "./functions/partners-solicitud/index.ts"
 # Invocada desde /api/partners-solicitud con ANON_KEY. Hardening propio
 # (honeypot + rate limit por hash IP); pasos 1-4 y CTA final autenticados
 # con id + edit_token opaco devuelto en el paso 0.
+
+[functions.partners-formaciones]
+enabled = true
+verify_jwt = false
+import_map = "./functions/partners-formaciones/deno.json"
+entrypoint = "./functions/partners-formaciones/index.ts"
+# verify_jwt=false: /partners/formaciones (publica). Invocada desde
+# /api/partners-formaciones con ANON_KEY. Acciones info/checkout/baja; el
+# lead se identifica con token HMAC (PARTNERS_LEAD_SECRET).
+
+[functions.partners-seguimiento]
+enabled = true
+verify_jwt = false
+import_map = "./functions/partners-seguimiento/deno.json"
+entrypoint = "./functions/partners-seguimiento/index.ts"
+# verify_jwt=false: invocada por pg_cron cada 15 min. Auth propia por
+# X-Cron-Secret. No envia nada mientras PARTNERS_SEGUIMIENTO_ACTIVO != 'true'
+# (salvo modo prueba sobre solicitudes "PRUEBA").

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Sesión confirmada — Curino Partners | Curino</title>
+<meta name="description" content="Tu sesión 1:1 con Juan está confirmada.">
+<link rel="canonical" href="https://www.casacurino.com/partners/formaciones/gracias/">
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Schibsted+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site-shell.css">
+<!-- Google Consent Mode v2 + GTM (GTM-NZR7NNTC). Bloque idéntico al resto de páginas públicas del sitio. Los tags de Meta Pixel viven en GTM (consent: ad_storage). -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  // Global por defecto: granted (fuera del EEE, modelo opt-out)
+  gtag('consent', 'default', {
+    'ad_storage': 'granted',
+    'ad_user_data': 'granted',
+    'ad_personalization': 'granted',
+    'analytics_storage': 'granted'
+  });
+  // EEE + UK + CH: denied hasta que el usuario acepte en el banner
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500,
+    'region': ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR',
+      'HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES',
+      'SE','IS','LI','NO','GB','CH']
+  });
+  gtag('set', 'url_passthrough', true);
+  gtag('set', 'ads_data_redaction', true);
+</script>
+<script src="/assets/js/cookie-banner.js" defer></script>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-NZR7NNTC');</script>
+
+<style>
+:root{--ink:#161616;--green:#12B76A;--green-dark:#0E9F5C;--head:'Schibsted Grotesk',system-ui,sans-serif;--soft:#5A5A55}
+.gs-page{padding:96px 16px 4rem}
+@media(min-width:1201px){.gs-page{padding-top:136px}}
+.gs-wrap{max-width:640px;margin:0 auto}
+.gs-eyebrow{display:block;font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green-dark);margin-bottom:.9rem}
+.gs-h1{font-family:var(--head);font-weight:800;font-size:clamp(32px,6vw,50px);line-height:1.03;letter-spacing:-.025em;margin:0 0 1rem;color:var(--ink)}
+.gs-wrap p{font-size:16px;line-height:1.6;color:#333;margin:0 0 1rem}
+.gs-wrap a{color:var(--ink)}
+.gs-hint{font-size:13px!important;color:var(--soft)!important}
+</style>
+</head>
+<body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZR7NNTC" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
+<main class="gs-page">
+  <div class="gs-wrap">
+    <span class="gs-eyebrow">Curino Partners</span>
+    <h1 class="gs-h1">Tu sesión con Juan está confirmada.</h1>
+    <p>Te acabamos de enviar un email con el enlace para <strong>reservar el día y la hora</strong>, los recursos iniciales y la factura.</p>
+    <p class="gs-hint">¿No ves el email? Revisa spam o promociones, o escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>. <a href="/partners/condiciones/">Condiciones de contratación</a>.</p>
+  </div>
+</main>
+<div id="main-footer-mount"></div>
+<script src="/assets/js/main-footer.js"></script>
+<script>
+(function () {
+  'use strict';
+  // purchase (GA4 + Purchase Pixel via GTM), item_id 'sesion-1a1'; mismo
+  // event_id que el Purchase por CAPI del webhook.
+  var sid = new URLSearchParams(location.search).get('session_id') || '';
+  if (!/^cs_[A-Za-z0-9_]+$/.test(sid) || sid.length > 200) return;
+  var key = 'curino_partners_purchase_' + sid;
+  try { if (sessionStorage.getItem(key)) return; } catch (_e) {}
+  fetch('/api/stripe-session?session_id=' + encodeURIComponent(sid), { headers: { 'Accept': 'application/json' } })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.paid) return;
+      var eventId = d.event_id || null;
+      try { eventId = eventId || sessionStorage.getItem('curino_partners_event_id'); } catch (_e) {}
+      var esSesion = d.purpose === 'sesion';
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null });
+      window.dataLayer.push({ event: 'purchase', event_id: eventId, ecommerce: {
+        transaction_id: d.transaction_id, value: d.amount_total, currency: d.currency, num_items: 1,
+        items: [{ item_id: esSesion ? 'sesion-1a1' : 'intensivo-partners', item_name: esSesion ? 'Sesión 1:1 con Juan · 30 min' : 'Intensivo Curino Partners', price: d.amount_total, quantity: 1 }] } });
+      try { sessionStorage.setItem(key, '1'); sessionStorage.removeItem('curino_partners_event_id'); } catch (_e) {}
+    }).catch(function () {});
+})();
+</script>
+</body>
+</html>

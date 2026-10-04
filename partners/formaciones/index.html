@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Formaciones — Curino Partners | Curino</title>
+<meta name="description" content="Todas las formaciones de Curino Partners: sesión 1:1 con Juan, Intensivo y programa one-to-one.">
+<link rel="canonical" href="https://www.casacurino.com/partners/formaciones/">
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Schibsted+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site-shell.css">
+<!-- Google Consent Mode v2 + GTM (GTM-NZR7NNTC). Bloque idéntico al resto de páginas públicas del sitio. Los tags de Meta Pixel viven en GTM (consent: ad_storage). -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  // Global por defecto: granted (fuera del EEE, modelo opt-out)
+  gtag('consent', 'default', {
+    'ad_storage': 'granted',
+    'ad_user_data': 'granted',
+    'ad_personalization': 'granted',
+    'analytics_storage': 'granted'
+  });
+  // EEE + UK + CH: denied hasta que el usuario acepte en el banner
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500,
+    'region': ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR',
+      'HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES',
+      'SE','IS','LI','NO','GB','CH']
+  });
+  gtag('set', 'url_passthrough', true);
+  gtag('set', 'ads_data_redaction', true);
+</script>
+<script src="/assets/js/cookie-banner.js" defer></script>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-NZR7NNTC');</script>
+
+<style>
+/* /partners/formaciones — todas las formaciones de Curino Partners.
+   Misma estetica que /partners (paleta y titulares de los one-pagers).
+   Precios y plazas vienen SIEMPRE del servidor (/api/partners-formaciones). */
+:root{--ink:#161616;--green:#12B76A;--green-dark:#0E9F5C;--paper:#F7F7F2;--line:#E4E4DC;--soft:#5A5A55;--head:'Schibsted Grotesk',system-ui,sans-serif;--err:#D92D20}
+body{color:var(--ink)}
+.fm-page [hidden]{display:none!important}
+.fm-page{padding-top:60px}
+@media(min-width:1201px){.fm-page{padding-top:80px}}
+.fm-hero{background:var(--ink);color:#fff;padding:2.2rem 0 2.4rem}
+.fm-wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+@media(min-width:768px){.fm-wrap{padding:0 32px}.fm-hero{padding:3.5rem 0}}
+.fm-eyebrow{display:block;font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:.7rem}
+.fm-h1{font-family:var(--head);font-weight:800;font-size:clamp(32px,5.4vw,54px);line-height:1.03;letter-spacing:-.025em;margin:0 0 .7rem}
+.fm-lead{font-size:16px;line-height:1.55;color:rgba(255,255,255,.8);max-width:60ch;margin:0}
+.fm-grid{display:grid;gap:1rem;padding:2rem 0 3.5rem}
+@media(min-width:900px){.fm-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;padding:3rem 0 5rem;align-items:stretch}}
+.fm-card{background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:1.4rem 1.2rem;display:flex;flex-direction:column;gap:.9rem}
+.fm-card.is-main{border-color:var(--ink);box-shadow:0 18px 40px -24px rgba(0,0,0,.4)}
+.fm-tag{align-self:flex-start;font-family:var(--head);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--paper);border-radius:999px;padding:.3rem .7rem}
+.fm-card.is-main .fm-tag{background:var(--green)}
+.fm-card h2{font-family:var(--head);font-weight:800;font-size:25px;line-height:1.08;letter-spacing:-.02em;margin:0}
+.fm-card p{font-size:15px;line-height:1.55;color:var(--soft);margin:0}
+.fm-card ul{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
+.fm-card li{font-size:14.5px;padding-left:1.5rem;position:relative}
+.fm-card li::before{content:'✓';position:absolute;left:0;color:var(--green-dark);font-weight:800}
+.fm-price{margin-top:auto;display:flex;flex-direction:column;gap:.25rem}
+.fm-amount{display:flex;align-items:baseline;gap:.45rem;flex-wrap:wrap}
+.fm-amount strong{font-family:var(--head);font-weight:800;font-size:38px;line-height:1;letter-spacing:-.03em}
+.fm-amount small{font-size:13px;color:var(--soft)}
+.fm-offer{font-family:var(--head);font-weight:800;font-size:15px;color:var(--green-dark)}
+.fm-count{font-variant-numeric:tabular-nums}
+.fm-after{font-size:13px;color:var(--soft)}
+.fm-seats{font-family:var(--head);font-weight:800;font-size:15px;color:var(--green)}
+.fm-btn{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;width:100%;background:var(--green);color:var(--ink);border:2px solid var(--green);padding:1rem 1.3rem;font-family:var(--head);font-size:16px;font-weight:800;cursor:pointer;text-decoration:none;border-radius:4px;min-height:54px}
+.fm-btn:hover{background:var(--green-dark);border-color:var(--green-dark)}
+.fm-btn:disabled{opacity:.55;cursor:wait}
+.fm-btn--ghost{background:transparent;border-color:var(--ink)}
+.fm-btn--ghost:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fm-btn svg{width:20px;height:20px;color:var(--green)}
+.fm-err{font-size:13px;color:var(--err);margin:0}
+.fm-soon{display:flex;align-items:center;justify-content:center;min-height:54px;border:2px dashed var(--line);border-radius:4px;font-family:var(--head);font-weight:800;font-size:16px;color:var(--soft)}
+.fm-err:empty{display:none}
+.fm-note{font-size:12px;color:var(--soft);text-align:center;padding:0 16px 2.5rem;max-width:760px;margin:0 auto}
+.fm-note a{color:var(--ink)}
+</style>
+</head>
+<body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZR7NNTC" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
+
+<main class="fm-page">
+  <section class="fm-hero">
+    <div class="fm-wrap">
+      <span class="fm-eyebrow">Curino Partners · Formaciones</span>
+      <h1 class="fm-h1"><span id="fm-saludo"></span>Elige cómo empezar.</h1>
+      <p class="fm-lead">Desde una sesión conmigo para arrancar hasta el intensivo completo o el acompañamiento uno a uno.</p>
+    </div>
+  </section>
+
+  <div class="fm-wrap fm-grid">
+    <!-- Sesión 1:1 · 30 min -->
+    <article class="fm-card" id="sesion">
+      <span class="fm-tag">Para empezar</span>
+      <h2>Sesión 1:1 con Juan · 30 min</h2>
+      <p>Una videollamada conmigo para aterrizar tu caso y los recursos iniciales para arrancar en el sector.</p>
+      <ul>
+        <li>30 minutos por videollamada</li>
+        <li>Recursos iniciales por email</li>
+        <li>Reservas el día y la hora que te vengan bien</li>
+      </ul>
+      <div class="fm-price">
+        <div class="fm-amount"><strong data-sesion-precio>150 €</strong><small>IVA incluido</small></div>
+        <span class="fm-offer" id="fm-oferta" hidden>Oferta para ti durante <span class="fm-count" id="fm-cuenta">--:--:--</span></span>
+        <span class="fm-after" id="fm-despues" hidden>Después: <span data-sesion-normal>150 €</span></span>
+      </div>
+      <button type="button" class="fm-btn" data-checkout="sesion">Reservar mi sesión</button>
+      <span class="fm-soon" id="fm-sesion-pronto" hidden>Próximamente</span>
+      <p class="fm-err" data-err="sesion" role="alert"></p>
+    </article>
+
+    <!-- Intensivo -->
+    <article class="fm-card is-main" id="intensivo">
+      <span class="fm-tag">Intensivo · Primera edición</span>
+      <h2>Intensivo Curino Partners</h2>
+      <p>4 semanas para tener tu negocio de alta carpintería listo para vender.</p>
+      <ul>
+        <li>8 clases en directo por Zoom</li>
+        <li>Plantilla de presupuesto, contrato, catálogo y CAD de Curino</li>
+        <li>Grupo de WhatsApp de la promoción</li>
+      </ul>
+      <div class="fm-price">
+        <div class="fm-amount"><strong data-intensivo-precio>990 €</strong><small>IVA incluido</small></div>
+        <span class="fm-seats" data-intensivo-plazas>Solo 3 plazas</span>
+      </div>
+      <button type="button" class="fm-btn" data-checkout="intensivo">Acceder ahora</button>
+      <a class="fm-btn fm-btn--ghost" id="fm-intensivo-espera" href="/partners/#solicitud" hidden>Apuntarme a la próxima promoción</a>
+      <p class="fm-err" data-err="intensivo" role="alert"></p>
+    </article>
+
+    <!-- One-to-one -->
+    <article class="fm-card" id="one-to-one">
+      <span class="fm-tag">Acompañamiento</span>
+      <h2>One-to-one · 3 meses</h2>
+      <p>Para quien quiere dedicarse a tiempo completo y escalar. Se contrata tras una entrevista previa.</p>
+      <ul>
+        <li>12 sesiones individuales por Zoom</li>
+        <li>WhatsApp directo conmigo</li>
+        <li>3 meses de acompañamiento</li>
+      </ul>
+      <div class="fm-price"></div>
+      <a class="fm-btn fm-btn--ghost" data-wa="one_to_one_formaciones" href="https://wa.me/34611965612?text=Hola%20Juan%2C%20me%20interesa%20el%20programa%20one-to-one" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.4 9.4 0 0 1-4.8-1.31l-.34-.2-3.57.94.95-3.48-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.42 9.42zm8.02-17.44A11.27 11.27 0 0 0 12.05.75C5.8.75.72 5.83.72 12.08c0 2 .52 3.95 1.52 5.67L.62 23.25l5.63-1.48a11.3 11.3 0 0 0 5.8 1.48h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.32-8.01z"/></svg>
+        Hablar por WhatsApp
+      </a>
+    </article>
+  </div>
+
+  <p class="fm-note">Las cifras de Curino corresponden a los resultados de Juan de Mora; los de cada alumno dependen de su trabajo. <a href="/partners/condiciones/">Condiciones de contratación</a></p>
+</main>
+
+<div id="main-footer-mount"></div>
+<script src="/assets/js/main-footer.js"></script>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var params = new URLSearchParams(location.search);
+  var token = (params.get('t') || '').slice(0, 120);
+  var ir = params.get('ir');
+  var info = null;
+
+  function eur(cents) {
+    var e = Math.floor(cents / 100), d = cents % 100;
+    return String(e).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (d ? ',' + (d < 10 ? '0' : '') + d : '') + ' €';
+  }
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+  }
+  function dl(o) { window.dataLayer = window.dataLayer || []; window.dataLayer.push(o); }
+  function adConsent() {
+    try { var o = JSON.parse(localStorage.getItem('curino_consent_v2') || 'null'); return o ? o.advertising === true : null; } catch (_e) { return null; }
+  }
+  function cookie(n) { try { var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; } catch (_e) { return ''; } }
+  function api(body) {
+    return fetch('/api/partners-formaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); });
+  }
+
+  // ── Cuenta atrás de la oferta (hora del servidor) ──
+  var timer = null;
+  function pintarSesion(s, desfaseMs) {
+    // Activacion por partes: sesion "Proximamente" (sin precio ni boton).
+    if (s.activa === false) {
+      $('[data-checkout="sesion"]').hidden = true;
+      $('#fm-sesion-pronto').hidden = false;
+      $('.fm-card#sesion .fm-price').hidden = true;
+      return;
+    }
+    $$('[data-sesion-normal]').forEach(function (el) { el.textContent = eur(s.precio_normal_cents); });
+    var oferta = s.precio_tipo === 'oferta' && s.oferta_expira_at;
+    $('[data-sesion-precio]').textContent = eur(oferta ? s.precio_cents : s.precio_normal_cents);
+    $('#fm-oferta').hidden = !oferta;
+    $('#fm-despues').hidden = !oferta;
+    if (!oferta) return;
+    var fin = new Date(s.oferta_expira_at).getTime();
+    function tick() {
+      var resta = fin - (Date.now() + desfaseMs);
+      if (resta <= 0) {
+        clearInterval(timer);
+        // Caducó: el servidor ya cobra el precio normal; se refleja aquí.
+        pintarSesion({ precio_normal_cents: s.precio_normal_cents, precio_cents: s.precio_normal_cents, precio_tipo: 'normal' }, 0);
+        return;
+      }
+      var h = Math.floor(resta / 3600000), m = Math.floor(resta / 60000) % 60, sg = Math.floor(resta / 1000) % 60;
+      $('#fm-cuenta').textContent = h + ':' + (m < 10 ? '0' : '') + m + ':' + (sg < 10 ? '0' : '') + sg;
+    }
+    tick();
+    timer = setInterval(tick, 1000);
+  }
+
+  function pintarIntensivo(it) {
+    $('[data-intensivo-precio]').textContent = eur(it.precio_cents);
+    var btn = $('[data-checkout="intensivo"]');
+    if (!it.disponible) {
+      $('[data-intensivo-plazas]').textContent = it.plazas_totales ? 'Plazas agotadas' : 'Próxima promoción en preparación';
+      btn.hidden = true;
+      $('#fm-intensivo-espera').hidden = false;
+      return;
+    }
+    var n = it.plazas_restantes;
+    $('[data-intensivo-plazas]').textContent = n === 1 ? 'Solo queda 1 plaza' : ('Quedan ' + n + ' de ' + it.plazas_totales + ' plazas');
+  }
+
+  function checkout(producto) {
+    var btn = $('[data-checkout="' + producto + '"]');
+    var err = $('[data-err="' + producto + '"]');
+    err.textContent = '';
+    btn.disabled = true;
+    var txt = btn.textContent;
+    btn.textContent = 'Redirigiendo al pago…';
+    var eventId = uuid();
+    try { sessionStorage.setItem('curino_partners_event_id', eventId); } catch (_e) {}
+    var precio = producto === 'sesion'
+      ? (info && info.sesion ? info.sesion.precio_cents : 0)
+      : (info && info.intensivo ? info.intensivo.precio_cents : 0);
+    dl({ ecommerce: null });
+    dl({ event: 'begin_checkout', event_id: eventId, ecommerce: { currency: 'EUR', value: precio / 100, num_items: 1,
+      items: [{ item_id: producto === 'sesion' ? 'sesion-1a1' : 'intensivo-partners', price: precio / 100, quantity: 1 }] } });
+    api({ action: 'checkout', producto: producto, token: token, event_id: eventId,
+      utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '', utm_campaign: params.get('utm_campaign') || '',
+      ad_consent: adConsent(), fbc: cookie('_fbc'), fbp: cookie('_fbp') })
+      .then(function (r) {
+        if (r.ok && r.data.checkout_url) { location.href = r.data.checkout_url; return; }
+        err.textContent = r.data && r.data.error === 'clase_full'
+          ? 'Las plazas se han agotado. Apúntate a la próxima promoción.'
+          : 'No se ha podido abrir el pago. Inténtalo de nuevo o escríbeme por WhatsApp.';
+        btn.disabled = false; btn.textContent = txt;
+      })
+      .catch(function () { err.textContent = 'No se ha podido abrir el pago. Revisa tu conexión.'; btn.disabled = false; btn.textContent = txt; });
+  }
+
+  $$('[data-checkout]').forEach(function (b) { b.addEventListener('click', function () { checkout(b.dataset.checkout); }); });
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-wa]');
+    if (a) dl({ event: 'contact', event_id: uuid(), contact_method: 'whatsapp', contact_context: a.dataset.wa });
+  });
+
+  api({ action: 'info', token: token }).then(function (r) {
+    if (!r.ok) return;
+    info = r.data;
+    var desfase = info.sesion && info.sesion.ahora ? (new Date(info.sesion.ahora).getTime() - Date.now()) : 0;
+    if (info.lead && info.lead.nombre) $('#fm-saludo').textContent = info.lead.nombre + ', ';
+    if (info.sesion) pintarSesion(info.sesion, desfase);
+    if (info.intensivo) pintarIntensivo(info.intensivo);
+    // Enlaces de los emails: ?ir=intensivo|sesion abre el pago directamente.
+    if (ir === 'intensivo' && info.intensivo && info.intensivo.disponible) checkout('intensivo');
+    if (ir === 'sesion' && info.sesion && info.sesion.activa) checkout('sesion');
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

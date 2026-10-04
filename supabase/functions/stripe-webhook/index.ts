@@ -20,6 +20,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
 import { sendMetaEvent, adConsentAllowed } from '../_shared/meta-capi.ts'
+import { sendSesionConfirmationEmail } from '../_shared/sesion-emails.ts'
+import { SESION } from '../_shared/sesion-config.ts'
 import {
   generateBuyerInvoicePdf,
   generateSellerInvoicePdf,
@@ -54,6 +56,9 @@ import {
   formatStripeAddress,
   generateClaseRectificativaPdf,
   uploadClaseRectificativaPdf,
+  uploadPdfToInvoices,
+  resendSend,
+  escapeHtml,
   ClaseInvoiceData,
   ClaseInfo
 } from '../_shared/clase-invoices.ts'
@@ -171,6 +176,8 @@ Deno.serve(async (req) => {
           await handleArmarioCompleted(supabase, session);
         } else if (purpose === 'clase') {
           await handleClaseCompleted(supabase, stripe, session);
+        } else if (purpose === 'sesion') {
+          await handleSesionCompleted(supabase, session);
         } else if (purpose === 'curso') {
           await handleCursoCompleted(supabase, session);
         } else {
@@ -1093,7 +1100,8 @@ async function handleClaseCompleted(
   session: Stripe.Checkout.Session
 ) {
   const claseId = session.metadata?.clase_id;
-  const nombre = session.metadata?.nombre;
+  // Sin formulario (/partners/formaciones sin token): nombre de Stripe.
+  const nombre = session.metadata?.nombre || session.customer_details?.name || '';
   // Contacto: manda lo que el comprador confirma en Checkout (email y
   // telefono obligatorios alli). Lo del formulario queda como referencia.
   const telefonoFormulario = session.metadata?.telefono || null;
@@ -1405,7 +1413,11 @@ async function handleChargeRefunded(
     console.error('refund: error buscando inscripcion', paymentIntent, error);
     return;
   }
-  if (!ins) return; // no es del Intensivo
+  if (!ins) {
+    // ¿Es una Sesion 1:1?
+    await handleSesionRefunded(supabase, stripe, charge, paymentIntent);
+    return;
+  }
 
   const refunded = charge.amount_refunded ?? 0;
   const isFull = charge.refunded === true || refunded >= (charge.amount ?? Infinity);
@@ -1463,6 +1475,168 @@ async function handleChargeRefunded(
   }
 }
 
+// ============================================================================
+// SESION 1:1 (purpose = 'sesion', /partners/formaciones)
+//
+// Idempotencia por sesiones_1a1.stripe_session_id (UNIQUE + SELECT previo).
+// Factura SESION-AAAA-NNNNNN (completa con NIF o simplificada), PDF en
+// invoices/sesiones/<id>.pdf, email con recursos adjuntos + enlace de
+// reserva (SESION_RESERVA_URL). Marca sesion_comprada_at en la solicitud
+// (cancela el email de la oferta de sesion de la secuencia).
+// ============================================================================
+async function handleSesionCompleted(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  session: Stripe.Checkout.Session
+) {
+  const md = session.metadata || {};
+  const cd = session.customer_details;
+  const buyerEmail = (cd?.email || session.customer_email || '').toLowerCase();
+  const nombre = md.nombre || cd?.name || '';
+  const telefonoFormulario = md.telefono || null;
+  const telefono = cd?.phone || telefonoFormulario;
+  const amount = session.amount_total ?? 0;
+  if (!buyerEmail || amount <= 0) {
+    console.error('sesion: datos insuficientes', session.id);
+    return;
+  }
+
+  const { data: existing } = await supabase
+    .from('sesiones_1a1').select('id').eq('stripe_session_id', session.id).maybeSingle();
+  if (existing) {
+    console.log(`sesion: ${session.id} ya registrada`);
+    return;
+  }
+
+  const terminos = session.consent?.terms_of_service === 'accepted';
+  const taxId = (cd?.tax_ids || []).find((t: Stripe.Checkout.Session.CustomerDetails.TaxId) => t && t.value)?.value || null;
+  const direccion = formatStripeAddress(cd?.address);
+  const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', {
+    p_type: 'sesion', p_year: new Date().getFullYear()
+  });
+  if (invErr) console.error('sesion: error asignando factura', invErr);
+  const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null);
+  const solicitudId = /^[0-9a-f-]{36}$/i.test(md.solicitud_id || '') ? md.solicitud_id : null;
+
+  const { data: ses, error: insErr } = await supabase
+    .from('sesiones_1a1')
+    .insert({
+      solicitud_id: solicitudId,
+      nombre: nombre || buyerEmail,
+      email: buyerEmail,
+      telefono,
+      email_formulario: (md.email_formulario || '').toLowerCase() || null,
+      stripe_session_id: session.id,
+      stripe_payment_intent: paymentIntentId,
+      importe_cents: amount,
+      precio_tipo: md.precio_tipo === 'oferta' ? 'oferta' : 'normal',
+      terminos_aceptados: terminos,
+      terminos_aceptados_at: terminos ? new Date().toISOString() : null,
+      factura_tipo: taxId ? 'completa' : 'simplificada',
+      cliente_nombre_fiscal: (cd?.name || '').trim() || null,
+      cliente_nif: taxId,
+      cliente_direccion: direccion.length ? direccion.join(' · ') : null,
+      invoice_number: invoiceNum,
+      event_id: md.event_id || null,
+      utm_source: md.utm_source || null,
+      utm_medium: md.utm_medium || null,
+      utm_campaign: md.utm_campaign || null
+    })
+    .select('id, created_at').single();
+  if (insErr || !ses) {
+    console.error('sesion: insert fallo', session.id, insErr);
+    return;
+  }
+  console.log(`sesion: ${ses.id} confirmada (${amount} cents, ${md.precio_tipo})`);
+
+  // Solicitud: sesion comprada (por id o, si no hay, por email)
+  try {
+    const q = supabase.from('partners_solicitudes').update({ sesion_comprada_at: new Date().toISOString() });
+    if (solicitudId) await q.eq('id', solicitudId); else await q.eq('email', buyerEmail);
+  } catch (e) { console.error('sesion: link solicitud fallo', e); }
+
+  await sendClasePurchaseCapi(session, buyerEmail, nombre, telefono, amount, md.event_id || null, 'sesion-1a1', '/partners/formaciones/gracias/');
+
+  try {
+    const numero = invoiceNum || `SESION-${String(ses.id).slice(0, 8)}`;
+    const pdf = await generateClaseInvoicePdf({
+      id: String(ses.id), clase_id: '', clase_fecha: String(ses.created_at),
+      nombre: nombre || buyerEmail, email: buyerEmail, amount_paid_cents: amount,
+      invoice_number: numero, created_at: String(ses.created_at),
+      buyer_nombre_fiscal: (cd?.name || '').trim() || null, buyer_nif: taxId, buyer_direccion: direccion,
+      concepto: `${SESION.nombre} (videollamada + recursos iniciales)`
+    });
+    const path = await uploadPdfToInvoices(supabase, `sesiones/${ses.id}.pdf`, pdf);
+    await supabase.from('sesiones_1a1').update({ pdf_url: path }).eq('id', ses.id);
+    await sendSesionConfirmationEmail(supabase, buyerEmail, nombre || 'hola', pdf, numero);
+    await supabase.from('sesiones_1a1').update({ confirmation_sent_at: new Date().toISOString() }).eq('id', ses.id);
+  } catch (e) {
+    console.error('sesion: factura/email fallo', ses.id, e);
+  }
+}
+
+// Reembolso de una Sesion 1:1: rectificativa R-SESION por refund (idempotente
+// por stripe_refund_id) y, si es total, estado 'reembolsada' + email.
+async function handleSesionRefunded(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  stripe: Stripe,
+  charge: Stripe.Charge,
+  paymentIntent: string
+) {
+  const { data: ses } = await supabase
+    .from('sesiones_1a1').select('*').eq('stripe_payment_intent', paymentIntent).maybeSingle();
+  if (!ses) return; // no es una sesion
+  const refunds = await stripe.refunds.list({ charge: charge.id, limit: 100 }).catch(() => null);
+  for (const rf of refunds?.data || []) {
+    if (rf.status === 'failed' || rf.status === 'canceled') continue;
+    try {
+      const { data: claimed } = await supabase.from('facturas_rectificativas_clase').upsert({
+        stripe_refund_id: rf.id, stripe_charge_id: charge.id, sesion_id: ses.id, serie: 'sesion',
+        importe_cents: rf.amount, factura_original: ses.invoice_number || `SESION-${String(ses.id).slice(0, 8)}`,
+        factura_original_fecha: ses.created_at, comprador_nombre: ses.cliente_nombre_fiscal || ses.nombre,
+        comprador_email: ses.email, comprador_nif: ses.cliente_nif, comprador_direccion: ses.cliente_direccion
+      }, { onConflict: 'stripe_refund_id', ignoreDuplicates: true }).select('id');
+      const { data: row } = await supabase.from('facturas_rectificativas_clase').select('*').eq('stripe_refund_id', rf.id).single();
+      if (!row || (!(claimed && claimed.length) && row.invoice_number && row.pdf_url)) continue;
+      let numero = row.invoice_number as string | null;
+      if (!numero) {
+        const { data: n } = await supabase.rpc('assign_invoice_number', { p_type: 'sesion_rect', p_year: new Date().getFullYear() });
+        const { data: upd } = await supabase.from('facturas_rectificativas_clase')
+          .update({ invoice_number: n }).eq('id', row.id).is('invoice_number', null).select('invoice_number');
+        numero = (upd && upd[0]?.invoice_number) || n;
+      }
+      const pdf = await generateClaseRectificativaPdf({
+        invoice_number: String(numero), fecha: row.created_at, factura_original: row.factura_original,
+        factura_original_fecha: row.factura_original_fecha, motivo: row.motivo, importe_cents: row.importe_cents,
+        comprador_nombre: row.comprador_nombre, comprador_email: row.comprador_email, comprador_nif: row.comprador_nif,
+        comprador_direccion: row.comprador_direccion ? String(row.comprador_direccion).split(' · ') : [],
+        concepto: SESION.nombre
+      });
+      const path = await uploadPdfToInvoices(supabase, `sesiones/${ses.id}-rect-${rf.id}.pdf`, pdf);
+      await supabase.from('facturas_rectificativas_clase').update({ pdf_url: path }).eq('id', row.id);
+      console.log(`sesion: rectificativa ${numero} emitida para ${ses.id}`);
+    } catch (e) { console.error('sesion: rectificativa fallo', rf.id, e); }
+  }
+  const total = charge.refunded === true || (charge.amount_refunded ?? 0) >= (charge.amount ?? Infinity);
+  if (!total) {
+    await supabase.from('sesiones_1a1').update({ importe_reembolsado_cents: charge.amount_refunded ?? 0 }).eq('id', ses.id);
+    return;
+  }
+  const { data: upd } = await supabase.from('sesiones_1a1')
+    .update({ estado: 'reembolsada', reembolsada_at: new Date().toISOString(), importe_reembolsado_cents: charge.amount_refunded ?? ses.importe_cents })
+    .eq('id', ses.id).eq('estado', 'pagada').select('id');
+  if (upd && upd.length) {
+    try {
+      await resendSend({
+        from: 'Curino <noreply@casacurino.com>', to: [ses.email], reply_to: 'info@casacurino.com',
+        subject: `Reembolso confirmado — ${SESION.nombre}`,
+        html: `<p>Hola ${escapeHtml(ses.nombre)},</p><p>Hemos procesado el reembolso de tu ${escapeHtml(SESION.nombre)}. Lo verás en 5-10 días hábiles en el mismo método de pago.</p><p>Un abrazo,<br>Juan de Mora</p>`
+      });
+    } catch (e) { console.error('sesion: email reembolso fallo', e); }
+  }
+}
+
 async function linkPartnersSolicitud(
   supabase: ReturnType<typeof createClient>,
   session: Stripe.Checkout.Session,
@@ -1488,7 +1662,9 @@ async function sendClasePurchaseCapi(
   nombre: string,
   telefono: string | null,
   amountPaidCents: number,
-  eventId: string | null
+  eventId: string | null,
+  contentId = 'intensivo-partners',
+  sourcePath = '/partners/gracias/'
 ) {
   try {
     const md = session.metadata || {};
@@ -1498,7 +1674,7 @@ async function sendClasePurchaseCapi(
     await sendMetaEvent({
       eventName: 'Purchase',
       eventId,
-      eventSourceUrl: `${siteUrl}/partners/gracias/`,
+      eventSourceUrl: `${siteUrl}${sourcePath}`,
       email: buyerEmail,
       phone: telefono,
       firstName: nombre,
@@ -1510,7 +1686,7 @@ async function sendClasePurchaseCapi(
       customData: {
         value: amountPaidCents / 100,
         currency: (session.currency || 'eur').toUpperCase(),
-        content_ids: ['intensivo-partners'],
+        content_ids: [contentId],
         content_type: 'product',
         num_items: 1
       }
