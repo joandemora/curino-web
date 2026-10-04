@@ -82,6 +82,7 @@ body{color:var(--ink)}
 .fm-btn--ghost:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
 .fm-btn svg{width:20px;height:20px;color:var(--green)}
 .fm-err{font-size:13px;color:var(--err);margin:0}
+.fm-soon{display:flex;align-items:center;justify-content:center;min-height:54px;border:2px dashed var(--line);border-radius:4px;font-family:var(--head);font-weight:800;font-size:16px;color:var(--soft)}
 .fm-err:empty{display:none}
 .fm-note{font-size:12px;color:var(--soft);text-align:center;padding:0 16px 2.5rem;max-width:760px;margin:0 auto}
 .fm-note a{color:var(--ink)}
@@ -119,6 +120,7 @@ body{color:var(--ink)}
         <span class="fm-after" id="fm-despues" hidden>Después: <span data-sesion-normal>150 €</span></span>
       </div>
       <button type="button" class="fm-btn" data-checkout="sesion">Reservar mi sesión</button>
+      <span class="fm-soon" id="fm-sesion-pronto" hidden>Próximamente</span>
       <p class="fm-err" data-err="sesion" role="alert"></p>
     </article>
 
@@ -196,6 +198,13 @@ body{color:var(--ink)}
   // ── Cuenta atrás de la oferta (hora del servidor) ──
   var timer = null;
   function pintarSesion(s, desfaseMs) {
+    // Activacion por partes: sesion "Proximamente" (sin precio ni boton).
+    if (s.activa === false) {
+      $('[data-checkout="sesion"]').hidden = true;
+      $('#fm-sesion-pronto').hidden = false;
+      $('.fm-card#sesion .fm-price').hidden = true;
+      return;
+    }
     $$('[data-sesion-normal]').forEach(function (el) { el.textContent = eur(s.precio_normal_cents); });
     var oferta = s.precio_tipo === 'oferta' && s.oferta_expira_at;
     $('[data-sesion-precio]').textContent = eur(oferta ? s.precio_cents : s.precio_normal_cents);
@@ -274,7 +283,7 @@ body{color:var(--ink)}
     if (info.intensivo) pintarIntensivo(info.intensivo);
     // Enlaces de los emails: ?ir=intensivo|sesion abre el pago directamente.
     if (ir === 'intensivo' && info.intensivo && info.intensivo.disponible) checkout('intensivo');
-    if (ir === 'sesion') checkout('sesion');
+    if (ir === 'sesion' && info.sesion && info.sesion.activa) checkout('sesion');
   }).catch(function () {});
 })();
 </script>

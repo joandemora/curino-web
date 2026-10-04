@@ -280,6 +280,9 @@ Deno.serve(async (req) => {
         nombre, email,
         telefono_prefijo: prefijo, telefono,
         consentimiento_privacidad: true, consentimiento_at: now,
+        // Casilla v2 (email y WhatsApp sobre la solicitud y las formaciones).
+        // Nunca se pone a false si ya estaba en true.
+        ...(body?.consentimiento_comercial === true ? { consentimiento_comercial: true } : {}),
         edit_token: token,
         user_agent: str(body?.client_ua, 500) || null,
         ip_hash: ipHash

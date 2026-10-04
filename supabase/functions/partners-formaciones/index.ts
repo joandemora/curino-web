@@ -81,6 +81,8 @@ Deno.serve(async (req) => {
       return json({
         lead: lead ? { nombre: String(lead.nombre || '').split(' ')[0], identificado: true } : null,
         sesion: {
+          // Activacion por partes: sin el flag la sesion sale como "Proximamente".
+          activa: Deno.env.get('PARTNERS_SEGUIMIENTO_SESION_ACTIVO') === 'true',
           nombre: SESION.nombre,
           precio_normal_cents: SESION.precioNormalCents,
           precio_oferta_cents: SESION.precioOfertaCents,
@@ -145,6 +147,7 @@ Deno.serve(async (req) => {
       }
 
       if (producto === 'sesion') {
+        if (Deno.env.get('PARTNERS_SEGUIMIENTO_SESION_ACTIVO') !== 'true') return json({ error: 'sesion_no_disponible' }, 409);
         const p = precioSesion(lead?.oferta_sesion_enviada_at);
         const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
           apiVersion: '2024-12-18.acacia', httpClient: Stripe.createFetchHttpClient()

@@ -18,6 +18,9 @@
 //     (p. ej. el cron estuvo parado) solo se envia el mas reciente y los
 //     anteriores se marcan como procesados sin enviar.
 //   - Las marcas *_at evitan repetir (tambien cuando un paso se salta).
+//   - Solo leads con consentimiento_comercial (casilla v2). El aviso a Juan
+//     sale para todas las solicitudes completas.
+//   - Email 3 (oferta sesion) solo si PARTNERS_SEGUIMIENTO_SESION_ACTIVO='true'.
 //
 // Interruptor: no envia nada mientras PARTNERS_SEGUIMIENTO_ACTIVO !== 'true'.
 // Modo prueba: { modo: 'prueba', solicitud_id, segundos_por_hora } procesa
@@ -76,7 +79,7 @@ function personal(parrafos: string[], boton: { url: string; label: string } | nu
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
 <body style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px;margin:0 auto;padding:16px">
 ${ps}${btn}
-<p style="margin:0 0 14px">Juan</p>
+<p style="margin:0 0 14px">Juan de Mora · Curino</p>
 <p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px">Recibes este email porque solicitaste información sobre Curino Partners en casacurino.com. Si no quieres recibir más, <a href="${esc(bajaUrl)}" style="color:#999">date de baja aquí</a>. SISTEMA &amp; CURINO SLU · Carrer de Balmes 252, 5-2, 08006 Barcelona.</p>
 </body></html>`;
 }
@@ -112,8 +115,8 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
         'Te escribo por si se te cerró la página después de rellenar la solicitud del Intensivo Curino Partners.',
         'Te recuerdo lo que incluye:<br>· 4 semanas y 8 clases en directo por Zoom conmigo.<br>· El negocio, producto y producción, diseño y presupuesto, y cómo vender y entregar.<br>· Plantilla de presupuesto, contrato de venta, catálogo y acceso al CAD de Curino.<br>· El grupo de WhatsApp de tu promoción.',
         'Aquí tienes el enlace para reservar tu plaza:'
-      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan</p>',
-        `<p style="margin:0 0 14px">Si tienes cualquier duda, respóndeme a este email o <a href="${esc(waUrl)}">escríbeme por WhatsApp</a>.</p><p style="margin:0 0 14px">Juan</p>`)
+      ], { url: checkoutUrl, label: 'Reservar mi plaza' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
+        `<p style="margin:0 0 14px">Si tienes cualquier duda, respóndeme a este email o <a href="${esc(waUrl)}">escríbeme por WhatsApp</a>.</p><p style="margin:0 0 14px">Juan de Mora · Curino</p>`)
     };
   }
   if (n === 2) {
@@ -139,6 +142,7 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
       html: personal([
         `Hola ${esc(nombre)},`,
         `Si aún no es tu momento para el intensivo, empieza con una sesión 1:1 conmigo de 30 min y llévate los recursos iniciales para arrancar en el sector.`,
+        'En 30 minutos vemos tu situación y tu plan para empezar, y te llevas los recursos iniciales: la plantilla de presupuesto, la lista de proveedores con los que empezar y los primeros pasos para conseguir tu primer cliente.',
         `Solo para ti: <strong>${oferta} € durante las próximas ${SESION.ofertaHoras} horas</strong> (después, ${normal} €).`
       ], { url: formacionesUrl, label: `Quiero mi sesión por ${oferta} €` }, bajaUrl)
     };
@@ -151,9 +155,10 @@ async function construir(n: 1 | 2 | 3 | 4, lead: Lead, supabase: any): Promise<{
     html: personal([
       `Hola ${esc(nombre)},`,
       `Último email sobre esto: en la primera edición del Intensivo Curino Partners quedan <strong>${int.libres} de ${int.total} plazas</strong>.`,
+      'Es el mismo modelo con el que hemos hecho proyectos como el de Maria Alcalde.',
       'Aquí tienes todas las formaciones, por si quieres empezar por el intensivo o con una sesión conmigo:',
-    ], { url: formacionesUrl, label: 'Ver las formaciones' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan</p>',
-      '<p style="margin:0 0 14px">Si no es tu momento, no pasa nada. Cuando quieras, respóndeme a este email.</p><p style="margin:0 0 14px">Juan</p>')
+    ], { url: formacionesUrl, label: 'Ver las formaciones' }, bajaUrl).replace('<p style="margin:0 0 14px">Juan de Mora · Curino</p>',
+      '<p style="margin:0 0 14px">Si no es tu momento, no pasa nada. Cuando quieras, respóndeme a este email.</p><p style="margin:0 0 14px">Juan de Mora · Curino</p>')
   };
 }
 
@@ -200,7 +205,8 @@ async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: nu
     if (ok) { await marca({ aviso_sin_compra_at: now() }); log.push('aviso_juan'); }
   }
 
-  if (lead.baja_at) return log;
+  // Emails al lead: solo con la casilla v2 (consentimiento_comercial) y sin baja.
+  if (lead.baja_at || !lead.consentimiento_comercial) return log;
 
   // Pasos vencidos y pendientes
   const pasos: { n: 1 | 2 | 3 | 4; horas: number; col: string }[] = [
@@ -216,6 +222,11 @@ async function procesar(supabase: any, lead: Lead, segPorHora: number, ahora: nu
 
   if (ultimo.n === 3 && lead.sesion_comprada_at) {
     await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sesion_comprada'); return log;
+  }
+  // Activacion por partes: sin PARTNERS_SEGUIMIENTO_SESION_ACTIVO la oferta
+  // de la sesion (email 3) no se envia.
+  if (ultimo.n === 3 && Deno.env.get('PARTNERS_SEGUIMIENTO_SESION_ACTIVO') !== 'true') {
+    await marca({ seguimiento_3_at: now() }); log.push('email_3:saltado_sesion_inactiva'); return log;
   }
   const email = await construir(ultimo.n, lead, supabase);
   if (!email) { await marca({ [ultimo.col]: now() }); log.push(`email_${ultimo.n}:no_enviado_agotado`); return log; }

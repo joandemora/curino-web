@@ -420,7 +420,7 @@ body{color:var(--ink)}
           </div>
           <label class="pt-check" id="pt-privacidad-wrap">
             <input id="pt-privacidad" type="checkbox" required>
-            <span>He leído la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a> y acepto que contactéis conmigo para valorar mi caso.</span>
+            <span>He leído la <a href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a>. Acepto que Curino contacte conmigo por email y WhatsApp sobre mi solicitud y sobre sus formaciones. Puedo darme de baja en cualquier momento.</span>
           </label>
           <button type="submit" class="pt-btn" id="pt-start-btn">Quiero mi plaza</button>
           <p class="pt-error" id="pt-error-0" role="alert"></p>
@@ -1049,6 +1049,8 @@ body{color:var(--ink)}
       action: 'start',
       nombre: nombre, email: email, telefono_prefijo: prefijo, telefono: telefono,
       privacidad: true,
+      // Casilla v2: contacto sobre la solicitud y las formaciones (secuencia).
+      consentimiento_comercial: true,
       website: $('#pt-website').value,
       event_id: leadEventId,
       landing_url: attr.landing_url || window.location.href,
