@@ -2,7 +2,7 @@
 //
 // Factura simplificada + emails para venta de plazas en clases en directo.
 // Desde 2026-10 el producto vendido es el Intensivo Curino Partners
-// (4 semanas, 8 clases por Zoom): la fila de `clases` representa la
+// (4 clases en directo por Zoom, una por semana): la fila de `clases` representa la
 // promocion y `fecha` es la PRIMERA sesion. `meet_url` guarda el enlace
 // de Zoom (nombre de columna historico).
 // Reutiliza pdf-lib y el patrón de _shared/magazine-invoices.ts.
@@ -201,7 +201,7 @@ export async function generateClaseInvoicePdf(
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
 
-  page.drawText(sanitizePdfText(inv.concepto || 'Intensivo Curino Partners: 4 semanas, 8 clases en directo por Zoom'), { x: 50, y, font, size: 10 });
+  page.drawText(sanitizePdfText(inv.concepto || 'Intensivo Curino Partners: 4 clases en directo por Zoom, una por semana'), { x: 50, y, font, size: 10 });
   page.drawText(`${fmtEur(baseCents)}`, { x: 480, y, font, size: 10 });
   y -= 12;
   if (!inv.concepto && inv.clase_fecha_confirmada !== false) {
@@ -300,7 +300,7 @@ export async function generateClaseRectificativaPdf(
   y -= 15;
   page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5 });
   y -= 15;
-  page.drawText(sanitizePdfText(`Devolución: ${r.concepto || 'Intensivo Curino Partners (4 semanas, 8 clases en directo por Zoom)'}`), { x: 50, y, font, size: 10 });
+  page.drawText(sanitizePdfText(`Devolución: ${r.concepto || 'Intensivo Curino Partners (4 clases en directo por Zoom, una por semana)'}`), { x: 50, y, font, size: 10 });
   page.drawText(neg(baseCents), { x: 475, y, font, size: 10 });
   y -= 30;
 
@@ -440,9 +440,9 @@ export async function sendClaseConfirmationEmail(
   <h2 style="color:#000;margin-top:0;">Tu plaza en el Intensivo Curino Partners está confirmada</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
   ${clase.fecha_confirmada === false
-    ? `<p>Ya tienes tu plaza. Te confirmaremos por email y en el grupo de WhatsApp la fecha y el horario de las 8 clases.</p>`
+    ? `<p>Ya tienes tu plaza. Te confirmaremos por email y en el grupo de WhatsApp la fecha y el horario de las 4 clases.</p>`
     : `<p>Ya tienes tu plaza. Empezamos el ${escapeHtml(fechaSolo)} a las ${escapeHtml(horaSolo)} (hora peninsular).</p>`}
-  <p>Son 4 semanas y 8 clases en directo por Zoom, con tiempo para tus preguntas en cada una.</p>
+  <p>Son 4 clases en directo por Zoom, una por semana, con tiempo para tus preguntas en cada una.</p>
   ${accesoInmediatoHtml()}
   ${clase.fecha_confirmada === false
     ? `<p><strong>El enlace de Zoom de las clases en directo te llegará por email antes de la primera clase.</strong></p>`
@@ -451,7 +451,7 @@ export async function sendClaseConfirmationEmail(
   <h3 style="color:#000;margin-top:30px;">Antes de empezar</h3>
   <p>No necesitas saber de carpintería. Si ya tienes algún caso en mente —una cocina, un armario, un cliente potencial—, apúntalo y lo trabajamos en clase.</p>
   <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU · <a href="https://www.casacurino.com/aviso-legal/" style="color:#888">Aviso legal</a></p>
 </body>
 </html>`;
 
@@ -492,11 +492,11 @@ export async function sendClaseReminderEmail(
   <h2 style="color:#000;margin-top:0;">Mañana empezamos</h2>
   <p>Hola ${escapeHtml(nombre)},</p>
   <p>Mañana a las ${escapeHtml(horaSolo)} (hora peninsular) es la primera clase del Intensivo Curino Partners.</p>
-  <p>Este es tu enlace de Zoom. Guárdalo: es el mismo para las 8 clases.</p>
+  <p>Este es tu enlace de Zoom. Guárdalo: es el mismo para las 4 clases.</p>
   ${zoomBlock}
   ${whatsappGroupHtml()}
   <p>No hace falta que prepares nada. Papel, boli y ganas de preguntar.</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU · <a href="https://www.casacurino.com/aviso-legal/" style="color:#888">Aviso legal</a></p>
 </body>
 </html>`;
   } else {
@@ -514,7 +514,7 @@ export async function sendClaseReminderEmail(
      <strong>Duracion:</strong> ${clase.duracion_min} minutos</p>
   ${zoomBlock}
   <p>Con la camara y el microfono a punto ya estamos.</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automatico.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU · <a href="https://www.casacurino.com/aviso-legal/" style="color:#888">Aviso legal</a></p>
 </body>
 </html>`;
   }
@@ -547,7 +547,7 @@ export async function sendClaseRefundConfirmationEmail(
   <p>Tu plaza queda liberada. Si más adelante quieres apuntarte a otra edición, escríbenos y te avisamos.</p>
   ${rectificativas.length ? `<p>Adjunto la factura rectificativa (N.º ${rectificativas.map((r) => escapeHtml(r.invoice_number)).join(', ')}).</p>` : ''}
   <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automático. Puedes responder si necesitas contactar.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU · <a href="https://www.casacurino.com/aviso-legal/" style="color:#888">Aviso legal</a></p>
 </body>
 </html>`;
 
@@ -580,7 +580,7 @@ export async function sendClaseRefundEmail(
   <p>La ultima plaza se ocupo justo mientras completabas el pago. Ya hemos iniciado el reembolso automatico en Stripe: veras el dinero de vuelta en 5-10 dias habiles, segun tu banco.</p>
   <p>Vamos a abrir una nueva promocion del Intensivo pronto. Si quieres que te avisemos, responde a este email o apuntate en la lista de espera desde casacurino.com/partners.</p>
   <p>Perdona las molestias.</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Este email es automatico. Puedes responder.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU · <a href="https://www.casacurino.com/aviso-legal/" style="color:#888">Aviso legal</a></p>
 </body>
 </html>`;
 

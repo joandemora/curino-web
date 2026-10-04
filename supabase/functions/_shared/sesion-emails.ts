@@ -60,7 +60,7 @@ export async function sendSesionConfirmationEmail(
   <p>Adjunto también la factura (N.º ${escapeHtml(invoiceNumber)}).</p>
   <p>Si quieres aprovecharla al máximo, apunta antes qué te gustaría montar y qué dudas tienes ahora mismo.</p>
   <p style="margin-top:24px;">Un abrazo,<br>Juan de Mora</p>
-  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU — Puedes responder a este email si necesitas contactar.</p>
+  <p style="font-size:12px;color:#888;margin-top:30px;">SISTEMA &amp; CURINO SLU · <a href="https://www.casacurino.com/aviso-legal/" style="color:#888">Aviso legal</a></p>
 </body>
 </html>`;
 

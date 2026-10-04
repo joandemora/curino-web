@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Curino Partners — Crea tu negocio de alta carpintería a medida | Curino</title>
-<meta name="description" content="Intensivo en directo con Juan de Mora: crea desde cero tu negocio de alta carpintería y mobiliario a medida de alta gama. 4 semanas, 8 clases por Zoom. Primera edición: solo 3 plazas.">
+<meta name="description" content="Intensivo en directo con Juan de Mora: crea desde cero tu negocio de alta carpintería y mobiliario a medida de alta gama. Octubre: 4 clases en directo por Zoom, una por semana. Solo 3 plazas.">
 <link rel="canonical" href="https://www.casacurino.com/partners/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Curino Partners — Crea tu negocio de alta carpintería a medida">
@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="Curino">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Curino Partners — Crea tu negocio de alta carpintería a medida">
-<meta name="twitter:description" content="Intensivo en directo con Juan de Mora. 4 semanas. Primera edición: solo 3 plazas.">
+<meta name="twitter:description" content="Intensivo en directo con Juan de Mora. Octubre: 4 clases por Zoom. Solo 3 plazas.">
 <meta name="twitter:image" content="https://www.casacurino.com/assets/imagenes/partners/juan-hero.webp">
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
@@ -28,7 +28,7 @@
   "@context": "https://schema.org",
   "@type": "Course",
   "name": "Intensivo Curino Partners",
-  "description": "Intensivo de 4 semanas (8 clases en directo por Zoom) para crear desde cero un negocio de alta carpintería y mobiliario a medida: negocio, producto y producción, diseño y presupuesto, venta y entrega.",
+  "description": "Intensivo de 4 semanas (4 clases en directo por Zoom, una por semana) para crear desde cero un negocio de alta carpintería y mobiliario a medida: negocio, producto y producción, diseño y presupuesto, venta y entrega.",
   "provider": { "@type": "Organization", "name": "Curino", "url": "https://www.casacurino.com/" },
   "inLanguage": "es-ES"
 }
@@ -206,8 +206,9 @@ body{color:var(--ink)}
 .pt-pf-amount strong{font-family:var(--head);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.03em;color:var(--ink)}
 .pt-pf-amount small{font-size:13px;color:var(--soft)}
 .pt-pf-plazas{font-family:var(--head);font-weight:800;font-size:15px;color:var(--green)}
-.pt-pf-next{font-size:12.5px;line-height:1.4;color:var(--soft)}
-.pt-pf-next s{color:var(--soft)}
+.pt-pf-old{font-family:var(--head);font-weight:700;font-size:20px;line-height:1;color:var(--soft);text-decoration-thickness:2px}
+.pt-pf-row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.pt-pf-dto{font-family:var(--head);font-weight:800;font-size:24px;line-height:1;background:var(--green);color:var(--ink);border-radius:8px;padding:.4rem .6rem;letter-spacing:-.02em}
 .pt-pf-pago{font-size:12.5px;color:var(--soft)}
 .pt-ok{font-size:14px;color:var(--green-dark);font-weight:600;margin:0}
 .pt-oto-final{margin-top:1rem;padding-top:1rem;border-top:1.5px solid var(--line)}
@@ -361,7 +362,7 @@ body{color:var(--ink)}
   <div class="pt-wrap pt-hero-grid">
 
     <div class="pt-hero-head">
-      <span class="pt-eyebrow">Intensivo Curino Partners · En directo</span>
+      <span class="pt-eyebrow">Intensivo Curino Partners · Octubre · 4 clases en directo por Zoom</span>
       <h1 class="pt-h1">¿Conoces algún sector en el que pides presupuesto… y no te lo envían?</h1>
       <p class="pt-hero-sub">Te enseño a crear desde cero tu negocio de alta carpintería y mobiliario a medida de alta gama, para empezar a facturar desde el primer mes.</p>
       <div class="pt-big"><strong>+10 M€</strong><span>facturados en mis negocios</span></div>
@@ -374,7 +375,7 @@ body{color:var(--ink)}
         <!-- Paso 0: contacto -->
         <form class="pt-step" data-step="0" id="pt-step-0" novalidate>
           <h2 class="pt-card-title">Solicita tu plaza</h2>
-          <p class="pt-card-sub">Intensivo en directo · Primera edición: solo 3 plazas</p>
+          <p class="pt-card-sub">Intensivo · Octubre · 4 clases en directo por Zoom</p>
           <div class="pt-field">
             <label for="pt-nombre">Nombre</label>
             <input id="pt-nombre" name="nombre" type="text" autocomplete="given-name" maxlength="120" required>
@@ -469,10 +470,10 @@ body{color:var(--ink)}
           <div class="pt-progress"><span style="width:100%"></span></div>
           <h2 class="pt-q">¿Cuándo quieres empezar?</h2>
           <div class="pt-opts" data-field="inicio">
-            <button type="button" class="pt-opt" data-value="noviembre">
-              <span class="pt-opt-body">Ya, en el intensivo de noviembre
+            <button type="button" class="pt-opt" data-value="octubre">
+              <span class="pt-opt-body">Ya, en el intensivo de octubre
                 <!-- Texto real segun plazas libres (renderUrgencia). Por defecto, el generico. -->
-                <span class="pt-urg" id="pt-urg">Solo 3 plazas en noviembre</span>
+                <span class="pt-urg" id="pt-urg">Solo 3 plazas en octubre</span>
               </span>
             </button>
             <button type="button" class="pt-opt" data-value="proximos_meses">En los próximos meses</button>
@@ -489,9 +490,12 @@ body{color:var(--ink)}
               <!-- Precio: sale de precio_cents de la edición abierta (renderPrecioFinal),
                    el mismo importe que cobra Stripe. Valores por defecto sin edición. -->
               <div class="pt-pf">
-                <div class="pt-pf-amount"><strong data-precio>990 €</strong><small>IVA incluido</small></div>
+                <s class="pt-pf-old" data-precio-siguiente>1.650 €</s>
+                <div class="pt-pf-row">
+                  <div class="pt-pf-amount"><strong data-precio>990 €</strong><small>IVA incluido</small></div>
+                  <span class="pt-pf-dto">-<span data-descuento>40</span>&nbsp;%</span>
+                </div>
                 <span class="pt-pf-plazas" data-plazas-final>Solo quedan 3 plazas</span>
-                <span class="pt-pf-next">Las siguientes ediciones costarán <s data-precio-siguiente>1.650 €</s> · hoy&nbsp;<span data-descuento>40</span>&nbsp;%&nbsp;dto.</span>
               </div>
               <button type="button" class="pt-btn pt-btn-upper" id="pt-buy-btn">Acceder ahora</button>
               <div id="pt-waitlist" hidden>
@@ -621,8 +625,8 @@ body{color:var(--ink)}
     </div>
     <div class="pt-meta">
       <span class="pt-chip">4 semanas</span>
-      <span class="pt-chip">8 clases en directo por Zoom</span>
-      <span class="pt-chip is-green">Primera edición: solo 3 plazas</span>
+      <span class="pt-chip">4 clases en directo por Zoom, una por semana</span>
+      <span class="pt-chip is-green">Octubre: solo 3 plazas</span>
     </div>
     <div class="pt-weeks">
       <div class="pt-week">
@@ -729,7 +733,7 @@ body{color:var(--ink)}
       </details>
       <details>
         <summary>No tengo mucho tiempo. ¿Me va a dar?</summary>
-        <p>Son 8 clases en directo en 4 semanas, dos por semana. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias y aplicar lo que veamos.</p>
+        <p>Son 4 clases en directo, una por semana durante 4 semanas. Yo llevo Curino solo, unas 2 horas al día; para empezar te basta con reservar 1-2 horas diarias y aplicar lo que veamos.</p>
       </details>
       <details>
         <summary>¿Por qué enseñas esto si es tu negocio?</summary>
@@ -745,7 +749,7 @@ body{color:var(--ink)}
       </details>
       <details>
         <summary>¿Cómo son las clases?</summary>
-        <p>Son 8 clases en directo por Zoom, dos por semana durante 4 semanas, y puedes preguntar en cada una. El enlace de Zoom te llega por email el día antes de la primera clase.</p>
+        <p>Son 4 clases en directo por Zoom, una por semana, y puedes preguntar en cada una. El enlace de Zoom te llega por email el día antes de la primera clase.</p>
       </details>
     </div>
   </div>
@@ -754,7 +758,7 @@ body{color:var(--ink)}
 <!-- ═════════════ CTA FINAL ═════════════ -->
 <section class="pt-sec pt-sec--ink pt-cta">
   <div class="pt-wrap">
-    <span class="pt-eyebrow">Primera edición: solo 3 plazas</span>
+    <span class="pt-eyebrow">Octubre: solo 3 plazas</span>
     <h2 class="pt-h2">¿Empezamos a montar tu negocio?</h2>
     <p class="pt-lead">Rellena la solicitud en menos de un minuto y elige si reservas tu plaza o prefieres hablar antes conmigo.</p>
     <button type="button" class="pt-btn" data-scroll-form>Quiero mi plaza</button>
@@ -899,12 +903,12 @@ body{color:var(--ink)}
   // edicion activa (RPC plazas_intensivo_disponibles via /api/clases-proxima).
   // El aforo sale de la fila (plazas_totales): la 1a edicion es de 3 y las
   // siguientes de 20, nunca un numero fijo aqui.
-  // Sin edicion activa o error: texto de reserva de la 1a edicion.
+  // Sin edicion activa o error: texto de reserva («Solo 3 plazas en octubre»).
   function renderUrgencia(n, aforo) {
     var el = $('#pt-urg');
     if (!el) return;
     if (typeof n !== 'number' || n < 0) {
-      el.textContent = 'Solo 3 plazas en noviembre';
+      el.textContent = 'Solo 3 plazas en octubre';
     } else if (n > 5) {
       el.textContent = (typeof aforo === 'number' && aforo > 0)
         ? 'Plazas limitadas: máximo ' + aforo + ' alumnos'
@@ -937,7 +941,7 @@ body{color:var(--ink)}
     $$('[data-precio-siguiente]').forEach(function (el) { el.textContent = fmtEuros(CONFIG.PRECIO_SIGUIENTES_CENTS); });
     var dto = Math.round((1 - precio / CONFIG.PRECIO_SIGUIENTES_CENTS) * 100);
     $$('[data-descuento]').forEach(function (el) { el.textContent = String(dto); });
-    // Plazas: mismos datos reales que el paso 4. Sin dato → 3 (1ª edición).
+    // Plazas: mismos datos reales que el paso 4. Sin dato → 3.
     var txt = 'Solo quedan 3 plazas';
     if (typeof n === 'number' && n >= 0) {
       txt = n === 0 ? 'Plazas agotadas' : (n === 1 ? 'Solo queda 1 plaza' : 'Solo quedan ' + n + ' plazas');
@@ -948,7 +952,7 @@ body{color:var(--ink)}
   function renderPromo() {
     var libres = plazasLibres();
     $$('[data-plazas-txt]').forEach(function (el) {
-      el.textContent = libres > 0 ? ((libres === 1 ? 'queda ' : 'quedan ') + libres + ' de ' + clase.plazas_totales + ' plazas') : 'plazas agotadas';
+      el.textContent = libres > 0 ? (libres === 1 ? 'queda 1 plaza' : 'quedan ' + libres + ' plazas') : 'plazas agotadas';
     });
   }
 
