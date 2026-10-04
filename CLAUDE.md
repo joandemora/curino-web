@@ -95,7 +95,7 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 | `create-checkout-session` | sí | Cliente autenticado (marketplace) | Crea sesión con Connect + application fee. |
 | `magazine-checkout` | sí | Usuario logueado | Compra paquetes de créditos de revista. |
 | `magazine-boost-checkout` | sí | Usuario logueado | Boost/promoción de artículo. |
-| `clases-checkout` | no | Invitado (landing pública) | Crea Stripe session para plaza en el Intensivo Curino Partners (990 €, aforo 20, solo tarjeta, sin renuncia al desistimiento). La fila de `clases` es la promoción; `fecha` = primera sesión; `meet_url` guarda el enlace de **Zoom**. |
+| `clases-checkout` | no | Invitado (landing pública) | Crea Stripe session para plaza en el Intensivo Curino Partners (990 €, aforo por fila, `card` + `link` con reintento solo `card`, dirección de facturación obligatoria, NIF opcional → factura completa; sin renuncia al desistimiento). La fila de `clases` es la promoción; `fecha` = primera sesión; `meet_url` guarda el enlace de **Zoom**. |
 | `partners-solicitud` | no | Vercel → Supabase | Formulario multipaso de `/partners/` (acciones `start`/`step`/`cta`, id + `edit_token`). Acepta respuestas v1 y v2 (por nombre de campo); v2: cualificado = `inicio <> 'informandome'`. Aviso Resend a `PARTNERS_NOTIFY_EMAIL` (defecto `juan@casacurino.com`, marca ⭐ one-to-one) + Lead por CAPI. |
 | `curso-checkout`, `curso-acceso` | no | — / Vercel → Supabase | Curso pregrabado de 90 € **retirado de la venta** (2026-10). `curso-checkout` sin punto de entrada; `curso-acceso` sigue sirviendo `/partners/acceso/`. |
 | `presupuesto-form-relay` | no | Vercel → Supabase | Envía email Resend tras insertar solicitud de presupuesto. |
@@ -142,6 +142,7 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 - `magazine_boost` → `handleMagazineBoostCompleted`
 - `armario` → `handleArmarioCompleted`
 - `clase` → `handleClaseCompleted` (con **refund automático** si la plaza se agota entre checkout y webhook)
+- `charge.refunded` (fuera del switch de purpose) → `handleChargeRefunded`: reembolso **total** de una inscripción del Intensivo → RPC `liberar_plaza_clase` (idempotente: pagada→reembolsada, −1 plaza, reabre si estaba agotada y no ha empezado) + email; **parcial** → solo `importe_reembolsado_cents`. A 2026-10 el evento **no está suscrito** todavía en el endpoint de Stripe.
 - resto → `handleCheckoutCompleted` (marketplace legacy sin `purpose`)
 
 ### Idempotencia
@@ -202,6 +203,7 @@ Funciones que envían email hoy: ver tabla de Edge Functions arriba.
 
 - **GTM único**: `GTM-NZR7NNTC`. El tag GA4 vive dentro del contenedor GTM — **no** se carga `gtag.js` directo en el HTML.
 - **Meta Pixel** (`31730930696551488`): **no hay `fbq` en el repo**; vive en GTM como tags del template `__cvt_5RM3Q` con consent `ad_storage`: PageView, ViewContent (`view_content`), AddToCart (`add_to_cart`), InitiateCheckout (`begin_checkout`), Purchase (`purchase`), Lead (`generate_lead`). A 2026-10 **los tags no mandan `event_id`** y no existe tag Contact (`contact`): configurar en GTM para que funcione la deduplicación con CAPI.
+- **Stripe**: Edge Functions usan `sk_live` de la cuenta `acct_1TLVUbRxTOs46nbR` (verificado 2026-10). La cuenta TIKOUT (`acct_1U9pdv2NY3CaAFGx`) es otra.
 - **CAPI**: server-side desde Edge Functions con `_shared/meta-capi.ts` — Lead en `partners-solicitud` y Purchase en `handleClaseCompleted`, con el mismo `event_id` que el `dataLayer`. Solo con consentimiento publicitario (el cliente manda `ad_consent` leído de `curino_consent_v2`; sin decisión se aplica el default por país `x-vercel-ip-country`). Secrets: `META_CAPI_TOKEN` (sin él no envía nada), opcionales `META_PIXEL_ID`, `META_TEST_EVENT_CODE`, `META_GRAPH_VERSION`.
 - **Consent Mode v2**: bloque inline canónico en 49 páginas públicas (más `/partners/`, `/partners/gracias/` y `/partners/acceso/`). Defaults granted globales + denied en EEE+UK+CH+IS+LI+NO. Banner `cookie-banner.js` (propio, autocontenido) promueve via `gtag('consent','update')`. Bloqueantes B1/B2 documentados en `CONSENT_AUDIT.md` siguen abiertos.
 - **UTMs**: la landing `/partners/` captura `utm_source/medium/campaign/content/term` + `fbclid` en `sessionStorage.curino_partners_attr` al aterrizar y los guarda en `partners_solicitudes` (y los 3 primeros como metadata Stripe hasta `inscripciones`).
