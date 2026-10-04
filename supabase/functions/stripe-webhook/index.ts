@@ -1192,7 +1192,7 @@ async function handleClaseCompleted(
   // 4b. Best-effort: enlazar la solicitud de /partners/ con la compra
   // (seguimiento comercial) y Purchase por CAPI deduplicado con el
   // event_id del dataLayer de /partners/gracias/.
-  await linkPartnersSolicitud(supabase, session, inscripcion.id, buyerEmail);
+  await linkPartnersSolicitud(supabase, session, String(inscripcion.id), buyerEmail);
   await sendClasePurchaseCapi(session, buyerEmail, nombre, telefono, amountPaidCents, eventId);
 
   // 5. Best-effort: PDF factura + email con Meet + factura adjunta.
