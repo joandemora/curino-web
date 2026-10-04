@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
           currency: 'eur',
           product_data: {
             name: 'Intensivo Curino Partners',
-            description: `4 semanas, 8 clases en directo por Zoom (grabadas). Inicio: ${claseFechaLegible} (hora peninsular).`
+            description: `4 semanas, 8 clases en directo por Zoom. Inicio: ${claseFechaLegible} (hora peninsular).`
           },
           unit_amount: clase.precio_cents
         },

@@ -72,7 +72,7 @@
   <div class="gr-wrap">
     <span class="gr-eyebrow">Intensivo Curino Partners</span>
     <h1 class="gr-h1">Tu plaza está confirmada.</h1>
-    <p class="gr-lead">Empezamos el <strong data-fecha-inicio>[FECHA DE INICIO POR CONFIRMAR]</strong>. Son 4 semanas y 8 clases en directo por Zoom, y todas quedan grabadas.</p>
+    <p class="gr-lead">Son 4 semanas y 8 clases en directo por Zoom.</p>
 
     <ol class="gr-steps">
       <li>
@@ -123,21 +123,6 @@
     document.getElementById('gr-wa-pending').hidden = false;
   }
 
-  // Fecha de inicio desde la promocion abierta (si ya se agoto la vista
-  // publica no la devuelve y se queda el texto por defecto).
-  fetch('/api/clases-proxima', { headers: { 'Accept': 'application/json' } })
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      if (!d || !d.clase || !d.clase.fecha) return;
-      var f = new Intl.DateTimeFormat('es-ES', {
-        weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-        hour12: false, timeZone: 'Europe/Madrid'
-      }).format(new Date(d.clase.fecha));
-      Array.prototype.forEach.call(document.querySelectorAll('[data-fecha-inicio]'), function (el) {
-        el.textContent = f + ' h (hora peninsular)';
-      });
-    })
-    .catch(function () {});
 
   // ── purchase (GA4 + Purchase Pixel via GTM) ──────────────
   // Mismo event_id que el Purchase por CAPI (stripe-webhook) para dedup.
