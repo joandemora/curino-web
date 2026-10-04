@@ -133,7 +133,10 @@ body{color:var(--ink)}
 /* Foto de Juan grande + clientes */
 .pt-photo{position:relative;width:100%;aspect-ratio:4/5;max-height:640px;overflow:hidden;border-radius:6px;background:#222;margin:0}
 .pt-photo img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block}
-.pt-photo video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+/* Mismo hueco 4:5 que la foto, sin bandas. Cover con el encuadre un poco
+   bajado (50% 70%): la cabeza de Juan queda entera y los subtitulos
+   incrustados del video quedan por encima de la barra de controles. */
+.pt-photo video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 70%;background:#000}
 .pt-photo.is-playing figcaption,.pt-photo.is-playing .pt-play{display:none}
 /* Boton play del hero: circulo verde, triangulo negro, pulso suave */
 .pt-play{position:absolute;left:50%;top:50%;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;border:0;background:var(--green);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px -8px rgba(0,0,0,.5);animation:pt-pulse 2.2s ease-out infinite;z-index:2}
@@ -244,7 +247,7 @@ body{color:var(--ink)}
 .pt-ig{display:block;width:100%;max-width:340px;text-decoration:none;color:var(--ink)}
 .pt-ig-txt{display:block;font-family:var(--head);font-weight:800;font-size:17px;letter-spacing:-.01em;line-height:1.25;margin-bottom:.7rem}
 .pt-ig:hover .pt-ig-txt{color:var(--green-dark)}
-.pt-ig img{display:block;width:100%;height:auto;aspect-ratio:736/1600;border-radius:8px;border:1.5px solid var(--line);background:#111}
+.pt-ig img{display:block;width:100%;height:auto;aspect-ratio:736/1200;border-radius:8px;border:1.5px solid var(--line);background:#111}
 
 /* Metricas (bloque verde, estilo "Haz las cuentas") */
 .pt-metrics{background:var(--green);color:var(--ink);border-radius:8px;padding:1.6rem 1.2rem;margin-top:2.5rem}
@@ -559,7 +562,7 @@ body{color:var(--ink)}
       </div>
       <a class="pt-ig" href="https://www.instagram.com/p/DZNH1qfMFY0/" target="_blank" rel="noopener">
         <span class="pt-ig-txt">Mira el proyecto de Maria Alcalde en Instagram →</span>
-        <img src="/assets/imagenes/partners/maria-alcalde-instagram.webp" alt="Publicación de Instagram de Maria Alcalde con su armario de Curino" width="736" height="1600" loading="lazy">
+        <img src="/assets/imagenes/partners/maria-alcalde-instagram.webp" alt="Publicación de Instagram de Maria Alcalde con su armario de Curino" width="736" height="1200" loading="lazy">
       </a>
     </div>
 
@@ -1201,7 +1204,9 @@ body{color:var(--ink)}
       if (fig.classList.contains('is-playing')) return;
       var v = document.createElement('video');
       v.src = '/assets/video/partners/video-curino-hero.mp4';
-      v.poster = '/assets/imagenes/partners/video-curino-hero-poster.webp';
+      // Poster = la propia foto del hero: no se ve el primer fotograma movido
+      // del video mientras carga (no se recorta el MP4 para no cortar el audio).
+      v.poster = '/assets/imagenes/partners/juan-hero.webp';
       v.controls = true;
       v.playsInline = true;
       v.setAttribute('playsinline', '');
