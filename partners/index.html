@@ -133,6 +133,15 @@ body{color:var(--ink)}
 /* Foto de Juan grande + clientes */
 .pt-photo{position:relative;width:100%;aspect-ratio:4/5;max-height:640px;overflow:hidden;border-radius:6px;background:#222;margin:0}
 .pt-photo img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block}
+.pt-photo video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.pt-photo.is-playing figcaption,.pt-photo.is-playing .pt-play{display:none}
+/* Boton play del hero: circulo verde, triangulo negro, pulso suave */
+.pt-play{position:absolute;left:50%;top:50%;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;border:0;background:var(--green);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px -8px rgba(0,0,0,.5);animation:pt-pulse 2.2s ease-out infinite;z-index:2}
+.pt-play svg{width:38px;height:38px;margin-left:5px;fill:currentColor}
+.pt-play:hover{background:var(--green-dark)}
+.pt-play:focus-visible{outline:3px solid #fff;outline-offset:4px}
+@media(min-width:960px){.pt-play{width:104px;height:104px;margin:-52px 0 0 -52px}.pt-play svg{width:44px;height:44px}}
+@keyframes pt-pulse{0%{box-shadow:0 0 0 0 rgba(18,183,106,.55),0 10px 30px -8px rgba(0,0,0,.5)}70%{box-shadow:0 0 0 22px rgba(18,183,106,0),0 10px 30px -8px rgba(0,0,0,.5)}100%{box-shadow:0 0 0 0 rgba(18,183,106,0),0 10px 30px -8px rgba(0,0,0,.5)}}
 .pt-photo figcaption{position:absolute;left:12px;bottom:12px;background:rgba(22,22,22,.86);color:#fff;font-size:13px;padding:.45rem .75rem;border-radius:4px}
 .pt-photo figcaption b{font-family:var(--head);font-weight:800}
 .pt-clients{display:flex;align-items:center;gap:.9rem;margin-top:1.2rem}
@@ -219,12 +228,34 @@ body{color:var(--ink)}
 .pt-flow-txt{font-size:14.5px;line-height:1.5;color:var(--soft)}
 .pt-flow-foot{margin-top:1.3rem;font-family:var(--head);font-size:20px;font-weight:800;letter-spacing:-.01em}
 
+/* Titular de la seccion modelo: subrayado verde en "mobiliario de lujo" */
+.pt-mark{background:linear-gradient(transparent 62%,rgba(18,183,106,.45) 62%);padding:0 .08em}
+
+/* Video viral + Instagram (alto reservado con aspect-ratio: sin saltos) */
+.pt-proof-media{display:grid;gap:1.25rem;margin-top:2.25rem;justify-items:center}
+@media(min-width:768px){.pt-proof-media{grid-template-columns:repeat(2,minmax(0,340px));justify-content:center;align-items:start;gap:2.5rem}}
+.pt-reel{position:relative;width:100%;max-width:340px;aspect-ratio:608/1080;background:#000;border-radius:8px;overflow:hidden}
+.pt-reel video{width:100%;height:100%;object-fit:cover;display:block}
+.pt-sound{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:.35rem;background:rgba(22,22,22,.82);color:#fff;border:0;border-radius:999px;padding:.55rem .8rem;font-family:var(--head);font-size:13px;font-weight:700;cursor:pointer}
+.pt-sound svg{width:18px;height:18px;fill:currentColor}
+.pt-sound .on{display:none}
+.pt-sound[aria-pressed="true"] .on{display:block}
+.pt-sound[aria-pressed="true"] .off{display:none}
+.pt-ig{display:block;width:100%;max-width:340px;text-decoration:none;color:var(--ink)}
+.pt-ig-txt{display:block;font-family:var(--head);font-weight:800;font-size:17px;letter-spacing:-.01em;line-height:1.25;margin-bottom:.7rem}
+.pt-ig:hover .pt-ig-txt{color:var(--green-dark)}
+.pt-ig img{display:block;width:100%;height:auto;aspect-ratio:736/1600;border-radius:8px;border:1.5px solid var(--line);background:#111}
+
 /* Metricas (bloque verde, estilo "Haz las cuentas") */
 .pt-metrics{background:var(--green);color:var(--ink);border-radius:8px;padding:1.6rem 1.2rem;margin-top:2.5rem}
 @media(min-width:768px){.pt-metrics{padding:2.6rem 3rem}}
 .pt-sec .pt-metrics .pt-eyebrow{color:var(--ink)}
 .pt-metric{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;border-top:2px solid var(--ink);padding:1rem 0}
 .pt-metric:last-child{padding-bottom:0}
+.pt-metric-main{border-top:2px solid var(--ink);padding:1rem 0 1.2rem}
+.pt-metric-main-n{display:block;font-family:var(--head);font-weight:800;font-size:clamp(46px,12vw,120px);line-height:.92;letter-spacing:-.045em;text-transform:uppercase;color:var(--ink)}
+.pt-metric-main-l{display:block;font-family:var(--head);font-weight:700;font-size:18px;margin-top:.5rem}
+@media(min-width:768px){.pt-metric-main-l{font-size:22px}}
 .pt-metric-l{font-family:var(--head);font-weight:700;font-size:16px;line-height:1.25}
 .pt-metric-n{font-family:var(--head);font-weight:800;font-size:clamp(34px,7.5vw,72px);line-height:.95;letter-spacing:-.04em;text-align:right;white-space:nowrap}
 .pt-metric-n.small{font-size:clamp(22px,4vw,40px);line-height:1.05;letter-spacing:-.025em;white-space:normal}
@@ -462,8 +493,13 @@ body{color:var(--ink)}
     </div>
 
     <div class="pt-hero-media">
-      <figure class="pt-photo">
+      <figure class="pt-photo" id="pt-hero-photo">
         <img src="/assets/imagenes/partners/juan-hero.webp" alt="Juan de Mora, fundador de Curino" width="1076" height="1345" fetchpriority="high">
+        <!-- Play: el video (assets/video/partners/video-curino-hero.mp4) no se
+             descarga hasta pulsar; se reproduce inline en este mismo hueco. -->
+        <button type="button" class="pt-play" id="pt-hero-play" aria-label="Ver el vídeo de Juan">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+        </button>
         <figcaption><b>Juan de Mora</b> · fundador de Curino</figcaption>
       </figure>
       <div class="pt-clients">
@@ -499,23 +535,43 @@ body{color:var(--ink)}
   <div class="pt-wrap">
     <div class="pt-sec-head">
       <span class="pt-eyebrow">El modelo</span>
-      <h2 class="pt-h2">Tú diseñas y vendes. Otros fabrican y montan.</h2>
-      <p class="pt-lead">El dinero de este negocio está en el diseño y la venta, no en la maquinaria. Trabajas con fabricantes y montadores que ya existen y tú te quedas con la relación con el cliente y con el margen.</p>
+      <h2 class="pt-h2">Vendes <span class="pt-mark">mobiliario de lujo</span> sin tener taller.</h2>
+      <p class="pt-lead">Alta carpintería y mobiliario a medida de alta gama: proyectos de <strong>+20.000 €</strong>. Tú encuentras al cliente y vendes el proyecto; tu red de talleres fabrica y los montadores instalan.</p>
     </div>
     <div class="pt-flow">
-      <div class="pt-flow-item"><span class="pt-flow-n">01</span><span class="pt-flow-t">Cliente</span><span class="pt-flow-txt">Particulares, interioristas y arquitectos que necesitan cocinas, armarios y mobiliario a medida.</span></div>
-      <div class="pt-flow-item is-you"><span class="pt-flow-n">02</span><span class="pt-flow-t">Tú</span><span class="pt-flow-txt">Diseñas, presupuestas y vendes. Llevas el proyecto de principio a fin.</span></div>
-      <div class="pt-flow-item"><span class="pt-flow-n">03</span><span class="pt-flow-t">Fabricante</span><span class="pt-flow-txt">Produce a partir de tus planos. Tú no compras maquinaria.</span></div>
-      <div class="pt-flow-item"><span class="pt-flow-n">04</span><span class="pt-flow-t">Montador</span><span class="pt-flow-txt">Instala en casa del cliente. Tú supervisas y entregas.</span></div>
+      <div class="pt-flow-item is-you"><span class="pt-flow-n">01 · Tú</span><span class="pt-flow-t">Encuentras al cliente</span><span class="pt-flow-txt">Interioristas, arquitectos y particulares de alto poder adquisitivo.</span></div>
+      <div class="pt-flow-item is-you"><span class="pt-flow-n">02 · Tú</span><span class="pt-flow-t">Vendes el proyecto</span><span class="pt-flow-txt">Presupuesto con las plantillas, el catálogo y el CAD de Curino. No diseñas desde cero.</span></div>
+      <div class="pt-flow-item"><span class="pt-flow-n">03</span><span class="pt-flow-t">Fabrica tu red de talleres</span><span class="pt-flow-txt">Producción externalizada, sin taller propio.</span></div>
+      <div class="pt-flow-item"><span class="pt-flow-n">04</span><span class="pt-flow-t">Se monta y cobras</span><span class="pt-flow-txt">Montadores de confianza instalan; tú te quedas el margen.</span></div>
     </div>
     <p class="pt-flow-foot">Sin taller. Sin local. Sin fábrica.</p>
 
+    <!-- Video viral + proyecto de Maria Alcalde en Instagram -->
+    <div class="pt-proof-media">
+      <div class="pt-reel" id="pt-reel">
+        <!-- preload="none" + IntersectionObserver: no se descarga hasta acercarse a pantalla. -->
+        <video id="pt-reel-video" muted loop playsinline preload="none" poster="/assets/imagenes/partners/viral-cris-armario-poster.webp" data-src="/assets/video/partners/viral-cris-armario.mp4" width="608" height="1080" aria-label="Vídeo: armario a medida de Curino"></video>
+        <button type="button" class="pt-sound" id="pt-reel-sound" aria-pressed="false" aria-label="Activar sonido">
+          <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>Sonido</span>
+        </button>
+      </div>
+      <a class="pt-ig" href="https://www.instagram.com/p/DZNH1qfMFY0/" target="_blank" rel="noopener">
+        <span class="pt-ig-txt">Mira el proyecto de Maria Alcalde en Instagram →</span>
+        <img src="/assets/imagenes/partners/maria-alcalde-instagram.webp" alt="Publicación de Instagram de Maria Alcalde con su armario de Curino" width="736" height="1600" loading="lazy">
+      </a>
+    </div>
+
     <div class="pt-metrics">
       <span class="pt-eyebrow">Curino este año</span>
+      <div class="pt-metric-main">
+        <span class="pt-metric-main-n">2 horas al día</span>
+        <span class="pt-metric-main-l">Yo solo, sin equipo.</span>
+      </div>
       <div class="pt-metric"><span class="pt-metric-l">Presupuestado</span><span class="pt-metric-n">+550.000 €</span></div>
       <div class="pt-metric"><span class="pt-metric-l">Facturado</span><span class="pt-metric-n">+300.000 €</span></div>
       <div class="pt-metric"><span class="pt-metric-l">Beneficio</span><span class="pt-metric-n">90.000 €</span></div>
-      <div class="pt-metric"><span class="pt-metric-l">Equipo</span><span class="pt-metric-n small">Yo solo, sin equipo,<br>unas 2 horas al día</span></div>
     </div>
 
     <!-- Reseñas: se muestra solo si CONFIG.RESENAS tiene imagenes. -->
@@ -1134,6 +1190,63 @@ body{color:var(--ink)}
     slot.appendChild(v);
     slot.appendChild(unmute);
     $('#pt-video-sec').hidden = false;
+  })();
+
+  // ── Video del hero: se crea al pulsar play (no se descarga antes) ──
+  (function heroVideo() {
+    var fig = $('#pt-hero-photo');
+    var btn = $('#pt-hero-play');
+    if (!fig || !btn) return;
+    btn.addEventListener('click', function () {
+      if (fig.classList.contains('is-playing')) return;
+      var v = document.createElement('video');
+      v.src = '/assets/video/partners/video-curino-hero.mp4';
+      v.poster = '/assets/imagenes/partners/video-curino-hero-poster.webp';
+      v.controls = true;
+      v.playsInline = true;
+      v.setAttribute('playsinline', '');
+      v.setAttribute('webkit-playsinline', '');
+      v.preload = 'auto';
+      fig.appendChild(v);
+      fig.classList.add('is-playing');
+      v.play().catch(function () {});
+      dl({ event: 'video_play', video: 'hero' });
+    });
+  })();
+
+  // ── Video viral: carga perezosa + autoplay muted cuando entra en pantalla ──
+  (function reelVideo() {
+    var v = $('#pt-reel-video');
+    var snd = $('#pt-reel-sound');
+    if (!v) return;
+    function load() {
+      if (v.dataset.loaded) return;
+      v.dataset.loaded = '1';
+      v.src = v.dataset.src;
+      v.preload = 'auto';
+    }
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            load();
+            v.play().catch(function () {});
+          } else if (v.dataset.loaded) {
+            v.pause();
+          }
+        });
+      }, { rootMargin: '300px 0px' }).observe(v);
+    } else {
+      load();
+    }
+    snd.addEventListener('click', function () {
+      load();
+      var on = v.muted;
+      v.muted = !on;
+      snd.setAttribute('aria-pressed', on ? 'true' : 'false');
+      snd.setAttribute('aria-label', on ? 'Silenciar' : 'Activar sonido');
+      if (on) { v.play().catch(function () {}); dl({ event: 'video_sound', video: 'viral' }); }
+    });
   })();
 
   // ── Arranque: retomar donde se quedo ─────────────────────
