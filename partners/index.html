@@ -199,6 +199,15 @@ body{color:var(--ink)}
 .pt-choice p{font-size:15.5px;line-height:1.45;color:var(--ink);margin:0}
 .pt-choice small{font-size:12.5px;color:var(--soft);display:block;margin-top:.3rem}
 .pt-note{font-size:14px;line-height:1.5;color:var(--soft);margin:.9rem 0 0}
+/* Precio en la tarjeta de compra de la pantalla final */
+.pt-pf{display:flex;flex-direction:column;gap:.3rem}
+.pt-pf-amount{display:flex;align-items:baseline;gap:.45rem}
+.pt-pf-amount strong{font-family:var(--head);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.03em;color:var(--ink)}
+.pt-pf-amount small{font-size:13px;color:var(--soft)}
+.pt-pf-plazas{font-family:var(--head);font-weight:800;font-size:15px;color:var(--green)}
+.pt-pf-next{font-size:12.5px;line-height:1.4;color:var(--soft)}
+.pt-pf-next s{color:var(--soft)}
+.pt-pf-pago{font-size:12.5px;color:var(--soft)}
 .pt-ok{font-size:14px;color:var(--green-dark);font-weight:600;margin:0}
 .pt-oto-final{margin-top:1rem;padding-top:1rem;border-top:1.5px solid var(--line)}
 .pt-oto-final p{font-size:15px;line-height:1.45;margin:0 0 .75rem}
@@ -475,7 +484,15 @@ body{color:var(--ink)}
           <h2 class="pt-final-title">¡Perfecto, <span data-nombre></span>! ¿Qué quieres hacer ahora?</h2>
           <div class="pt-choices">
             <div class="pt-choice" id="pt-choice-buy" hidden>
-              <p>Lo tengo claro, quiero conseguir mi plaza ahora.<small>Pago único con tarjeta · <span data-plazas-txt>primera edición: solo 3 plazas</span></small></p>
+              <p>Lo tengo claro, quiero conseguir mi plaza ahora.</p>
+              <!-- Precio: sale de precio_cents de la edición abierta (renderPrecioFinal),
+                   el mismo importe que cobra Stripe. Valores por defecto sin edición. -->
+              <div class="pt-pf">
+                <div class="pt-pf-amount"><strong data-precio>990 €</strong><small>IVA incluido</small></div>
+                <span class="pt-pf-plazas" data-plazas-final>Solo quedan 3 plazas</span>
+                <span class="pt-pf-next">Las siguientes ediciones costarán <s data-precio-siguiente>1.650 €</s> · hoy&nbsp;<span data-descuento>40</span>&nbsp;%&nbsp;dto.</span>
+                <small class="pt-pf-pago">Pago único con tarjeta</small>
+              </div>
               <button type="button" class="pt-btn pt-btn-upper" id="pt-buy-btn">Acceder ahora</button>
               <div id="pt-waitlist" hidden>
                 <button type="button" class="pt-btn" id="pt-waitlist-btn">Apuntarme a la próxima promoción</button>
@@ -773,6 +790,10 @@ body{color:var(--ink)}
     // Ej: ['/assets/imagenes/partners/resenas/01.webp', ...]
     RESENAS: [],
     ITEM_ID: 'intensivo-partners',
+    // Precio mostrado sin edición abierta (con edición manda precio_cents).
+    PRECIO_RESERVA_CENTS: 99000,
+    // Precio anunciado de las siguientes ediciones (línea tachada).
+    PRECIO_SIGUIENTES_CENTS: 165000,
     ITEM_NAME: 'Intensivo Curino Partners'
   };
   // ==========================================================
@@ -869,9 +890,10 @@ body{color:var(--ink)}
       clase = d && d.clase ? d.clase : null;
       if (clase) renderPromo();
       renderUrgencia(d ? d.plazas_restantes : null, clase ? clase.plazas_totales : null);
+      renderPrecioFinal(clase, d ? d.plazas_restantes : null);
       return clase;
     })
-    .catch(function () { renderUrgencia(null, null); return null; });
+    .catch(function () { renderUrgencia(null, null); renderPrecioFinal(null, null); return null; });
 
   // Etiqueta de urgencia del paso 4 con las plazas libres reales de la
   // edicion activa (RPC plazas_intensivo_disponibles via /api/clases-proxima).
@@ -899,6 +921,30 @@ body{color:var(--ink)}
   function plazasLibres() {
     return clase ? Math.max(0, clase.plazas_totales - clase.plazas_ocupadas) : 0;
   }
+  // Precio de la pantalla final: precio_cents de la edición abierta (lo
+  // mismo que cobra Stripe) o el de reserva sin edición. El descuento se
+  // calcula contra el precio de las siguientes ediciones.
+  // "1.650 €" / "990 €" / "1.234,50 €" (separador de miles siempre; Intl
+  // en es-ES no agrupa números de 4 cifras).
+  function fmtEuros(cents) {
+    var ent = Math.floor(cents / 100), dec = cents % 100;
+    var txt = String(ent).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return txt + (dec ? ',' + (dec < 10 ? '0' : '') + dec : '') + ' €';
+  }
+  function renderPrecioFinal(c, n) {
+    var precio = (c && c.precio_cents > 0) ? c.precio_cents : CONFIG.PRECIO_RESERVA_CENTS;
+    $$('[data-precio]').forEach(function (el) { el.textContent = fmtEuros(precio); });
+    $$('[data-precio-siguiente]').forEach(function (el) { el.textContent = fmtEuros(CONFIG.PRECIO_SIGUIENTES_CENTS); });
+    var dto = Math.round((1 - precio / CONFIG.PRECIO_SIGUIENTES_CENTS) * 100);
+    $$('[data-descuento]').forEach(function (el) { el.textContent = String(dto); });
+    // Plazas: mismos datos reales que el paso 4. Sin dato → 3 (1ª edición).
+    var txt = 'Solo quedan 3 plazas';
+    if (typeof n === 'number' && n >= 0) {
+      txt = n === 0 ? 'Plazas agotadas' : (n === 1 ? 'Solo queda 1 plaza' : 'Solo quedan ' + n + ' plazas');
+    }
+    $$('[data-plazas-final]').forEach(function (el) { el.textContent = txt; });
+  }
+
   function renderPromo() {
     var libres = plazasLibres();
     $$('[data-plazas-txt]').forEach(function (el) {
