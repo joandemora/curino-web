@@ -81,7 +81,7 @@ details summary{cursor:pointer;font-size:12.5px}
           <span class="pa-small">Variables:</span>
           <div class="em-chips" id="vars"></div>
         </div>
-        <label class="em-field">Cuerpo (línea en blanco = párrafo nuevo; la firma «Juan de Mora · Curino» se añade sola)<textarea id="cuerpo"></textarea></label>
+        <label class="em-field">Cuerpo (línea en blanco = párrafo nuevo; {zoom} o {enlace_reserva} solos en una línea salen como botón; la firma «Juan de Mora · Curino» se añade sola)<textarea id="cuerpo"></textarea></label>
       </section>
     </div>
 
@@ -239,13 +239,23 @@ details summary{cursor:pointer;font-size:12.5px}
         ? '<details><summary>' + d.excluidos.length + ' excluidos</summary><ul class="pa-small">' + d.excluidos.map(function (x) {
             return '<li>' + PA.esc(x.nombre || x.email) + ' — ' + PA.esc(x.motivo) + '</li>'; }).join('') + '</ul></details>' : '';
       $('#resDest').innerHTML = '<div class="em-ok"><b>' + d.incluidos.length + '</b> destinatarios' + (d.excluidos.length ? ' · ' + d.excluidos.length + ' quedan fuera' : '') + '</div>' + excl
-        + (d.variables_vacias.length ? '<div class="em-warn">Variables sin valor para algún destinatario: ' + d.variables_vacias.map(function (v) { return '{' + v + '}'; }).join(', ') + '</div>' : '');
+        + avisoVacias(d.variables_vacias_detalle);
       $('#prevDest').innerHTML = d.incluidos.map(function (x, i) { return '<option value="' + i + '">' + PA.esc(x.nombre + ' · ' + x.email) + '</option>'; }).join('');
-      $('#btnEnviar').disabled = !d.incluidos.length;
-      $('#btnEnviar').textContent = 'Enviar a ' + d.incluidos.length + ' destinatario' + (d.incluidos.length === 1 ? '' : 's');
+      var bloqueado = d.variables_vacias_detalle.length > 0;
+      $('#btnEnviar').disabled = !d.incluidos.length || bloqueado;
+      $('#btnEnviar').textContent = bloqueado ? 'Envío bloqueado: hay variables vacías'
+        : 'Enviar a ' + d.incluidos.length + ' destinatario' + (d.incluidos.length === 1 ? '' : 's');
       if (d.incluidos.length && $('#asunto').value.trim()) preview();
     }).catch(function (e) { $('#resDest').innerHTML = '<div class="em-err">Error: ' + PA.esc(e.error || JSON.stringify(e)) + '</div>'; });
   });
+
+  // Una variable vacía bloquea «Enviar» (la prueba sí se puede mandar).
+  function avisoVacias(det) {
+    if (!det || !det.length) return '';
+    return '<div class="em-err">' + det.map(function (x) {
+      return 'La variable <b>{' + x.variable + '}</b> está vacía para ' + x.destinatarios + ' destinatario' + (x.destinatarios === 1 ? '' : 's') + '.';
+    }).join('<br>') + '<br>No se puede enviar hasta completarla (Formaciones: fecha confirmada, Zoom) o quitarla del texto. «Enviarme una prueba» sí funciona.</div>';
+  }
 
   function preview() {
     llamar(Object.assign(base(), { action: 'preview', indice: Number($('#prevDest').value) || 0 })).then(function (d) {
@@ -266,23 +276,23 @@ details summary{cursor:pointer;font-size:12.5px}
 
   // Envío con confirmación: hay que escribir el número de destinatarios.
   $('#btnEnviar').addEventListener('click', function () {
-    if (!dest) return;
+    if (!dest || dest.variables_vacias_detalle.length) return;
     var n = dest.incluidos.length;
     $('#confirmar').innerHTML = '<div class="em-confirm"><p class="em-info">Vas a enviar <b>' + n + '</b> emails de tipo <b>' + tipoEnvio() + '</b> con el asunto «' + PA.esc($('#asunto').value) + '». '
       + 'Escribe <b>' + n + '</b> para confirmar.</p>'
-      + (dest.variables_vacias.length ? '<label class="em-info"><input type="checkbox" id="cfVacias"> Enviar aunque haya variables vacías (' + dest.variables_vacias.join(', ') + ')</label>' : '')
       + '<div class="em-row"><input type="number" id="cfNum" style="width:110px"><button type="button" class="pa-btn primary" id="cfOk">Confirmar envío</button><button type="button" class="pa-btn" id="cfNo">Cancelar</button></div></div>';
     $('#cfNo').addEventListener('click', function () { $('#confirmar').innerHTML = ''; });
     $('#cfOk').addEventListener('click', function () {
       if (Number($('#cfNum').value) !== n) { PA.toast('El número no coincide'); return; }
       var b = this; b.disabled = true; b.textContent = 'Enviando…';
-      llamar(Object.assign(base(), { action: 'enviar', confirmacion: n, ignorar_vacias: !!($('#cfVacias') && $('#cfVacias').checked) })).then(function (d) {
+      llamar(Object.assign(base(), { action: 'enviar', confirmacion: n })).then(function (d) {
         $('#confirmar').innerHTML = '';
         $('#resEnvio').innerHTML = '<div class="em-ok">Enviados: <b>' + d.enviados + '</b>' + (d.errores ? ' · errores: ' + d.errores : '') + (d.excluidos ? ' · excluidos: ' + d.excluidos : '') + '. Quedan registrados en la ficha de cada contacto.</div>';
         invalidar();
       }).catch(function (e) {
         b.disabled = false; b.textContent = 'Confirmar envío';
-        $('#resEnvio').innerHTML = '<div class="em-err">No enviado: ' + PA.esc(e.error || JSON.stringify(e)) + '</div>';
+        $('#resEnvio').innerHTML = e.error === 'variables_vacias' ? avisoVacias(e.variables_vacias_detalle)
+          : '<div class="em-err">No enviado: ' + PA.esc(e.error || JSON.stringify(e)) + '</div>';
       });
     });
   });
