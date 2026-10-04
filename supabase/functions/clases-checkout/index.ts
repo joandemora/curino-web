@@ -118,31 +118,47 @@ Deno.serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient()
     });
 
+    // Fecha legible solo si la edicion tiene fecha valida; si no, la
+    // descripcion del producto en Stripe no menciona el inicio.
     const claseFechaLegible = (() => {
+      if (!clase.fecha) return null;
+      const d = new Date(clase.fecha);
+      if (isNaN(d.getTime())) return null;
       try {
         return new Intl.DateTimeFormat('es-ES', {
           weekday: 'long', day: 'numeric', month: 'long',
           hour: '2-digit', minute: '2-digit', hour12: false,
           timeZone: 'Europe/Madrid'
-        }).format(new Date(clase.fecha));
-      } catch { return clase.fecha; }
+        }).format(d);
+      } catch { return null; }
     })();
+    const descripcion = claseFechaLegible
+      ? `4 semanas, 8 clases en directo por Zoom. Inicio: ${claseFechaLegible} (hora peninsular).`
+      : '4 semanas, 8 clases en directo por Zoom.';
 
-    const session = await stripe.checkout.sessions.create({
+    // Pago unico: tarjeta (con Apple Pay / Google Pay) + Link. Sin metodos
+    // a plazos. Checkout pide direccion de facturacion siempre y NIF/CIF
+    // opcional (el comprador marca "compro como empresa"); con NIF el
+    // webhook emite factura completa. El telefono llega del formulario
+    // (metadata), no se pide aqui.
+    const params: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'link'],
       line_items: [{
         price_data: {
           currency: 'eur',
           product_data: {
             name: 'Intensivo Curino Partners',
-            description: `4 semanas, 8 clases en directo por Zoom. Inicio: ${claseFechaLegible} (hora peninsular).`
+            description: descripcion
           },
           unit_amount: clase.precio_cents
         },
         quantity: 1
       }],
       customer_email: email,
+      customer_creation: 'always',
+      billing_address_collection: 'required',
+      tax_id_collection: { enabled: true },
       success_url: `${siteUrl}/partners/gracias/?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/partners/#solicitud`,
       metadata: {
@@ -163,7 +179,22 @@ Deno.serve(async (req) => {
         client_ip: capiOk ? client_ip : '',
         client_ua: capiOk ? client_ua : ''
       }
-    });
+    };
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create(params);
+    } catch (err: any) {
+      // Si Link no esta activado en la cuenta, Stripe rechaza el tipo
+      // 'link': reintentamos solo con tarjeta para no bloquear la venta.
+      const msg = String(err?.message || '');
+      if (err?.type === 'StripeInvalidRequestError' && /link/i.test(msg)) {
+        console.warn('clases-checkout: link no disponible, reintento solo con card:', msg);
+        session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
+      } else {
+        throw err;
+      }
+    }
 
     return jsonResponse({ checkout_url: session.url, session_id: session.id }, 200);
 
