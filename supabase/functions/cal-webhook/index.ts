@@ -5,10 +5,16 @@
 // CAL_WEBHOOK_SECRET (el mismo que se pone en Cal.com al crear el webhook).
 //
 // - BOOKING_CREATED / BOOKING_RESCHEDULED → en el contacto: llamada_at,
-//   llamada_estado 'reservada', llamada_uid y estado
+//   llamada_estado 'reservada', llamada_uid, respuesta «inversion» de Cal.com
+//   (solo informativa: no cuenta para cualificar) y estado
 //   del CRM «interesado» (salvo si ya «compro»). Quien reserva sale de la
 //   secuencia (partners_secuencias.sale_llamada).
 // - BOOKING_CANCELLED → llamada_estado 'cancelada' (si es su reserva vigente).
+//   Un cambio de hora llega como cancelacion + reserva nueva (en cualquier
+//   orden): la cancelacion de una reserva que ya no es la vigente se ignora,
+//   asi que el contacto queda con la llamada nueva.
+// - BOOKING_NO_SHOW_UPDATED → llamada_estado 'no_presentado' (o vuelve a
+//   'reservada' si se desmarca). BOOKING_REASSIGNED y otros: se ignoran.
 // El contacto se busca por metadata.solicitud_id (lo pone el calendario
 // embebido) o por email. Si no existe, se crea (origen 'cal.com', sin
 // consentimientos: no entra en ninguna secuencia).
@@ -21,6 +27,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 type Any = any;
 const enc = new TextEncoder();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INVERSION: Record<string, string> = { 'sí': 'si', 'si': 'si', 'sí, pero necesitaría organizarme': 'si_organizarme', 'no por ahora': 'no_por_ahora' };
 const PREFIJOS = ['+351', '+34', '+33', '+39', '+44', '+49', '+52', '+54', '+56', '+57', '+51', '+1'];
 
 async function firmaValida(req: Request, body: string): Promise<boolean> {
@@ -62,15 +69,20 @@ Deno.serve(async (req) => {
     .insert({ tipo: `cal.${trigger.toLowerCase()}`, resend_id: p?.uid || null, resultado }).then(() => {}, () => {});
 
   try {
-    if (!['BOOKING_CREATED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED'].includes(trigger)) {
+    if (!['BOOKING_CREATED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED', 'BOOKING_NO_SHOW_UPDATED'].includes(trigger)) {
       await log('ignorado'); return new Response('ignored');
     }
     const email = String(resp(p, 'email') || p?.attendees?.[0]?.email || '').toLowerCase();
+    const uid = p?.uid || p?.bookingUid || null;
     const metaId = String(p?.metadata?.solicitud_id || '');
     let sol: Any = null;
     if (UUID_RE.test(metaId)) {
       const { data } = await supa.from('partners_solicitudes').select('*').eq('id', metaId).maybeSingle();
       sol = data;
+    }
+    if (!sol && uid) {
+      const { data } = await supa.from('partners_solicitudes').select('*').eq('llamada_uid', uid).limit(1);
+      sol = data?.[0] || null;
     }
     if (!sol && email) {
       const { data } = await supa.from('partners_solicitudes').select('*').eq('email', email).order('created_at', { ascending: false }).limit(1);
@@ -78,17 +90,28 @@ Deno.serve(async (req) => {
     }
     const ahora = new Date().toISOString();
 
+    if (trigger === 'BOOKING_NO_SHOW_UPDATED') {
+      if (!sol) { await log('sin_contacto'); return new Response('ok'); }
+      if (sol.llamada_uid && uid && sol.llamada_uid !== uid) { await log('otra_reserva'); return new Response('ok'); }
+      const att = (p?.attendees || []).find((a: Any) => String(a?.email || '').toLowerCase() === String(sol.email).toLowerCase()) || p?.attendees?.[0];
+      const noShow = att ? att.noShow !== false : true;
+      await supa.from('partners_solicitudes').update({ llamada_estado: noShow ? 'no_presentado' : 'reservada', llamada_actualizada_at: ahora }).eq('id', sol.id);
+      await log(noShow ? 'no_presentado' : 'presentado'); return new Response('ok');
+    }
+
     if (trigger === 'BOOKING_CANCELLED') {
       if (!sol) { await log('sin_contacto'); return new Response('ok'); }
-      if (sol.llamada_uid && p?.uid && sol.llamada_uid !== p.uid) { await log('otra_reserva'); return new Response('ok'); }
+      if (sol.llamada_uid && uid && sol.llamada_uid !== uid) { await log('otra_reserva'); return new Response('ok'); }
       await supa.from('partners_solicitudes').update({ llamada_estado: 'cancelada', llamada_actualizada_at: ahora }).eq('id', sol.id);
       await log('cancelada'); return new Response('ok');
     }
 
     // Reserva nueva o reprogramada
+    const inversion = INVERSION[resp(p, 'inversion').toLowerCase()] || null;
     const datos: Record<string, unknown> = {
-      llamada_at: p?.startTime || null, llamada_estado: 'reservada', llamada_uid: p?.uid || null, llamada_actualizada_at: ahora
+      llamada_at: p?.startTime || null, llamada_estado: 'reservada', llamada_uid: uid, llamada_actualizada_at: ahora
     };
+    if (inversion) datos.inversion = inversion;
     if (sol) {
       if (sol.crm_estado !== 'compro') { datos.crm_estado = 'interesado'; datos.crm_actualizado_at = ahora; }
       await supa.from('partners_solicitudes').update(datos).eq('id', sol.id);
