@@ -22,6 +22,8 @@ import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
 import { sendMetaEvent, adConsentAllowed } from '../_shared/meta-capi.ts'
 import { sendSesionConfirmationEmail } from '../_shared/sesion-emails.ts'
 import { SESION } from '../_shared/sesion-config.ts'
+import { ONE_TO_ONE } from '../_shared/one-to-one-config.ts'
+import { sendOneToOneWelcomeEmail, sendOneToOneAvisoEmail } from '../_shared/one-to-one-emails.ts'
 import {
   generateBuyerInvoicePdf,
   generateSellerInvoicePdf,
@@ -178,6 +180,8 @@ Deno.serve(async (req) => {
           await handleClaseCompleted(supabase, stripe, session);
         } else if (purpose === 'sesion') {
           await handleSesionCompleted(supabase, session);
+        } else if (purpose === 'one_to_one') {
+          await handleOneToOneCompleted(supabase, session);
         } else if (purpose === 'curso') {
           await handleCursoCompleted(supabase, session);
         } else {
@@ -1414,8 +1418,9 @@ async function handleChargeRefunded(
     return;
   }
   if (!ins) {
-    // ¿Es una Sesion 1:1?
+    // ¿Es una Sesion 1:1 o un One-to-one?
     await handleSesionRefunded(supabase, stripe, charge, paymentIntent);
+    await handleOneToOneRefunded(supabase, stripe, charge, paymentIntent);
     return;
   }
 
@@ -1642,6 +1647,142 @@ async function handleSesionRefunded(
   }
 }
 
+// ============================================================================
+// ONE-TO-ONE 3 MESES (purpose = 'one_to_one', /partners/formaciones)
+//
+// Idempotencia por one_to_one_compras.stripe_session_id (UNIQUE + SELECT).
+// Factura ONE-AAAA-NNNNNN (completa con NIF o simplificada), PDF en
+// invoices/one-to-one/<id>.pdf, email de bienvenida (agendar primera sesion
+// + WhatsApp) y aviso a info@. Marca one_to_one_comprado_at y «compro».
+// ============================================================================
+async function handleOneToOneCompleted(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  session: Stripe.Checkout.Session
+) {
+  const md = session.metadata || {};
+  const cd = session.customer_details;
+  const buyerEmail = (cd?.email || session.customer_email || '').toLowerCase();
+  const nombre = md.nombre || cd?.name || '';
+  const telefono = cd?.phone || md.telefono || null;
+  const amount = session.amount_total ?? 0;
+  if (!buyerEmail || amount <= 0) { console.error('one_to_one: datos insuficientes', session.id); return; }
+
+  const { data: existing } = await supabase.from('one_to_one_compras').select('id').eq('stripe_session_id', session.id).maybeSingle();
+  if (existing) { console.log(`one_to_one: ${session.id} ya registrada`); return; }
+
+  const terminos = session.consent?.terms_of_service === 'accepted';
+  const taxId = (cd?.tax_ids || []).find((t: Stripe.Checkout.Session.CustomerDetails.TaxId) => t && t.value)?.value || null;
+  const direccion = formatStripeAddress(cd?.address);
+  const { data: invoiceNum, error: invErr } = await supabase.rpc('assign_invoice_number', { p_type: 'one', p_year: new Date().getFullYear() });
+  if (invErr) console.error('one_to_one: error asignando factura', invErr);
+  const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null);
+  const solicitudId = /^[0-9a-f-]{36}$/i.test(md.solicitud_id || '') ? md.solicitud_id : null;
+
+  const { data: one, error: insErr } = await supabase.from('one_to_one_compras').insert({
+    solicitud_id: solicitudId, nombre: nombre || buyerEmail, email: buyerEmail, telefono,
+    email_formulario: (md.email_formulario || '').toLowerCase() || null,
+    stripe_session_id: session.id, stripe_payment_intent: paymentIntentId, importe_cents: amount,
+    terminos_aceptados: terminos, terminos_aceptados_at: terminos ? new Date().toISOString() : null,
+    factura_tipo: taxId ? 'completa' : 'simplificada', cliente_nombre_fiscal: (cd?.name || '').trim() || null,
+    cliente_nif: taxId, cliente_direccion: direccion.length ? direccion.join(' · ') : null, invoice_number: invoiceNum,
+    event_id: md.event_id || null, utm_source: md.utm_source || null, utm_medium: md.utm_medium || null, utm_campaign: md.utm_campaign || null
+  }).select('id, created_at').single();
+  if (insErr || !one) { console.error('one_to_one: insert fallo', session.id, insErr); return; }
+  console.log(`one_to_one: ${one.id} confirmado (${amount} cents)`);
+
+  try {
+    const ahora = new Date().toISOString();
+    const q = supabase.from('partners_solicitudes').update({ one_to_one_comprado_at: ahora, crm_estado: 'compro', crm_actualizado_at: ahora });
+    if (solicitudId) await q.eq('id', solicitudId); else await q.eq('email', buyerEmail);
+  } catch (e) { console.error('one_to_one: link solicitud fallo', e); }
+
+  await sendClasePurchaseCapi(session, buyerEmail, nombre, telefono, amount, md.event_id || null, 'one-to-one', '/partners/formaciones/gracias/');
+
+  const numero = invoiceNum || `ONE-${String(one.id).slice(0, 8)}`;
+  try {
+    const pdf = await generateClaseInvoicePdf({
+      id: String(one.id), clase_id: '', clase_fecha: String(one.created_at),
+      nombre: nombre || buyerEmail, email: buyerEmail, amount_paid_cents: amount,
+      invoice_number: numero, created_at: String(one.created_at),
+      buyer_nombre_fiscal: (cd?.name || '').trim() || null, buyer_nif: taxId, buyer_direccion: direccion,
+      concepto: `${ONE_TO_ONE.nombre} (12 sesiones individuales por Zoom + WhatsApp directo)`
+    });
+    const path = await uploadPdfToInvoices(supabase, `one-to-one/${one.id}.pdf`, pdf);
+    await supabase.from('one_to_one_compras').update({ pdf_url: path }).eq('id', one.id);
+    await sendOneToOneWelcomeEmail(buyerEmail, nombre || buyerEmail, pdf, numero);
+    await supabase.from('one_to_one_compras').update({ confirmation_sent_at: new Date().toISOString() }).eq('id', one.id);
+  } catch (e) { console.error('one_to_one: factura/email fallo', one.id, e); }
+  try {
+    await sendOneToOneAvisoEmail({ nombre: nombre || buyerEmail, email: buyerEmail, telefono, importe_cents: amount, invoice_number: numero, id: String(one.id) });
+    await supabase.from('one_to_one_compras').update({ aviso_enviado_at: new Date().toISOString() }).eq('id', one.id);
+  } catch (e) { console.error('one_to_one: aviso info@ fallo', one.id, e); }
+}
+
+// Reembolso de un One-to-one: rectificativa R-ONE por refund (idempotente
+// por stripe_refund_id) y, si es total, estado 'reembolsada' + email. Un
+// reembolso parcial (p. ej. desistimiento con sesiones ya hechas) solo
+// registra el importe devuelto.
+async function handleOneToOneRefunded(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  stripe: Stripe,
+  charge: Stripe.Charge,
+  paymentIntent: string
+) {
+  const { data: one } = await supabase.from('one_to_one_compras').select('*').eq('stripe_payment_intent', paymentIntent).maybeSingle();
+  if (!one) return;
+  const refunds = await stripe.refunds.list({ charge: charge.id, limit: 100 }).catch(() => null);
+  for (const rf of refunds?.data || []) {
+    if (rf.status === 'failed' || rf.status === 'canceled') continue;
+    try {
+      const { data: claimed } = await supabase.from('facturas_rectificativas_clase').upsert({
+        stripe_refund_id: rf.id, stripe_charge_id: charge.id, one_to_one_id: one.id, serie: 'one',
+        importe_cents: rf.amount, factura_original: one.invoice_number || `ONE-${String(one.id).slice(0, 8)}`,
+        factura_original_fecha: one.created_at, comprador_nombre: one.cliente_nombre_fiscal || one.nombre,
+        comprador_email: one.email, comprador_nif: one.cliente_nif, comprador_direccion: one.cliente_direccion
+      }, { onConflict: 'stripe_refund_id', ignoreDuplicates: true }).select('id');
+      const { data: row } = await supabase.from('facturas_rectificativas_clase').select('*').eq('stripe_refund_id', rf.id).single();
+      if (!row || (!(claimed && claimed.length) && row.invoice_number && row.pdf_url)) continue;
+      let numero = row.invoice_number as string | null;
+      if (!numero) {
+        const { data: n } = await supabase.rpc('assign_invoice_number', { p_type: 'one_rect', p_year: new Date().getFullYear() });
+        const { data: upd } = await supabase.from('facturas_rectificativas_clase')
+          .update({ invoice_number: n }).eq('id', row.id).is('invoice_number', null).select('invoice_number');
+        numero = (upd && upd[0]?.invoice_number) || n;
+      }
+      const pdf = await generateClaseRectificativaPdf({
+        invoice_number: String(numero), fecha: row.created_at, factura_original: row.factura_original,
+        factura_original_fecha: row.factura_original_fecha, motivo: row.motivo, importe_cents: row.importe_cents,
+        comprador_nombre: row.comprador_nombre, comprador_email: row.comprador_email, comprador_nif: row.comprador_nif,
+        comprador_direccion: row.comprador_direccion ? String(row.comprador_direccion).split(' · ') : [],
+        concepto: ONE_TO_ONE.nombre
+      });
+      const path = await uploadPdfToInvoices(supabase, `one-to-one/${one.id}-rect-${rf.id}.pdf`, pdf);
+      await supabase.from('facturas_rectificativas_clase').update({ pdf_url: path }).eq('id', row.id);
+      console.log(`one_to_one: rectificativa ${numero} emitida para ${one.id}`);
+    } catch (e) { console.error('one_to_one: rectificativa fallo', rf.id, e); }
+  }
+  const total = charge.refunded === true || (charge.amount_refunded ?? 0) >= (charge.amount ?? Infinity);
+  if (!total) {
+    await supabase.from('one_to_one_compras').update({ importe_reembolsado_cents: charge.amount_refunded ?? 0 }).eq('id', one.id);
+    return;
+  }
+  const { data: upd } = await supabase.from('one_to_one_compras')
+    .update({ estado: 'reembolsada', reembolsada_at: new Date().toISOString(), importe_reembolsado_cents: charge.amount_refunded ?? one.importe_cents })
+    .eq('id', one.id).eq('estado', 'pagada').select('id');
+  if (upd && upd.length) {
+    if (one.solicitud_id) await crmMarcarReembolso(supabase, one.solicitud_id);
+    try {
+      await resendSend({
+        from: 'Curino <noreply@casacurino.com>', to: [one.email], reply_to: 'info@casacurino.com',
+        subject: `Reembolso confirmado — ${ONE_TO_ONE.nombre}`,
+        html: `<p>Hola ${escapeHtml(one.nombre)},</p><p>Hemos procesado el reembolso de tu ${escapeHtml(ONE_TO_ONE.nombre)}. Lo verás en 5-10 días hábiles en el mismo método de pago.</p><p>Un abrazo,<br>Juan de Mora</p>`
+      });
+    } catch (e) { console.error('one_to_one: email reembolso fallo', e); }
+  }
+}
+
 // CRM: tras un reembolso TOTAL, el contacto pasa a "descartado" con nota
 // automatica "Reembolsado (fecha)", salvo que le quede otra compra pagada.
 async function crmMarcarReembolso(
@@ -1653,13 +1794,14 @@ async function crmMarcarReembolso(
     const { data: sol } = await supabase.from('partners_solicitudes')
       .select('id, crm_notas, inscripcion_id').eq('id', solicitudId).maybeSingle();
     if (!sol) return;
-    const [{ data: insPagada }, { data: sesPagada }] = await Promise.all([
+    const [{ data: insPagada }, { data: sesPagada }, { data: onePagado }] = await Promise.all([
       sol.inscripcion_id
         ? supabase.from('inscripciones').select('id').eq('id', sol.inscripcion_id).eq('estado', 'pagada').maybeSingle()
         : Promise.resolve({ data: null }),
-      supabase.from('sesiones_1a1').select('id').eq('solicitud_id', solicitudId).eq('estado', 'pagada').limit(1).maybeSingle()
+      supabase.from('sesiones_1a1').select('id').eq('solicitud_id', solicitudId).eq('estado', 'pagada').limit(1).maybeSingle(),
+      supabase.from('one_to_one_compras').select('id').eq('solicitud_id', solicitudId).eq('estado', 'pagada').limit(1).maybeSingle()
     ]);
-    if (insPagada || sesPagada) return; // otra compra sigue activa: manda "compro"
+    if (insPagada || sesPagada || onePagado) return; // otra compra sigue activa: manda "compro"
     const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
     const nota = `Reembolsado (${fecha})`;
     await supabase.from('partners_solicitudes').update({

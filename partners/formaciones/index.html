@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Formaciones — Curino Partners | Curino</title>
-<meta name="description" content="Todas las formaciones de Curino Partners: sesión 1:1 con Juan, Intensivo y programa one-to-one.">
+<meta name="description" content="Formaciones de Curino Partners: llamada de admisión gratis, Intensivo y programa one-to-one de 3 meses.">
 <link rel="canonical" href="https://www.casacurino.com/partners/formaciones/">
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
@@ -101,35 +101,31 @@ a.fm-btn{text-align:center;text-decoration:none}
     <div class="fm-wrap">
       <span class="fm-eyebrow">Curino Partners · Formaciones</span>
       <h1 class="fm-h1"><span id="fm-saludo"></span>Elige cómo empezar.</h1>
-      <p class="fm-lead">Desde una sesión conmigo para arrancar hasta el intensivo completo o el acompañamiento uno a uno.</p>
+      <p class="fm-lead">Empieza con una llamada gratis, entra en el intensivo o trabaja conmigo uno a uno.</p>
     </div>
   </section>
 
   <div class="fm-wrap fm-grid">
-    <!-- Sesión 1:1 · 30 min -->
-    <article class="fm-card" id="sesion">
+    <!-- Llamada de admisión (gratis) -->
+    <article class="fm-card" id="llamada">
       <span class="fm-tag">Para empezar</span>
-      <h2>Sesión 1:1 con Juan · 30 min</h2>
-      <p>Una videollamada conmigo para aterrizar tu caso y los recursos iniciales para arrancar en el sector.</p>
+      <h2>Llamada de admisión</h2>
+      <p>Vemos tu caso y si encajas en el intensivo o en el one-to-one.</p>
       <ul>
-        <li>30 minutos por videollamada</li>
-        <li>Recursos iniciales por email</li>
-        <li>Reservas el día y la hora que te vengan bien</li>
+        <li>20 minutos por videollamada conmigo</li>
+        <li>Eliges el día y la hora que te vengan bien</li>
+        <li>Sin compromiso</li>
       </ul>
-      <div class="fm-price" id="fm-sesion-precio" hidden>
-        <div class="fm-amount"><strong data-sesion-precio>150 €</strong><small>IVA incluido</small></div>
-        <span class="fm-offer" id="fm-oferta" hidden>Oferta para ti durante <span class="fm-count" id="fm-cuenta">--:--:--</span></span>
-        <span class="fm-after" id="fm-despues" hidden>Después: <span data-sesion-normal>150 €</span></span>
+      <div class="fm-price">
+        <div class="fm-amount"><strong>Gratis</strong></div>
       </div>
-      <!-- Oculto hasta que /api/partners-formaciones confirme que la sesión está activa. -->
-      <button type="button" class="fm-btn" data-checkout="sesion" hidden>Reservar mi sesión</button>
-      <span class="fm-soon" id="fm-sesion-pronto" hidden>Próximamente</span>
-      <p class="fm-err" data-err="sesion" role="alert"></p>
+      <!-- Sin token → formulario de /partners; con token personal → calendario -->
+      <a class="fm-btn" id="fm-llamada-btn" href="/partners/#solicitud">Reservar mi llamada gratis</a>
     </article>
 
-    <!-- Intensivo -->
+    <!-- Intensivo (destacada) -->
     <article class="fm-card is-main" id="intensivo">
-      <span class="fm-tag">Intensivo · Octubre</span>
+      <span class="fm-tag">Intensivo · <span data-mes-cap>Noviembre</span></span>
       <h2>Intensivo Curino Partners</h2>
       <p>4 semanas para tener tu negocio de alta carpintería listo para vender.</p>
       <ul>
@@ -138,13 +134,12 @@ a.fm-btn{text-align:center;text-decoration:none}
         <li>Grupo de WhatsApp de la promoción</li>
       </ul>
       <div class="fm-price">
+        <div class="fm-amount"><strong data-intensivo-precio>1.650 €</strong><small>IVA incluido</small></div>
         <span class="fm-seats" data-intensivo-plazas>Solo 3 plazas</span>
       </div>
-      <a class="fm-btn" href="/partners/#solicitud" id="fm-intensivo-llamada">Reservar una llamada de admisión</a>
-      <!-- Sin botón de pago visible: solo lo usa el enlace personal ?t=…&ir=intensivo
-           (enviado tras la llamada), que abre el pago de Stripe directamente. -->
-      <button type="button" class="fm-btn" data-checkout="intensivo" hidden>Pagar</button>
-      <p class="fm-estado" id="fm-pago-estado" hidden>Abriendo el pago seguro…</p>
+      <!-- Checkout de Stripe de la edición abierta (con token: email prellenado y bloqueado) -->
+      <button type="button" class="fm-btn" data-checkout="intensivo">Lo tengo claro · Reservar mi plaza</button>
+      <a class="fm-btn fm-btn--ghost" id="fm-intensivo-hablar" href="/partners/#solicitud">Prefiero hablarlo antes</a>
       <a class="fm-btn fm-btn--ghost" id="fm-intensivo-espera" href="/partners/#solicitud" hidden>Apuntarme a la próxima promoción</a>
       <p class="fm-err" data-err="intensivo" role="alert"></p>
     </article>
@@ -153,17 +148,21 @@ a.fm-btn{text-align:center;text-decoration:none}
     <article class="fm-card" id="one-to-one">
       <span class="fm-tag">Acompañamiento</span>
       <h2>One-to-one · 3 meses</h2>
-      <p>Para quien quiere dedicarse a tiempo completo y escalar. Se contrata tras una entrevista previa.</p>
+      <p>Para quien quiere dedicarse a tiempo completo y escalar, conmigo uno a uno.</p>
       <ul>
         <li>12 sesiones individuales por Zoom</li>
         <li>WhatsApp directo conmigo</li>
         <li>3 meses de acompañamiento</li>
       </ul>
-      <a class="fm-btn" href="/partners/#solicitud">Reservar una llamada de admisión</a>
+      <div class="fm-price">
+        <div class="fm-amount"><strong data-oto-precio>2.990 €</strong><small>IVA incluido</small></div>
+      </div>
+      <button type="button" class="fm-btn" data-checkout="one_to_one">Lo tengo claro · Empezar ahora</button>
       <a class="fm-btn fm-btn--ghost" data-wa="one_to_one_formaciones" href="https://wa.me/34611965612?text=Hola%20Juan%2C%20me%20interesa%20el%20programa%20one-to-one" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.4 9.4 0 0 1-4.8-1.31l-.34-.2-3.57.94.95-3.48-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.42 9.42zm8.02-17.44A11.27 11.27 0 0 0 12.05.75C5.8.75.72 5.83.72 12.08c0 2 .52 3.95 1.52 5.67L.62 23.25l5.63-1.48a11.3 11.3 0 0 0 5.8 1.48h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.32-8.01z"/></svg>
         Hablar por WhatsApp
       </a>
+      <p class="fm-err" data-err="one_to_one" role="alert"></p>
     </article>
   </div>
 
@@ -173,6 +172,7 @@ a.fm-btn{text-align:center;text-decoration:none}
 <div id="main-footer-mount"></div>
 <script src="/assets/js/main-footer.js"></script>
 
+<script src="/assets/js/partners-mes.js"></script>
 <script>
 (function () {
   'use strict';
@@ -182,6 +182,10 @@ a.fm-btn{text-align:center;text-decoration:none}
   var token = (params.get('t') || '').slice(0, 120);
   var ir = params.get('ir');
   var info = null;
+  var ITEMS = {
+    intensivo: { id: 'intensivo-partners', nombre: 'Intensivo Curino Partners' },
+    one_to_one: { id: 'one-to-one', nombre: 'One-to-one Curino Partners · 3 meses' }
+  };
 
   function eur(cents) {
     var e = Math.floor(cents / 100), d = cents % 100;
@@ -201,49 +205,22 @@ a.fm-btn{text-align:center;text-decoration:none}
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); });
   }
 
-  // ── Cuenta atrás de la oferta (hora del servidor) ──
-  var timer = null;
-  function pintarSesion(s, desfaseMs) {
-    // Activacion por partes: sesion "Proximamente" (sin precio ni boton).
-    if (s.activa === false) {
-      $('#fm-sesion-pronto').hidden = false;
-      return;
-    }
-    $('#fm-sesion-precio').hidden = false;
-    $('[data-checkout="sesion"]').hidden = false;
-    $$('[data-sesion-normal]').forEach(function (el) { el.textContent = eur(s.precio_normal_cents); });
-    var oferta = s.precio_tipo === 'oferta' && s.oferta_expira_at;
-    $('[data-sesion-precio]').textContent = eur(oferta ? s.precio_cents : s.precio_normal_cents);
-    $('#fm-oferta').hidden = !oferta;
-    $('#fm-despues').hidden = !oferta;
-    if (!oferta) return;
-    var fin = new Date(s.oferta_expira_at).getTime();
-    function tick() {
-      var resta = fin - (Date.now() + desfaseMs);
-      if (resta <= 0) {
-        clearInterval(timer);
-        // Caducó: el servidor ya cobra el precio normal; se refleja aquí.
-        pintarSesion({ precio_normal_cents: s.precio_normal_cents, precio_cents: s.precio_normal_cents, precio_tipo: 'normal' }, 0);
-        return;
-      }
-      var h = Math.floor(resta / 3600000), m = Math.floor(resta / 60000) % 60, sg = Math.floor(resta / 1000) % 60;
-      $('#fm-cuenta').textContent = h + ':' + (m < 10 ? '0' : '') + m + ':' + (sg < 10 ? '0' : '') + sg;
-    }
-    tick();
-    timer = setInterval(tick, 1000);
-  }
+  // Llamada de admisión: con token personal, directo al calendario prellenado.
+  if (token) $('#fm-llamada-btn').href = '/partners/llamada/?t=' + encodeURIComponent(token);
 
-  // Sin precios en la página: el intensivo se reserva tras la llamada de
-  // admisión (el precio solo se ve en Stripe, por el enlace personal).
+  // Intensivo: precio de la edición abierta (lo que cobra Stripe), mes y plazas reales.
   function pintarIntensivo(it) {
+    $('[data-intensivo-precio]').textContent = eur(it.precio_cents);
+    if (it.mes) window.PartnersMes.pintar({ mes: it.mes, Mes: it.mes.charAt(0).toUpperCase() + it.mes.slice(1), anio: it.anio });
     if (!it.disponible) {
       $('[data-intensivo-plazas]').textContent = it.plazas_totales ? 'Plazas agotadas' : 'Próxima promoción en preparación';
-      $('#fm-intensivo-llamada').hidden = true;
+      $('[data-checkout="intensivo"]').hidden = true;
+      $('#fm-intensivo-hablar').hidden = true;
       $('#fm-intensivo-espera').hidden = false;
       return;
     }
     var n = it.plazas_restantes;
-    $('[data-intensivo-plazas]').textContent = n === 1 ? 'Solo queda 1 plaza' : ('Quedan ' + n + ' plazas');
+    $('[data-intensivo-plazas]').textContent = n === 1 ? 'Queda 1 plaza' : ('Quedan ' + n + ' plazas');
   }
 
   function checkout(producto) {
@@ -253,15 +230,14 @@ a.fm-btn{text-align:center;text-decoration:none}
     btn.disabled = true;
     var txt = btn.textContent;
     btn.textContent = 'Redirigiendo al pago…';
-    if (producto === 'intensivo') $('#fm-pago-estado').hidden = false;
     var eventId = uuid();
     try { sessionStorage.setItem('curino_partners_event_id', eventId); } catch (_e) {}
-    var precio = producto === 'sesion'
-      ? (info && info.sesion ? info.sesion.precio_cents : 0)
+    var precio = producto === 'one_to_one'
+      ? (info && info.one_to_one ? info.one_to_one.precio_cents : 0)
       : (info && info.intensivo ? info.intensivo.precio_cents : 0);
     dl({ ecommerce: null });
     dl({ event: 'begin_checkout', event_id: eventId, ecommerce: { currency: 'EUR', value: precio / 100, num_items: 1,
-      items: [{ item_id: producto === 'sesion' ? 'sesion-1a1' : 'intensivo-partners', price: precio / 100, quantity: 1 }] } });
+      items: [{ item_id: ITEMS[producto].id, item_name: ITEMS[producto].nombre, price: precio / 100, quantity: 1 }] } });
     api({ action: 'checkout', producto: producto, token: token, event_id: eventId,
       utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '', utm_campaign: params.get('utm_campaign') || '',
       ad_consent: adConsent(), fbc: cookie('_fbc'), fbp: cookie('_fbp') })
@@ -270,7 +246,7 @@ a.fm-btn{text-align:center;text-decoration:none}
         err.textContent = r.data && r.data.error === 'clase_full'
           ? 'Las plazas se han agotado. Apúntate a la próxima promoción.'
           : 'No se ha podido abrir el pago. Inténtalo de nuevo o escríbeme por WhatsApp.';
-        btn.disabled = false; btn.textContent = txt; $('#fm-pago-estado').hidden = true;
+        btn.disabled = false; btn.textContent = txt;
       })
       .catch(function () { err.textContent = 'No se ha podido abrir el pago. Revisa tu conexión.'; btn.disabled = false; btn.textContent = txt; });
   }
@@ -282,16 +258,15 @@ a.fm-btn{text-align:center;text-decoration:none}
   });
 
   api({ action: 'info', token: token }).then(function (r) {
-    if (!r.ok) return;
+    if (!r.ok) { window.PartnersMes.cargar(); return; }
     info = r.data;
-    var desfase = info.sesion && info.sesion.ahora ? (new Date(info.sesion.ahora).getTime() - Date.now()) : 0;
     if (info.lead && info.lead.nombre) $('#fm-saludo').textContent = info.lead.nombre + ', ';
-    if (info.sesion) pintarSesion(info.sesion, desfase);
     if (info.intensivo) pintarIntensivo(info.intensivo);
-    // Enlaces de los emails: ?ir=intensivo|sesion abre el pago directamente.
+    if (info.one_to_one) $('[data-oto-precio]').textContent = eur(info.one_to_one.precio_cents);
+    // Enlaces personales (?ir=intensivo|one_to_one): abren el pago directamente.
     if (ir === 'intensivo' && info.intensivo && info.intensivo.disponible) checkout('intensivo');
-    if (ir === 'sesion' && info.sesion && info.sesion.activa) checkout('sesion');
-  }).catch(function () {});
+    if (ir === 'one_to_one') checkout('one_to_one');
+  }).catch(function () { window.PartnersMes.cargar(); });
 })();
 </script>
 </body>

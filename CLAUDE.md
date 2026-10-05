@@ -137,6 +137,12 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 - Secuencia: pasos 1, 2 y 4 con `req_cualificado` y botón «Reservar mi llamada de admisión»; `partners_secuencias.sale_llamada` saca a quien reserva.
 - Precios: Intensivo 1.650 € (`clases.precio_cents` 165000; factura 1.363,64 + 286,36 IVA); one-to-one 2.990 € (no se muestra en la web). Sin precio tachado ni descuento.
 
+### One-to-one y mes dinámico (2026-10)
+
+- **Mes del intensivo dinámico**: sale de la fecha de la edición abierta (hora de Madrid); sin edición, el mes siguiente al actual. Front: `/assets/js/partners-mes.js` (`[data-mes]`, `[data-mes-cap]`, `[data-anio]`) en `/partners`, formaciones, llamada y condiciones. Back: `mesIntensivo()` de `_shared/crm-render.ts` y variable de email `{mes_intensivo}` (pasos y plantillas). Título de las ediciones: trigger `trg_clases_titulo` → `partners_titulo_edicion(fecha)` («Intensivo Curino Partners · Noviembre 2026»), salvo títulos especiales que no empiezan así. Pregunta 4: valor `ya` («Ya, en el intensivo de {mes}»); `octubre`/`noviembre` quedan para respuestas antiguas.
+- **`/partners/formaciones`**: 3 tarjetas — Llamada de admisión (gratis; con token → `/partners/llamada/`), Intensivo (precio de `precio_cents`, plazas reales, «Lo tengo claro · Reservar mi plaza» → Stripe vía `clases-checkout`; «Prefiero hablarlo antes» → formulario) y One-to-one (2.990 €, «Lo tengo claro · Empezar ahora» → Stripe). La Sesión 1:1 (60/150 €) queda desactivada en la web (no se borra). El formulario de `/partners` sigue sin precios.
+- **One-to-one 3 meses** (`_shared/one-to-one-config.ts`, 2.990 € IVA incl.): checkout en `partners-formaciones` (`producto: 'one_to_one'`, purpose `one_to_one`, email bloqueado con token, teléfono, dirección, NIF opcional, casilla art. 103 a / 108.3: inicio inmediato y pago proporcional por sesiones si desiste en 14 días). Webhook `handleOneToOneCompleted`: tabla `one_to_one_compras`, factura `ONE-AAAA-NNNNNN` (`invoices/one-to-one/<id>.pdf`), email de bienvenida (agendar primera sesión con `SESION_RESERVA_URL` + WhatsApp) y aviso a info@; `partners_solicitudes.one_to_one_comprado_at` y «compro». Reembolso: rectificativa `R-ONE` (serie `one` en `facturas_rectificativas_clase`). En Ventas (`crm_partners_ventas`, producto `one_to_one`) y Alumnos (`?producto=one_to_one`, marca «Primera sesión agendada»). Condiciones: sección `#one-to-one`.
+
 ## API routes Vercel
 
 - Runtime **edge** por defecto para lo nuevo; `stripe-session.js` y `checkout.js` siguen en Node CommonJS por legado.
@@ -180,6 +186,8 @@ Serie única `invoice_counters (invoice_type, year, last_number)` con RPC `assig
 | `clase_rect` | `R-CLASE` | factura rectificativa de un reembolso del Intensivo (2026-10), tabla `facturas_rectificativas_clase` (una por `stripe_refund_id`) |
 | `sesion` | `SESION` | Sesión 1:1 con Juan · 30 min (2026-10) |
 | `sesion_rect` | `R-SESION` | rectificativa de la sesión (misma tabla `facturas_rectificativas_clase`, `serie='sesion'`) |
+| `one` | `ONE` | One-to-one Curino Partners · 3 meses (2026-10) |
+| `one_rect` | `R-ONE` | rectificativa del one-to-one (`serie='one'`) |
 
 Formato final `<PREFIX>-YYYY-NNNNNN` (6 dígitos). Extender esta RPC = `create or replace function assign_invoice_number` re-declarando el `case` completo con el tipo nuevo (patrón `20260526_armario_orders.sql:112-146`).
 

@@ -32,7 +32,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { signLeadToken } from '../_shared/lead-token.ts'
-import { SITE, construirVars, edicionAbierta, layout, renderCuerpo, sustituir, variablesUsadas } from '../_shared/crm-render.ts'
+import { SITE, construirVars, edicionAbierta, layout, mesIntensivo, renderCuerpo, sustituir, variablesUsadas } from '../_shared/crm-render.ts'
 import { type Any, FROM, MAX_DEST, PRUEBA_TO, construir, enviarLotes, madridAUtc, resendBatch, resolver, vaciasDetalle } from '../_shared/crm-envio.ts'
 
 const cors = {
@@ -95,12 +95,13 @@ Deno.serve(async (req) => {
       const token = await signLeadToken(sol.id);
       const url = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}&ir=intensivo`;
       const nombre = String(sol.nombre || '').trim().split(' ')[0] || '';
-      if (action === 'enlace_pago') return json({ url, nombre });
+      const mes = mesIntensivo(await edicionAbierta(supa)).mes;
+      if (action === 'enlace_pago') return json({ url, nombre, mes });
       if (sol.baja_at && (sol.motivo_baja === 'rebote' || sol.motivo_baja === 'queja')) return json({ error: `baja por ${sol.motivo_baja}` }, 409);
-      const cuerpoPago = `Hola ${nombre},\n\nComo hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de octubre:\n\n[[Reservar mi plaza]](${url})\n\nSi tienes cualquier duda, respóndeme a este email.`;
+      const cuerpoPago = `Hola ${nombre},\n\nComo hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de ${mes}:\n\n[[Reservar mi plaza]](${url})\n\nSi tienes cualquier duda, respóndeme a este email.`;
       const msg: Any = {
         from: FROM, to: [sol.email], reply_to: 'info@casacurino.com',
-        subject: 'Tu enlace para reservar tu plaza en el intensivo de octubre',
+        subject: `Tu enlace para reservar tu plaza en el intensivo de ${mes}`,
         html: layout(renderCuerpo(cuerpoPago, {}), 'secuencia', `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`)
       };
       const r = await resendBatch([msg]);

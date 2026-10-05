@@ -43,12 +43,14 @@
   var $ = function (q) { return document.querySelector(q); };
   var qs = new URLSearchParams(location.search);
   var edicion = qs.get('edicion');          // uuid de clases
-  var tipo = edicion ? 'intensivo' : 'sesion';
+  var tipo = edicion ? 'intensivo' : (qs.get('producto') === 'one_to_one' ? 'one_to_one' : 'sesion');
 
   // Columnas de marcas por producto
   var MARCAS = tipo === 'intensivo'
     ? [['materiales_enviados_at', 'Materiales enviados'], ['grupo_whatsapp_at', 'En el grupo']]
-    : [['materiales_enviados_at', 'Recursos enviados'], ['sesion_reservada_at', 'Sesión reservada']];
+    : tipo === 'one_to_one'
+      ? [['primera_sesion_reservada_at', 'Primera sesión agendada']]
+      : [['materiales_enviados_at', 'Recursos enviados'], ['sesion_reservada_at', 'Sesión reservada']];
 
   initAdminShell({ activeSection: 'partners-formaciones', title: 'Partners · Alumnos' })
     .then(function (ctx) { supa = ctx.supabase; return cargar(); })
@@ -59,6 +61,10 @@
       ? Promise.all([
           supa.from('clases').select('titulo, fecha, fecha_confirmada').eq('id', edicion).maybeSingle(),
           supa.from('inscripciones').select('id, nombre, email, telefono, created_at, estado, confirmation_sent_at, materiales_enviados_at, grupo_whatsapp_at').eq('clase_id', edicion).eq('estado', 'pagada').order('created_at')
+        ])
+      : tipo === 'one_to_one' ? Promise.all([
+          Promise.resolve({ data: { titulo: 'One-to-one Curino Partners · 3 meses' } }),
+          supa.from('one_to_one_compras').select('id, nombre, email, telefono, created_at, estado, confirmation_sent_at, primera_sesion_reservada_at').eq('estado', 'pagada').order('created_at')
         ])
       : Promise.all([
           Promise.resolve({ data: { titulo: 'Sesión 1:1 con Juan · 30 min' } }),
@@ -72,7 +78,7 @@
       $('#alSub').textContent = alumnos.length + ' alumnos con pago activo (sin reembolsos).';
       var seg = tipo === 'intensivo' ? 'edicion=' + edicion : 'sesion=1';
       $('#alEmail').href = '/admin/partners/emails.html?' + seg + '&tipo=servicio';
-      $('#alEmail').hidden = !alumnos.length;
+      $('#alEmail').hidden = !alumnos.length || tipo === 'one_to_one';   // Emails: segmentos de edición y sesión
       pintar();
     });
   }

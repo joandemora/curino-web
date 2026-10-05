@@ -27,6 +27,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
 import { verifyLeadToken } from '../_shared/lead-token.ts'
+import { ONE_TO_ONE, ONE_TO_ONE_TERMINOS } from '../_shared/one-to-one-config.ts'
+import { mesIntensivo } from '../_shared/crm-render.ts'
 import { SESION, precioSesion } from '../_shared/sesion-config.ts'
 import { adConsentAllowed } from '../_shared/meta-capi.ts'
 
@@ -47,18 +49,21 @@ const SESION_TERMINOS = 'Solicito que la sesión y la entrega de los recursos in
 async function intensivoInfo(supabase: any) {
   const { data: clase } = await supabase
     .from('clases')
-    .select('id, precio_cents, plazas_totales, plazas_ocupadas, estado')
+    .select('id, fecha, precio_cents, plazas_totales, plazas_ocupadas, estado')
     .eq('tipo', 'directo').eq('oculta', false).in('estado', ['abierta', 'agotada'])
     .gt('fecha', new Date().toISOString())
     .order('fecha', { ascending: true }).limit(1).maybeSingle();
-  if (!clase) return { disponible: false, clase_id: null, precio_cents: 165000, plazas_restantes: null, plazas_totales: null };
+  // Mes de la edición abierta (o el siguiente al actual si no hay)
+  const { mes, anio } = mesIntensivo(clase);
+  if (!clase) return { disponible: false, clase_id: null, precio_cents: 165000, plazas_restantes: null, plazas_totales: null, mes, anio };
   const libres = Math.max(0, clase.plazas_totales - clase.plazas_ocupadas);
   return {
     disponible: clase.estado === 'abierta' && libres > 0,
     clase_id: clase.estado === 'abierta' ? clase.id : null,
     precio_cents: clase.precio_cents,
     plazas_restantes: libres,
-    plazas_totales: clase.plazas_totales
+    plazas_totales: clase.plazas_totales,
+    mes, anio
   };
 }
 
@@ -101,7 +106,8 @@ Deno.serve(async (req) => {
           id: lead.id, nombre: lead.nombre, email: lead.email,
           telefono: `${lead.telefono_prefijo || ''}${lead.telefono || ''}`.replace(/[^\d+]/g, ''),
           llamada_at: lead.llamada_estado === 'reservada' ? lead.llamada_at : null
-        }
+        },
+        mes: (await intensivoInfo(supabase)).mes
       });
     }
 
@@ -121,7 +127,8 @@ Deno.serve(async (req) => {
           ahora: new Date().toISOString(),     // para corregir el reloj del navegador
           comprada: !!lead?.sesion_comprada_at
         },
-        intensivo: await intensivoInfo(supabase)
+        intensivo: await intensivoInfo(supabase),
+        one_to_one: { nombre: ONE_TO_ONE.nombre, precio_cents: ONE_TO_ONE.precioCents }
       });
     }
 
@@ -236,6 +243,59 @@ Deno.serve(async (req) => {
           } else { throw err; }
         }
         return json({ checkout_url: session.url, session_id: session.id, precio_cents: p.precio_cents, precio_tipo: p.precio_tipo, event_id: eventId });
+      }
+
+      // One-to-one (3 meses): pago único de 2.990 €. Con token, email
+      // prellenado y bloqueado; sin token, Stripe pide los datos.
+      if (producto === 'one_to_one') {
+        const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
+          apiVersion: '2024-12-18.acacia', httpClient: Stripe.createFetchHttpClient()
+        });
+        const adConsent = typeof body?.ad_consent === 'boolean' ? body.ad_consent : null;
+        const capiOk = adConsentAllowed(adConsent, str(body?.country, 2) || null);
+        const params: Stripe.Checkout.SessionCreateParams = {
+          mode: 'payment',
+          payment_method_types: ['card', 'link'],
+          line_items: [{
+            price_data: {
+              currency: 'eur',
+              product_data: { name: ONE_TO_ONE.nombre, description: ONE_TO_ONE.descripcion },
+              unit_amount: ONE_TO_ONE.precioCents
+            },
+            quantity: 1
+          }],
+          ...(email ? { customer_email: email } : {}),
+          customer_creation: 'always',
+          phone_number_collection: { enabled: true },
+          billing_address_collection: 'required',
+          tax_id_collection: { enabled: true },
+          consent_collection: { terms_of_service: 'required' },
+          custom_text: { terms_of_service_acceptance: { message: ONE_TO_ONE_TERMINOS } },
+          success_url: `${siteUrl}/partners/formaciones/gracias/?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${siteUrl}/partners/formaciones/${tokenQs}`,
+          metadata: {
+            purpose: 'one_to_one',
+            solicitud_id: lead?.id || '',
+            nombre, telefono, email_formulario: email,
+            event_id: eventId,
+            ...utm,
+            ad_consent: adConsent === true ? 'true' : (adConsent === false ? 'false' : ''),
+            country: str(body?.country, 2),
+            fbc: capiOk ? str(body?.fbc, 400) : '',
+            fbp: capiOk ? str(body?.fbp, 200) : '',
+            client_ip: capiOk ? str(body?.client_ip, 64) : '',
+            client_ua: capiOk ? str(body?.client_ua, 400) : ''
+          }
+        };
+        let session: Stripe.Checkout.Session;
+        try {
+          session = await stripe.checkout.sessions.create(params);
+        } catch (err: any) {
+          if (err?.type === 'StripeInvalidRequestError' && /link/i.test(String(err?.message || ''))) {
+            session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
+          } else { throw err; }
+        }
+        return json({ checkout_url: session.url, session_id: session.id, precio_cents: ONE_TO_ONE.precioCents, event_id: eventId });
       }
 
       return json({ error: 'invalid_producto' }, 400);
