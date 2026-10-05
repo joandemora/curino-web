@@ -63,8 +63,13 @@ function partirTelefono(t: string): { prefijo: string; numero: string } {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
   const body = await req.text();
-  if (!(await firmaValida(req, body))) return new Response('invalid signature', { status: 401 });
   const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  if (!(await firmaValida(req, body))) {
+    // Diagnostico sin datos personales: que cabecera de firma llego y tamaño.
+    const cab = [...req.headers.keys()].filter((k) => /sign|cal|webhook/i.test(k)).join(',') || 'ninguna';
+    await supa.from('partners_webhook_log').insert({ tipo: 'cal.firma_invalida', resultado: `cabeceras=${cab}; bytes=${body.length}` }).then(() => {}, () => {});
+    return new Response('invalid signature', { status: 401 });
+  }
   let ev: Any;
   try { ev = JSON.parse(body); } catch { return new Response('bad json', { status: 400 }); }
   const trigger = String(ev?.triggerEvent || '');
