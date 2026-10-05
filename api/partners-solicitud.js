@@ -14,7 +14,7 @@ export const config = { runtime: 'edge' };
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://fsfminynxnmhsagqenat.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-const ACTIONS = new Set(['start', 'step', 'cta', 'evento']);
+const ACTIONS = new Set(['start', 'step', 'cta', 'evento', 'fallo']);
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {

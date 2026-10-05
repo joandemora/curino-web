@@ -22,6 +22,11 @@
 //                  p2_instagram_web, p3_inicio, p4_inversion.
 //             Se distingue por el nombre del campo, no por `paso`.
 //   'evento'— metricas: { id, token, evento: 'precio_visto'|'checkout_iniciado' }
+//   'fallo' — el navegador no ha podido guardar un paso tras reintentar:
+//             { id, token, paso, respuestas, error } → aviso a info@.
+// Si un paso no se puede guardar (valor no valido o error de la base de
+// datos) se avisa a info@casacurino.com con los datos capturados (como
+// mucho un aviso por solicitud cada 10 min, fallo_aviso_at).
 //   'cta'   — pantalla final: { id, token,
 //             cta: 'checkout'|'whatsapp'|'whatsapp_one_to_one' }
 //
@@ -155,13 +160,13 @@ function segmentoDe(p3: string | null, p4: string | null): { cualificado: boolea
 }
 
 // ── Emails a Juan ─────────────────────────────────────────────
-async function notify(subject: string, html: string, replyTo: string): Promise<boolean> {
+async function notify(subject: string, html: string, replyTo: string, toOverride?: string): Promise<boolean> {
   const apiKey = Deno.env.get('RESEND_API_KEY');
   if (!apiKey) {
     console.error('partners-solicitud: RESEND_API_KEY missing');
     return false;
   }
-  const to = Deno.env.get('PARTNERS_NOTIFY_EMAIL') || 'juan@casacurino.com';
+  const to = toOverride || Deno.env.get('PARTNERS_NOTIFY_EMAIL') || 'juan@casacurino.com';
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -178,6 +183,28 @@ async function notify(subject: string, html: string, replyTo: string): Promise<b
     return false;
   }
   return true;
+}
+
+// Aviso a info@ cuando un paso del formulario no se guarda.
+const FALLO_TO = 'info@casacurino.com';
+// deno-lint-ignore no-explicit-any
+async function avisoFallo(supabase: any, s: any, detalle: { paso: unknown; respuestas?: unknown; error: string; origen: string }) {
+  try {
+    if (s.fallo_aviso_at && Date.now() - new Date(s.fallo_aviso_at).getTime() < 10 * 60_000) return;
+    await supabase.from('partners_solicitudes').update({ fallo_aviso_at: new Date().toISOString() }).eq('id', s.id);
+    const resp = detalle.respuestas && typeof detalle.respuestas === 'object'
+      ? Object.entries(detalle.respuestas as Record<string, unknown>).map(([k, v]) => row(k, String(v ?? ''))).join('') : '';
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:16px;color:#1a1a1a">
+<h2 style="margin:0 0 8px">Un paso del formulario no se ha guardado</h2>
+<p style="color:#555;margin:0 0 14px">Paso ${escapeHtml(String(detalle.paso ?? '—'))} · error: ${escapeHtml(detalle.error)} · detectado por ${escapeHtml(detalle.origen)}. La persona puede haber visto un error; conviene escribirle.</p>
+<table style="border-collapse:collapse;font-size:14px">
+${row('Nombre', s.nombre)}${row('Email', s.email)}${row('Teléfono', `${s.telefono_prefijo || ''} ${s.telefono || ''}`)}
+${row('Paso alcanzado', String(s.paso_alcanzado ?? ''))}${row('Situación', s.situacion_actual)}${row('Experiencia', s.experiencia)}
+${row('Dedicación', s.dedicacion)}${row('Inicio', s.inicio)}${resp}
+</table>
+<p style="font-size:12px;color:#888">ID ${escapeHtml(s.id)}</p></body></html>`;
+    await notify(`Formulario Partners: no se ha guardado un paso de ${s.nombre || s.email}`, html, s.email || FALLO_TO, FALLO_TO);
+  } catch (e) { console.error('partners-solicitud: aviso fallo', e); }
 }
 
 function row(label: string, value: string | null | undefined): string {
@@ -396,7 +423,10 @@ Deno.serve(async (req) => {
       const v2Field = Object.keys(V2_FIELDS).find(k => body?.[k] != null);
       if (v2Field) {
         const v = str(body?.[v2Field], 40);
-        if (!V2_FIELDS[v2Field][v]) return jsonResponse({ error: `invalid_${v2Field}` }, 400);
+        if (!V2_FIELDS[v2Field][v]) {
+          await avisoFallo(supabase, current, { paso, respuestas: { [v2Field]: v }, error: `valor no válido (${v2Field})`, origen: 'servidor' });
+          return jsonResponse({ error: `invalid_${v2Field}` }, 400);
+        }
         update[v2Field] = v;
         if (v2Field === 'dedicacion') update.perfil_one_to_one = v === 'tiempo_completo';
       } else if (paso === 1) {
@@ -444,6 +474,7 @@ Deno.serve(async (req) => {
         .single();
       if (error || !saved) {
         console.error('partners-solicitud: step update failed', error);
+        await avisoFallo(supabase, current, { paso, respuestas: update, error: String(error?.message || 'no guardado').slice(0, 200), origen: 'servidor' });
         return jsonResponse({ error: 'internal_error' }, 500);
       }
 
@@ -489,6 +520,12 @@ Deno.serve(async (req) => {
         console.error('partners-solicitud: cta update failed', error);
         return jsonResponse({ error: 'internal_error' }, 500);
       }
+      return jsonResponse({ ok: true }, 200);
+    }
+
+    // El navegador no ha podido guardar un paso tras reintentar.
+    if (action === 'fallo') {
+      await avisoFallo(supabase, current, { paso: body?.paso, respuestas: body?.respuestas, error: str(body?.error, 120) || 'desconocido', origen: 'navegador' });
       return jsonResponse({ ok: true }, 200);
     }
 
