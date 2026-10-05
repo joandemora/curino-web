@@ -90,8 +90,9 @@
 
   function pintar() {
     $('#ctNombre').textContent = s.nombre;
-    $('#ctSub').textContent = 'Solicitud del ' + PA.fecha(s.created_at, true);
-    $('#ctBtns').innerHTML = '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
+    $('#ctSub').innerHTML = PA.esc('Solicitud del ' + PA.fecha(s.created_at, true)) + (PA.sinAgendar(s) ? ' ' + PA.sinAgendarBadge(s) : '');
+    $('#ctBtns').innerHTML = (PA.sinAgendar(s) ? '<button type="button" class="pa-btn wa-fill" id="ctAyudarAgendar">WhatsApp · Ayudar a agendar</button>' : '')
+      + '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
       + '<a class="pa-btn" href="/admin/partners/emails.html?tipo=' + (PA.compro(s).length ? 'servicio' : 'comercial') + '&ids=' + s.id + '">Email</a>'
       + '<button type="button" class="pa-btn primary" id="ctFormWa">Enviar formaciones</button><button type="button" class="pa-btn" id="ctFormEmail">Formaciones por email</button>'
       + (s.pagado_at ? '' : '<button type="button" class="pa-btn primary" id="ctPagoWa">Enviar enlace de pago</button><button type="button" class="pa-btn" id="ctPagoEmail">Enlace de pago por email</button>')
@@ -184,6 +185,23 @@
     var a = e.target.closest('[data-pdf]');
     if (a) { e.preventDefault(); PA.abrirPdf(supa, a.dataset.pdf); }
   });
+  // «WhatsApp · Ayudar a agendar» (leads «Sin agendar»): texto preparado con
+  // el enlace personal al calendario prellenado (/partners/llamada/?t=…).
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('#ctAyudarAgendar');
+    if (!b) return;
+    b.disabled = true;
+    supa.functions.invoke('crm-email', { body: { action: 'enlace_llamada', solicitud_id: s.id } }).then(function (r) {
+      b.disabled = false;
+      if (r.error || !r.data || !r.data.url) { PA.toast('No se ha podido generar el enlace'); return; }
+      var texto = 'Hola ' + r.data.nombre + ', soy Juan de Mora de Curino Partners 👋\n'
+        + 'He visto que rellenaste la solicitud para la formación pero no llegaste a agendar la llamada de admisión… no sé si por tema de disponibilidad.\n'
+        + '¿Te parece si buscamos un hueco que te vaya bien? Si prefieres, puedes elegirlo tú aquí: ' + r.data.url;
+      var tel = String((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
+      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+    });
+  });
+
   // Enlace personal a /partners/formaciones (privada) tras la llamada:
   // WhatsApp con el texto preparado, o por email desde info@.
   document.addEventListener('click', function (e) {

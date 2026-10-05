@@ -137,6 +137,12 @@ Todas las funciones viven en `supabase/functions/<nombre>/` con `deno.json` + `i
 - Secuencia: pasos 1, 2 y 4 con `req_cualificado` y botón «Reservar mi llamada de admisión»; `partners_secuencias.sale_llamada` saca a quien reserva.
 - Precios: Intensivo 1.650 € (`clases.precio_cents` 165000; factura 1.363,64 + 286,36 IVA); one-to-one 2.990 € (no se muestra en la web). Sin precio tachado ni descuento.
 
+### Leads «Sin agendar» (2026-10)
+
+- Calculado (no es `crm_estado`): `origen='formulario'`, completada y cualificada desde `2026-10-05T09:11:19Z` (apertura del embudo con llamada), `consentimiento_solicitud`, +1 h, sin baja ni compras y sin llamada vigente (`llamada_estado` nulo, `cancelada` o `no_presentado`). Mismas reglas en `PA.sinAgendar` (CRM) y en `esSinAgendar` (`partners-seguimiento`).
+- CRM: etiqueta en Contactos (columna Llamada) y ficha, filtro «Sin agendar» y contador en la cabecera; botón «WhatsApp · Ayudar a agendar» con texto preparado y enlace `/partners/llamada/?t=` (`crm-email` `enlace_llamada`).
+- Avisos a joandemora@gmail.com (`partners_avisos_agenda`, cron de `partners-seguimiento`, franja 9:00–21:30 Madrid): «Lead sin agendar» uno por contacto; «Lead canceló» / «Lead no se presentó» uno por evento (los encola `cal-webhook`; 5 min de margen y se descartan si vuelve a reservar). Modo prueba `{modo:'prueba_agenda'}` solo para «PRUEBA».
+
 ### One-to-one y mes dinámico (2026-10)
 
 - **Mes del intensivo dinámico**: sale de la fecha de la edición abierta (hora de Madrid); sin edición, el mes siguiente al actual. Front: `/assets/js/partners-mes.js` (`[data-mes]`, `[data-mes-cap]`, `[data-anio]`) en `/partners`, formaciones, llamada y condiciones. Back: `mesIntensivo()` de `_shared/crm-render.ts` y variable de email `{mes_intensivo}` (pasos y plantillas). Título de las ediciones: trigger `trg_clases_titulo` → `partners_titulo_edicion(fecha)` («Intensivo Curino Partners · Noviembre 2026»), salvo títulos especiales que no empiezan así. Pregunta 4: valor `ya` («Ya, en el intensivo de {mes}»); `octubre`/`noviembre` quedan para respuestas antiguas.

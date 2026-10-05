@@ -18,6 +18,7 @@
       <h1>Contactos</h1>
       <p>Solicitudes de casacurino.com/partners, la más reciente primero.</p>
     </div>
+    <button type="button" class="pa-btn" id="cntSinAgendar" title="Cualificados del formulario sin llamada reservada (+1 h)">Sin agendar: <b>…</b></button>
   </div>
 
   <div class="pa-filters" id="filtros">
@@ -25,7 +26,7 @@
     <select id="fCualificado"><option value="">Cualificado: todos</option><option value="si">Cualificado</option><option value="no">No cualificado</option></select>
     <select id="fConsent"><option value="">Consentimiento: todos</option><option value="si">Consentimiento: sí</option><option value="solo">Solo solicitud</option><option value="no">Consentimiento: no</option></select>
     <select id="fCompro"><option value="">Compra: todos</option><option value="si">Compró</option><option value="no">No compró</option></select>
-    <select id="fLlamada"><option value="">Llamada: todas</option><option value="con">Con llamada</option><option value="sin">Sin llamada</option></select>
+    <select id="fLlamada"><option value="">Llamada: todas</option><option value="con">Con llamada</option><option value="sin">Sin llamada</option><option value="sin_agendar">Sin agendar</option></select>
     <select id="fAnuncio"><option value="">Todos los anuncios</option></select>
     <label>Desde <input type="date" id="fDesde"></label>
     <label>Hasta <input type="date" id="fHasta"></label>
@@ -96,6 +97,7 @@
       var ll = $('#fLlamada').value;
       if (ll === 'con' && s.llamada_estado !== 'reservada') return false;
       if (ll === 'sin' && s.llamada_estado === 'reservada') return false;
+      if (ll === 'sin_agendar' && !PA.sinAgendar(s)) return false;
       var compro = PA.compro(s).length > 0;
       if (b === 'si' && !compro) return false;
       if (b === 'no' && compro) return false;
@@ -108,7 +110,16 @@
 
   function badge(v, si, no) { return v ? '<span class="pa-badge ok">' + si + '</span>' : '<span class="pa-muted">' + (no || '—') + '</span>'; }
 
+  // Contador «Sin agendar» en la cabecera (clic → filtra)
+  function pintarContador() {
+    var n = todos.filter(PA.sinAgendar).length;
+    $('#cntSinAgendar').innerHTML = 'Sin agendar: <b>' + n + '</b>';
+    $('#cntSinAgendar').classList.toggle('primary', n > 0);
+  }
+  $('#cntSinAgendar').addEventListener('click', function () { $('#fLlamada').value = 'sin_agendar'; pintar(); });
+
   function pintar() {
+    pintarContador();
     var lista = filtrar();
     $('#contador').textContent = lista.length + ' de ' + todos.length + ' contactos';
     if (!lista.length) { $('#filas').innerHTML = '<tr><td colspan="15" class="pa-empty">Sin contactos con estos filtros.</td></tr>'; return; }
@@ -124,7 +135,7 @@
         + '<td data-l="Cualificado">' + cual + (s.perfil_one_to_one ? ' <span class="pa-badge info">1:1</span>' : '') + '</td>'
         + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (!s.completada_at && s.origen !== 'cal.com' ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/4</span>' : '') + '</td>'
         + '<td data-l="Botón final">' + (s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : '<span class="pa-muted">—</span>') + '</td>'
-        + '<td data-l="Llamada">' + PA.llamada(s) + (PA.inversion(s) ? '<div class="pa-small">Inversión: ' + PA.esc(PA.inversion(s)) + '</div>' : '') + '</td>'
+        + '<td data-l="Llamada">' + (PA.sinAgendar(s) ? PA.sinAgendarBadge(s) + '<br>' : '') + PA.llamada(s) + (PA.inversion(s) ? '<div class="pa-small">Inversión: ' + PA.esc(PA.inversion(s)) + '</div>' : '') + '</td>'
         + '<td data-l="Inició pago">' + badge(s.checkout_iniciado_at, 'Sí') + '</td>'
         + '<td data-l="Compró">' + (compras.length ? '<span class="pa-badge ok">' + compras.join(' + ') + '</span>' : '<span class="pa-muted">—</span>') + '</td>'
         + '<td data-l="Consentimiento">' + PA.consentChecks(s) + '</td>'

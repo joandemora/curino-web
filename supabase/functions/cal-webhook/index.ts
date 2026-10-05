@@ -19,6 +19,9 @@
 // embebido) o por email. Si no existe, se crea (origen 'cal.com', sin
 // consentimientos: no entra en ninguna secuencia).
 // Cada evento queda en partners_webhook_log (tipo 'cal.<evento>').
+// Cancelación o no presentado de un contacto del formulario con
+// consentimiento → aviso pendiente en partners_avisos_agenda (lo envía el
+// cron de partners-seguimiento si sigue sin llamada).
 // verify_jwt=false (Cal.com no manda JWT).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
@@ -58,6 +61,12 @@ function partirTelefono(t: string): { prefijo: string; numero: string } {
   const pre = PREFIJOS.find((p) => limpio.startsWith(p));
   if (pre) return { prefijo: pre, numero: limpio.slice(pre.length) };
   return { prefijo: '+34', numero: limpio.replace(/^\+/, '') };
+}
+
+// Aviso a Juan (lo envía el cron): solo contactos del formulario con consentimiento.
+async function avisoAgenda(supa: Any, sol: Any, tipo: 'cancelada' | 'no_presentado') {
+  if (sol.origen !== 'formulario' || !sol.consentimiento_solicitud || sol.baja_at) return;
+  await supa.from('partners_avisos_agenda').insert({ solicitud_id: sol.id, tipo }).then(() => {}, () => {});
 }
 
 Deno.serve(async (req) => {
@@ -105,6 +114,7 @@ Deno.serve(async (req) => {
       const att = (p?.attendees || []).find((a: Any) => String(a?.email || '').toLowerCase() === String(sol.email).toLowerCase()) || p?.attendees?.[0];
       const noShow = att ? att.noShow !== false : true;
       await supa.from('partners_solicitudes').update({ llamada_estado: noShow ? 'no_presentado' : 'reservada', llamada_actualizada_at: ahora }).eq('id', sol.id);
+      if (noShow) await avisoAgenda(supa, sol, 'no_presentado');
       await log(noShow ? 'no_presentado' : 'presentado'); return new Response('ok');
     }
 
@@ -112,6 +122,7 @@ Deno.serve(async (req) => {
       if (!sol) { await log('sin_contacto'); return new Response('ok'); }
       if (sol.llamada_uid && uid && sol.llamada_uid !== uid) { await log('otra_reserva'); return new Response('ok'); }
       await supa.from('partners_solicitudes').update({ llamada_estado: 'cancelada', llamada_actualizada_at: ahora }).eq('id', sol.id);
+      await avisoAgenda(supa, sol, 'cancelada');
       await log('cancelada'); return new Response('ok');
     }
 
