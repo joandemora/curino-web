@@ -85,6 +85,32 @@ Deno.serve(async (req) => {
       return r.ids[0] ? json({ ok: true, enviado_a: PRUEBA_TO, con_datos_de: sol.email }) : json({ error: r.error }, 502);
     }
 
+    // Enlace de pago tras la llamada de admision (ficha del contacto): enlace
+    // personal al intensivo (email prellenado y bloqueado en Stripe). No
+    // caduca: crea la sesion de Stripe al abrirse. 'enlace_pago' solo lo
+    // devuelve (para WhatsApp); 'enlace_pago_email' ademas lo envia.
+    if (action === 'enlace_pago' || action === 'enlace_pago_email') {
+      const { data: sol } = await supa.from('partners_solicitudes').select('id, nombre, email, baja_at, motivo_baja').eq('id', String(body?.solicitud_id || '')).maybeSingle();
+      if (!sol) return json({ error: 'contacto no encontrado' }, 404);
+      const token = await signLeadToken(sol.id);
+      const url = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}&ir=intensivo`;
+      const nombre = String(sol.nombre || '').trim().split(' ')[0] || '';
+      if (action === 'enlace_pago') return json({ url, nombre });
+      if (sol.baja_at && (sol.motivo_baja === 'rebote' || sol.motivo_baja === 'queja')) return json({ error: `baja por ${sol.motivo_baja}` }, 409);
+      const cuerpoPago = `Hola ${nombre},\n\nComo hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de octubre:\n\n[[Reservar mi plaza]](${url})\n\nSi tienes cualquier duda, respóndeme a este email.`;
+      const msg: Any = {
+        from: FROM, to: [sol.email], reply_to: 'info@casacurino.com',
+        subject: 'Tu enlace para reservar tu plaza en el intensivo de octubre',
+        html: layout(renderCuerpo(cuerpoPago, {}), 'secuencia', `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`)
+      };
+      const r = await resendBatch([msg]);
+      await supa.from('partners_emails').insert({
+        tipo: 'servicio', asunto: msg.subject, email: sol.email, nombre: sol.nombre, solicitud_id: sol.id,
+        resend_id: r.ids[0], estado: r.ids[0] ? 'enviado' : 'error', error: r.error || null, enviado_por: u.user.id
+      });
+      return r.ids[0] ? json({ ok: true, url }) : json({ error: r.error }, 502);
+    }
+
     // Diagnostico (solo lectura): ultimo evento que Resend tiene de un email
     // del CRM. Solo para resend_id registrados en partners_emails.
     if (action === 'resend_estado') {

@@ -93,6 +93,7 @@
     $('#ctSub').textContent = 'Solicitud del ' + PA.fecha(s.created_at, true);
     $('#ctBtns').innerHTML = '<a class="pa-btn wa" href="' + PA.esc(PA.waUrl(s)) + '" target="_blank" rel="noopener">WhatsApp</a>'
       + '<a class="pa-btn" href="/admin/partners/emails.html?tipo=' + (PA.compro(s).length ? 'servicio' : 'comercial') + '&ids=' + s.id + '">Email</a>'
+      + (s.pagado_at ? '' : '<button type="button" class="pa-btn primary" id="ctPagoWa">Enviar enlace de pago</button><button type="button" class="pa-btn" id="ctPagoEmail">Enlace de pago por email</button>')
       + '<button type="button" class="pa-btn danger" id="ctBorrar"' + (tieneCompras === false ? '' : ' disabled') + (tieneCompras ? ' title="' + PA.AVISO_COMPRAS + '"' : '') + '>Borrar</button>'
       + (tieneCompras ? '<div class="pa-aviso-compras" style="flex-basis:100%">' + PA.AVISO_COMPRAS + '.</div>' : '');
     var R = PA.R;
@@ -103,11 +104,12 @@
       + fila('Perfil one-to-one', s.perfil_one_to_one ? '<span class="pa-badge info">Sí</span>' : 'No')
       + (s.situacion_actual || s.inicio
           ? fila('Situación', PA.esc(R.situacion_actual[s.situacion_actual])) + fila('Experiencia', PA.esc(R.experiencia[s.experiencia]))
-            + fila('Dedicación', PA.esc(R.dedicacion[s.dedicacion])) + fila('Cuándo empezar', PA.esc(R.inicio[s.inicio]))
+            + fila('Dedicación', PA.esc(R.dedicacion[s.dedicacion])) + fila('Cuándo empezar', PA.esc(R.inicio[s.inicio])) + fila('Inversión', PA.esc({ si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' }[s.inversion]))
           : fila('A qué se dedica', PA.esc(R.p1_dedicacion[s.p1_dedicacion])) + fila('Situación', PA.esc(s.p2_situacion))
             + fila('Instagram / web', PA.esc(s.p2_instagram_web)) + fila('Cuándo empezar', PA.esc(R.p3_inicio[s.p3_inicio]))
             + fila('Inversión', PA.esc(R.p4_inversion[s.p4_inversion])))
-      + fila('Paso alcanzado', s.paso_alcanzado + ' de 4')
+      + fila('Paso alcanzado', s.origen === 'cal.com' ? 'Llegó por Cal.com (sin formulario)' : s.paso_alcanzado + ' de ' + (s.p1_dedicacion ? 4 : 5))
+      + fila('Llamada de admisión', PA.llamada(s) + (s.llamada_actualizada_at ? ' <span class="pa-small">actualizada ' + PA.fecha(s.llamada_actualizada_at, true) + '</span>' : ''))
       + fila('Botón final', s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : null)
       + fila('Consentimiento', PA.consentChecks(s)
           + '<div class="pa-small">' + [['solicitud', 'Solicitud'], ['comercial', 'Comercial']].map(function (x) {
@@ -135,6 +137,8 @@
       [s.oferta_sesion_enviada_at, 'Secuencia · email 3 (oferta sesión 1:1)'],
       [s.seguimiento_3_at && !s.oferta_sesion_enviada_at ? s.seguimiento_3_at : null, 'Secuencia · email 3 no enviado (saltado)'],
       [s.seguimiento_4_at, 'Secuencia · email 4 (+72 h)'],
+      [s.llamada_estado === 'reservada' ? s.llamada_actualizada_at : null, 'Reserva la llamada de admisión (' + (s.llamada_at ? PA.fecha(s.llamada_at, true) : '') + ')'],
+      [s.llamada_estado === 'cancelada' ? s.llamada_actualizada_at : null, 'Cancela la llamada de admisión'],
       [s.pagado_at, 'Compra el Intensivo'],
       [s.sesion_comprada_at, 'Compra la Sesión 1:1'],
       [s.baja_at, 'Baja de emails (' + (s.motivo_baja || '') + ')'],
@@ -176,6 +180,21 @@
   document.addEventListener('click', function (e) {
     var a = e.target.closest('[data-pdf]');
     if (a) { e.preventDefault(); PA.abrirPdf(supa, a.dataset.pdf); }
+  });
+  // Enlace de pago tras la llamada (intensivo, email bloqueado en Stripe):
+  // WhatsApp con el texto preparado, o por email desde info@.
+  document.addEventListener('click', function (e) {
+    var w = e.target.closest('#ctPagoWa'), m = e.target.closest('#ctPagoEmail');
+    if (!w && !m) return;
+    var b = w || m; b.disabled = true;
+    supa.functions.invoke('crm-email', { body: { action: w ? 'enlace_pago' : 'enlace_pago_email', solicitud_id: s.id } }).then(function (r) {
+      b.disabled = false;
+      if (r.error || !r.data || !r.data.url) { PA.toast('No se ha podido generar el enlace'); return; }
+      if (m) { PA.toast('Enlace de pago enviado por email'); cargar(); return; }
+      var texto = 'Hola ' + r.data.nombre + ', como hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de octubre: ' + r.data.url;
+      var tel = String((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
+      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+    });
   });
   document.addEventListener('click', function (e) {
     if (!e.target.closest('#ctBorrar') || tieneCompras !== false) return;

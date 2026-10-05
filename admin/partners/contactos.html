@@ -25,6 +25,7 @@
     <select id="fCualificado"><option value="">Cualificado: todos</option><option value="si">Cualificado</option><option value="no">No cualificado</option></select>
     <select id="fConsent"><option value="">Consentimiento: todos</option><option value="si">Consentimiento: sí</option><option value="solo">Solo solicitud</option><option value="no">Consentimiento: no</option></select>
     <select id="fCompro"><option value="">Compra: todos</option><option value="si">Compró</option><option value="no">No compró</option></select>
+    <select id="fLlamada"><option value="">Llamada: todas</option><option value="con">Con llamada</option><option value="sin">Sin llamada</option></select>
     <select id="fAnuncio"><option value="">Todos los anuncios</option></select>
     <label>Desde <input type="date" id="fDesde"></label>
     <label>Hasta <input type="date" id="fHasta"></label>
@@ -37,7 +38,7 @@
     <table class="pa-table">
       <thead><tr>
         <th><input type="checkbox" id="selTodos" title="Seleccionar todos los visibles"></th><th>Fecha</th><th>Contacto</th><th>Cualif.</th><th>Respuestas</th><th>Botón final</th>
-        <th>Vio precio</th><th>Inició pago</th><th>Compró</th><th>Consentimiento</th><th>Baja</th><th>Anuncio</th>
+        <th>Llamada</th><th>Inició pago</th><th>Compró</th><th>Consentimiento</th><th>Baja</th><th>Anuncio</th>
         <th>Estado</th><th>Notas</th><th>Acciones</th>
       </tr></thead>
       <tbody id="filas"><tr><td colspan="14" class="pa-empty">Cargando…</td></tr></tbody>
@@ -61,7 +62,7 @@
   Object.keys(PA.ESTADOS).forEach(function (k) {
     var o = document.createElement('option'); o.value = k; o.textContent = PA.ESTADOS[k]; $('#fEstado').appendChild(o);
   });
-  ['fEstado', 'fCualificado', 'fConsent', 'fCompro', 'fAnuncio', 'fDesde', 'fHasta'].forEach(function (id) {
+  ['fEstado', 'fCualificado', 'fConsent', 'fCompro', 'fLlamada', 'fAnuncio', 'fDesde', 'fHasta'].forEach(function (id) {
     document.getElementById(id).addEventListener('change', pintar);
   });
 
@@ -92,6 +93,9 @@
       if (q === 'no' && s.cualificado === true) return false;
       var cs = s.consentimiento_solicitud && s.consentimiento_comercial ? 'si' : (s.consentimiento_solicitud ? 'solo' : 'no');
       if (c && c !== cs) return false;
+      var ll = $('#fLlamada').value;
+      if (ll === 'con' && s.llamada_estado !== 'reservada') return false;
+      if (ll === 'sin' && s.llamada_estado === 'reservada') return false;
       var compro = PA.compro(s).length > 0;
       if (b === 'si' && !compro) return false;
       if (b === 'no' && compro) return false;
@@ -115,12 +119,12 @@
       return '<tr>'
         + '<td data-l="Seleccionar"><input type="checkbox" data-sel="' + s.id + '"' + (sel[s.id] ? ' checked' : '') + '></td>'
         + '<td data-l="Fecha">' + PA.fecha(s.created_at, true) + '</td>'
-        + '<td data-l="Contacto"><a href="/admin/partners/contacto.html?id=' + s.id + '"><b>' + PA.esc(s.nombre) + '</b></a>'
+        + '<td data-l="Contacto"><a href="/admin/partners/contacto.html?id=' + s.id + '"><b>' + PA.esc(s.nombre) + '</b></a>' + (s.origen === 'cal.com' ? ' <span class="pa-badge info">Cal.com</span>' : '')
         +   '<div class="pa-small">' + PA.esc(PA.telefono(s)) + '<br>' + PA.esc(s.email) + '</div></td>'
         + '<td data-l="Cualificado">' + cual + (s.perfil_one_to_one ? ' <span class="pa-badge info">1:1</span>' : '') + '</td>'
-        + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (s.paso_alcanzado < 4 ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/4</span>' : '') + '</td>'
+        + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (!s.completada_at && s.origen !== 'cal.com' ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/' + (s.p1_dedicacion ? 4 : 5) + '</span>' : '') + '</td>'
         + '<td data-l="Botón final">' + (s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : '<span class="pa-muted">—</span>') + '</td>'
-        + '<td data-l="Vio precio">' + badge(s.precio_visto_at, 'Sí') + '</td>'
+        + '<td data-l="Llamada">' + PA.llamada(s) + '</td>'
         + '<td data-l="Inició pago">' + badge(s.checkout_iniciado_at, 'Sí') + '</td>'
         + '<td data-l="Compró">' + (compras.length ? '<span class="pa-badge ok">' + compras.join(' + ') + '</span>' : '<span class="pa-muted">—</span>') + '</td>'
         + '<td data-l="Consentimiento">' + PA.consentChecks(s) + '</td>'

@@ -13,6 +13,9 @@
 //              prellenado en Stripe (bloqueado). Sin token: Stripe pide los
 //              datos. El precio de la sesion SIEMPRE se calcula aqui.
 //   'baja'     { token } → no mas emails de seguimiento.
+//   'llamada'  { token } → datos del lead para prellenar el calendario de la
+//              llamada de admision (/partners/llamada/): nombre, email,
+//              telefono, inversion. Solo con token valido.
 //   'comercial' { token } → consentimiento_comercial (enlace «Quiero recibir
 //              también otras formaciones…» que llevaron los emails 1 y 2 hasta
 //              la casilla unica; se mantiene para los emails ya enviados). Con
@@ -48,7 +51,7 @@ async function intensivoInfo(supabase: any) {
     .eq('tipo', 'directo').eq('oculta', false).in('estado', ['abierta', 'agotada'])
     .gt('fecha', new Date().toISOString())
     .order('fecha', { ascending: true }).limit(1).maybeSingle();
-  if (!clase) return { disponible: false, clase_id: null, precio_cents: 99000, plazas_restantes: null, plazas_totales: null };
+  if (!clase) return { disponible: false, clase_id: null, precio_cents: 165000, plazas_restantes: null, plazas_totales: null };
   const libres = Math.max(0, clase.plazas_totales - clase.plazas_ocupadas);
   return {
     disponible: clase.estado === 'abierta' && libres > 0,
@@ -86,9 +89,22 @@ Deno.serve(async (req) => {
     if (leadId) {
       const { data } = await supabase
         .from('partners_solicitudes')
-        .select('id, nombre, email, telefono_prefijo, telefono, oferta_sesion_enviada_at, sesion_comprada_at, pagado_at, baja_at, utm_source, utm_medium, utm_campaign, fbclid')
+        .select('id, nombre, email, telefono_prefijo, telefono, inversion, llamada_at, llamada_estado, oferta_sesion_enviada_at, sesion_comprada_at, pagado_at, baja_at, utm_source, utm_medium, utm_campaign, fbclid')
         .eq('id', leadId).maybeSingle();
       lead = data;
+    }
+
+    if (action === 'llamada') {
+      if (!lead) return json({ error: 'invalid_token' }, 400);
+      const INV: Record<string, string> = { si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' };
+      return json({
+        lead: {
+          id: lead.id, nombre: lead.nombre, email: lead.email,
+          telefono: `${lead.telefono_prefijo || ''}${lead.telefono || ''}`.replace(/[^\d+]/g, ''),
+          inversion: INV[lead.inversion] || '',
+          llamada_at: lead.llamada_estado === 'reservada' ? lead.llamada_at : null
+        }
+      });
     }
 
     if (action === 'info') {
