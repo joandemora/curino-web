@@ -27,7 +27,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 type Any = any;
 const enc = new TextEncoder();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const INVERSION: Record<string, string> = { 'sí': 'si', 'si': 'si', 'sí, pero necesitaría organizarme': 'si_organizarme', 'no por ahora': 'no_por_ahora' };
+// Opciones de la pregunta «inversion» en Cal.com: «Sí» / «Lo puedo conseguir»
+// / «No por ahora» (la intermedia se guarda como 'si_organizarme').
+const INVERSION: Record<string, string> = {
+  'sí': 'si', 'si': 'si', 'lo puedo conseguir': 'si_organizarme', 'sí, pero necesitaría organizarme': 'si_organizarme', 'no por ahora': 'no_por_ahora'
+};
 const PREFIJOS = ['+351', '+34', '+33', '+39', '+44', '+49', '+52', '+54', '+56', '+57', '+51', '+1'];
 
 async function firmaValida(req: Request, body: string): Promise<boolean> {

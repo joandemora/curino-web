@@ -158,7 +158,7 @@ window.PA = (function () {
   }
 
   // Respuesta «inversion» de Cal.com (solo informativa)
-  var INVERSION = { si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' };
+  var INVERSION = { si: 'Sí', si_organizarme: 'Lo puedo conseguir', no_por_ahora: 'No por ahora' };
   function inversion(s) { return INVERSION[s.inversion] || ''; }
 
   return { ESTADOS: ESTADOS, llamada: llamada, inversion: inversion, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
