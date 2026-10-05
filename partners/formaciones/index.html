@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex, nofollow">
 <title>Formaciones — Curino Partners | Curino</title>
 <meta name="description" content="Formaciones de Curino Partners: llamada de admisión gratis, Intensivo y programa one-to-one de 3 meses.">
-<link rel="canonical" href="https://www.casacurino.com/partners/formaciones/">
+<!-- Página privada: solo se llega por el enlace que envía Juan tras la llamada de admisión -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
 <link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -119,8 +119,8 @@ a.fm-btn{text-align:center;text-decoration:none}
       <div class="fm-price">
         <div class="fm-amount"><strong>Gratis</strong></div>
       </div>
-      <!-- Sin token → formulario de /partners; con token personal → calendario -->
-      <a class="fm-btn" id="fm-llamada-btn" href="/partners/#solicitud">Reservar mi llamada gratis</a>
+      <!-- Sin token → calendario de Cal.com; con token personal → /partners/llamada (calendario prellenado) -->
+      <a class="fm-btn" id="fm-llamada-btn" href="https://cal.com/curino/llamada-de-admision-curino-partners" target="_blank" rel="noopener">Reservar mi llamada gratis</a>
     </article>
 
     <!-- Intensivo (destacada) -->
@@ -139,7 +139,6 @@ a.fm-btn{text-align:center;text-decoration:none}
       </div>
       <!-- Checkout de Stripe de la edición abierta (con token: email prellenado y bloqueado) -->
       <button type="button" class="fm-btn" data-checkout="intensivo">Lo tengo claro · Reservar mi plaza</button>
-      <a class="fm-btn fm-btn--ghost" id="fm-intensivo-hablar" href="/partners/#solicitud">Prefiero hablarlo antes</a>
       <a class="fm-btn fm-btn--ghost" id="fm-intensivo-espera" href="/partners/#solicitud" hidden>Apuntarme a la próxima promoción</a>
       <p class="fm-err" data-err="intensivo" role="alert"></p>
     </article>
@@ -158,10 +157,6 @@ a.fm-btn{text-align:center;text-decoration:none}
         <div class="fm-amount"><strong data-oto-precio>2.990 €</strong><small>IVA incluido</small></div>
       </div>
       <button type="button" class="fm-btn" data-checkout="one_to_one">Lo tengo claro · Empezar ahora</button>
-      <a class="fm-btn fm-btn--ghost" data-wa="one_to_one_formaciones" href="https://wa.me/34611965612?text=Hola%20Juan%2C%20me%20interesa%20el%20programa%20one-to-one" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.4 9.4 0 0 1-4.8-1.31l-.34-.2-3.57.94.95-3.48-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.42 9.42zm8.02-17.44A11.27 11.27 0 0 0 12.05.75C5.8.75.72 5.83.72 12.08c0 2 .52 3.95 1.52 5.67L.62 23.25l5.63-1.48a11.3 11.3 0 0 0 5.8 1.48h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.32-8.01z"/></svg>
-        Hablar por WhatsApp
-      </a>
       <p class="fm-err" data-err="one_to_one" role="alert"></p>
     </article>
   </div>
@@ -206,7 +201,7 @@ a.fm-btn{text-align:center;text-decoration:none}
   }
 
   // Llamada de admisión: con token personal, directo al calendario prellenado.
-  if (token) $('#fm-llamada-btn').href = '/partners/llamada/?t=' + encodeURIComponent(token);
+  if (token) { var ll = $('#fm-llamada-btn'); ll.href = '/partners/llamada/?t=' + encodeURIComponent(token); ll.removeAttribute('target'); }
 
   // Intensivo: precio de la edición abierta (lo que cobra Stripe), mes y plazas reales.
   function pintarIntensivo(it) {
@@ -215,7 +210,6 @@ a.fm-btn{text-align:center;text-decoration:none}
     if (!it.disponible) {
       $('[data-intensivo-plazas]').textContent = it.plazas_totales ? 'Plazas agotadas' : 'Próxima promoción en preparación';
       $('[data-checkout="intensivo"]').hidden = true;
-      $('#fm-intensivo-hablar').hidden = true;
       $('#fm-intensivo-espera').hidden = false;
       return;
     }

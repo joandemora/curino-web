@@ -89,6 +89,31 @@ Deno.serve(async (req) => {
     // personal al intensivo (email prellenado y bloqueado en Stripe). No
     // caduca: crea la sesion de Stripe al abrirse. 'enlace_pago' solo lo
     // devuelve (para WhatsApp); 'enlace_pago_email' ademas lo envia.
+    // Enlace personal a /partners/formaciones (página privada, tras la
+    // llamada de admisión): 'enlace_formaciones' lo devuelve (WhatsApp) y
+    // 'enlace_formaciones_email' además lo envía.
+    if (action === 'enlace_formaciones' || action === 'enlace_formaciones_email') {
+      const { data: sol } = await supa.from('partners_solicitudes').select('id, nombre, email, baja_at, motivo_baja').eq('id', String(body?.solicitud_id || '')).maybeSingle();
+      if (!sol) return json({ error: 'contacto no encontrado' }, 404);
+      const token = await signLeadToken(sol.id);
+      const url = `${SITE}/partners/formaciones/?t=${encodeURIComponent(token)}`;
+      const nombre = String(sol.nombre || '').trim().split(' ')[0] || '';
+      if (action === 'enlace_formaciones') return json({ url, nombre });
+      if (sol.baja_at && (sol.motivo_baja === 'rebote' || sol.motivo_baja === 'queja')) return json({ error: `baja por ${sol.motivo_baja}` }, 409);
+      const cuerpoF = `Hola ${nombre},\n\nComo hablamos, aquí tienes las opciones para empezar:\n\n[[Ver las opciones]](${url})\n\nSi tienes cualquier duda, respóndeme a este email.`;
+      const msg: Any = {
+        from: FROM, to: [sol.email], reply_to: 'info@casacurino.com',
+        subject: 'Las opciones para empezar con Curino Partners',
+        html: layout(renderCuerpo(cuerpoF, {}), 'secuencia', `${SITE}/partners/baja/?t=${encodeURIComponent(token)}`)
+      };
+      const r = await resendBatch([msg]);
+      await supa.from('partners_emails').insert({
+        tipo: 'servicio', asunto: msg.subject, email: sol.email, nombre: sol.nombre, solicitud_id: sol.id,
+        resend_id: r.ids[0], estado: r.ids[0] ? 'enviado' : 'error', error: r.error || null, enviado_por: u.user.id
+      });
+      return r.ids[0] ? json({ ok: true, url }) : json({ error: r.error }, 502);
+    }
+
     if (action === 'enlace_pago' || action === 'enlace_pago_email') {
       const { data: sol } = await supa.from('partners_solicitudes').select('id, nombre, email, baja_at, motivo_baja').eq('id', String(body?.solicitud_id || '')).maybeSingle();
       if (!sol) return json({ error: 'contacto no encontrado' }, 404);
