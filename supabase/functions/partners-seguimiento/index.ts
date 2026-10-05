@@ -35,6 +35,14 @@
 // plazos acelerados (1 h → segundos_por_hora s), sin franja y aunque la
 // secuencia este pausada.
 //
+// Leads «Sin agendar» (formulario completado y cualificado, con
+// consentimiento, +1 h, sin llamada vigente en Cal.com): aviso por email a
+// joandemora@gmail.com (uno por contacto) y otro por cada cancelación o
+// no presentado (los encola cal-webhook). Solo de 9:00 a 21:30 Madrid; antes
+// de enviar se comprueba que sigue sin llamada (si no, 'descartado').
+// Modo prueba: { modo: 'prueba_agenda', solicitud_id, segundos_por_hora }
+// solo para «PRUEBA», sin franja.
+//
 // Remitente: «Juan de Mora <info@casacurino.com>», reply_to info@.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
@@ -45,6 +53,9 @@ import { SITE, construirVars, edicionAbierta, esc, layout, plazasLibres, renderC
 const FROM_JUAN = 'Juan de Mora <info@casacurino.com>';
 const AVISO_TO = 'info@casacurino.com';
 const SECUENCIA_DEFECTO = '5e9a0001-0000-4000-8000-000000000001';
+// Embudo con llamada de admisión abierto desde aquí: antes nadie vio el calendario.
+const EMBUDO_LLAMADA_DESDE = '2026-10-05T09:11:19Z';
+const AVISO_AGENDA_TO = 'joandemora@gmail.com';
 
 const P1: Record<string, string> = {
   cuenta_ajena: 'Trabajo por cuenta ajena', autonomo_negocio: 'Soy autónomo o tengo un negocio',
@@ -252,6 +263,68 @@ async function ejecutarProgramados(supabase: Any, ahora: number): Promise<string
   return log;
 }
 
+// ── Leads «Sin agendar» y avisos ────────────────────────────────────
+function esSinAgendar(l: Lead, ahora: number, segPorHora = 3600): boolean {
+  return l.origen === 'formulario' && !!l.completada_at && l.cualificado === true && !!l.consentimiento_solicitud
+    && new Date(l.completada_at).getTime() >= new Date(EMBUDO_LLAMADA_DESDE).getTime()
+    && ahora - new Date(l.completada_at).getTime() >= segPorHora * 1000
+    && !l.baja_at && !l.pagado_at && !l.sesion_comprada_at && !l.one_to_one_comprado_at
+    && l.llamada_estado !== 'reservada';
+}
+function avisoAgendaHtml(l: Lead, tipo: string): string {
+  const tel = `${l.telefono_prefijo || ''}${l.telefono || ''}`.replace(/\D/g, '');
+  const motivo = tipo === 'cancelada' ? 'Canceló la llamada de admisión.' : tipo === 'no_presentado' ? 'No se presentó a la llamada de admisión.' : 'Rellenó la solicitud hace más de 1 hora y no ha reservado la llamada de admisión.';
+  const row = (k: string, v: unknown) => `<tr><td style="padding:5px 12px 5px 0;color:#888">${esc(k)}</td><td>${v ? esc(v) : '—'}</td></tr>`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:16px;color:#1a1a1a">
+<h2 style="margin:0 0 6px">${esc(l.nombre)}</h2>
+<p style="margin:0 0 14px;color:#555">${esc(motivo)}</p>
+<table style="border-collapse:collapse;font-size:14px">
+${row('Teléfono', `${l.telefono_prefijo || ''} ${l.telefono || ''}`)}${row('Email', l.email)}
+${row('1. Situación', P1[l.situacion_actual])}${row('2. Experiencia', P2[l.experiencia])}
+${row('3. Dedicación', P3[l.dedicacion])}${row('4. Inicio', P4[l.inicio])}
+${row('Solicitud completada', new Date(l.completada_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }))}
+${l.llamada_at ? row('Llamada', new Date(l.llamada_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) + ` (${l.llamada_estado})`) : ''}
+</table>
+<p style="margin-top:18px"><a href="${SITE}/admin/partners/contacto.html?id=${esc(l.id)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:10px 18px;text-decoration:none;border-radius:4px">Abrir la ficha</a>
+${tel ? ` &nbsp; <a href="https://wa.me/${tel}">WhatsApp</a>` : ''}</p>
+</body></html>`;
+}
+async function avisosAgenda(supabase: Any, ahora: number, o: { soloId?: string; segPorHora?: number; sinFranja?: boolean } = {}): Promise<string[]> {
+  const log: string[] = [];
+  const seg = o.segPorHora || 3600;
+  // 1. Nuevos «Sin agendar» → aviso pendiente (uno por contacto)
+  let q = supabase.from('partners_solicitudes').select('*').eq('origen', 'formulario').eq('cualificado', true)
+    .eq('consentimiento_solicitud', true).not('completada_at', 'is', null).gte('completada_at', EMBUDO_LLAMADA_DESDE)
+    .is('baja_at', null).is('pagado_at', null).limit(500);
+  if (o.soloId) q = q.eq('id', o.soloId);
+  const { data: leads } = await q;
+  for (const l of leads || []) {
+    if (!esSinAgendar(l, ahora, seg)) continue;
+    const { error } = await supabase.from('partners_avisos_agenda').insert({ solicitud_id: l.id, tipo: 'sin_agendar' });
+    if (!error) log.push(`sin_agendar:${l.id}`);
+  }
+  // 2. Envío de pendientes (franja 9:00–21:30 Madrid)
+  if (!o.sinFranja && !enFranja({ franja_inicio: '09:00', franja_fin: '21:30' }, ahora)) return log;
+  let pq = supabase.from('partners_avisos_agenda').select('*').eq('estado', 'pendiente').order('created_at').limit(50);
+  if (o.soloId) pq = pq.eq('solicitud_id', o.soloId);
+  const { data: pend } = await pq;
+  for (const a of pend || []) {
+    // Cancelación/no-show: 5 min de margen por si es un cambio de hora
+    if (a.tipo !== 'sin_agendar' && ahora - new Date(a.evento_at).getTime() < 5 * 60 * seg / 3600 * 1000) continue;
+    const { data: l } = await supabase.from('partners_solicitudes').select('*').eq('id', a.solicitud_id).maybeSingle();
+    if (!l || !esSinAgendar(l, ahora, seg)) {
+      await supabase.from('partners_avisos_agenda').update({ estado: 'descartado' }).eq('id', a.id);
+      log.push(`aviso_descartado:${a.tipo}`); continue;
+    }
+    const asunto = a.tipo === 'cancelada' ? `Lead canceló: ${l.nombre}` : a.tipo === 'no_presentado' ? `Lead no se presentó: ${l.nombre}` : `Lead sin agendar: ${l.nombre}`;
+    const id = await resendId({ from: 'Curino Partners — Leads <noreply@casacurino.com>', to: [AVISO_AGENDA_TO], reply_to: l.email, subject: asunto, html: avisoAgendaHtml(l, a.tipo) });
+    if (!id) { log.push(`aviso_error:${a.tipo}`); continue; }
+    await supabase.from('partners_avisos_agenda').update({ estado: 'enviado', enviado_at: new Date().toISOString() }).eq('id', a.id);
+    log.push(`aviso_enviado:${a.tipo}`);
+  }
+  return log;
+}
+
 async function cargarPasos(supabase: Any, secId: string): Promise<Any[]> {
   const { data } = await supabase.from('partners_secuencia_pasos').select('*').eq('secuencia_id', secId).eq('activo', true)
     .order('retraso_minutos').order('orden');
@@ -271,6 +344,14 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const ahora = Date.now();
   const abierta = await edicionAbierta(supabase);
+
+  // Modo prueba de los avisos «Sin agendar»: solo «PRUEBA», sin franja.
+  if (body?.modo === 'prueba_agenda') {
+    const segPorHora = Math.max(1, Math.min(3600, Number(body?.segundos_por_hora) || 10));
+    const { data: lead } = await supabase.from('partners_solicitudes').select('id, nombre').eq('id', String(body?.solicitud_id || '')).maybeSingle();
+    if (!lead || !/^PRUEBA/i.test(String(lead.nombre || ''))) return json({ error: 'solo_solicitudes_prueba' }, 400);
+    return json({ ok: true, modo: 'prueba_agenda', log: await avisosAgenda(supabase, ahora, { soloId: lead.id, segPorHora, sinFranja: true }) });
+  }
 
   // Modo prueba: una sola solicitud "PRUEBA", plazos acelerados, sin franja.
   if (body?.modo === 'prueba') {
@@ -292,6 +373,8 @@ Deno.serve(async (req) => {
 
   // Envios programados que ya han llegado a su hora
   try { add('programados', await ejecutarProgramados(supabase, ahora)); } catch (e) { console.error('seguimiento: programados', e); }
+  // Leads «Sin agendar» y avisos de cancelación / no presentado
+  try { add('agenda', await avisosAgenda(supabase, ahora)); } catch (e) { console.error('seguimiento: avisos agenda', e); }
 
   // Aviso a Juan (independiente de las secuencias)
   const desdeAviso = new Date(ahora - 4 * 24 * 3600_000).toISOString();

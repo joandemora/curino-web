@@ -157,10 +157,22 @@ window.PA = (function () {
     return '<span class="pa-muted">—</span>';
   }
 
+  // «Sin agendar» (mismas reglas que el cron de partners-seguimiento):
+  // formulario completado y cualificado tras abrir el embudo con llamada,
+  // con consentimiento, +1 h, sin baja ni compras y sin llamada vigente.
+  var EMBUDO_LLAMADA_DESDE = Date.parse('2026-10-05T09:11:19Z');
+  function sinAgendar(s) {
+    return s.origen === 'formulario' && !!s.completada_at && s.cualificado === true && !!s.consentimiento_solicitud
+      && Date.parse(s.completada_at) >= EMBUDO_LLAMADA_DESDE && Date.now() - Date.parse(s.completada_at) >= 3600000
+      && !s.baja_at && !s.pagado_at && !s.sesion_comprada_at && !s.one_to_one_comprado_at
+      && s.llamada_estado !== 'reservada';
+  }
+  function sinAgendarBadge(s) { return sinAgendar(s) ? '<span class="pa-badge warn">Sin agendar</span>' : ''; }
+
   // Respuesta «inversion» de Cal.com (solo informativa)
   var INVERSION = { si: 'Sí', si_organizarme: 'Lo puedo conseguir', no_por_ahora: 'No por ahora' };
   function inversion(s) { return INVERSION[s.inversion] || ''; }
 
-  return { ESTADOS: ESTADOS, llamada: llamada, inversion: inversion, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
+  return { ESTADOS: ESTADOS, llamada: llamada, sinAgendar: sinAgendar, sinAgendarBadge: sinAgendarBadge, inversion: inversion, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
     compro: compro, waUrl: waUrl, mailUrl: mailUrl, toast: toast, estadoSelect: estadoSelect, guardarContacto: guardarContacto, abrirPdf: abrirPdf };
 })();

@@ -89,6 +89,15 @@ Deno.serve(async (req) => {
     // personal al intensivo (email prellenado y bloqueado en Stripe). No
     // caduca: crea la sesion de Stripe al abrirse. 'enlace_pago' solo lo
     // devuelve (para WhatsApp); 'enlace_pago_email' ademas lo envia.
+    // Enlace personal a la llamada de admisión (/partners/llamada/?t=…) para el
+    // botón «WhatsApp · Ayudar a agendar» de la ficha (leads «Sin agendar»).
+    if (action === 'enlace_llamada') {
+      const { data: sol } = await supa.from('partners_solicitudes').select('id, nombre').eq('id', String(body?.solicitud_id || '')).maybeSingle();
+      if (!sol) return json({ error: 'contacto no encontrado' }, 404);
+      const token = await signLeadToken(sol.id);
+      return json({ url: `${SITE}/partners/llamada/?t=${encodeURIComponent(token)}`, nombre: String(sol.nombre || '').trim().split(' ')[0] || '' });
+    }
+
     // Enlace personal a /partners/formaciones (página privada, tras la
     // llamada de admisión): 'enlace_formaciones' lo devuelve (WhatsApp) y
     // 'enlace_formaciones_email' además lo envía.
