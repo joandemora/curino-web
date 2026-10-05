@@ -153,9 +153,14 @@ window.PA = (function () {
   function llamada(s) {
     if (s.llamada_estado === 'reservada') return '<span class="pa-badge ok">' + fecha(s.llamada_at, true) + '</span>';
     if (s.llamada_estado === 'cancelada') return '<span class="pa-badge bad">Cancelada</span>';
+    if (s.llamada_estado === 'no_presentado') return '<span class="pa-badge bad">No se presentó</span>';
     return '<span class="pa-muted">—</span>';
   }
 
-  return { ESTADOS: ESTADOS, llamada: llamada, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
+  // Respuesta «inversion» de Cal.com (solo informativa)
+  var INVERSION = { si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' };
+  function inversion(s) { return INVERSION[s.inversion] || ''; }
+
+  return { ESTADOS: ESTADOS, llamada: llamada, inversion: inversion, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
     compro: compro, waUrl: waUrl, mailUrl: mailUrl, toast: toast, estadoSelect: estadoSelect, guardarContacto: guardarContacto, abrirPdf: abrirPdf };
 })();

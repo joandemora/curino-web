@@ -109,6 +109,7 @@
             + fila('Instagram / web', PA.esc(s.p2_instagram_web)) + fila('Cuándo empezar', PA.esc(R.p3_inicio[s.p3_inicio]))
             + fila('Inversión', PA.esc(R.p4_inversion[s.p4_inversion])))
       + fila('Paso alcanzado', s.origen === 'cal.com' ? 'Llegó por Cal.com (sin formulario)' : Math.min(s.paso_alcanzado, 4) + ' de 4')
+      + fila('Inversión (Cal.com)', PA.esc(PA.inversion(s)))
       + fila('Llamada de admisión', PA.llamada(s) + (s.llamada_actualizada_at ? ' <span class="pa-small">actualizada ' + PA.fecha(s.llamada_actualizada_at, true) + '</span>' : ''))
       + fila('Botón final', s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : null)
       + fila('Consentimiento', PA.consentChecks(s)
@@ -139,6 +140,7 @@
       [s.seguimiento_4_at, 'Secuencia · email 4 (+72 h)'],
       [s.llamada_estado === 'reservada' ? s.llamada_actualizada_at : null, 'Reserva la llamada de admisión (' + (s.llamada_at ? PA.fecha(s.llamada_at, true) : '') + ')'],
       [s.llamada_estado === 'cancelada' ? s.llamada_actualizada_at : null, 'Cancela la llamada de admisión'],
+      [s.llamada_estado === 'no_presentado' ? s.llamada_actualizada_at : null, 'No se presentó a la llamada de admisión'],
       [s.pagado_at, 'Compra el Intensivo'],
       [s.sesion_comprada_at, 'Compra la Sesión 1:1'],
       [s.baja_at, 'Baja de emails (' + (s.motivo_baja || '') + ')'],

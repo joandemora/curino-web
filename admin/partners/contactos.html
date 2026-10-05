@@ -124,7 +124,7 @@
         + '<td data-l="Cualificado">' + cual + (s.perfil_one_to_one ? ' <span class="pa-badge info">1:1</span>' : '') + '</td>'
         + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (!s.completada_at && s.origen !== 'cal.com' ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/4</span>' : '') + '</td>'
         + '<td data-l="Botón final">' + (s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : '<span class="pa-muted">—</span>') + '</td>'
-        + '<td data-l="Llamada">' + PA.llamada(s) + '</td>'
+        + '<td data-l="Llamada">' + PA.llamada(s) + (PA.inversion(s) ? '<div class="pa-small">Inversión: ' + PA.esc(PA.inversion(s)) + '</div>' : '') + '</td>'
         + '<td data-l="Inició pago">' + badge(s.checkout_iniciado_at, 'Sí') + '</td>'
         + '<td data-l="Compró">' + (compras.length ? '<span class="pa-badge ok">' + compras.join(' + ') + '</span>' : '<span class="pa-muted">—</span>') + '</td>'
         + '<td data-l="Consentimiento">' + PA.consentChecks(s) + '</td>'
