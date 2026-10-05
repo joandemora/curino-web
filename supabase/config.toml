@@ -172,3 +172,7 @@ verify_jwt = false
 import_map = "./functions/resend-webhook/deno.json"
 entrypoint = "./functions/resend-webhook/index.ts"
 # verify_jwt=false: lo llama Resend. Firma Svix con RESEND_WEBHOOK_SECRET.
+
+[functions.cal-webhook]
+enabled = true
+verify_jwt = false

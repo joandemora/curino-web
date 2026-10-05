@@ -25,7 +25,7 @@ const WA = '34611965612';
 export const VARS = [
   'nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes',
   'enlace_plaza', 'enlace_formaciones', 'enlace_whatsapp', 'plazas_libres', 'plazas_totales',
-  'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas'
+  'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas', 'enlace_llamada'
 ];
 
 export function esc(s: unknown) {
@@ -137,6 +137,9 @@ export async function construirVars(
     plazas_restantes: libres === null ? '' : String(libres),
     enlace_plaza: `${SITE}/partners/formaciones/${q}${q ? '&' : '?'}ir=intensivo`,
     enlace_formaciones: `${SITE}/partners/formaciones/${q}`,
+    // Llamada de admisión: con token va al calendario con los datos
+    // prellenados; sin token, al formulario de /partners.
+    enlace_llamada: token ? `${SITE}/partners/llamada/${q}` : `${SITE}/partners/#solicitud`,
     enlace_whatsapp: `https://wa.me/${WA}?text=${encodeURIComponent(`Hola Juan, soy ${nombre || 'yo'}. Tengo una duda sobre el intensivo Curino Partners.`)}`,
     plazas_libres: libres === null ? '' : String(libres),
     plazas_totales: abierta ? String(abierta.plazas_totales) : '',

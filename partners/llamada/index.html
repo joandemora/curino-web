@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Reserva tu llamada de admisión — Curino Partners | Curino</title>
+<meta name="description" content="Reserva tu llamada de admisión al Intensivo Curino Partners.">
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link rel="apple-touch-icon" href="/assets/imagenes/favicon-curino.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Schibsted+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site-shell.css">
+<style>
+:root{--ink:#161616;--green:#12B76A;--green-dark:#0E9F5C;--soft:#5A5A55;--head:'Schibsted Grotesk',system-ui,sans-serif}
+.ll-page{padding:96px 16px 4rem}
+@media(min-width:1201px){.ll-page{padding-top:136px}}
+.ll-wrap{max-width:980px;margin:0 auto}
+.ll-eyebrow{display:block;font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green-dark);margin-bottom:.6rem}
+.ll-h1{font-family:var(--head);font-weight:800;font-size:clamp(26px,4.6vw,40px);line-height:1.08;letter-spacing:-.02em;margin:0 0 .7rem;color:var(--ink)}
+.ll-txt{font-size:16px;line-height:1.55;color:var(--soft);margin:0 0 1rem;max-width:62ch}
+.ll-cal{width:100%;min-height:600px;overflow:auto}
+.ll-ok{font-family:var(--head);font-weight:800;font-size:16px;color:var(--green-dark)}
+.ll-link{display:inline-block;margin-top:.8rem;font-size:15px;color:var(--ink);text-underline-offset:3px}
+</style>
+</head>
+<body>
+<div id="main-nav-mount"></div>
+<script src="/assets/js/main-nav.js"></script>
+<main class="ll-page">
+  <div class="ll-wrap">
+    <span class="ll-eyebrow">Intensivo Curino Partners · Octubre</span>
+    <h1 class="ll-h1" id="ll-titulo">Reserva tu llamada de admisión</h1>
+    <p class="ll-txt" id="ll-texto">En 20 minutos vemos tu caso y si puedes acceder a una de las 3 plazas del intensivo de octubre. Los horarios se muestran en tu zona horaria.</p>
+    <div class="ll-cal" id="ll-cal"></div>
+    <p class="ll-ok" id="ll-ok" hidden>¡Llamada reservada! Te llega la confirmación por email.</p>
+    <a class="ll-link" id="ll-wa" href="https://wa.me/34611965612" target="_blank" rel="noopener">¿Prefieres escribirme por WhatsApp?</a>
+  </div>
+</main>
+<div id="main-footer-mount"></div>
+<script src="/assets/js/main-footer.js"></script>
+<script src="/assets/js/partners-cal.js"></script>
+<script>
+// Enlace personal de los emails (?t=token): calendario con los datos del
+// lead prellenados. Sin token válido → formulario de /partners.
+(function () {
+  'use strict';
+  var t = new URLSearchParams(location.search).get('t') || '';
+  var $ = function (q) { return document.querySelector(q); };
+  function dl(o) { window.dataLayer = window.dataLayer || []; window.dataLayer.push(o); }
+  if (!t) { location.replace('/partners/#solicitud'); return; }
+  fetch('/api/partners-formaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'llamada', token: t }) })
+    .then(function (r) { return r.json().then(function (d) { return r.ok ? d : null; }); })
+    .then(function (d) {
+      if (!d || !d.lead) { location.replace('/partners/#solicitud'); return; }
+      var l = d.lead, nombre = String(l.nombre || '').split(' ')[0];
+      $('#ll-titulo').textContent = (nombre ? nombre + ', reserva' : 'Reserva') + ' tu llamada de admisión';
+      $('#ll-wa').href = 'https://wa.me/34611965612?text=' + encodeURIComponent('Hola Juan, soy ' + (nombre || '…') + '. Tengo una duda sobre la llamada de admisión del intensivo.');
+      if (l.llamada_at) {
+        $('#ll-texto').textContent = 'Ya tienes una llamada reservada para el ' + new Date(l.llamada_at).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+          + '. Si necesitas cambiarla, usa el enlace del email de confirmación.';
+        $('#ll-cal').hidden = true;
+        return;
+      }
+      window.PartnersCal.montar('#ll-cal', {
+        name: l.nombre, email: l.email, attendeePhoneNumber: l.telefono, inversion: l.inversion,
+        'metadata[solicitud_id]': l.id
+      }, function () { dl({ event: 'schedule' }); $('#ll-ok').hidden = false; });
+    })
+    .catch(function () { location.replace('/partners/#solicitud'); });
+})();
+</script>
+</body>
+</html>

@@ -103,11 +103,18 @@ const INICIO: Record<string, string> = {
   proximos_meses: 'En los próximos meses',
   informandome: 'Solo estoy informándome'
 };
+// Pregunta 5 (2026-10): inversión para el intensivo.
+const INVERSION: Record<string, string> = {
+  si: 'Sí',
+  si_organizarme: 'Sí, pero necesitaría organizarme',
+  no_por_ahora: 'No por ahora'
+};
 const V2_FIELDS: Record<string, Record<string, string>> = {
   situacion_actual: SITUACION,
   experiencia: EXPERIENCIA,
   dedicacion: DEDICACION,
-  inicio: INICIO
+  inicio: INICIO,
+  inversion: INVERSION
 };
 
 const SEGMENTO_LABEL: Record<string, string> = {
@@ -146,10 +153,11 @@ function generateToken(): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function segmentoV2(inicio: string): { cualificado: boolean; segmento: string } {
-  return inicio === 'informandome'
-    ? { cualificado: false, segmento: 'informandose' }
-    : { cualificado: true, segmento: 'cualificado' };
+// Cualificado = inicio <> 'informandome' Y inversion <> 'no_por_ahora'.
+function segmentoV2(inicio: string, inversion?: string | null): { cualificado: boolean; segmento: string } {
+  if (inicio === 'informandome') return { cualificado: false, segmento: 'informandose' };
+  if (inversion === 'no_por_ahora') return { cualificado: false, segmento: 'sin_presupuesto' };
+  return { cualificado: true, segmento: 'cualificado' };
 }
 
 function segmentoDe(p3: string | null, p4: string | null): { cualificado: boolean; segmento: string } {
@@ -242,9 +250,10 @@ function solicitudHtml(s: any, titulo: string): string {
     ${row('1. Situación actual', SITUACION[s.situacion_actual] || null)}
     ${row('2. Experiencia', EXPERIENCIA[s.experiencia] || null)}
     ${row('3. Tiempo que puede dedicar', DEDICACION[s.dedicacion] || null)}
-    ${row('4. Cuándo empezar', INICIO[s.inicio] || null)}`}
+    ${row('4. Cuándo empezar', INICIO[s.inicio] || null)}
+    ${row('5. Inversión', INVERSION[s.inversion] || null)}`}
     ${s.cta_final ? row('Eligió', CTA_LABEL[s.cta_final] || s.cta_final) : ''}
-    ${row('Paso alcanzado', `${s.paso_alcanzado} de 4`)}
+    ${row('Paso alcanzado', `${s.paso_alcanzado} de ${esV1(s) ? 4 : 5}`)}
     ${row('Origen (UTM)', origen || null)}
     ${row('fbclid', s.fbclid ? 'sí' : null)}
   </table>
@@ -418,7 +427,10 @@ Deno.serve(async (req) => {
 
     if (action === 'step') {
       const paso = Number(body?.paso);
-      if (!Number.isInteger(paso) || paso < 1 || paso > 4) return jsonResponse({ error: 'invalid_paso' }, 400);
+      if (!Number.isInteger(paso) || paso < 1 || paso > 5) return jsonResponse({ error: 'invalid_paso' }, 400);
+      // Formulario con pregunta 5 (version >= 3): se completa en el paso 5;
+      // formularios antiguos en cache, en el 4.
+      const pasoFinal = Number(body?.version) >= 3 ? 5 : 4;
       const update: Record<string, unknown> = {};
       const v2Field = Object.keys(V2_FIELDS).find(k => body?.[k] != null);
       if (v2Field) {
@@ -452,12 +464,12 @@ Deno.serve(async (req) => {
       // El paso alcanzado nunca retrocede (si vuelve "Atras" y reenvia).
       update.paso_alcanzado = Math.max(current.paso_alcanzado || 0, paso);
       // Solicitud completa: arranca la secuencia de seguimiento (partners-seguimiento).
-      if (paso === 4 && !current.completada_at) update.completada_at = new Date().toISOString();
+      if (paso === pasoFinal && !current.completada_at) update.completada_at = new Date().toISOString();
 
       const merged = { ...current, ...update };
       let result: { cualificado: boolean; segmento: string } | null = null;
       if (v2Field && merged.inicio) {
-        result = segmentoV2(merged.inicio);
+        result = segmentoV2(merged.inicio, merged.inversion);
         update.cualificado = result.cualificado;
         update.segmento = result.segmento;
       } else if (!v2Field && merged.p3_inicio && merged.p4_inversion) {
@@ -478,7 +490,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'internal_error' }, 500);
       }
 
-      if (paso === 4 && !saved.notificado_completa_at) {
+      if (paso === pasoFinal && !saved.notificado_completa_at) {
         try {
           const tag = (result?.cualificado ? '✅ CUALIFICADO' : (SEGMENTO_LABEL[saved.segmento] || ''))
             + (saved.perfil_one_to_one ? ' · ⭐ one-to-one' : '')

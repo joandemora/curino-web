@@ -17,8 +17,10 @@
 //     req_comercial, req_sesion_activa (PARTNERS_SEGUIMIENTO_SESION_ACTIVO),
 //     req_plazas, no_si_sesion_comprada. Una variable vacia tambien lo salta.
 //   - activa_oferta_sesion marca oferta_sesion_enviada_at (precio 60 € 3 h).
-//   - Salidas: compra del intensivo / de la sesion segun la secuencia; baja
-//     y borrado siempre; lista de supresion (partners_supresion).
+//   - Salidas: compra del intensivo / de la sesion / llamada de admision
+//     reservada (sale_llamada) segun la secuencia; baja y borrado siempre;
+//     lista de supresion (partners_supresion).
+//   - req_cualificado: el paso solo sale a solicitudes cualificadas.
 //   - partners_secuencia_estado (unico por solicitud y paso) evita repetir:
 //     se reserva antes de enviar y se libera si Resend falla.
 // Aparte, aviso a Juan (info@) +30 min de cada solicitud completa sin compra
@@ -135,6 +137,7 @@ async function procesar(supabase: Any, sec: Any, pasos: Any[], lead: Lead, hecho
   if (lead.baja_at || !lead.consentimiento_solicitud) return log;
   if (sec.sale_compra_intensivo && lead.pagado_at) return log;
   if (sec.sale_compra_sesion && lead.sesion_comprada_at) return log;
+  if (sec.sale_llamada && lead.llamada_estado === 'reservada') return log;
   const base = new Date(lead.secuencia_inicio_at || lead.completada_at).getTime();
   const pendientes = pasos.filter((p) => !hechos.has(p.id) && ahora >= base + p.retraso_minutos * 60 * segPorHora / 3600 * 1000);
   if (!pendientes.length) return log;
@@ -150,7 +153,8 @@ async function procesar(supabase: Any, sec: Any, pasos: Any[], lead: Lead, hecho
   // Condiciones del paso
   const libres = plazasLibres(abierta);
   const motivo =
-    ultimo.req_comercial && !lead.consentimiento_comercial ? 'sin consentimiento comercial'
+    ultimo.req_cualificado && !lead.cualificado ? 'no cualificado'
+    : ultimo.req_comercial && !lead.consentimiento_comercial ? 'sin consentimiento comercial'
     : ultimo.no_si_sesion_comprada && lead.sesion_comprada_at ? 'sesión comprada'
     : ultimo.req_sesion_activa && Deno.env.get('PARTNERS_SEGUIMIENTO_SESION_ACTIVO') !== 'true' ? 'sesión inactiva'
     : ultimo.req_plazas && !(abierta && abierta.estado === 'abierta' && (libres || 0) > 0) ? 'sin plazas'

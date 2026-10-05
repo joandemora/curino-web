@@ -63,6 +63,7 @@
         <span class="pa-small">Sale de la secuencia si:</span>
         <label><input type="checkbox" id="sqSaleIntensivo"> Compra el intensivo</label>
         <label><input type="checkbox" id="sqSaleSesion"> Compra la sesión 1:1</label>
+        <label><input type="checkbox" id="sqSaleLlamada"> Reserva la llamada de admisión</label>
         <span class="pa-small pa-muted">La baja y el borrado del contacto siempre la cortan.</span>
       </div>
       <div class="sq-row">
@@ -96,6 +97,7 @@
   var $ = function (q) { return document.querySelector(q); };
   var secId = new URLSearchParams(location.search).get('id');
   var CONDS = [
+    ['req_cualificado', 'Solo solicitudes cualificadas'],
     ['req_comercial', 'Solo con consentimiento comercial'],
     ['req_sesion_activa', 'Solo si la sesión 1:1 está activa'],
     ['req_plazas', 'Solo si quedan plazas en el intensivo'],
@@ -167,13 +169,14 @@
     $('#sqDisparador').value = sec.disparador;
     $('#sqSaleIntensivo').checked = sec.sale_compra_intensivo;
     $('#sqSaleSesion').checked = sec.sale_compra_sesion;
+    $('#sqSaleLlamada').checked = sec.sale_llamada;
     $('#sqFranjaIni').value = String(sec.franja_inicio).slice(0, 5);
     $('#sqFranjaFin').value = String(sec.franja_fin).slice(0, 5);
   }
   $('#btnGuardarSec').addEventListener('click', function () {
     var d = {
       nombre: $('#sqNombre').value.trim(), activa: $('#sqActiva').checked, disparador: $('#sqDisparador').value,
-      sale_compra_intensivo: $('#sqSaleIntensivo').checked, sale_compra_sesion: $('#sqSaleSesion').checked,
+      sale_compra_intensivo: $('#sqSaleIntensivo').checked, sale_compra_sesion: $('#sqSaleSesion').checked, sale_llamada: $('#sqSaleLlamada').checked,
       franja_inicio: $('#sqFranjaIni').value || '09:00', franja_fin: $('#sqFranjaFin').value || '21:30',
       updated_at: new Date().toISOString()
     };

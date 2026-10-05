@@ -10,6 +10,7 @@ window.PA = (function () {
     experiencia: { reformas_carpinteria: 'Reformas / carpintería', interiorismo_arquitectura: 'Interiorismo / arquitectura', ventas_atencion: 'Ventas / atención', desde_cero: 'Desde cero' },
     dedicacion: { '1_2_horas': '1-2 h/día', media_jornada: 'Media jornada', tiempo_completo: 'Tiempo completo' },
     inicio: { octubre: 'Ya (octubre)', noviembre: 'Ya (noviembre)', proximos_meses: 'Próximos meses', informandome: 'Informándose' },
+    inversion: { si: 'Inversión: sí', si_organizarme: 'Inversión: organizándose', no_por_ahora: 'Inversión: no por ahora' },
     // v1 (solicitudes antiguas)
     p1_dedicacion: { carpinteria_reformas: 'Carpintería / reformas', interiorismo_arquitectura: 'Interiorismo / arquitectura', comercial_ventas: 'Comercial / ventas', cuenta_ajena: 'Cuenta ajena', otro_negocio: 'Otro negocio' },
     p3_inicio: { noviembre: 'Ya (noviembre)', tres_meses: 'Próximos 3 meses', informandome: 'Informándose' },
@@ -35,7 +36,7 @@ window.PA = (function () {
   function telefono(s) { return ((s.telefono_prefijo || '') + ' ' + (s.telefono || '')).trim(); }
   function respuestas(s) {
     if (s.situacion_actual || s.inicio) {
-      return [R.situacion_actual[s.situacion_actual], R.experiencia[s.experiencia], R.dedicacion[s.dedicacion], R.inicio[s.inicio]].filter(Boolean).join(' · ');
+      return [R.situacion_actual[s.situacion_actual], R.experiencia[s.experiencia], R.dedicacion[s.dedicacion], R.inicio[s.inicio], R.inversion[s.inversion]].filter(Boolean).join(' · ');
     }
     return [R.p1_dedicacion[s.p1_dedicacion], R.p3_inicio[s.p3_inicio], R.p4_inversion[s.p4_inversion]].filter(Boolean).join(' · ');
   }
@@ -130,7 +131,7 @@ window.PA = (function () {
   // formato del editor: negrita, enlace, botón y chips de variables.
   var VARS = ['nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes',
     'enlace_plaza', 'enlace_formaciones', 'enlace_whatsapp', 'plazas_libres', 'plazas_totales',
-    'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas'];
+    'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas', 'enlace_llamada'];
   function insertar(ta, antes, despues) {
     var a = ta.selectionStart, b = ta.selectionEnd, sel = ta.value.slice(a, b);
     ta.value = ta.value.slice(0, a) + antes + sel + despues + ta.value.slice(b);
@@ -149,6 +150,13 @@ window.PA = (function () {
     VARS.forEach(function (v) { b('{' + v + '}', function () { insertar(getTa(), '{' + v + '}', ''); }); });
   }
 
-  return { ESTADOS: ESTADOS, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
+  // Llamada de admisión (Cal.com): badge con fecha y estado.
+  function llamada(s) {
+    if (s.llamada_estado === 'reservada') return '<span class="pa-badge ok">' + fecha(s.llamada_at, true) + '</span>';
+    if (s.llamada_estado === 'cancelada') return '<span class="pa-badge bad">Cancelada</span>';
+    return '<span class="pa-muted">—</span>';
+  }
+
+  return { ESTADOS: ESTADOS, llamada: llamada, VARS: VARS, insertar: insertar, barraEditor: barraEditor, confirmarBorrado: confirmarBorrado, AVISO_COMPRAS: AVISO_COMPRAS, consentChecks: consentChecks, guardarConsent: guardarConsent, CTA: CTA, R: R, esc: esc, eur: eur, fecha: fecha, telefono: telefono, respuestas: respuestas,
     compro: compro, waUrl: waUrl, mailUrl: mailUrl, toast: toast, estadoSelect: estadoSelect, guardarContacto: guardarContacto, abrirPdf: abrirPdf };
 })();

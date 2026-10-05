@@ -205,15 +205,10 @@ body{color:var(--ink)}
 .pt-choice small{font-size:12.5px;color:var(--soft);display:block;margin-top:.3rem}
 .pt-note{font-size:14px;line-height:1.5;color:var(--soft);margin:.9rem 0 0}
 /* Precio en la tarjeta de compra de la pantalla final */
-.pt-pf{display:flex;flex-direction:column;gap:.3rem}
-.pt-pf-amount{display:flex;align-items:baseline;gap:.45rem}
-.pt-pf-amount strong{font-family:var(--head);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.03em;color:var(--ink)}
-.pt-pf-amount small{font-size:13px;color:var(--soft)}
-.pt-pf-plazas{font-family:var(--head);font-weight:800;font-size:15px;color:var(--green)}
-.pt-pf-old{font-family:var(--head);font-weight:700;font-size:20px;line-height:1;color:var(--soft);text-decoration-thickness:2px}
-.pt-pf-row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
-.pt-pf-dto{font-family:var(--head);font-weight:800;font-size:24px;line-height:1;background:var(--green);color:var(--ink);border-radius:8px;padding:.4rem .6rem;letter-spacing:-.02em}
-.pt-pf-pago{font-size:12.5px;color:var(--soft)}
+.pt-final-txt{font-size:14.5px;line-height:1.5;color:var(--soft);margin:.2rem 0 .6rem}
+.pt-cal{width:100%;min-height:540px;margin:.4rem 0;overflow:auto}
+.pt-cal-ok{font-family:var(--head);font-weight:800;font-size:15px;color:var(--green-dark,#0E9F5C);margin:.4rem 0}
+.pt-link{display:inline-block;margin-top:.5rem;font-size:14px;color:var(--ink);text-underline-offset:3px}
 .pt-ok{font-size:14px;color:var(--green-dark);font-weight:600;margin:0}
 .pt-oto-final{margin-top:1rem;padding-top:1rem;border-top:1.5px solid var(--line)}
 .pt-oto-final p{font-size:15px;line-height:1.45;margin:0 0 .75rem}
@@ -430,13 +425,13 @@ body{color:var(--ink)}
           </label>
           <button type="submit" class="pt-btn" id="pt-start-btn">Quiero mi plaza</button>
           <p class="pt-error" id="pt-error-0" role="alert"></p>
-          <p class="pt-micro">4 preguntas rápidas · menos de 1 minuto</p>
+          <p class="pt-micro">5 preguntas rápidas · menos de 1 minuto</p>
         </form>
 
         <!-- Pasos 1-4 (todas de opcion: avanzan solas) -->
         <div class="pt-step" data-step="1" hidden>
-          <div class="pt-stepbar"><span>1 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:25%"></span></div>
+          <div class="pt-stepbar"><span>1 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:20%"></span></div>
           <h2 class="pt-q">¿Cuál es tu situación ahora?</h2>
           <div class="pt-opts" data-field="situacion_actual">
             <button type="button" class="pt-opt" data-value="cuenta_ajena">Trabajo por cuenta ajena</button>
@@ -447,8 +442,8 @@ body{color:var(--ink)}
         </div>
 
         <div class="pt-step" data-step="2" hidden>
-          <div class="pt-stepbar"><span>2 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:50%"></span></div>
+          <div class="pt-stepbar"><span>2 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:40%"></span></div>
           <h2 class="pt-q">¿Tienes experiencia en alguno de estos campos?</h2>
           <div class="pt-opts" data-field="experiencia">
             <button type="button" class="pt-opt" data-value="reformas_carpinteria">Reformas o carpintería</button>
@@ -459,8 +454,8 @@ body{color:var(--ink)}
         </div>
 
         <div class="pt-step" data-step="3" hidden>
-          <div class="pt-stepbar"><span>3 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:75%"></span></div>
+          <div class="pt-stepbar"><span>3 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:60%"></span></div>
           <h2 class="pt-q">¿Cuánto tiempo podrías dedicarle?</h2>
           <div class="pt-opts" data-field="dedicacion">
             <button type="button" class="pt-opt" data-value="1_2_horas">1-2 horas al día</button>
@@ -470,8 +465,8 @@ body{color:var(--ink)}
         </div>
 
         <div class="pt-step" data-step="4" hidden>
-          <div class="pt-stepbar"><span>4 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:100%"></span></div>
+          <div class="pt-stepbar"><span>4 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:80%"></span></div>
           <h2 class="pt-q">¿Cuándo quieres empezar?</h2>
           <div class="pt-opts" data-field="inicio">
             <button type="button" class="pt-opt" data-value="octubre">
@@ -483,41 +478,39 @@ body{color:var(--ink)}
             <button type="button" class="pt-opt" data-value="proximos_meses">En los próximos meses</button>
             <button type="button" class="pt-opt" data-value="informandome">Solo estoy informándome</button>
           </div>
+        </div>
+
+        <div class="pt-step" data-step="5" hidden>
+          <div class="pt-stepbar"><span>5 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:100%"></span></div>
+          <h2 class="pt-q">La llamada es gratuita. Si después decides entrar en el intensivo, la inversión es a partir de 1.650&nbsp;€. ¿Dispones de esa inversión?</h2>
+          <div class="pt-opts" data-field="inversion">
+            <button type="button" class="pt-opt" data-value="si">Sí</button>
+            <button type="button" class="pt-opt" data-value="si_organizarme">Sí, pero necesitaría organizarme</button>
+            <button type="button" class="pt-opt" data-value="no_por_ahora">No por ahora</button>
+          </div>
           <p class="pt-saving" id="pt-saving" hidden>Guardando tu solicitud…</p>
-          <p class="pt-error" id="pt-error-4" role="alert"></p>
+          <p class="pt-error" id="pt-error-5" role="alert"></p>
           <button type="button" class="pt-btn" id="pt-retry" hidden>Reintentar</button>
         </div>
 
         <!-- Pantalla final -->
         <div class="pt-step" data-step="final" hidden>
-          <h2 class="pt-final-title">¡Perfecto, <span data-nombre></span>! ¿Qué quieres hacer ahora?</h2>
-          <div class="pt-choices">
-            <div class="pt-choice" id="pt-choice-buy" hidden>
-              <p>Lo tengo claro, quiero conseguir mi plaza ahora.</p>
-              <!-- Precio: sale de precio_cents de la edición abierta (renderPrecioFinal),
-                   el mismo importe que cobra Stripe. Valores por defecto sin edición. -->
-              <div class="pt-pf">
-                <s class="pt-pf-old" data-precio-siguiente>1.650 €</s>
-                <div class="pt-pf-row">
-                  <div class="pt-pf-amount"><strong data-precio>990 €</strong><small>IVA incluido</small></div>
-                  <span class="pt-pf-dto">-<span data-descuento>40</span>&nbsp;%</span>
-                </div>
-                <span class="pt-pf-plazas" data-plazas-final>Solo quedan 3 plazas</span>
-              </div>
-              <button type="button" class="pt-btn pt-btn-upper" id="pt-buy-btn">Acceder ahora</button>
-              <div id="pt-waitlist" hidden>
-                <button type="button" class="pt-btn" id="pt-waitlist-btn">Apuntarme a la próxima promoción</button>
-                <p class="pt-ok" id="pt-waitlist-ok" hidden>Hecho. Te aviso en cuanto abramos la próxima promoción.</p>
-              </div>
-              <p class="pt-error" id="pt-error-buy" role="alert"></p>
-            </div>
-            <div class="pt-choice">
-              <p>Quiero hablar por WhatsApp para resolver mis dudas.</p>
-              <a class="pt-btn pt-btn--ghost pt-btn-upper" id="pt-wa-final" data-wa="solicitud" href="https://wa.me/34611965612" target="_blank" rel="noopener">
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.4 9.4 0 0 1-4.8-1.31l-.34-.2-3.57.94.95-3.48-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.42 9.42zm8.02-17.44A11.27 11.27 0 0 0 12.05.75C5.8.75.72 5.83.72 12.08c0 2 .52 3.95 1.52 5.67L.62 23.25l5.63-1.48a11.3 11.3 0 0 0 5.8 1.48h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.32-8.01z"/></svg>
-                Resolver mis dudas
-              </a>
-            </div>
+          <!-- Cualificado: llamada de admisión (Cal.com embebido, datos prellenados) -->
+          <div id="pt-final-ok" hidden>
+            <h2 class="pt-final-title">¡Perfecto, <span data-nombre></span>! Último paso: reserva tu llamada de admisión</h2>
+            <p class="pt-final-txt">En 20 minutos vemos tu caso y si puedes acceder a una de las 3 plazas del intensivo de octubre. Los horarios se muestran en tu zona horaria.</p>
+            <div class="pt-cal" id="pt-cal"></div>
+            <p class="pt-cal-ok" id="pt-cal-ok" hidden>¡Llamada reservada! Te llega la confirmación por email.</p>
+            <a class="pt-link" id="pt-wa-final" data-wa="solicitud" href="https://wa.me/34611965612" target="_blank" rel="noopener">¿Prefieres escribirme por WhatsApp?</a>
+          </div>
+          <!-- No cualificado: sin calendario -->
+          <div id="pt-final-no" hidden>
+            <h2 class="pt-final-title">Gracias, <span data-nombre></span>. Te escribiré cuando haya una opción que encaje contigo</h2>
+            <a class="pt-btn pt-btn--ghost pt-btn-upper" id="pt-wa-final-no" data-wa="solicitud_no_cualificado" href="https://wa.me/34611965612" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.4 9.4 0 0 1-4.8-1.31l-.34-.2-3.57.94.95-3.48-.22-.36a9.38 9.38 0 0 1-1.44-5.01c0-5.19 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.42 9.42zm8.02-17.44A11.27 11.27 0 0 0 12.05.75C5.8.75.72 5.83.72 12.08c0 2 .52 3.95 1.52 5.67L.62 23.25l5.63-1.48a11.3 11.3 0 0 0 5.8 1.48h.01c6.25 0 11.33-5.08 11.33-11.33 0-3.03-1.18-5.87-3.32-8.01z"/></svg>
+              Escribirme por WhatsApp
+            </a>
           </div>
           <div class="pt-oto-final" id="pt-oto-final" hidden>
             <p><b>¿Quieres que te acompañe personalmente?</b> Pregúntame por el programa one-to-one.</p>
@@ -526,7 +519,6 @@ body{color:var(--ink)}
               Preguntar por el one-to-one
             </a>
           </div>
-          <p class="pt-note" id="pt-final-note" hidden>Te aviso cuando abramos la próxima promoción.</p>
         </div>
 
       </div>
@@ -782,6 +774,7 @@ body{color:var(--ink)}
 
 <div id="main-footer-mount"></div>
 <script src="/assets/js/main-footer.js"></script>
+<script src="/assets/js/partners-cal.js"></script>
 
 <script>
 (function () {
@@ -801,10 +794,6 @@ body{color:var(--ink)}
     // Ej: ['/assets/imagenes/partners/resenas/01.webp', ...]
     RESENAS: [],
     ITEM_ID: 'intensivo-partners',
-    // Precio mostrado sin edición abierta (con edición manda precio_cents).
-    PRECIO_RESERVA_CENTS: 99000,
-    // Precio anunciado de las siguientes ediciones (línea tachada).
-    PRECIO_SIGUIENTES_CENTS: 165000,
     ITEM_NAME: 'Intensivo Curino Partners'
   };
   // ==========================================================
@@ -901,10 +890,9 @@ body{color:var(--ink)}
       clase = d && d.clase ? d.clase : null;
       if (clase) renderPromo();
       renderUrgencia(d ? d.plazas_restantes : null, clase ? clase.plazas_totales : null);
-      renderPrecioFinal(clase, d ? d.plazas_restantes : null);
       return clase;
     })
-    .catch(function () { renderUrgencia(null, null); renderPrecioFinal(null, null); return null; });
+    .catch(function () { renderUrgencia(null, null); return null; });
 
   // Etiqueta de urgencia del paso 4 con las plazas libres reales de la
   // edicion activa (RPC plazas_intensivo_disponibles via /api/clases-proxima).
@@ -932,30 +920,6 @@ body{color:var(--ink)}
   function plazasLibres() {
     return clase ? Math.max(0, clase.plazas_totales - clase.plazas_ocupadas) : 0;
   }
-  // Precio de la pantalla final: precio_cents de la edición abierta (lo
-  // mismo que cobra Stripe) o el de reserva sin edición. El descuento se
-  // calcula contra el precio de las siguientes ediciones.
-  // "1.650 €" / "990 €" / "1.234,50 €" (separador de miles siempre; Intl
-  // en es-ES no agrupa números de 4 cifras).
-  function fmtEuros(cents) {
-    var ent = Math.floor(cents / 100), dec = cents % 100;
-    var txt = String(ent).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return txt + (dec ? ',' + (dec < 10 ? '0' : '') + dec : '') + ' €';
-  }
-  function renderPrecioFinal(c, n) {
-    var precio = (c && c.precio_cents > 0) ? c.precio_cents : CONFIG.PRECIO_RESERVA_CENTS;
-    $$('[data-precio]').forEach(function (el) { el.textContent = fmtEuros(precio); });
-    $$('[data-precio-siguiente]').forEach(function (el) { el.textContent = fmtEuros(CONFIG.PRECIO_SIGUIENTES_CENTS); });
-    var dto = Math.round((1 - precio / CONFIG.PRECIO_SIGUIENTES_CENTS) * 100);
-    $$('[data-descuento]').forEach(function (el) { el.textContent = String(dto); });
-    // Plazas: mismos datos reales que el paso 4. Sin dato → 3.
-    var txt = 'Solo quedan 3 plazas';
-    if (typeof n === 'number' && n >= 0) {
-      txt = n === 0 ? 'Plazas agotadas' : (n === 1 ? 'Solo queda 1 plaza' : 'Solo quedan ' + n + ' plazas');
-    }
-    $$('[data-plazas-final]').forEach(function (el) { el.textContent = txt; });
-  }
-
   function renderPromo() {
     var libres = plazasLibres();
     $$('[data-plazas-txt]').forEach(function (el) {
@@ -979,14 +943,14 @@ body{color:var(--ink)}
     });
   }
   // Los pasos 1-3 se guardan en serie y en segundo plano (no bloquean el
-  // avance); el 4 espera a que TODOS estén guardados antes de la pantalla
+  // avance); el 5 espera a que TODOS estén guardados antes de la pantalla
   // final. Cada guardado se reintenta (3 intentos); lo que falla queda en
   // `pendientes` y se reenvía con «Reintentar». Si aun así falla, se avisa
   // a info@ (acción 'fallo') con las respuestas capturadas.
   var pendientes = {};     // paso → campos sin guardar
   var ultimoError = '';
   function guardar(paso, fields) {
-    var payload = Object.assign({ action: 'step', id: state.id, token: state.token, paso: paso }, fields);
+    var payload = Object.assign({ action: 'step', id: state.id, token: state.token, paso: paso, version: 3 }, fields);
     var intento = function (n) {
       return api(payload).catch(function (e) {
         // Un valor no válido o una sesión caducada no se arreglan reintentando
@@ -1011,10 +975,10 @@ body{color:var(--ink)}
   }
   var falloAvisado = false;
   function guardarFinal(fields) {
-    var paso4 = $('.pt-step[data-step="4"]'), err = $('#pt-error-4'), retry = $('#pt-retry');
+    var paso4 = $('.pt-step[data-step="5"]'), err = $('#pt-error-5'), retry = $('#pt-retry');
     err.textContent = ''; retry.hidden = true; ultimoError = '';
     paso4.classList.add('saving'); $('#pt-saving').hidden = false;
-    if (fields) sendStep(4, fields);
+    if (fields) sendStep(5, fields);
     else Object.keys(pendientes).sort().forEach(function (p) { sendStep(Number(p), pendientes[p]); });
     queue.then(function () {
       paso4.classList.remove('saving'); $('#pt-saving').hidden = true;
@@ -1149,126 +1113,56 @@ body{color:var(--ink)}
       state.answers[field] = b.dataset.value;
       $$('.pt-opt', group).forEach(function (x) { x.classList.toggle('selected', x === b); });
       var fields = {}; fields[field] = b.dataset.value;
-      // Paso 4: no se pasa a la pantalla final hasta que todo esté guardado.
-      if (step === 4) { guardarFinal(fields); return; }
+      // Paso 5 (último): no se pasa a la pantalla final hasta que todo esté guardado.
+      if (step === 5) { guardarFinal(fields); return; }
       sendStep(step, fields);
       setTimeout(function () { show(step + 1); scrollToCard(); }, 180);
     });
   });
 
-  // ── Pantalla final ───────────────────────────────────────
-  function cualificado() { return !!state.answers.inicio && state.answers.inicio !== 'informandome'; }
-  function showWaitlist() {
-    $('#pt-buy-btn').hidden = true;
-    $('#pt-waitlist').hidden = false;
+  // ── Pantalla final: llamada de admisión ──────────────────
+  // Cualificado = cuándo empezar ≠ «Solo estoy informándome» y
+  // inversión ≠ «No por ahora» (igual que en el servidor).
+  function cualificado() {
+    return !!state.answers.inicio && state.answers.inicio !== 'informandome' && state.answers.inversion !== 'no_por_ahora';
   }
+  var INVERSION_TXT = { si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' };
+  var calMontado = false;
   function renderFinal() {
     $$('[data-nombre]').forEach(function (el) { el.textContent = (state.nombre || '').split(' ')[0]; });
     refreshFinalWa();
     var ok = cualificado();
-    $('#pt-choice-buy').hidden = !ok;
-    $('#pt-final-note').hidden = ok;
+    $('#pt-final-ok').hidden = !ok;
+    $('#pt-final-no').hidden = ok;
     $('#pt-oto-final').hidden = !(ok && state.answers.dedicacion === 'tiempo_completo');
-    if (ok) {
-      sendEvento('precio_visto');
-      claseLoaded.then(function () {
-        if (!clase || plazasLibres() <= 0) showWaitlist();
+    if (ok && !calMontado && window.PartnersCal) {
+      calMontado = true;
+      // Datos prellenados: solo tiene que elegir hora
+      window.PartnersCal.montar('#pt-cal', {
+        name: state.nombre, email: state.email,
+        attendeePhoneNumber: (state.prefijo || '') + (state.telefono || ''),
+        inversion: INVERSION_TXT[state.answers.inversion] || '',
+        'metadata[solicitud_id]': state.id || ''
+      }, function () {
+        dl({ event: 'schedule' });
+        $('#pt-cal-ok').hidden = false;
       });
     }
   }
-
-  // ACCEDER AHORA → begin_checkout + Stripe (clases-checkout). El precio
-  // solo se muestra en Stripe; aqui solo viaja al dataLayer.
-  $('#pt-buy-btn').addEventListener('click', function () {
-    var btn = this;
-    var err = $('#pt-error-buy');
-    err.textContent = '';
-    if (!clase) { showWaitlist(); return; }
-    btn.disabled = true;
-    btn.textContent = 'Redirigiendo al pago…';
-
-    var eventId = uuid();
-    ssSet(STORE_EVENT, eventId);
-    var value = clase.precio_cents ? clase.precio_cents / 100 : 0;
-    dl({ ecommerce: null });
-    // InitiateCheckout (Pixel via GTM) + begin_checkout (GA4)
-    dl({
-      event: 'begin_checkout',
-      event_id: eventId,
-      ecommerce: {
-        currency: 'EUR', value: value, num_items: 1,
-        items: [{ item_id: CONFIG.ITEM_ID, item_name: CONFIG.ITEM_NAME, price: value, quantity: 1 }]
-      }
-    });
-    sendCta('checkout');
-    sendEvento('checkout_iniciado');
-
-    var t = trackingFields();
-    fetch('/api/clases-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        clase_id: clase.id,
-        nombre: state.nombre,
-        email: state.email,
-        telefono: (state.prefijo || '') + (state.telefono || ''),
-        event_id: eventId,
-        utm_source: t.utm_source, utm_medium: t.utm_medium, utm_campaign: t.utm_campaign,
-        solicitud_id: state.id || '',
-        fbc: t.fbc, fbp: t.fbp, ad_consent: t.ad_consent
-      })
-    })
-      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
-      .then(function (res) {
-        if (res.ok && res.data.checkout_url) {
-          window.location.href = res.data.checkout_url;
-          return;
-        }
-        var code = res.data && res.data.error;
-        if (code === 'clase_full' || code === 'clase_not_open' || code === 'clase_not_found') {
-          showWaitlist();
-        } else {
-          err.textContent = 'No se ha podido abrir el pago. Inténtalo de nuevo o escríbeme por WhatsApp.';
-        }
-        btn.disabled = false;
-        btn.textContent = 'Acceder ahora';
-      })
-      .catch(function () {
-        err.textContent = 'No se ha podido abrir el pago. Revisa tu conexión e inténtalo de nuevo.';
-        btn.disabled = false;
-        btn.textContent = 'Acceder ahora';
-      });
-  });
-
-  // Lista de espera (plazas agotadas o sin promocion abierta)
-  $('#pt-waitlist-btn').addEventListener('click', function () {
-    var btn = this;
-    btn.disabled = true;
-    fetch('/api/lista-espera', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: state.email || '', website: '' })
-    }).then(function (r) {
-      if (!r.ok) throw new Error('http');
-      btn.hidden = true;
-      $('#pt-waitlist-ok').hidden = false;
-    }).catch(function () {
-      btn.disabled = false;
-      $('#pt-error-buy').textContent = 'No se ha podido guardar. Escríbeme por WhatsApp y te apunto yo.';
-    });
-  });
 
   // ── WhatsApp → contact ───────────────────────────────────
   function waUrl(text) { return 'https://wa.me/' + CONFIG.WA_NUMBER + '?text=' + encodeURIComponent(text); }
   function refreshFinalWa() {
     var nombre = (state.nombre || '').trim();
-    $('#pt-wa-final').href = waUrl('Hola Juan, soy ' + (nombre || '…') + '. Acabo de rellenar la solicitud de Curino Partners y tengo algunas dudas.');
+    var url = waUrl('Hola Juan, soy ' + (nombre || '…') + '. Acabo de rellenar la solicitud de Curino Partners y tengo algunas dudas.');
+    $('#pt-wa-final').href = url;
+    $('#pt-wa-final-no').href = url;
   }
   refreshFinalWa();
   document.addEventListener('click', function (e) {
     var a = e.target.closest('[data-wa]');
     if (!a) return;
-    if (a.id === 'pt-wa-final') { refreshFinalWa(); sendCta('whatsapp'); }
+    if (a.id === 'pt-wa-final' || a.id === 'pt-wa-final-no') { refreshFinalWa(); sendCta('whatsapp'); }
     if (a.dataset.wa === 'one_to_one_final') sendCta('whatsapp_one_to_one');
     // Contact (Pixel via GTM). Requiere el tag/trigger `contact` en GTM.
     dl({ event: 'contact', event_id: uuid(), contact_method: 'whatsapp', contact_context: a.dataset.wa });
