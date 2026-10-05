@@ -19,6 +19,7 @@
 .ll-wrap{max-width:980px;margin:0 auto}
 .ll-eyebrow{display:block;font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green-dark);margin-bottom:.6rem}
 .ll-h1{font-family:var(--head);font-weight:800;font-size:clamp(26px,4.6vw,40px);line-height:1.08;letter-spacing:-.02em;margin:0 0 .7rem;color:var(--ink)}
+.ll-wrap [hidden]{display:none!important}
 .ll-txt{font-size:16px;line-height:1.55;color:var(--soft);margin:0 0 1rem;max-width:62ch}
 .ll-cal{width:100%;min-height:600px;overflow:auto}
 .ll-ok{font-family:var(--head);font-weight:800;font-size:16px;color:var(--green-dark)}
@@ -32,7 +33,8 @@
   <div class="ll-wrap">
     <span class="ll-eyebrow">Intensivo Curino Partners · Octubre</span>
     <h1 class="ll-h1" id="ll-titulo">Reserva tu llamada de admisión</h1>
-    <p class="ll-txt" id="ll-texto">En 20 minutos vemos tu caso y si puedes acceder a una de las 3 plazas del intensivo de octubre. Los horarios se muestran en tu zona horaria.</p>
+    <!-- Solo se usa si ya tiene una llamada reservada -->
+    <p class="ll-txt" id="ll-texto" hidden></p>
     <div class="ll-cal" id="ll-cal"></div>
     <p class="ll-ok" id="ll-ok" hidden>¡Llamada reservada! Te llega la confirmación por email.</p>
     <a class="ll-link" id="ll-wa" href="https://wa.me/34611965612" target="_blank" rel="noopener">¿Prefieres escribirme por WhatsApp?</a>
@@ -58,6 +60,7 @@
       $('#ll-titulo').textContent = (nombre ? nombre + ', reserva' : 'Reserva') + ' tu llamada de admisión';
       $('#ll-wa').href = 'https://wa.me/34611965612?text=' + encodeURIComponent('Hola Juan, soy ' + (nombre || '…') + '. Tengo una duda sobre la llamada de admisión del intensivo.');
       if (l.llamada_at) {
+        $('#ll-texto').hidden = false;
         $('#ll-texto').textContent = 'Ya tienes una llamada reservada para el ' + new Date(l.llamada_at).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
           + '. Si necesitas cambiarla, usa el enlace del email de confirmación.';
         $('#ll-cal').hidden = true;
