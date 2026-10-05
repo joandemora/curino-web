@@ -122,7 +122,7 @@
         + '<td data-l="Contacto"><a href="/admin/partners/contacto.html?id=' + s.id + '"><b>' + PA.esc(s.nombre) + '</b></a>' + (s.origen === 'cal.com' ? ' <span class="pa-badge info">Cal.com</span>' : '')
         +   '<div class="pa-small">' + PA.esc(PA.telefono(s)) + '<br>' + PA.esc(s.email) + '</div></td>'
         + '<td data-l="Cualificado">' + cual + (s.perfil_one_to_one ? ' <span class="pa-badge info">1:1</span>' : '') + '</td>'
-        + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (!s.completada_at && s.origen !== 'cal.com' ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/' + (s.p1_dedicacion ? 4 : 5) + '</span>' : '') + '</td>'
+        + '<td data-l="Respuestas" class="pa-small">' + PA.esc(PA.respuestas(s) || '—') + (!s.completada_at && s.origen !== 'cal.com' ? '<br><span class="pa-badge warn">paso ' + s.paso_alcanzado + '/4</span>' : '') + '</td>'
         + '<td data-l="Botón final">' + (s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : '<span class="pa-muted">—</span>') + '</td>'
         + '<td data-l="Llamada">' + PA.llamada(s) + '</td>'
         + '<td data-l="Inició pago">' + badge(s.checkout_iniciado_at, 'Sí') + '</td>'

@@ -14,8 +14,8 @@
 //              datos. El precio de la sesion SIEMPRE se calcula aqui.
 //   'baja'     { token } → no mas emails de seguimiento.
 //   'llamada'  { token } → datos del lead para prellenar el calendario de la
-//              llamada de admision (/partners/llamada/): nombre, email,
-//              telefono, inversion. Solo con token valido.
+//              llamada de admision (/partners/llamada/): nombre, email y
+//              telefono. Solo con token valido.
 //   'comercial' { token } → consentimiento_comercial (enlace «Quiero recibir
 //              también otras formaciones…» que llevaron los emails 1 y 2 hasta
 //              la casilla unica; se mantiene para los emails ya enviados). Con
@@ -96,12 +96,10 @@ Deno.serve(async (req) => {
 
     if (action === 'llamada') {
       if (!lead) return json({ error: 'invalid_token' }, 400);
-      const INV: Record<string, string> = { si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' };
       return json({
         lead: {
           id: lead.id, nombre: lead.nombre, email: lead.email,
           telefono: `${lead.telefono_prefijo || ''}${lead.telefono || ''}`.replace(/[^\d+]/g, ''),
-          inversion: INV[lead.inversion] || '',
           llamada_at: lead.llamada_estado === 'reservada' ? lead.llamada_at : null
         }
       });

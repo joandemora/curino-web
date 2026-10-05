@@ -4,12 +4,11 @@
  * Partners). Lo usan la pantalla final de /partners y /partners/llamada/.
  *
  *   PartnersCal.montar('#pt-cal', {
- *     name, email, attendeePhoneNumber, inversion, 'metadata[solicitud_id]'
+ *     name, email, attendeePhoneNumber, 'metadata[solicitud_id]'
  *   }, function onReserva() { ... });
  *
  * Los campos se prellenan por URL (Cal.com): name, email,
- * attendeePhoneNumber (+34600…), inversion (texto exacto de la opción) y
- * metadata[solicitud_id] (lo recibe el webhook cal-webhook para enlazar la
+ * attendeePhoneNumber (+34600…) y metadata[solicitud_id] (lo recibe el webhook cal-webhook para enlazar la
  * reserva con el contacto). onReserva se llama una vez al confirmarse.
  * ============================================================ */
 (function (w) {

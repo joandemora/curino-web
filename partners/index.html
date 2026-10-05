@@ -425,13 +425,13 @@ body{color:var(--ink)}
           </label>
           <button type="submit" class="pt-btn" id="pt-start-btn">Quiero mi plaza</button>
           <p class="pt-error" id="pt-error-0" role="alert"></p>
-          <p class="pt-micro">5 preguntas rápidas · menos de 1 minuto</p>
+          <p class="pt-micro">4 preguntas rápidas · menos de 1 minuto</p>
         </form>
 
         <!-- Pasos 1-4 (todas de opcion: avanzan solas) -->
         <div class="pt-step" data-step="1" hidden>
-          <div class="pt-stepbar"><span>1 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:20%"></span></div>
+          <div class="pt-stepbar"><span>1 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:25%"></span></div>
           <h2 class="pt-q">¿Cuál es tu situación ahora?</h2>
           <div class="pt-opts" data-field="situacion_actual">
             <button type="button" class="pt-opt" data-value="cuenta_ajena">Trabajo por cuenta ajena</button>
@@ -442,8 +442,8 @@ body{color:var(--ink)}
         </div>
 
         <div class="pt-step" data-step="2" hidden>
-          <div class="pt-stepbar"><span>2 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:40%"></span></div>
+          <div class="pt-stepbar"><span>2 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:50%"></span></div>
           <h2 class="pt-q">¿Tienes experiencia en alguno de estos campos?</h2>
           <div class="pt-opts" data-field="experiencia">
             <button type="button" class="pt-opt" data-value="reformas_carpinteria">Reformas o carpintería</button>
@@ -454,8 +454,8 @@ body{color:var(--ink)}
         </div>
 
         <div class="pt-step" data-step="3" hidden>
-          <div class="pt-stepbar"><span>3 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:60%"></span></div>
+          <div class="pt-stepbar"><span>3 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:75%"></span></div>
           <h2 class="pt-q">¿Cuánto tiempo podrías dedicarle?</h2>
           <div class="pt-opts" data-field="dedicacion">
             <button type="button" class="pt-opt" data-value="1_2_horas">1-2 horas al día</button>
@@ -465,8 +465,8 @@ body{color:var(--ink)}
         </div>
 
         <div class="pt-step" data-step="4" hidden>
-          <div class="pt-stepbar"><span>4 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:80%"></span></div>
+          <div class="pt-stepbar"><span>4 de 4</span><button type="button" class="pt-back" data-back>Atrás</button></div>
+          <div class="pt-progress"><span style="width:100%"></span></div>
           <h2 class="pt-q">¿Cuándo quieres empezar?</h2>
           <div class="pt-opts" data-field="inicio">
             <button type="button" class="pt-opt" data-value="octubre">
@@ -478,19 +478,8 @@ body{color:var(--ink)}
             <button type="button" class="pt-opt" data-value="proximos_meses">En los próximos meses</button>
             <button type="button" class="pt-opt" data-value="informandome">Solo estoy informándome</button>
           </div>
-        </div>
-
-        <div class="pt-step" data-step="5" hidden>
-          <div class="pt-stepbar"><span>5 de 5</span><button type="button" class="pt-back" data-back>Atrás</button></div>
-          <div class="pt-progress"><span style="width:100%"></span></div>
-          <h2 class="pt-q">La llamada es gratuita. Si después decides entrar en el intensivo, la inversión es a partir de 1.650&nbsp;€. ¿Dispones de esa inversión?</h2>
-          <div class="pt-opts" data-field="inversion">
-            <button type="button" class="pt-opt" data-value="si">Sí</button>
-            <button type="button" class="pt-opt" data-value="si_organizarme">Sí, pero necesitaría organizarme</button>
-            <button type="button" class="pt-opt" data-value="no_por_ahora">No por ahora</button>
-          </div>
           <p class="pt-saving" id="pt-saving" hidden>Guardando tu solicitud…</p>
-          <p class="pt-error" id="pt-error-5" role="alert"></p>
+          <p class="pt-error" id="pt-error-4" role="alert"></p>
           <button type="button" class="pt-btn" id="pt-retry" hidden>Reintentar</button>
         </div>
 
@@ -943,14 +932,14 @@ body{color:var(--ink)}
     });
   }
   // Los pasos 1-3 se guardan en serie y en segundo plano (no bloquean el
-  // avance); el 5 espera a que TODOS estén guardados antes de la pantalla
+  // avance); el 4 espera a que TODOS estén guardados antes de la pantalla
   // final. Cada guardado se reintenta (3 intentos); lo que falla queda en
   // `pendientes` y se reenvía con «Reintentar». Si aun así falla, se avisa
   // a info@ (acción 'fallo') con las respuestas capturadas.
   var pendientes = {};     // paso → campos sin guardar
   var ultimoError = '';
   function guardar(paso, fields) {
-    var payload = Object.assign({ action: 'step', id: state.id, token: state.token, paso: paso, version: 3 }, fields);
+    var payload = Object.assign({ action: 'step', id: state.id, token: state.token, paso: paso, version: 4 }, fields);
     var intento = function (n) {
       return api(payload).catch(function (e) {
         // Un valor no válido o una sesión caducada no se arreglan reintentando
@@ -975,10 +964,10 @@ body{color:var(--ink)}
   }
   var falloAvisado = false;
   function guardarFinal(fields) {
-    var paso4 = $('.pt-step[data-step="5"]'), err = $('#pt-error-5'), retry = $('#pt-retry');
+    var paso4 = $('.pt-step[data-step="4"]'), err = $('#pt-error-4'), retry = $('#pt-retry');
     err.textContent = ''; retry.hidden = true; ultimoError = '';
     paso4.classList.add('saving'); $('#pt-saving').hidden = false;
-    if (fields) sendStep(5, fields);
+    if (fields) sendStep(4, fields);
     else Object.keys(pendientes).sort().forEach(function (p) { sendStep(Number(p), pendientes[p]); });
     queue.then(function () {
       paso4.classList.remove('saving'); $('#pt-saving').hidden = true;
@@ -1113,20 +1102,18 @@ body{color:var(--ink)}
       state.answers[field] = b.dataset.value;
       $$('.pt-opt', group).forEach(function (x) { x.classList.toggle('selected', x === b); });
       var fields = {}; fields[field] = b.dataset.value;
-      // Paso 5 (último): no se pasa a la pantalla final hasta que todo esté guardado.
-      if (step === 5) { guardarFinal(fields); return; }
+      // Paso 4 (último): no se pasa a la pantalla final hasta que todo esté guardado.
+      if (step === 4) { guardarFinal(fields); return; }
       sendStep(step, fields);
       setTimeout(function () { show(step + 1); scrollToCard(); }, 180);
     });
   });
 
   // ── Pantalla final: llamada de admisión ──────────────────
-  // Cualificado = cuándo empezar ≠ «Solo estoy informándome» y
-  // inversión ≠ «No por ahora» (igual que en el servidor).
+  // Cualificado = cuándo empezar ≠ «Solo estoy informándome» (igual que en el servidor).
   function cualificado() {
-    return !!state.answers.inicio && state.answers.inicio !== 'informandome' && state.answers.inversion !== 'no_por_ahora';
+    return !!state.answers.inicio && state.answers.inicio !== 'informandome';
   }
-  var INVERSION_TXT = { si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' };
   var calMontado = false;
   function renderFinal() {
     $$('[data-nombre]').forEach(function (el) { el.textContent = (state.nombre || '').split(' ')[0]; });
@@ -1141,7 +1128,6 @@ body{color:var(--ink)}
       window.PartnersCal.montar('#pt-cal', {
         name: state.nombre, email: state.email,
         attendeePhoneNumber: (state.prefijo || '') + (state.telefono || ''),
-        inversion: INVERSION_TXT[state.answers.inversion] || '',
         'metadata[solicitud_id]': state.id || ''
       }, function () {
         dl({ event: 'schedule' });
