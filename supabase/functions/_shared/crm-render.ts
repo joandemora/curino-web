@@ -25,7 +25,7 @@ const WA = '34611965612';
 export const VARS = [
   'nombre', 'email', 'curso', 'fecha_inicio', 'hora', 'zoom', 'enlace_reserva', 'plazas_restantes',
   'enlace_plaza', 'enlace_formaciones', 'enlace_whatsapp', 'plazas_libres', 'plazas_totales',
-  'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas', 'enlace_llamada'
+  'precio_oferta_sesion', 'precio_sesion', 'horas_oferta', 'quedan_plazas', 'enlace_llamada', 'mes_intensivo'
 ];
 
 export function esc(s: unknown) {
@@ -101,6 +101,18 @@ export async function edicionAbierta(supa: Any): Promise<Any> {
     .in('estado', ['abierta', 'agotada']).gt('fecha', new Date().toISOString()).order('fecha').limit(1);
   return data?.[0] || null;
 }
+// Mes del intensivo: el de la fecha de la edición abierta (hora de Madrid);
+// sin edición, el mes siguiente al actual. { mes: 'noviembre', anio: '2026' }
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+export function mesIntensivo(c: Any): { mes: string; anio: string } {
+  let d: Date;
+  if (c?.fecha) d = new Date(c.fecha);
+  else { const h = new Date(); d = new Date(Date.UTC(h.getUTCFullYear(), h.getUTCMonth() + 1, 15)); }
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', year: 'numeric', month: 'numeric' })
+    .formatToParts(d).map((x) => [x.type, x.value]));
+  return { mes: MESES[Number(p.month) - 1], anio: String(p.year) };
+}
+
 export function plazasLibres(c: Any): number | null {
   return c ? Math.max(0, Number(c.plazas_totales) - Number(c.plazas_ocupadas)) : null;
 }
@@ -147,6 +159,7 @@ export async function construirVars(
     precio_sesion: eur(SESION.precioNormalCents),
     horas_oferta: String(SESION.ofertaHoras),
     // «Quedan 3 plazas» / «Queda 1 plaza» (vacía sin plazas o sin edición)
-    quedan_plazas: !libres ? '' : libres === 1 ? 'Queda 1 plaza' : `Quedan ${libres} plazas`
+    quedan_plazas: !libres ? '' : libres === 1 ? 'Queda 1 plaza' : `Quedan ${libres} plazas`,
+    mes_intensivo: mesIntensivo(abierta).mes
   };
 }

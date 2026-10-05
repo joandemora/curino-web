@@ -60,8 +60,8 @@
 <main class="gs-page">
   <div class="gs-wrap">
     <span class="gs-eyebrow">Curino Partners</span>
-    <h1 class="gs-h1">Tu sesión con Juan está confirmada.</h1>
-    <p>Te acabamos de enviar un email con el enlace para <strong>reservar el día y la hora</strong>, los recursos iniciales y la factura.</p>
+    <h1 class="gs-h1" id="gs-titulo">Tu compra está confirmada.</h1>
+    <p id="gs-texto">Te acabamos de enviar un email con los siguientes pasos y la factura.</p>
     <p class="gs-hint">¿No ves el email? Revisa spam o promociones, o escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>. <a href="/partners/condiciones/">Condiciones de contratación</a>.</p>
   </div>
 </main>
@@ -82,12 +82,20 @@
       if (!d || !d.paid) return;
       var eventId = d.event_id || null;
       try { eventId = eventId || sessionStorage.getItem('curino_partners_event_id'); } catch (_e) {}
-      var esSesion = d.purpose === 'sesion';
+      var esSesion = d.purpose === 'sesion', esOne = d.purpose === 'one_to_one';
+      var t = document.getElementById('gs-titulo'), x = document.getElementById('gs-texto');
+      if (esOne) {
+        t.textContent = 'Bienvenido al One-to-one Curino Partners.';
+        x.innerHTML = 'Te acabamos de enviar un email con el enlace para <strong>agendar tu primera sesión</strong>, mi WhatsApp directo y la factura.';
+      } else if (esSesion) {
+        t.textContent = 'Tu sesión con Juan está confirmada.';
+        x.innerHTML = 'Te acabamos de enviar un email con el enlace para <strong>reservar el día y la hora</strong>, los recursos iniciales y la factura.';
+      }
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ ecommerce: null });
       window.dataLayer.push({ event: 'purchase', event_id: eventId, ecommerce: {
         transaction_id: d.transaction_id, value: d.amount_total, currency: d.currency, num_items: 1,
-        items: [{ item_id: esSesion ? 'sesion-1a1' : 'intensivo-partners', item_name: esSesion ? 'Sesión 1:1 con Juan · 30 min' : 'Intensivo Curino Partners', price: d.amount_total, quantity: 1 }] } });
+        items: [{ item_id: esOne ? 'one-to-one' : (esSesion ? 'sesion-1a1' : 'intensivo-partners'), item_name: esOne ? 'One-to-one Curino Partners · 3 meses' : (esSesion ? 'Sesión 1:1 con Juan · 30 min' : 'Intensivo Curino Partners'), price: d.amount_total, quantity: 1 }] } });
       try { sessionStorage.setItem(key, '1'); sessionStorage.removeItem('curino_partners_event_id'); } catch (_e) {}
     }).catch(function () {});
 })();

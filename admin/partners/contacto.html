@@ -193,7 +193,7 @@
       b.disabled = false;
       if (r.error || !r.data || !r.data.url) { PA.toast('No se ha podido generar el enlace'); return; }
       if (m) { PA.toast('Enlace de pago enviado por email'); cargar(); return; }
-      var texto = 'Hola ' + r.data.nombre + ', como hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de octubre: ' + r.data.url;
+      var texto = 'Hola ' + r.data.nombre + ', como hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de ' + (r.data.mes || 'octubre') + ': ' + r.data.url;
       var tel = String((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
       window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
     });

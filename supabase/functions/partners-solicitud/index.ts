@@ -95,9 +95,11 @@ const DEDICACION: Record<string, string> = {
   media_jornada: 'Media jornada',
   tiempo_completo: 'Quiero dedicarme a tiempo completo'
 };
-// 'octubre' desde 2026-10 (edicion de octubre); 'noviembre' se mantiene
-// para las respuestas anteriores y formularios en cache.
+// 'ya' = «Ya, en el intensivo de {mes}» (el mes de la edición abierta, 2026-10);
+// 'octubre' y 'noviembre' se mantienen para respuestas anteriores y
+// formularios en cache.
 const INICIO: Record<string, string> = {
+  ya: 'Ya, en la próxima edición del intensivo',
   octubre: 'Ya, en el intensivo de octubre',
   noviembre: 'Ya, en el intensivo de noviembre',
   proximos_meses: 'En los próximos meses',

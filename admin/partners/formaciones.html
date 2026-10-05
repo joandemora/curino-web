@@ -26,10 +26,11 @@
 <body class="hidden-until-auth">
 <main class="ash-content">
   <div class="pa-hero">
-    <div><h1>Formaciones</h1><p>Ediciones del Intensivo y Sesión 1:1. Fecha, confirmación y Zoom editables.</p></div>
+    <div><h1>Formaciones</h1><p>Ediciones del Intensivo, One-to-one y Sesión 1:1 (desactivada). Fecha, confirmación y Zoom editables; el título de cada edición se genera desde su fecha.</p></div>
     <label class="pa-small"><input type="checkbox" id="verOcultas"> Ver ediciones ocultas (pruebas)</label>
   </div>
   <div id="ediciones"><div class="pa-empty">Cargando…</div></div>
+  <div class="fo-card" id="one-to-one"></div>
   <div class="fo-card" id="sesion"></div>
 </main>
 
@@ -97,12 +98,20 @@
         + '</form></div>';
     }).join('') || '<div class="pa-empty">No hay ediciones.</div>';
 
+    var oto = ventas.filter(function (v) { return v.producto === 'one_to_one'; });
+    var otoPag = oto.filter(function (v) { return v.estado === 'pagada'; });
+    $('#one-to-one').innerHTML = '<div class="fo-head"><h2>One-to-one Curino Partners · 3 meses</h2><span class="pa-badge">producto continuo</span></div>'
+      + '<div class="fo-stats"><span>Vendidos: <b>' + otoPag.length + '</b></span><span>Reembolsados: <b>' + (oto.length - otoPag.length) + '</b></span>'
+      + '<span>Ingresos: <b>' + PA.eur(otoPag.reduce(function (a, v) { return a + v.importe_cents; }, 0)) + '</b></span>'
+      + '<span class="pa-small">Precio: 2.990 € · 12 sesiones en 3 meses + WhatsApp</span>'
+      + '<a class="pa-btn" href="/admin/partners/alumnos.html?producto=one_to_one">Ver alumnos (' + otoPag.length + ')</a></div>';
+
     var ses = ventas.filter(function (v) { return v.producto === 'sesion'; });
     var sesPag = ses.filter(function (v) { return v.estado === 'pagada'; });
     $('#sesion').innerHTML = '<div class="fo-head"><h2>Sesión 1:1 con Juan · 30 min</h2><span class="pa-badge">producto continuo</span></div>'
       + '<div class="fo-stats"><span>Vendidas: <b>' + sesPag.length + '</b></span><span>Reembolsadas: <b>' + (ses.length - sesPag.length) + '</b></span>'
       + '<span>Ingresos: <b>' + PA.eur(sesPag.reduce(function (a, v) { return a + v.importe_cents; }, 0)) + '</b></span>'
-      + '<span class="pa-small">Precio: 150 € (60 € de oferta 3 h tras el email 3 de la secuencia)</span>'
+      + '<span class="pa-small">Desactivada (sin venta en la web). Precio: 150 € (60 € de oferta 3 h tras el email 3 de la secuencia)</span>'
       + '<a class="pa-btn" href="/admin/partners/alumnos.html?producto=sesion">Ver alumnos (' + sesPag.length + ')</a></div>';
   }
 
