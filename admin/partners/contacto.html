@@ -78,7 +78,7 @@
       return supa.from('crm_partners_ventas').select('*').or('solicitud_id.eq.' + s.id + ',email.eq."' + String(s.email).replace(/"/g, '') + '"').order('fecha', { ascending: false })
         .then(function (v) { pintarCompras(v.data || []); })
         .then(function () {
-          return supa.from('partners_emails').select('created_at, tipo, asunto, estado, estado_at, abierto_at, error')
+          return supa.from('partners_emails').select('created_at, tipo, asunto, estado, estado_at, abierto_at, clicado_at, error')
             .or('solicitud_id.eq.' + s.id + ',email.eq."' + String(s.email).replace(/"/g, '') + '"')
             .neq('tipo', 'prueba').order('created_at', { ascending: false }).limit(200);
         })
@@ -156,6 +156,7 @@
           + '<td data-l="Asunto">' + PA.esc(e.asunto) + '</td>'
           + '<td data-l="Estado"><span class="pa-badge ' + st[1] + '">' + st[0] + '</span>'
           + (e.abierto_at ? '<div class="pa-small">abierto ' + PA.fecha(e.abierto_at, true) + '</div>' : '')
+          + (e.clicado_at ? '<div class="pa-small"><span class="pa-badge ok">Clic</span> ' + PA.fecha(e.clicado_at, true) + '</div>' : '')
           + (e.error ? '<div class="pa-small">' + PA.esc(e.error) + '</div>' : '') + '</td></tr>';
       }).join('') + '</tbody></table>';
   }

@@ -14,6 +14,9 @@
 // La baja por rebote/queja aplica a cualquier email del dominio (tambien
 // confirmaciones, secuencia…), porque el destinatario no es valido o no
 // quiere recibir correo. Corta comerciales Y de servicio.
+// La cuenta de Resend tambien envia emails de otros dominios (tikout.io): los
+// eventos cuyo remitente no es @casacurino.com se ignoran con 200 (sin error
+// ni reintentos) y nunca dan de baja a nadie.
 // verify_jwt=false (Resend no manda JWT).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
@@ -44,6 +47,9 @@ Deno.serve(async (req) => {
   try { ev = JSON.parse(body); } catch { return new Response('bad json', { status: 400 }); }
   const tipo = String(ev?.type || '');
   const d = ev?.data || {};
+  // Solo emails enviados desde casacurino.com
+  const remitente = String(d.from || '').toLowerCase();
+  if (remitente && !/@casacurino\.com>?\s*$/.test(remitente)) return new Response('ignored');
   const resendId = d.email_id || d.id || null;
   const destinatario = String((Array.isArray(d.to) ? d.to[0] : d.to) || '').toLowerCase();
   const ahora = new Date().toISOString();
