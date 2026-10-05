@@ -49,7 +49,9 @@ Deno.serve(async (req) => {
   const d = ev?.data || {};
   // Solo emails enviados desde casacurino.com
   const remitente = String(d.from || '').toLowerCase();
-  if (remitente && !/@casacurino\.com>?\s*$/.test(remitente)) return new Response('ignored');
+  const registrar = (resultado: string) => supa.from('partners_webhook_log')
+    .insert({ tipo, resend_id: d.email_id || d.id || null, resultado }).then(() => {}, () => {});
+  if (remitente && !/@casacurino\.com>?\s*$/.test(remitente)) { await registrar('ignorado_dominio'); return new Response('ignored'); }
   const resendId = d.email_id || d.id || null;
   const destinatario = String((Array.isArray(d.to) ? d.to[0] : d.to) || '').toLowerCase();
   const ahora = new Date().toISOString();
@@ -58,8 +60,10 @@ Deno.serve(async (req) => {
     'email.bounced': 'rebotado', 'email.complained': 'queja' } as Record<string, string>)[tipo];
 
   try {
+    let resultado = 'sin_email';
     if (tipo === 'email.clicked' && resendId) {
-      await supa.from('partners_emails').update({ clicado_at: ahora }).eq('resend_id', resendId).is('clicado_at', null);
+      const { data: c } = await supa.from('partners_emails').update({ clicado_at: ahora }).eq('resend_id', resendId).is('clicado_at', null).select('id');
+      if ((c || []).length) resultado = 'actualizado';
     }
     if (nuevo && resendId) {
       const { data: fila } = await supa.from('partners_emails').select('id, estado').eq('resend_id', resendId).maybeSingle();
@@ -67,10 +71,13 @@ Deno.serve(async (req) => {
         const upd: Record<string, unknown> = { estado: nuevo, estado_at: ahora };
         if (nuevo === 'abierto') upd.abierto_at = ahora;
         await supa.from('partners_emails').update(upd).eq('id', fila.id);
+        resultado = 'actualizado';
       } else if (fila && nuevo === 'abierto') {
         await supa.from('partners_emails').update({ abierto_at: ahora }).eq('id', fila.id).is('abierto_at', null);
-      }
+        resultado = 'actualizado';
+      } else if (fila) resultado = 'sin_cambio';
     }
+    await registrar(resultado);
     // Baja por rebote permanente o queja de spam
     const permanente = tipo === 'email.bounced' && String(d?.bounce?.type || '').toLowerCase() !== 'transient';
     if ((permanente || tipo === 'email.complained') && destinatario) {

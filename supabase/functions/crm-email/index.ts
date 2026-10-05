@@ -85,6 +85,17 @@ Deno.serve(async (req) => {
       return r.ids[0] ? json({ ok: true, enviado_a: PRUEBA_TO, con_datos_de: sol.email }) : json({ error: r.error }, 502);
     }
 
+    // Diagnostico (solo lectura): ultimo evento que Resend tiene de un email
+    // del CRM. Solo para resend_id registrados en partners_emails.
+    if (action === 'resend_estado') {
+      const rid = String(body?.resend_id || '');
+      const { data: fila } = await supa.from('partners_emails').select('id').eq('resend_id', rid).maybeSingle();
+      if (!fila) return json({ error: 'no_encontrado' }, 404);
+      const r = await fetch(`https://api.resend.com/emails/${encodeURIComponent(rid)}`, { headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}` } });
+      const d = await r.json().catch(() => ({}));
+      return json({ status: r.status, last_event: d?.last_event ?? null, created_at: d?.created_at ?? null });
+    }
+
     // Envios programados: cancelar (solo si sigue pendiente)
     if (action === 'programado_cancelar') {
       const { data } = await supa.from('partners_envios_programados').update({ estado: 'cancelado', updated_at: new Date().toISOString() })

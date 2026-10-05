@@ -177,6 +177,10 @@ body{color:var(--ink)}
 .pt-hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;overflow:hidden}
 .pt-error{font-size:13px;color:var(--err);margin:.6rem 0 0}
 .pt-error:empty{display:none}
+.pt-saving{font-size:13px;color:var(--soft);margin:.6rem 0 0}
+.pt-step.saving .pt-opt{pointer-events:none;opacity:.6}
+#pt-retry{margin-top:.7rem}
+.pt-error:empty{display:none}
 .pt-micro{font-size:12px;color:var(--soft);text-align:center;margin:.7rem 0 0}
 
 .pt-stepbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;font-family:var(--head);font-size:13px;font-weight:700;color:var(--soft)}
@@ -479,6 +483,9 @@ body{color:var(--ink)}
             <button type="button" class="pt-opt" data-value="proximos_meses">En los próximos meses</button>
             <button type="button" class="pt-opt" data-value="informandome">Solo estoy informándome</button>
           </div>
+          <p class="pt-saving" id="pt-saving" hidden>Guardando tu solicitud…</p>
+          <p class="pt-error" id="pt-error-4" role="alert"></p>
+          <button type="button" class="pt-btn" id="pt-retry" hidden>Reintentar</button>
         </div>
 
         <!-- Pantalla final -->
@@ -971,17 +978,60 @@ body{color:var(--ink)}
       });
     });
   }
-  // Los pasos se envian en serie (en segundo plano) para no bloquear el
-  // avance automatico y mantener el orden en la tabla.
-  function sendStep(paso, fields) {
-    if (!state.id || !state.token) return;
+  // Los pasos 1-3 se guardan en serie y en segundo plano (no bloquean el
+  // avance); el 4 espera a que TODOS estén guardados antes de la pantalla
+  // final. Cada guardado se reintenta (3 intentos); lo que falla queda en
+  // `pendientes` y se reenvía con «Reintentar». Si aun así falla, se avisa
+  // a info@ (acción 'fallo') con las respuestas capturadas.
+  var pendientes = {};     // paso → campos sin guardar
+  var ultimoError = '';
+  function guardar(paso, fields) {
     var payload = Object.assign({ action: 'step', id: state.id, token: state.token, paso: paso }, fields);
-    queue = queue.then(function () {
-      return api(payload).catch(function () {
-        return new Promise(function (res) { setTimeout(res, 1200); }).then(function () { return api(payload); }).catch(function () {});
+    var intento = function (n) {
+      return api(payload).catch(function (e) {
+        // Un valor no válido o una sesión caducada no se arreglan reintentando
+        if (n >= 2 || (e.code && /^invalid_/.test(e.code))) throw e;
+        return new Promise(function (res) { setTimeout(res, n ? 3000 : 1200); }).then(function () { return intento(n + 1); });
       });
+    };
+    return intento(0);
+  }
+  function sendStep(paso, fields) {
+    if (!state.id || !state.token) { ultimoError = 'sin_sesion'; pendientes[paso] = fields; return queue; }
+    pendientes[paso] = fields;
+    queue = queue.then(function () {
+      var f = pendientes[paso];
+      if (!f) return;
+      return guardar(paso, f).then(
+        function () { if (pendientes[paso] === f) delete pendientes[paso]; },
+        function (e) { ultimoError = (e && (e.code || e.message)) || 'red'; }
+      );
+    });
+    return queue;
+  }
+  var falloAvisado = false;
+  function guardarFinal(fields) {
+    var paso4 = $('.pt-step[data-step="4"]'), err = $('#pt-error-4'), retry = $('#pt-retry');
+    err.textContent = ''; retry.hidden = true; ultimoError = '';
+    paso4.classList.add('saving'); $('#pt-saving').hidden = false;
+    if (fields) sendStep(4, fields);
+    else Object.keys(pendientes).sort().forEach(function (p) { sendStep(Number(p), pendientes[p]); });
+    queue.then(function () {
+      paso4.classList.remove('saving'); $('#pt-saving').hidden = true;
+      if (!Object.keys(pendientes).length) { show('final'); scrollToCard(); return; }
+      var sesion = ultimoError === 'invalid_session' || ultimoError === 'sin_sesion';
+      err.textContent = sesion
+        ? 'No hemos podido guardar tu solicitud porque la sesión ha caducado. Recarga la página y vuelve a enviarla, o escríbeme por WhatsApp.'
+        : 'No hemos podido guardar tu respuesta. Revisa tu conexión y pulsa «Reintentar». Si sigue fallando, escríbeme por WhatsApp y lo vemos.';
+      retry.hidden = sesion;
+      if (!falloAvisado && state.id && state.token) {
+        falloAvisado = true;
+        api({ action: 'fallo', id: state.id, token: state.token, paso: Number(Object.keys(pendientes).sort()[0]),
+          respuestas: state.answers, error: ultimoError }, { keepalive: true }).catch(function () {});
+      }
     });
   }
+  $('#pt-retry').addEventListener('click', function () { guardarFinal(null); });
   // Metricas de embudo (precio_visto_at / checkout_iniciado_at), una vez.
   function sendEvento(evento) {
     if (!state.id || !state.token || state['ev_' + evento]) return;
@@ -1099,8 +1149,10 @@ body{color:var(--ink)}
       state.answers[field] = b.dataset.value;
       $$('.pt-opt', group).forEach(function (x) { x.classList.toggle('selected', x === b); });
       var fields = {}; fields[field] = b.dataset.value;
+      // Paso 4: no se pasa a la pantalla final hasta que todo esté guardado.
+      if (step === 4) { guardarFinal(fields); return; }
       sendStep(step, fields);
-      setTimeout(function () { show(step === 4 ? 'final' : step + 1); scrollToCard(); }, 180);
+      setTimeout(function () { show(step + 1); scrollToCard(); }, 180);
     });
   });
 
