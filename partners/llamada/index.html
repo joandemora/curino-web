@@ -64,7 +64,7 @@
         return;
       }
       window.PartnersCal.montar('#ll-cal', {
-        name: l.nombre, email: l.email, attendeePhoneNumber: l.telefono, inversion: l.inversion,
+        name: l.nombre, email: l.email, attendeePhoneNumber: l.telefono,
         'metadata[solicitud_id]': l.id
       }, function () { dl({ event: 'schedule' }); $('#ll-ok').hidden = false; });
     })

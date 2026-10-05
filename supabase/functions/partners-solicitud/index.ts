@@ -103,7 +103,9 @@ const INICIO: Record<string, string> = {
   proximos_meses: 'En los próximos meses',
   informandome: 'Solo estoy informándome'
 };
-// Pregunta 5 (2026-10): inversión para el intensivo.
+// Pregunta 5 (inversión): retirada del formulario en 2026-10. Se sigue
+// aceptando (formularios en caché) pero no se guarda ni cuenta para
+// cualificar; la columna inversion queda sin usar.
 const INVERSION: Record<string, string> = {
   si: 'Sí',
   si_organizarme: 'Sí, pero necesitaría organizarme',
@@ -153,11 +155,11 @@ function generateToken(): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// Cualificado = inicio <> 'informandome' Y inversion <> 'no_por_ahora'.
-function segmentoV2(inicio: string, inversion?: string | null): { cualificado: boolean; segmento: string } {
-  if (inicio === 'informandome') return { cualificado: false, segmento: 'informandose' };
-  if (inversion === 'no_por_ahora') return { cualificado: false, segmento: 'sin_presupuesto' };
-  return { cualificado: true, segmento: 'cualificado' };
+// Cualificado = inicio <> 'informandome'.
+function segmentoV2(inicio: string): { cualificado: boolean; segmento: string } {
+  return inicio === 'informandome'
+    ? { cualificado: false, segmento: 'informandose' }
+    : { cualificado: true, segmento: 'cualificado' };
 }
 
 function segmentoDe(p3: string | null, p4: string | null): { cualificado: boolean; segmento: string } {
@@ -250,10 +252,9 @@ function solicitudHtml(s: any, titulo: string): string {
     ${row('1. Situación actual', SITUACION[s.situacion_actual] || null)}
     ${row('2. Experiencia', EXPERIENCIA[s.experiencia] || null)}
     ${row('3. Tiempo que puede dedicar', DEDICACION[s.dedicacion] || null)}
-    ${row('4. Cuándo empezar', INICIO[s.inicio] || null)}
-    ${row('5. Inversión', INVERSION[s.inversion] || null)}`}
+    ${row('4. Cuándo empezar', INICIO[s.inicio] || null)}`}
     ${s.cta_final ? row('Eligió', CTA_LABEL[s.cta_final] || s.cta_final) : ''}
-    ${row('Paso alcanzado', `${s.paso_alcanzado} de ${esV1(s) ? 4 : 5}`)}
+    ${row('Paso alcanzado', `${Math.min(s.paso_alcanzado, 4)} de 4`)}
     ${row('Origen (UTM)', origen || null)}
     ${row('fbclid', s.fbclid ? 'sí' : null)}
   </table>
@@ -428,9 +429,9 @@ Deno.serve(async (req) => {
     if (action === 'step') {
       const paso = Number(body?.paso);
       if (!Number.isInteger(paso) || paso < 1 || paso > 5) return jsonResponse({ error: 'invalid_paso' }, 400);
-      // Formulario con pregunta 5 (version >= 3): se completa en el paso 5;
-      // formularios antiguos en cache, en el 4.
-      const pasoFinal = Number(body?.version) >= 3 ? 5 : 4;
+      // El formulario tiene 4 pasos. Solo la version 3 (con la pregunta 5 de
+      // inversion, retirada; puede seguir en cache) se completa en el 5.
+      const pasoFinal = Number(body?.version) === 3 ? 5 : 4;
       const update: Record<string, unknown> = {};
       const v2Field = Object.keys(V2_FIELDS).find(k => body?.[k] != null);
       if (v2Field) {
@@ -439,7 +440,7 @@ Deno.serve(async (req) => {
           await avisoFallo(supabase, current, { paso, respuestas: { [v2Field]: v }, error: `valor no válido (${v2Field})`, origen: 'servidor' });
           return jsonResponse({ error: `invalid_${v2Field}` }, 400);
         }
-        update[v2Field] = v;
+        if (v2Field !== 'inversion') update[v2Field] = v;   // inversion: sin usar
         if (v2Field === 'dedicacion') update.perfil_one_to_one = v === 'tiempo_completo';
       } else if (paso === 1) {
         const v = str(body?.p1_dedicacion, 40);
@@ -469,7 +470,7 @@ Deno.serve(async (req) => {
       const merged = { ...current, ...update };
       let result: { cualificado: boolean; segmento: string } | null = null;
       if (v2Field && merged.inicio) {
-        result = segmentoV2(merged.inicio, merged.inversion);
+        result = segmentoV2(merged.inicio);
         update.cualificado = result.cualificado;
         update.segmento = result.segmento;
       } else if (!v2Field && merged.p3_inicio && merged.p4_inversion) {

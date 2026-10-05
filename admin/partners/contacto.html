@@ -104,11 +104,11 @@
       + fila('Perfil one-to-one', s.perfil_one_to_one ? '<span class="pa-badge info">Sí</span>' : 'No')
       + (s.situacion_actual || s.inicio
           ? fila('Situación', PA.esc(R.situacion_actual[s.situacion_actual])) + fila('Experiencia', PA.esc(R.experiencia[s.experiencia]))
-            + fila('Dedicación', PA.esc(R.dedicacion[s.dedicacion])) + fila('Cuándo empezar', PA.esc(R.inicio[s.inicio])) + fila('Inversión', PA.esc({ si: 'Sí', si_organizarme: 'Sí, pero necesitaría organizarme', no_por_ahora: 'No por ahora' }[s.inversion]))
+            + fila('Dedicación', PA.esc(R.dedicacion[s.dedicacion])) + fila('Cuándo empezar', PA.esc(R.inicio[s.inicio]))
           : fila('A qué se dedica', PA.esc(R.p1_dedicacion[s.p1_dedicacion])) + fila('Situación', PA.esc(s.p2_situacion))
             + fila('Instagram / web', PA.esc(s.p2_instagram_web)) + fila('Cuándo empezar', PA.esc(R.p3_inicio[s.p3_inicio]))
             + fila('Inversión', PA.esc(R.p4_inversion[s.p4_inversion])))
-      + fila('Paso alcanzado', s.origen === 'cal.com' ? 'Llegó por Cal.com (sin formulario)' : s.paso_alcanzado + ' de ' + (s.p1_dedicacion ? 4 : 5))
+      + fila('Paso alcanzado', s.origen === 'cal.com' ? 'Llegó por Cal.com (sin formulario)' : Math.min(s.paso_alcanzado, 4) + ' de 4')
       + fila('Llamada de admisión', PA.llamada(s) + (s.llamada_actualizada_at ? ' <span class="pa-small">actualizada ' + PA.fecha(s.llamada_actualizada_at, true) + '</span>' : ''))
       + fila('Botón final', s.cta_final ? PA.esc(PA.CTA[s.cta_final] || s.cta_final) : null)
       + fila('Consentimiento', PA.consentChecks(s)

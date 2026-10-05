@@ -10,7 +10,6 @@ window.PA = (function () {
     experiencia: { reformas_carpinteria: 'Reformas / carpintería', interiorismo_arquitectura: 'Interiorismo / arquitectura', ventas_atencion: 'Ventas / atención', desde_cero: 'Desde cero' },
     dedicacion: { '1_2_horas': '1-2 h/día', media_jornada: 'Media jornada', tiempo_completo: 'Tiempo completo' },
     inicio: { octubre: 'Ya (octubre)', noviembre: 'Ya (noviembre)', proximos_meses: 'Próximos meses', informandome: 'Informándose' },
-    inversion: { si: 'Inversión: sí', si_organizarme: 'Inversión: organizándose', no_por_ahora: 'Inversión: no por ahora' },
     // v1 (solicitudes antiguas)
     p1_dedicacion: { carpinteria_reformas: 'Carpintería / reformas', interiorismo_arquitectura: 'Interiorismo / arquitectura', comercial_ventas: 'Comercial / ventas', cuenta_ajena: 'Cuenta ajena', otro_negocio: 'Otro negocio' },
     p3_inicio: { noviembre: 'Ya (noviembre)', tres_meses: 'Próximos 3 meses', informandome: 'Informándose' },
@@ -36,7 +35,7 @@ window.PA = (function () {
   function telefono(s) { return ((s.telefono_prefijo || '') + ' ' + (s.telefono || '')).trim(); }
   function respuestas(s) {
     if (s.situacion_actual || s.inicio) {
-      return [R.situacion_actual[s.situacion_actual], R.experiencia[s.experiencia], R.dedicacion[s.dedicacion], R.inicio[s.inicio], R.inversion[s.inversion]].filter(Boolean).join(' · ');
+      return [R.situacion_actual[s.situacion_actual], R.experiencia[s.experiencia], R.dedicacion[s.dedicacion], R.inicio[s.inicio]].filter(Boolean).join(' · ');
     }
     return [R.p1_dedicacion[s.p1_dedicacion], R.p3_inicio[s.p3_inicio], R.p4_inversion[s.p4_inversion]].filter(Boolean).join(' · ');
   }
