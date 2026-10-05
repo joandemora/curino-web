@@ -86,6 +86,16 @@ a.fm-btn{text-align:center;text-decoration:none}
 .fm-err{font-size:13px;color:var(--err);margin:0}
 .fm-soon{display:flex;align-items:center;justify-content:center;min-height:54px;border:2px dashed var(--line);border-radius:4px;font-family:var(--head);font-weight:800;font-size:16px;color:var(--soft)}
 .fm-err:empty{display:none}
+/* Reseñas: masonry con CSS columns (3 en escritorio, 1 en móvil) */
+.fm-reviews{padding:0 0 3rem}
+.fm-reviews-title{font-family:var(--head);font-weight:800;font-size:clamp(26px,3.6vw,36px);line-height:1.08;letter-spacing:-.02em;margin:0 0 .5rem;color:var(--ink)}
+.fm-reviews-sub{font-size:15px;line-height:1.55;color:var(--soft);margin:0 0 1.4rem}
+.fm-reviews-sub a{color:var(--ink);font-weight:700;text-underline-offset:3px}
+.fm-revs{columns:1;column-gap:1.25rem}
+@media(min-width:900px){.fm-revs{columns:3}}
+.fm-rev{break-inside:avoid;margin:0 0 1.25rem;background:#fff;border:1.5px solid var(--line);border-radius:12px;box-shadow:0 10px 28px -18px rgba(0,0,0,.28);overflow:hidden}
+.fm-rev img{display:block;width:100%;height:auto}
+.fm-reviews-btn{max-width:340px;margin:.4rem auto 0;display:flex}
 .fm-note{font-size:12px;color:var(--soft);text-align:center;padding:0 16px 2.5rem;max-width:760px;margin:0 auto}
 .fm-note a{color:var(--ink)}
 </style>
@@ -160,6 +170,22 @@ a.fm-btn{text-align:center;text-decoration:none}
       <p class="fm-err" data-err="one_to_one" role="alert"></p>
     </article>
   </div>
+
+  <!-- Reseñas: capturas reales de comentarios en Instagram (sin texto añadido) -->
+  <section class="fm-reviews" aria-labelledby="fm-reviews-title">
+    <div class="fm-wrap">
+      <h2 class="fm-reviews-title" id="fm-reviews-title">Clientes que han confiado en Curino</h2>
+      <p class="fm-reviews-sub">Comentarios reales de clientes en nuestro Instagram <a href="https://www.instagram.com/casacurino/" target="_blank" rel="noopener">@casacurino</a></p>
+      <div class="fm-revs">
+      <figure class="fm-rev"><img src="/assets/imagenes/partners/resenas/resena-david-boix.webp" width="800" height="272" loading="lazy" decoding="async" alt="Comentario de cliente en Instagram: Buena estructura y grandes profesionales"></figure>
+      <figure class="fm-rev"><img src="/assets/imagenes/partners/resenas/resena-rrdeco-borondo.webp" width="800" height="605" loading="lazy" decoding="async" alt="Comentarios de clientes en Instagram: Doy fe que son lo más, y Los mejores, buenísimas cualidades y un equipo fantástico que cuidan cada detalle"></figure>
+      <figure class="fm-rev"><img src="/assets/imagenes/partners/resenas/resena-paucho.webp" width="800" height="273" loading="lazy" decoding="async" alt="Comentario de cliente en Instagram: Espectacular"></figure>
+      <figure class="fm-rev"><img src="/assets/imagenes/partners/resenas/resena-criscd-brutal.webp" width="800" height="310" loading="lazy" decoding="async" alt="Comentario de cliente en Instagram: Brutal"></figure>
+      <figure class="fm-rev"><img src="/assets/imagenes/partners/resenas/resena-criscd-precioso.webp" width="800" height="261" loading="lazy" decoding="async" alt="Comentario de cliente en Instagram: Precioso"></figure>
+      </div>
+      <a class="fm-btn fm-btn--ghost fm-reviews-btn" href="https://www.instagram.com/casacurino/" target="_blank" rel="noopener">Ver más en Instagram</a>
+    </div>
+  </section>
 
   <p class="fm-note">Las cifras de Curino corresponden a los resultados de Juan de Mora; los de cada alumno dependen de su trabajo. <a href="/partners/condiciones/">Condiciones de contratación</a></p>
 </main>
