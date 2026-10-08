@@ -29,6 +29,7 @@
 //
 // verify_jwt=false (invitado). Registrado en supabase/config.toml.
 
+import { crearSesionCheckout } from '../_shared/stripe-checkout.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
 import { adConsentAllowed } from '../_shared/meta-capi.ts'
@@ -158,7 +159,6 @@ Deno.serve(async (req) => {
     // solo como referencia.
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
-      payment_method_types: ['card', 'link'],
       line_items: [{
         price_data: {
           currency: 'eur',
@@ -206,20 +206,8 @@ Deno.serve(async (req) => {
       }
     };
 
-    let session: Stripe.Checkout.Session;
-    try {
-      session = await stripe.checkout.sessions.create(params);
-    } catch (err: any) {
-      // Si Link no esta activado en la cuenta, Stripe rechaza el tipo
-      // 'link': reintentamos solo con tarjeta para no bloquear la venta.
-      const msg = String(err?.message || '');
-      if (err?.type === 'StripeInvalidRequestError' && /link/i.test(msg)) {
-        console.warn('clases-checkout: link no disponible, reintento solo con card:', msg);
-        session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
-      } else {
-        throw err;
-      }
-    }
+    // Tarjeta + Link + Klarna (sin el método que Stripe rechace)
+    const session = await crearSesionCheckout(stripe, params, 'clases-checkout');
 
     return jsonResponse({ checkout_url: session.url, session_id: session.id }, 200);
 
