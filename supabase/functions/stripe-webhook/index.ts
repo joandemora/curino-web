@@ -158,8 +158,20 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Pago diferido confirmado (p. ej. Klarna o métodos asíncronos): se
+      // procesa igual que un checkout.session.completed ya pagado.
+      case 'checkout.session.async_payment_succeeded':
+      // falls through
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        // Partners (Intensivo, Sesión, One-to-one): si el pago queda
+        // pendiente no se da de alta ni se factura; se espera a
+        // checkout.session.async_payment_succeeded.
+        if (['clase', 'sesion', 'one_to_one'].includes(String(session.metadata?.purpose || ''))
+            && session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
+          console.log(`checkout ${session.id} (${session.metadata?.purpose}) pendiente de pago (${session.payment_status}): se espera a async_payment_succeeded`);
+          break;
+        }
         // Routing por metadata.purpose:
         //   'magazine_package' → paquete de créditos de Revista (G2)
         //   'magazine_boost'   → boost/promoción de Revista (G4)
@@ -190,8 +202,15 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // Reembolsos del Intensivo (inscripciones). Otros productos: no-op.
-      // OJO: el evento aun no esta suscrito en el endpoint de Stripe.
+      // Pago diferido rechazado: no hubo alta ni factura (la plaza del
+      // Intensivo solo se ocupa al confirmarse el pago), así que solo se registra.
+      case 'checkout.session.async_payment_failed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        console.warn(`checkout ${session.id} (${session.metadata?.purpose || 'sin purpose'}): pago diferido fallido, sin alta`);
+        break;
+      }
+
+      // Reembolsos (Intensivo, Sesión 1:1, One-to-one): rectificativas y estado.
       case 'charge.refunded': {
         await handleChargeRefunded(supabase, stripe, event.data.object as Stripe.Charge);
         break;

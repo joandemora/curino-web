@@ -24,6 +24,7 @@
 // Secrets: PARTNERS_LEAD_SECRET (token), STRIPE_SECRET_KEY, SUPABASE_ANON_KEY.
 // verify_jwt=false.
 
+import { crearSesionCheckout } from '../_shared/stripe-checkout.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
 import { verifyLeadToken } from '../_shared/lead-token.ts'
@@ -201,7 +202,6 @@ Deno.serve(async (req) => {
         const capiOk = adConsentAllowed(adConsent, str(body?.country, 2) || null);
         const params: Stripe.Checkout.SessionCreateParams = {
           mode: 'payment',
-          payment_method_types: ['card', 'link'],
           line_items: [{
             price_data: {
               currency: 'eur',
@@ -234,14 +234,7 @@ Deno.serve(async (req) => {
             client_ua: capiOk ? str(body?.client_ua, 400) : ''
           }
         };
-        let session: Stripe.Checkout.Session;
-        try {
-          session = await stripe.checkout.sessions.create(params);
-        } catch (err: any) {
-          if (err?.type === 'StripeInvalidRequestError' && /link/i.test(String(err?.message || ''))) {
-            session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
-          } else { throw err; }
-        }
+        const session = await crearSesionCheckout(stripe, params, 'partners-formaciones');
         return json({ checkout_url: session.url, session_id: session.id, precio_cents: p.precio_cents, precio_tipo: p.precio_tipo, event_id: eventId });
       }
 
@@ -255,7 +248,6 @@ Deno.serve(async (req) => {
         const capiOk = adConsentAllowed(adConsent, str(body?.country, 2) || null);
         const params: Stripe.Checkout.SessionCreateParams = {
           mode: 'payment',
-          payment_method_types: ['card', 'link'],
           line_items: [{
             price_data: {
               currency: 'eur',
@@ -287,14 +279,7 @@ Deno.serve(async (req) => {
             client_ua: capiOk ? str(body?.client_ua, 400) : ''
           }
         };
-        let session: Stripe.Checkout.Session;
-        try {
-          session = await stripe.checkout.sessions.create(params);
-        } catch (err: any) {
-          if (err?.type === 'StripeInvalidRequestError' && /link/i.test(String(err?.message || ''))) {
-            session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
-          } else { throw err; }
-        }
+        const session = await crearSesionCheckout(stripe, params, 'partners-formaciones');
         return json({ checkout_url: session.url, session_id: session.id, precio_cents: ONE_TO_ONE.precioCents, event_id: eventId });
       }
 
