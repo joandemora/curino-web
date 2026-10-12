@@ -1,0 +1,111 @@
+/* assets/css/estudio-ui.css
+ *
+ * Estudio Curino · estilos compartidos de las vistas de /assets/js/estudio-ui.js
+ * (admin: /admin/partners/estudio*.html · alumnos: /partners/estudio/).
+ * Prefijos: es- proyectos y chat · pr- presupuesto · tf- tarifa y plantilla.
+ */
+/* ── de estudio.html ── */
+.es-grid{display:grid;grid-template-columns:230px minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:1100px){.es-grid{grid-template-columns:1fr}}
+.es-card{background:#fff;border:1px solid #e5e2da;border-radius:10px;padding:12px}
+.es-lista{list-style:none;margin:8px 0 0;padding:0;max-height:60vh;overflow:auto}
+.es-lista li{padding:8px 9px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1.3}
+.es-lista li:hover{background:#f4f2ec}
+.es-lista li.on{background:#161616;color:#fff}
+.es-lista small{display:block;opacity:.65;font-size:11.5px}
+.es-form input{width:100%;box-sizing:border-box;margin:4px 0;padding:7px 9px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
+.es-cab{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.es-cab h2{margin:0;font-size:17px}
+.es-versiones{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.es-v{border:1px solid #d6d2c8;background:#fff;border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
+.es-v.on{background:#161616;color:#fff;border-color:#161616}
+.es-v.actual::after{content:' ●';color:#12B76A}
+.es-hojas{display:flex;flex-direction:column;gap:14px}
+.es-hoja{background:#fff;border:1px solid #e5e2da;border-radius:6px;overflow:hidden}
+.es-hoja{cursor:zoom-in}
+.es-hoja svg{display:block;width:100%;height:auto}
+.es-vacio{padding:50px 20px;text-align:center;color:#8a867c;font-size:14px}
+.es-chat[hidden]{display:none}
+.es-chat{display:flex;flex-direction:column;height:calc(100vh - 170px);min-height:420px;padding:0}
+.es-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
+.es-msg{max-width:92%;padding:8px 11px;border-radius:10px;font-size:13px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.es-msg.usuario{align-self:flex-end;background:#161616;color:#fff}
+.es-msg.asistente{align-self:flex-start;background:#f4f2ec}
+.es-msg.pregunta{background:#fff6dd;border:1px solid #f0dc9c}
+.es-msg .es-meta{display:block;margin-top:4px;font-size:11px;opacity:.6}
+.es-msg .es-meta a{color:inherit}
+.es-compose{border-top:1px solid #e5e2da;padding:10px}
+.es-compose textarea{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;border:1px solid #d6d2c8;border-radius:8px;padding:8px;font:inherit;font-size:13px}
+.es-fila{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px}
+.es-adj{font-size:12px;color:#5f5b52;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.es-trabajando{font-size:12.5px;color:#5f5b52;padding:4px 2px}
+.es-trabajando::before{content:'';display:inline-block;width:10px;height:10px;margin-right:6px;border:2px solid #12B76A;border-right-color:transparent;border-radius:50%;animation:es-g 0.8s linear infinite;vertical-align:-1px}
+@keyframes es-g{to{transform:rotate(360deg)}}
+.es-error{color:#b42318;font-size:12.5px;margin-top:4px}
+
+/* ── de estudio-presupuesto.html ── */
+.pr-card{background:#fff;border:1px solid #e5e2da;border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.pr-cab{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px}
+@media (max-width:900px){.pr-cab{grid-template-columns:1fr 1fr}}
+.pr-f label{display:block;font-size:11.5px;color:#5f5b52;margin:0 0 2px}
+.pr-f input,.pr-f textarea{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
+.pr-f textarea{resize:vertical;min-height:54px;line-height:1.4}
+.pr-partida{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px}
+@media (max-width:1000px){.pr-partida{grid-template-columns:1fr}}
+.pr-partida h3{margin:0 0 8px;font-size:14px}
+.pr-num{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pr-num input{text-align:right}
+.pr-pend input{background:#fff7e0;border-color:#f0dc9c}
+.pr-res{margin-top:10px;font-size:13px;line-height:1.7}
+.pr-res b{font-weight:700}
+.pr-res .pr-pvp{color:#808080}
+.pr-tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:#fff7e0;color:#8a6200;border:1px solid #f0dc9c}
+.pr-des{margin-top:8px;font-size:12px}
+.pr-des table{width:100%;border-collapse:collapse}
+.pr-des td{padding:2px 4px;border-bottom:1px solid #f0ede6}
+.pr-des td:nth-child(n+2){text-align:right;white-space:nowrap}
+.pr-tot{display:flex;flex-wrap:wrap;gap:22px;align-items:baseline;font-size:14px}
+.pr-tot b{font-size:18px}
+.pr-barra{position:sticky;top:0;z-index:5;background:#f7f7f2;padding:8px 0;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pr-msg{font-size:12.5px}
+.pr-msg.ok{color:#12B76A}.pr-msg.err{color:#b42318}
+.pr-trab::before{content:'';display:inline-block;width:10px;height:10px;margin-right:6px;border:2px solid #12B76A;border-right-color:transparent;border-radius:50%;animation:pr-g .8s linear infinite;vertical-align:-1px}
+@keyframes pr-g{to{transform:rotate(360deg)}}
+
+/* ── de estudio-tarifa.html ── */
+.tf-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){.tf-grid{grid-template-columns:1fr}}
+.tf-card{background:#fff;border:1px solid #e5e2da;border-radius:10px;padding:14px 16px}
+.tf-card h2{font-size:16px;margin:0 0 4px}
+.tf-card h3{font-size:13px;margin:16px 0 6px;color:#5f5b52;text-transform:uppercase;letter-spacing:.04em}
+.tf-tabla{width:100%;border-collapse:collapse;font-size:13px}
+.tf-tabla td,.tf-tabla th{padding:4px 6px;border-bottom:1px solid #f0ede6;text-align:left}
+.tf-tabla th{font-weight:600;color:#5f5b52;font-size:12px}
+.tf-in{width:96px;padding:5px 7px;border:1px solid #d6d2c8;border-radius:6px;font:inherit;font-size:13px;text-align:right}
+.tf-in:placeholder-shown{background:#fff7e0;border-color:#f0dc9c}
+.tf-u{color:#8a867c;font-size:12px;padding-left:4px}
+.tf-f label{display:block;font-size:12px;color:#5f5b52;margin:8px 0 2px}
+.tf-f input[type=text],.tf-f input[type=email],.tf-f textarea,.tf-f select{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
+.tf-f textarea{min-height:90px;resize:vertical}
+.tf-dos{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.tf-fp{display:grid;grid-template-columns:1fr 70px 26px;gap:6px;margin-bottom:6px}
+.tf-img{display:flex;gap:10px;align-items:center;margin-top:4px}
+.tf-img img{max-height:46px;max-width:160px;border:1px solid #e5e2da;border-radius:5px;background:#fff}
+.tf-pie{display:flex;gap:10px;align-items:center;margin-top:14px}
+.tf-ok{color:#12B76A;font-size:12.5px}
+.tf-err{color:#b42318;font-size:12.5px}
+.tf-aviso{background:#fff7e0;border:1px solid #f0dc9c;border-radius:8px;padding:8px 10px;font-size:12.5px;margin:8px 0}
+/* ── comunes (alumnos) ── */
+.eu-faltan{background:#fff7e0;border:1px solid #f0dc9c;border-radius:8px;padding:10px 12px;font-size:13px;margin:0 0 12px}
+.eu-faltan a{color:#161616;font-weight:600}
+.tf-req::after{content:' *';color:#b42318}
+/* ── base (copiada de partners-admin.css para el área de alumnos; idéntica en el admin) ── */
+.pa-hero{margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:flex-end;justify-content:space-between}
+.pa-hero h1{font-size:24px;font-weight:300;letter-spacing:-.01em;margin:0 0 .2rem}
+.pa-hero p{color:#666;font-size:13px;margin:0}
+.pa-muted{color:#999}
+.pa-btns{display:flex;gap:.35rem;flex-wrap:wrap}
+.pa-btn{display:inline-flex;align-items:center;gap:.3rem;font:inherit;font-size:12px;font-weight:600;padding:.35rem .6rem;border-radius:6px;border:1px solid #ddd;background:#fff;color:#111;text-decoration:none;cursor:pointer;white-space:nowrap}
+.pa-btn:hover{border-color:#111}
+.pa-btn.primary{background:#111;color:#fff;border-color:#111}
+.pa-btn:disabled{opacity:.45;cursor:not-allowed}

@@ -3,8 +3,12 @@
 // Estudio Curino · API del estudio (F2, 2026-10). La clave ANTHROPIC_API_KEY
 // solo vive aquí; el navegador nunca ve la clave ni el prompt de sistema.
 //
-// Acceso: F2 solo admin (F4 abrirá a alumnos activos). Cada proyecto es de
-// quien lo crea; admin ve todos.
+// Acceso (F4): admin y alumnos activos (acceso.ts: compra sin reembolso del
+// Intensivo u One-to-one, curso + 6 meses, ampliable o cortable desde el
+// admin; mientras el Estudio no esté abierto, solo accesos concedidos).
+// Cada proyecto es de quien lo crea; admin ve todos. Los alumnos tienen
+// crédito mensual de IA (402 al agotarlo). Acciones de acceso y admin en
+// acceso.ts.
 //
 // Acciones (body.action):
 //   'ping'      → llamada mínima al modelo (estado y tokens; nunca la clave).
@@ -28,6 +32,7 @@ import { construirMensajes, costeUsd, pedirAClaude, type Adjunto, type MensajeCh
 import { validarProyecto, type Proyecto } from '../_shared/estudio/esquema.ts'
 import { pdfProyecto, svgsProyecto } from './render.ts'
 import { accionPresupuesto, esAccionPresupuesto } from './presupuesto.ts'
+import { accionAdminAcceso, accionEnlace, accionYo, esAccionAdminAcceso, estadoAlumno, puedeEntrar, sinCredito } from './acceso.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -52,24 +57,46 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const body = await req.json().catch(() => ({}));
+  const action = String(body?.action || '');
+  const { data: cfg } = await supa.from('estudio_config').select('*').eq('id', 1).maybeSingle();
+
+  // Sin sesión: pedir el enlace mágico de acceso
+  if (action === 'acceso_enlace') {
+    try { return await accionEnlace(supa, cfg, body, json); }
+    catch (e) { console.error('estudio-ia acceso_enlace:', e); return json({ error: 'Error interno. Inténtalo de nuevo.' }, 500); }
+  }
 
   const jwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   const { data: u } = await supa.auth.getUser(jwt);
   if (!u?.user) return json({ error: 'unauthorized' }, 401);
   const userId = u.user.id;
+  const email = String(u.user.email || '').toLowerCase();
   const { data: rol } = await supa.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
   const esAdmin = !!rol;
-  // F2: solo admin. F4: alumnos activos (pago sin reembolso, curso + 6 meses).
-  if (!esAdmin) return json({ error: 'forbidden' }, 403);
-
-  const body = await req.json().catch(() => ({}));
-  const action = String(body?.action || '');
-  const { data: cfg } = await supa.from('estudio_config').select('*').eq('id', 1).maybeSingle();
   const modelo: string = cfg?.modelo || 'claude-sonnet-5-5';
   const clave = Deno.env.get('ANTHROPIC_API_KEY') || '';
 
   try {
+    // Alumnos: activos (compra sin reembolso, curso + meses_tras_fin) y Estudio abierto (o acceso concedido).
+    const alumno = esAdmin ? null : await estadoAlumno(supa, email);
+    if (action === 'yo') return await accionYo(supa, email, userId, esAdmin, cfg, json);
+    if (!esAdmin) {
+      const p = puedeEntrar(alumno, cfg);
+      if (!p.ok) return json({ error: p.motivo, sin_acceso: true }, 403);
+    }
+    if (esAccionAdminAcceso(action)) {
+      if (!esAdmin) return json({ error: 'forbidden' }, 403);
+      return await accionAdminAcceso(action, supa, userId, body, json);
+    }
+    // Crédito mensual de IA (solo alumnos)
+    if (!esAdmin && (action === 'mensaje' || action === 'presupuesto_textos')) {
+      const sin = sinCredito(alumno);
+      if (sin) return json({ error: sin, sin_credito: true }, 402);
+    }
+
     if (action === 'ping') {
+      if (!esAdmin) return json({ error: 'forbidden' }, 403);
       if (!clave) return json({ ok: false, error: 'ANTHROPIC_API_KEY sin configurar' });
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -217,6 +244,7 @@ Deno.serve(async (req) => {
 
     if (action === 'importar') {
       // Solo admin: JSON del proyecto pegado a mano → versión nueva (validada).
+      if (!esAdmin) return json({ error: 'forbidden' }, 403);
       const v = validarProyecto(body?.datos);
       if (!v.ok) return json({ error: 'El JSON no es válido.', errores: v.errores.slice(0, 30) }, 400);
       const numero = await nuevaVersion(v.proyecto, 'manual', String(body?.nota || 'Importado a mano').slice(0, 200));

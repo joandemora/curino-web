@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Alumnos del Estudio — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<link rel="stylesheet" href="/assets/css/estudio-ui.css">
+<style>
+.ea-cfg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px}
+@media (max-width:1000px){.ea-cfg{grid-template-columns:1fr 1fr}}
+.ea-cfg label{display:block;font-size:11.5px;color:#5f5b52;margin-bottom:2px}
+.ea-cfg input{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
+.ea-abierto{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-top:10px}
+.ea-abierto input{width:18px;height:18px;accent-color:#12B76A}
+.ea-estado{font-size:11.5px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.ea-on{background:#e7f7ee;color:#0b7a46}.ea-off{background:#f4f2ec;color:#5f5b52}.ea-cut{background:#fde8e6;color:#b42318}
+.ea-bar{height:6px;background:#eee;border-radius:3px;overflow:hidden;min-width:80px}
+.ea-bar span{display:block;height:100%;background:#12B76A}
+.ea-bar span.lleno{background:#b42318}
+.ea-acc{display:flex;flex-wrap:wrap;gap:4px}
+.ea-acc .pa-btn{padding:3px 8px;font-size:12px}
+.ea-nuevo{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ea-nuevo input{padding:6px 8px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <p><a href="/admin/partners/estudio.html">← Estudio</a></p>
+  <div class="pa-hero">
+    <div><h1>Alumnos del Estudio</h1><p>Acceso: alumnos del Intensivo y del One-to-one con pago activo, durante el curso y los meses que indiques después. Crédito mensual de IA por alumno.</p></div>
+  </div>
+  <div class="pa-kpis" id="eaKpis"></div>
+
+  <section class="tf-card" style="margin-bottom:14px">
+    <h2>Configuración</h2>
+    <div class="ea-cfg" style="margin-top:8px">
+      <div><label>Modelo</label><input id="cfModelo"></div>
+      <div><label>Crédito mensual por alumno ($)</label><input id="cfCredito" inputmode="decimal"></div>
+      <div><label>Meses de acceso tras el curso</label><input id="cfMeses" inputmode="numeric"></div>
+      <div><label>Peticiones por hora (por alumno)</label><input id="cfHora" inputmode="numeric"></div>
+      <div><label>Entrada ($/millón de tokens)</label><input id="cfPe" inputmode="decimal"></div>
+      <div><label>Salida ($/millón)</label><input id="cfPs" inputmode="decimal"></div>
+      <div><label>Escritura de caché 5 min ($/millón)</label><input id="cfPw" inputmode="decimal"></div>
+      <div><label>Lectura de caché ($/millón)</label><input id="cfPr" inputmode="decimal"></div>
+      <div><label>Tamaño máx. de archivo (MB)</label><input id="cfMb" inputmode="numeric"></div>
+      <div><label>Páginas máx. por PDF</label><input id="cfPag" inputmode="numeric"></div>
+    </div>
+    <label class="ea-abierto"><input type="checkbox" id="cfAbierto"> <span><strong>Estudio abierto a alumnos</strong> · si está desactivado, solo entran admin y los accesos «concedidos» (pruebas).</span></label>
+    <div class="tf-pie"><button class="pa-btn primary" id="cfGuardar">Guardar configuración</button><span id="cfMsg"></span></div>
+  </section>
+
+  <section class="tf-card" style="margin-bottom:14px">
+    <h2>Conceder acceso sin compra</h2>
+    <p class="pa-muted" style="font-size:12.5px;margin:2px 0 8px">Para pruebas o invitados. Entran aunque el Estudio no esté abierto.</p>
+    <div class="ea-nuevo"><input type="email" id="naEmail" placeholder="email" style="min-width:240px"><input type="date" id="naHasta" title="Hasta (vacío = sin fecha)"><input id="naNota" placeholder="Nota (opcional)"><button class="pa-btn primary" id="naOk">Conceder</button><span id="naMsg"></span></div>
+  </section>
+
+  <div class="pa-wrap">
+    <table class="pa-table">
+      <thead><tr><th>Alumno</th><th>Producto</th><th>Fin del curso</th><th>Acceso hasta</th><th>Estado</th><th>Crédito del mes</th><th>Proyectos</th><th>Acciones</th></tr></thead>
+      <tbody id="eaFilas"><tr><td colspan="8" class="pa-empty">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script src="/assets/js/estudio-ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  var ctx, datos;
+  var $ = function (q) { return document.querySelector(q); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var dia = function (d) { return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; };
+  var usd = function (n) { return Number(n || 0).toFixed(2).replace('.', ',') + ' $'; };
+  var num = function (n) { return n === null || n === undefined ? '' : String(n).replace('.', ','); };
+  var api = function (b) { return EstudioUI.api(ctx, b); };
+
+  initAdminShell({ activeSection: 'partners-estudio-alumnos', title: 'Partners · Alumnos del Estudio' })
+    .then(function (c) { ctx = { supa: c.supabase, modo: 'admin' }; return cargar(); })
+    .catch(function () {});
+
+  function msg(sel, t, ok) { var m = $(sel); m.className = ok ? 'tf-ok' : 'tf-err'; m.textContent = t; }
+
+  function cargar() {
+    return api({ action: 'admin_alumnos' }).then(function (d) {
+      datos = d;
+      var c = d.config || {};
+      $('#cfModelo').value = c.modelo || ''; $('#cfCredito').value = num(c.credito_mensual_usd); $('#cfMeses').value = c.meses_tras_fin;
+      $('#cfHora').value = c.max_llamadas_hora; $('#cfPe').value = num(c.precio_entrada); $('#cfPs').value = num(c.precio_salida);
+      $('#cfPw').value = num(c.precio_cache_escritura); $('#cfPr').value = num(c.precio_cache_lectura); $('#cfMb').value = c.max_mb; $('#cfPag').value = c.max_paginas;
+      $('#cfAbierto').checked = !!c.abierto_alumnos;
+      var activos = d.alumnos.filter(function (a) { return a.activo; }).length;
+      var gastoAlumnos = d.alumnos.reduce(function (s, a) { return s + Number(a.gastado_usd || 0); }, 0);
+      $('#eaKpis').innerHTML = [
+        ['Coste de IA este mes', usd(d.mes.coste) + ' · ' + d.mes.llamadas + ' llamadas'],
+        ['De alumnos', usd(gastoAlumnos)],
+        ['Alumnos con acceso', activos + ' de ' + d.alumnos.length],
+        ['Estudio', c.abierto_alumnos ? 'Abierto a alumnos' : 'Cerrado (solo admin y concedidos)']
+      ].map(function (k) { return '<div class="pa-kpi"><span>' + k[0] + '</span><b>' + esc(k[1]) + '</b></div>'; }).join('');
+      $('#eaFilas').innerHTML = d.alumnos.length ? d.alumnos.map(fila).join('') : '<tr><td colspan="8" class="pa-empty">Aún no hay alumnos del Intensivo ni del One-to-one con pago, ni accesos concedidos.</td></tr>';
+    }).catch(function (e) { $('#eaFilas').innerHTML = '<tr><td colspan="8" class="pa-empty">' + esc(e.message) + '</td></tr>'; });
+  }
+
+  function fila(a) {
+    var est = a.cortado ? '<span class="ea-estado ea-cut">Cortado</span>' : a.activo ? '<span class="ea-estado ea-on">Activo' + (a.concedido && !a.inicio ? ' · concedido' : '') + '</span>' : '<span class="ea-estado ea-off">Caducado</span>';
+    var pct = a.credito_usd > 0 ? Math.min(100, Math.round(100 * a.gastado_usd / a.credito_usd)) : 100;
+    return '<tr data-email="' + esc(a.email) + '"><td><strong>' + esc(a.nombre || '—') + '</strong><br><span class="pa-muted" style="font-size:12px">' + esc(a.email) + '</span>' + (a.nota ? '<br><span class="pa-muted" style="font-size:11.5px">' + esc(a.nota) + '</span>' : '') + '</td>' +
+      '<td>' + esc(a.productos || '—') + '</td><td>' + dia(a.fin_curso) + '</td>' +
+      '<td>' + (a.acceso_hasta ? dia(a.acceso_hasta) : 'Sin fecha') + (a.ampliado ? ' <span class="pa-muted" style="font-size:11px">(manual)</span>' : '') + '</td>' +
+      '<td>' + est + '</td>' +
+      '<td style="min-width:120px">' + usd(a.gastado_usd) + ' de ' + usd(a.credito_usd) + '<div class="ea-bar"><span class="' + (pct >= 100 ? 'lleno' : '') + '" style="width:' + pct + '%"></span></div></td>' +
+      '<td>' + (a.proyectos || 0) + '</td>' +
+      '<td><div class="ea-acc">' +
+      '<button class="pa-btn" data-a="ampliar">Acceso hasta…</button>' +
+      '<button class="pa-btn" data-a="' + (a.cortado ? 'restaurar' : 'cortar') + '">' + (a.cortado ? 'Restaurar' : 'Cortar') + '</button>' +
+      '<button class="pa-btn" data-a="credito">+ Crédito este mes</button>' +
+      '<button class="pa-btn" data-a="mensual">Crédito mensual…</button>' +
+      '</div></td></tr>';
+  }
+
+  // Acciones por alumno (con un pequeño formulario en línea, sin diálogos del navegador)
+  $('#eaFilas').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-a]'); if (!b) return;
+    var tr = b.closest('tr'), email = tr.dataset.email, a = b.dataset.a;
+    var hacer = function (p) { b.disabled = true; return p.then(cargar).catch(function (err) { alert(err.message); b.disabled = false; }); };
+    if (a === 'cortar' || a === 'restaurar') return hacer(api({ action: 'admin_acceso', email: email, cortado: a === 'cortar' }));
+    var actual = tr.querySelector('.ea-form'); if (actual) actual.remove();
+    var campo = a === 'ampliar' ? '<input type="date" class="ea-v"> <span class="pa-muted" style="font-size:11.5px">vacío = el calculado por la compra</span>'
+      : '<input class="ea-v" inputmode="decimal" placeholder="$" style="width:80px"> ' + (a === 'mensual' ? '<span class="pa-muted" style="font-size:11.5px">vacío = el de la configuración</span>' : '<input class="ea-n" placeholder="Nota">');
+    b.parentNode.insertAdjacentHTML('afterend', '<div class="ea-form" style="margin-top:6px">' + campo + ' <button class="pa-btn primary ea-ok">Guardar</button></div>');
+    tr.querySelector('.ea-ok').addEventListener('click', function () {
+      var v = tr.querySelector('.ea-v').value;
+      if (a === 'ampliar') return hacer(api({ action: 'admin_acceso', email: email, acceso_hasta: v || null }));
+      if (a === 'mensual') return hacer(api({ action: 'admin_acceso', email: email, credito_mensual_usd: v || null }));
+      return hacer(api({ action: 'admin_credito', email: email, usd: v, nota: (tr.querySelector('.ea-n') || {}).value }));
+    });
+  });
+
+  $('#naOk').addEventListener('click', function () {
+    api({ action: 'admin_acceso', email: $('#naEmail').value, concedido: true, cortado: false, acceso_hasta: $('#naHasta').value || null, nota: $('#naNota').value })
+      .then(function () { msg('#naMsg', 'Acceso concedido', true); $('#naEmail').value = ''; $('#naNota').value = ''; return cargar(); })
+      .catch(function (e) { msg('#naMsg', e.message); });
+  });
+
+  $('#cfGuardar').addEventListener('click', function () {
+    var v = function (id) { return $(id).value.trim().replace(',', '.'); };
+    api({ action: 'admin_config', modelo: v('#cfModelo'), credito_mensual_usd: v('#cfCredito'), meses_tras_fin: v('#cfMeses'), max_llamadas_hora: v('#cfHora'),
+      precio_entrada: v('#cfPe'), precio_salida: v('#cfPs'), precio_cache_escritura: v('#cfPw'), precio_cache_lectura: v('#cfPr'),
+      max_mb: v('#cfMb'), max_paginas: v('#cfPag'), abierto_alumnos: $('#cfAbierto').checked })
+      .then(function () { msg('#cfMsg', 'Guardado', true); return cargar(); }).catch(function (e) { msg('#cfMsg', e.message); });
+  });
+})();
+</script>
+</body>
+</html>

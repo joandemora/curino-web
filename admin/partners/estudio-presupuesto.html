@@ -6,323 +6,36 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Partners · Presupuesto del Estudio — Curino admin</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/tokens.css">
 <link rel="stylesheet" href="/assets/css/admin-shell.css">
 <link rel="stylesheet" href="/admin/partners/partners-admin.css">
-<style>
-.pr-card{background:#fff;border:1px solid #e5e2da;border-radius:10px;padding:14px 16px;margin-bottom:14px}
-.pr-cab{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px}
-@media (max-width:900px){.pr-cab{grid-template-columns:1fr 1fr}}
-.pr-f label{display:block;font-size:11.5px;color:#5f5b52;margin:0 0 2px}
-.pr-f input,.pr-f textarea{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
-.pr-f textarea{resize:vertical;min-height:54px;line-height:1.4}
-.pr-partida{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px}
-@media (max-width:1000px){.pr-partida{grid-template-columns:1fr}}
-.pr-partida h3{margin:0 0 8px;font-size:14px}
-.pr-num{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pr-num input{text-align:right}
-.pr-pend input{background:#fff7e0;border-color:#f0dc9c}
-.pr-res{margin-top:10px;font-size:13px;line-height:1.7}
-.pr-res b{font-weight:700}
-.pr-res .pr-pvp{color:#808080}
-.pr-tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:#fff7e0;color:#8a6200;border:1px solid #f0dc9c}
-.pr-des{margin-top:8px;font-size:12px}
-.pr-des table{width:100%;border-collapse:collapse}
-.pr-des td{padding:2px 4px;border-bottom:1px solid #f0ede6}
-.pr-des td:nth-child(n+2){text-align:right;white-space:nowrap}
-.pr-tot{display:flex;flex-wrap:wrap;gap:22px;align-items:baseline;font-size:14px}
-.pr-tot b{font-size:18px}
-.pr-barra{position:sticky;top:0;z-index:5;background:#f7f7f2;padding:8px 0;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.pr-msg{font-size:12.5px}
-.pr-msg.ok{color:#12B76A}.pr-msg.err{color:#b42318}
-.pr-trab::before{content:'';display:inline-block;width:10px;height:10px;margin-right:6px;border:2px solid #12B76A;border-right-color:transparent;border-radius:50%;animation:pr-g .8s linear infinite;vertical-align:-1px}
-@keyframes pr-g{to{transform:rotate(360deg)}}
-</style>
+<link rel="stylesheet" href="/assets/css/estudio-ui.css">
 </head>
 <body class="hidden-until-auth">
 <main class="ash-content">
   <p><a id="prVolver" href="/admin/partners/estudio.html">← Estudio</a> · <a href="/admin/partners/estudio-tarifa.html">Tarifa y plantilla</a></p>
-  <div class="pa-hero">
-    <div><h1 id="prTitulo">Presupuesto</h1><p id="prSub" class="pa-muted"></p></div>
-  </div>
-  <div id="prZona"><div class="pr-card pa-muted">Cargando…</div></div>
+  <div id="prApp"></div>
 </main>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="/assets/js/admin-shell.js"></script>
 <script src="/admin/partners/partners-admin.js"></script>
+<script src="/assets/js/estudio-ui.js"></script>
 <script>
-(function () {
-  'use strict';
-  var supa, proyecto, doc = null, iva = 21, versionActual = 0, ocupado = false;
-  var $ = function (q, r) { return (r || document).querySelector(q); };
-  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+initAdminShell({ activeSection: 'partners-estudio', title: 'Partners · Presupuesto' }).then(function (c) {
   var pid = new URLSearchParams(location.search).get('p') || '';
-  var r2 = function (n) { return Math.round(n * 100) / 100; };
-  var eur = function (n) { if (n === null || n === undefined) return 'PENDIENTE'; var p = Math.abs(n).toFixed(2).split('.'); return (n < 0 ? '-' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1] + ' €'; };
-  var numIn = function (v) { var t = String(v || '').trim().replace(/\./g, '').replace(',', '.'); if (t === '') return null; var n = Number(t); return isFinite(n) ? n : null; };
-  var numOut = function (n) { return n === null || n === undefined ? '' : String(n).replace('.', ','); };
-
-  initAdminShell({ activeSection: 'partners-estudio', title: 'Partners · Presupuesto' })
-    .then(function (ctx) {
-      supa = ctx.supabase;
-      $('#prVolver').href = '/admin/partners/estudio.html?p=' + encodeURIComponent(pid);
-      return supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle();
-    })
-    .then(function (r) {
-      proyecto = r && r.data;
-      if (!proyecto) { $('#prZona').innerHTML = '<div class="pr-card">Proyecto no encontrado.</div>'; return; }
-      $('#prTitulo').textContent = 'Presupuesto · ' + proyecto.nombre;
-      return api({ action: 'presupuesto', proyecto_id: pid }).then(cargar);
-    })
-    .catch(function () {});
-
-  function api(body) {
-    return supa.functions.invoke('estudio-ia', { body: body }).then(function (r) {
-      if (!r.error) return r.data;
-      var c = r.error.context;
-      return (c && c.json ? c.json() : Promise.reject(r.error)).then(function (d) { throw new Error((d && d.error) || 'Error'); });
-    });
-  }
-  function aviso(t, tipo) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; }
-
-  function cargar(d) {
-    doc = d.presupuesto; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual;
-    pintar();
-  }
-
-  function pintar() {
-    if (!doc) {
-      $('#prSub').textContent = versionActual ? 'Aún no hay presupuesto para este proyecto.' : 'El proyecto aún no tiene alzados.';
-      $('#prZona').innerHTML = '<div class="pr-card">' + (versionActual
-        ? '<p>Se crea una partida por armario de la versión v' + versionActual + ', con el precio de la tarifa (o PENDIENTE) y los textos técnicos.</p><button class="pa-btn primary" id="prGenerar">Generar presupuesto desde v' + versionActual + '</button> <span id="prMsg" class="pr-msg"></span>'
-        : '<p>Crea primero una versión en el Estudio.</p>') + '</div>';
-      return;
+  document.getElementById('prVolver').href = '/admin/partners/estudio.html?p=' + encodeURIComponent(pid);
+  EstudioUI.presupuesto(document.getElementById('prApp'), {
+    supa: c.supabase, modo: 'admin',
+    rutas: {
+      estudio: function (pid) { return '/admin/partners/estudio.html' + (pid ? '?p=' + pid : ''); },
+      presupuesto: function (pid) { return '/admin/partners/estudio-presupuesto.html?p=' + pid; },
+      datos: function () { return '/admin/partners/estudio-tarifa.html'; },
+      tarifa: function () { return '/admin/partners/estudio-tarifa.html'; }
     }
-    $('#prSub').textContent = 'Generado desde la versión v' + doc.version + (doc.version !== versionActual ? ' · el proyecto ya va por v' + versionActual : '');
-    var cab = [['numero', 'N.º de presupuesto'], ['fecha', 'Fecha', 'date'], ['atencion', 'A la atención de'], ['validez', 'Validez oferta'],
-      ['proyecto', 'Proyecto'], ['proyecto_2', 'Proyecto (2.ª línea)'], ['seccion', 'Sección']];
-    var html = '<div class="pr-barra">' +
-      '<button class="pa-btn primary" id="prGuardar">Guardar</button>' +
-      '<button class="pa-btn" id="prTextos">Redactar textos con IA</button>' +
-      '<button class="pa-btn" id="prPdf">Descargar PDF</button>' +
-      '<button class="pa-btn" id="prExcel">Descargar Excel</button>' +
-      (doc.version !== versionActual ? '<button class="pa-btn" id="prGenerar">Actualizar a v' + versionActual + '</button>' : '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>') +
-      '<span id="prMsg" class="pr-msg"></span></div>';
-    html += '<div class="pr-card pr-f"><div class="pr-cab">' + cab.map(function (c) {
-      return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]]) + '"></div>';
-    }).join('') + '</div></div>';
-    html += doc.partidas.map(function (p, i) {
-      return '<div class="pr-card pr-f" data-i="' + i + '"><div class="pr-partida"><div>' +
-        '<h3>' + esc(p.titulo) + (p.pendientes.length && !p.precio_manual ? ' <span class="pr-tag">' + p.pendientes.length + ' conceptos PENDIENTE</span>' : '') + '</h3>' +
-        '<label>Subtítulo</label><input data-p="subtitulo" value="' + esc(p.subtitulo) + '">' +
-        '<label style="margin-top:6px">Introducción</label><textarea data-p="intro" placeholder="Opcional (o «Redactar textos con IA»)">' + esc(p.intro) + '</textarea>' +
-        '<label style="margin-top:6px">Ficha técnica</label><textarea data-p="tecnico" style="min-height:96px">' + esc(p.tecnico) + '</textarea>' +
-        '<label style="margin-top:6px">Materiales</label><textarea data-p="materiales">' + esc(p.materiales) + '</textarea>' +
-        '</div><div>' +
-        '<div class="pr-num"><div><label>Cantidad</label><input data-p="cantidad" inputmode="numeric" value="' + p.cantidad + '"></div>' +
-        '<div><label>Dto. profesional %</label><input data-p="dto_pct" inputmode="decimal" value="' + numOut(p.dto_pct) + '"></div></div>' +
-        '<label style="margin-top:8px"><input type="checkbox" data-p="precio_manual"' + (p.precio_manual ? ' checked' : '') + ' style="width:auto"> Precio a mano</label>' +
-        '<div class="' + (p.precio === null ? 'pr-pend' : '') + '"><label>Precio unitario (PVP sin IVA)</label><input data-p="precio" inputmode="decimal" placeholder="PENDIENTE" value="' + numOut(p.precio) + '"' + (p.precio_manual ? '' : ' readonly') + '></div>' +
-        '<div class="pr-res" data-res></div>' +
-        '<details class="pr-des"><summary>Desglose de tarifa</summary><table>' + p.desglose.map(function (d) {
-          return '<tr><td>' + esc(d.nombre) + '</td><td>' + (d.unidad === '%' ? '' : numOut(d.cantidad) + ' ' + d.unidad) + '</td><td>' + (d.precio === null ? 'PENDIENTE' : d.unidad === '%' ? numOut(d.precio) + '%' : eur(d.precio)) + '</td><td>' + eur(d.importe) + '</td></tr>';
-        }).join('') + '</table></details>' +
-        '</div></div></div>';
-    }).join('');
-    html += '<div class="pr-card"><div class="pr-tot" id="prTot"></div></div>';
-    $('#prZona').innerHTML = html;
-    recalcular();
-  }
-
-  function leer() {
-    var d = { partidas: [] };
-    document.querySelectorAll('[data-c]').forEach(function (i) { d[i.dataset.c] = i.value; });
-    document.querySelectorAll('[data-i]').forEach(function (card) {
-      var p = doc.partidas[Number(card.dataset.i)], x = { codigo: p.codigo };
-      card.querySelectorAll('[data-p]').forEach(function (i) {
-        var k = i.dataset.p;
-        if (k === 'precio_manual') x[k] = i.checked;
-        else if (k === 'cantidad') x[k] = Math.max(1, parseInt(i.value, 10) || 1);
-        else if (k === 'dto_pct' || k === 'precio') x[k] = numIn(i.value);
-        else x[k] = i.value;
-      });
-      d.partidas.push(x);
-    });
-    return d;
-  }
-
-  function recalcular() {
-    var d = leer(), pvp = 0, imp = 0, pend = 0;
-    d.partidas.forEach(function (x, i) {
-      var p = doc.partidas[i];
-      var precio = x.precio_manual ? x.precio : p.precio;
-      var card = document.querySelector('[data-i="' + i + '"]');
-      card.querySelector('[data-p="precio"]').readOnly = !x.precio_manual;
-      var res = card.querySelector('[data-res]');
-      if (precio === null || precio === undefined) { pend++; res.innerHTML = 'PVP <span class="pr-pvp">PENDIENTE</span><br>Importe <b>PENDIENTE</b>'; return; }
-      var l = r2(precio * x.cantidad), m = r2(l * (1 - (x.dto_pct || 0) / 100));
-      pvp += l; imp += m;
-      res.innerHTML = 'PVP <span class="pr-pvp">' + eur(l) + '</span><br>Importe <b>' + eur(m) + '</b>';
-    });
-    $('#prTot').innerHTML = pend
-      ? '<span>PVP sin IVA: PENDIENTE</span><span>Importe total: <b>PENDIENTE</b></span><span class="pr-tag">' + pend + (pend === 1 ? ' partida' : ' partidas') + ' sin precio</span>'
-      : '<span>PVP sin IVA: ' + eur(r2(pvp)) + '</span><span>Dto. profesional: ' + eur(r2(imp - pvp)) + '</span><span>Importe total: <b>' + eur(r2(imp)) + '</b></span><span class="pa-muted">IVA ' + numOut(iva) + '%: ' + eur(r2(imp * iva / 100)) + '</span>';
-  }
-
-  document.addEventListener('input', function (e) { if (e.target.closest('#prZona')) recalcular(); });
-  document.addEventListener('change', function (e) { if (e.target.dataset && e.target.dataset.p === 'precio_manual') recalcular(); });
-
-  function guardar() {
-    return api({ action: 'presupuesto_guardar', proyecto_id: pid, datos: leer() }).then(cargar);
-  }
-  function trabajando(t) { var m = $('#prMsg'); if (m) { m.className = 'pr-msg pr-trab'; m.textContent = t; } }
-  function bloquear(fn, t) {
-    if (ocupado) return; ocupado = true; trabajando(t);
-    Promise.resolve().then(fn).then(function (msg) { aviso(msg || 'Hecho', 'ok'); }).catch(function (e) { aviso(e.message, 'err'); }).then(function () { ocupado = false; });
-  }
-
-  document.addEventListener('click', function (e) {
-    var id = e.target.id;
-    if (id === 'prGenerar') bloquear(function () {
-      var hay = !!doc;
-      return (hay ? guardar() : Promise.resolve()).then(function () { return api({ action: 'presupuesto_generar', proyecto_id: pid }); })
-        .then(cargar).then(function () { return hay ? 'Actualizado (se conservan precios a mano y textos editados)' : 'Presupuesto generado'; });
-    }, 'Generando…');
-    if (id === 'prGuardar') bloquear(function () { return guardar().then(function () { return 'Guardado'; }); }, 'Guardando…');
-    if (id === 'prTextos') bloquear(function () {
-      return guardar().then(function () { return api({ action: 'presupuesto_textos', proyecto_id: pid }); })
-        .then(function (d) { cargar(d); return 'Textos redactados · ' + String(d.coste_usd).replace('.', ',') + ' $'; });
-    }, 'Claude está redactando…');
-    if (id === 'prPdf') bloquear(function () {
-      return guardar().then(function () { return api({ action: 'presupuesto_pdf', proyecto_id: pid }); })
-        .then(function (d) { descargar(base64Blob(d.base64, 'application/pdf'), d.nombre); return 'PDF descargado'; });
-    }, 'Generando PDF…');
-    if (id === 'prExcel') bloquear(function () {
-      return guardar().then(function () { return api({ action: 'presupuesto_dibujos', proyecto_id: pid }); }).then(excel);
-    }, 'Generando Excel…');
-  });
-
-  function base64Blob(b64, tipo) { var bin = atob(b64), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type: tipo }); }
-  function descargar(blob, nombre) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); }
-
-  // SVG → PNG (para incrustarlo en el Excel)
-  function png(svg, anchoPx) {
-    return new Promise(function (ok, ko) {
-      var img = new Image();
-      img.onload = function () {
-        var k = anchoPx / img.width, c = document.createElement('canvas');
-        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-        var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
-        ok({ data: c.toDataURL('image/png'), w: c.width, h: c.height });
-      };
-      img.onerror = function () { ko(new Error('No se ha podido dibujar el alzado para el Excel.')); };
-      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
-    });
-  }
-
-  // Excel con la misma estructura que el presupuesto de referencia: una partida por bloque y su dibujo debajo.
-  function excel(d) {
-    var pl = d.plantilla, ivaPct = d.iva_pct == null ? 21 : Number(d.iva_pct);
-    var wb = new ExcelJS.Workbook();
-    var ws = wb.addWorksheet(('PRESUPUESTO ' + (doc.numero || '')).trim().slice(0, 31), { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } } });
-    ws.columns = [6.2, 10.3, 20.2, 20.3, 8.2, 8.2, 8.2, 11.3, 11.3, 12.5, 14].map(function (w) { return { width: w }; });
-    var F = 'Open Sans', EUR = '#,##0.00 "€"';
-    var put = function (ref, v, o) { var c = ws.getCell(ref); c.value = v; c.font = Object.assign({ name: F, size: 8 }, (o && o.font) || {}); if (o && o.al) c.alignment = o.al; if (o && o.fmt) c.numFmt = o.fmt; if (o && o.fill) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } }; return c; };
-    var gris = { color: { argb: 'FF808080' } };
-    var tareas = [];
-    // Cabecera
-    if (pl.tipo === 'curino') tareas.push(png(d.logo, 360).then(function (im) { ws.addImage(wb.addImage({ base64: im.data, extension: 'png' }), { tl: { col: 1, row: 1 }, ext: { width: 160, height: 160 * im.h / im.w } }); }));
-    else put('B3', pl.empresa, { font: { size: 16, bold: true } });
-    [pl.direccion_1, pl.direccion_2, pl.email, pl.telefono].forEach(function (t, k) { if (t) put('K' + (4 + k), t, { font: { size: 7, color: { argb: 'FF434343' } }, al: { horizontal: 'right' } }); });
-    if (pl.lema) put('K9', pl.lema, { font: { size: 11, bold: true }, al: { horizontal: 'right' } });
-    put('B11', 'PRESUPUESTO', { font: { size: 15 } });
-    put('B12', new Date(doc.fecha + 'T12:00:00'), { fmt: 'd/m/yyyy' });
-    [['B', 'A LA ATENCIÓN DE', doc.atencion], ['D', 'PROYECTO', doc.proyecto], ['F', 'N.º DE PRESUPUESTO', doc.numero], ['J', 'VALIDEZ OFERTA', doc.validez]].forEach(function (c) {
-      put(c[0] + '14', c[1], { font: { color: { argb: 'FF434343' } } }); put(c[0] + '15', String(c[2] || '').toUpperCase(), { font: { size: 7, color: { argb: 'FF666666' } } });
-    });
-    if (doc.proyecto_2) put('D16', doc.proyecto_2.toUpperCase(), { font: { size: 7, color: { argb: 'FF666666' } } });
-
-    var fila = 19, filasLinea = [];
-    var cabecera = function () {
-      ['CANTIDAD', 'PRODUCTO', 'MATERIAL Y GROSOR', 'MEDIDAS EN CM', '', '', 'PRECIO', 'PVP', 'DTO. PROFESIONAL', 'IMPORTE'].forEach(function (t, k) {
-        if (t) put(String.fromCharCode(66 + k) + fila, t, { font: { color: { argb: 'FF404040' } }, al: { horizontal: 'center', vertical: 'middle', wrapText: true } });
-      });
-      ws.mergeCells('E' + fila + ':G' + fila);
-      ['ANCHO', 'ALTO', 'FONDO'].forEach(function (t, k) { put(String.fromCharCode(69 + k) + (fila + 1), t, { font: { size: 7, color: { argb: 'FF404040' } }, al: { horizontal: 'center' } }); });
-      for (var col = 2; col <= 11; col++) { ws.getCell(fila, col).border = { top: { style: 'thin' } }; ws.getCell(fila + 1, col).border = { bottom: { style: 'thin' } }; }
-      put('B' + (fila + 2), doc.seccion, { font: { bold: true } });
-      fila += 3;
-    };
-    doc.partidas.forEach(function (p) {
-      cabecera();
-      var texto = [p.titulo, p.subtitulo, '', p.intro, p.intro ? '' : null, p.tecnico, '', p.materiales].filter(function (x) { return x !== null; }).join('\n').replace(/\n{3,}/g, '\n\n');
-      var lineas = texto.split('\n').reduce(function (n, l) { return n + Math.max(1, Math.ceil(l.length / 62)); }, 0);
-      var r = fila;
-      ws.mergeCells('C' + r + ':G' + r);
-      var c = put('C' + r, { richText: [{ text: p.titulo + '\n', font: { name: F, size: 8, bold: true } }, { text: texto.slice(p.titulo.length + 1), font: { name: F, size: 8 } }] }, { al: { wrapText: true, vertical: 'top' } });
-      ws.getRow(r).height = Math.min(409, lineas * 11 + 6);
-      put('B' + r, p.cantidad, { al: { horizontal: 'center', vertical: 'middle' } });
-      if (p.precio === null) put('H' + r, 'PENDIENTE', { al: { horizontal: 'right', vertical: 'middle' } });
-      else put('H' + r, p.precio, { fmt: EUR, al: { vertical: 'middle' } });
-      put('I' + r, p.precio === null ? 'PENDIENTE' : { formula: 'H' + r + '*B' + r }, { fmt: EUR, font: gris.color ? { color: gris.color } : {}, al: { horizontal: 'right', vertical: 'middle' } });
-      put('J' + r, (p.dto_pct || 0) / 100, { fmt: '0%', al: { horizontal: 'center', vertical: 'middle' } });
-      put('K' + r, p.precio === null ? 'PENDIENTE' : { formula: 'I' + r + '*(1-J' + r + ')' }, { fmt: EUR, font: { bold: true }, al: { horizontal: 'right', vertical: 'middle' } });
-      for (var col = 2; col <= 11; col++) ws.getCell(r, col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
-      void c;
-      filasLinea.push(r);
-      var dib = d.dibujos.filter(function (x) { return x.codigo === p.codigo; })[0];
-      fila = r + 1;
-      if (dib) {
-        var filaImg = fila;
-        var anchoPx = 620, altoPx = anchoPx * dib.alto / dib.ancho;
-        var nFilas = Math.ceil(altoPx / 20) + 1;
-        tareas.push(png(dib.svg, 1400).then(function (im) {
-          ws.addImage(wb.addImage({ base64: im.data, extension: 'png' }), { tl: { col: 2, row: filaImg }, ext: { width: anchoPx, height: altoPx } });
-        }));
-        fila += nFilas;
-      }
-      fila += 2;
-    });
-
-    // Totales
-    var sum = function (col) { return filasLinea.map(function (r) { return col + r; }).join(','); };
-    var hayPend = doc.partidas.some(function (p) { return p.precio === null; });
-    var t = fila + 1;
-    put('B' + t, 'FORMA DE PAGO', { font: { bold: true } });
-    (pl.forma_pago || []).forEach(function (fp, k) { put('B' + (t + 1 + k), fp.concepto); put('D' + (t + 1 + k), fp.pct / 100, { fmt: '0%' }); });
-    put('H' + t, 'PVP SIN IVA'); put('K' + t, hayPend ? 'PENDIENTE' : { formula: 'SUM(' + sum('I') + ')' }, { fmt: EUR, font: gris.color ? { color: gris.color } : {}, al: { horizontal: 'right' } });
-    put('H' + (t + 2), 'DTO. PROFESIONAL'); put('K' + (t + 2), hayPend ? 'PENDIENTE' : { formula: 'SUM(' + sum('K') + ')-SUM(' + sum('I') + ')' }, { fmt: EUR, al: { horizontal: 'right' } });
-    put('H' + (t + 3), 'IMPORTE TOTAL', { font: { bold: true } }); put('K' + (t + 3), hayPend ? 'PENDIENTE' : { formula: 'SUM(' + sum('K') + ')' }, { fmt: EUR, font: { bold: true }, al: { horizontal: 'right' } });
-    if (pl.mostrar_iva) {
-      put('H' + (t + 4), 'IVA (' + ivaPct + '%)'); put('K' + (t + 4), hayPend ? 'PENDIENTE' : { formula: 'K' + (t + 3) + '*' + ivaPct / 100 }, { fmt: EUR, al: { horizontal: 'right' } });
-      put('H' + (t + 5), 'TOTAL CON IVA', { font: { bold: true } }); put('K' + (t + 5), hayPend ? 'PENDIENTE' : { formula: 'K' + (t + 3) + '+K' + (t + 4) }, { fmt: EUR, font: { bold: true }, al: { horizontal: 'right' } });
-    } else put('K' + (t + 4), 'IMPUESTOS IVA NO INCLUIDOS', { font: { size: 7 }, al: { horizontal: 'right' } });
-    var y = t + Math.max(5, (pl.forma_pago || []).length + 2);
-    if (pl.iban) { put('B' + y, 'TRANSFERENCIA BANCARIA', { font: { bold: true } }); put('B' + (y + 1), pl.iban); y += 2; }
-    y += 2;
-    (pl.condiciones || '').split('\n').forEach(function (l) {
-      ws.mergeCells('B' + y + ':K' + y);
-      put('B' + y, l, { font: /:\s*$/.test(l) ? {} : { color: { argb: 'FF808080' } }, al: { wrapText: true, vertical: 'top' } });
-      ws.getRow(y).height = Math.max(12, Math.ceil(l.length / 135) * 11);
-      y++;
-    });
-    y += 2;
-    if (pl.ciudad_firma) put('B' + y, 'EN ' + pl.ciudad_firma.toUpperCase() + ' A,');
-    put('B' + (y + 2), new Date(doc.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), { font: { bold: true } });
-    y += 5;
-    put('B' + y, 'CLIENTE', { font: { bold: true, size: 9 } }); put('B' + (y + 1), (doc.atencion || '').toUpperCase());
-    put('H' + y, (pl.empresa || '').toUpperCase(), { font: { bold: true, size: 9 } });
-    [pl.nif, [pl.direccion_1, pl.direccion_2].filter(Boolean).join(' '), pl.cargo, pl.firmante].forEach(function (l, k) { if (l) put('H' + (y + 1 + k), l, { font: k === 2 ? { bold: true } : {} }); });
-
-    return Promise.all(tareas).then(function () { return wb.xlsx.writeBuffer(); }).then(function (buf) {
-      descargar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Presupuesto_' + (doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_') + '.xlsx');
-      return 'Excel descargado';
-    });
-  }
-})();
+  }, pid);
+}).catch(function () {});
 </script>
 </body>
 </html>

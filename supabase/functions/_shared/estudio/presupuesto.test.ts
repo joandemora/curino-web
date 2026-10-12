@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Proyecto } from './esquema.ts';
 import { contarArmario, precioArmario, claveCuerpo, TARIFA_PENDIENTE, CONCEPTOS, eur, type Tarifa } from './tarifa.ts';
-import { generarPresupuesto, totales, validarPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO, textoModulo } from './presupuesto.ts';
+import { generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO, textoModulo } from './presupuesto.ts';
 
 const ejemplo = (): Proyecto => JSON.parse(readFileSync(new URL('./ejemplos/a01-a03.json', import.meta.url), 'utf8'));
 const tarifaPrueba = (): Tarifa => ({ valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, c.unidad === '%' ? 10 : 100])), descuento_pct: 30, iva_pct: 21 });
@@ -87,4 +87,12 @@ test('un alumno no puede emitir con los datos de SISTEMA & CURINO', () => {
   assert.match(validarPlantilla({ ...PLANTILLA_ALUMNO, nif: 'B-24788580' }, false)!, /tus datos/);
   assert.match(validarPlantilla({ ...PLANTILLA_ALUMNO, iban: 'ES12 3456 7890 1234' }, false, 'ES1234567890 1234')!, /IBAN es de Curino/);
   assert.equal(validarPlantilla({ ...PLANTILLA_ALUMNO, empresa: 'Armarios Pérez', nif: '12345678Z' }, false), null);
+});
+
+test('qué le falta a un alumno para descargar', () => {
+  assert.deepEqual(faltanPlantilla(PLANTILLA_ALUMNO), ['Empresa', 'NIF / CIF', 'Dirección completa', 'Email', 'Teléfono', 'IBAN', 'Firmante', 'Firma']);
+  const completa = { ...PLANTILLA_ALUMNO, empresa: 'Armarios Pérez', nif: '12345678Z', direccion_1: 'C/ Mayor 1', direccion_2: '28001 Madrid', email: 'a@b.es', telefono: '600', iban: 'ES00 1234', firmante: 'Ana', firma_path: 'u/plantilla/firma.png' };
+  assert.deepEqual(faltanPlantilla(completa), []);
+  assert.deepEqual(faltanPlantilla({ ...completa, tipo: 'propia' }), ['Logo (plantilla propia)']);
+  assert.equal(PLANTILLA_ADMIN.direccion_1, 'Carrer de Balmes 252, 5-2');
 });
