@@ -77,7 +77,7 @@ test('textos automáticos', () => {
   const p = ejemplo();
   assert.equal(subtituloAuto(p.armarios[2]), '2 módulos de 104 cm + 1 módulo de 52 cm · 260 × 248 × 60 cm · 5 puertas de 52 cm');
   assert.equal(descripcionFrente(p.armarios[0].cuerpos[0].frente), 'Puertas abatibles molduradas lacadas');
-  assert.equal(fmtCm(47.5), '47.5');
+  assert.equal(fmtCm(47.5), '47,5');
   assert.equal(fmtCm(95), '95');
 });
 
@@ -86,7 +86,7 @@ test('láminas: formato, cotas y pies como en la referencia', () => {
   assert.deepEqual(laminas.map((l) => l.formato), ['A3', 'A4', 'A3']);
   const textos = (i: number) => laminas[i].prims.filter((x) => x.k === 'text').map((x) => (x as { t: string }).t);
   const t1 = textos(0);
-  for (const t of ['A.01  ARMARIO A MEDIDA EN L', '190 cm', '280 cm', 'altillo 50', '47.5', '2 cm a suelo',
+  for (const t of ['A.01  ARMARIO A MEDIDA EN L', '190 cm', '280 cm', 'altillo 50', '47,5', '2 cm a suelo',
     'CUERPO PRINCIPAL · INTERIOR', 'CUERPO PRINCIPAL · CERRADO · 3 puertas + 1 frente fijo',
     'LATERAL · fondo 40 · CERRADO · 2 puertas', 'Cajonera 4 cajones', 'Perchero superior', 'Barra de colgar',
     'Presupuesto PRUEBA · Cliente PRUEBA']) {

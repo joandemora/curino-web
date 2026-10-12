@@ -116,10 +116,10 @@ const CENTRO_VERTICAL = 0.511;
 const A3_DESDE_CM = 480;     // ancho de vistas a partir del cual se usa A3
 
 // ── Utilidades ──────────────────────────────────────────────────────
-/** 47.5, 95, 0.3 — como en los alzados de referencia (punto decimal). */
+/** 47,5 · 95 · 0,3 — coma decimal española. */
 export function fmtCm(n: number): string {
   const r = Math.round(n * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  return Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ',');
 }
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
