@@ -49,7 +49,7 @@ window.PA = (function () {
     var tel = ((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
     var nombre = String(s.nombre || '').split(' ')[0];
     var txt = 'Hola ' + nombre + ', soy Juan de Mora, de Curino 👋 He visto tu solicitud para el intensivo Curino Partners. ¿Te surgió alguna duda al ver la información? Encantado de resolvértela.';
-    return 'https://wa.me/' + tel + '?text=' + encodeURIComponent(txt);
+    return 'https://api.whatsapp.com/send?phone=' + tel + '&text=' + encodeURIComponent(txt);
   }
   function mailUrl(s) {
     var nombre = String(s.nombre || '').split(' ')[0];

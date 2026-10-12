@@ -16,7 +16,7 @@ export async function sendOneToOneWelcomeEmail(to: string, nombre: string, pdfBy
   const reserva = Deno.env.get('SESION_RESERVA_URL');
   if (!reserva) console.warn('one-to-one-emails: SESION_RESERVA_URL sin configurar — el email sale sin enlace para agendar');
   const nombreCorto = String(nombre || '').trim().split(' ')[0] || 'hola';
-  const wa = `https://wa.me/${WA}?text=${encodeURIComponent(`Hola Juan, soy ${nombreCorto}. Acabo de empezar el one-to-one.`)}`;
+  const wa = `https://api.whatsapp.com/send?phone=${WA}&text=${encodeURIComponent(`Hola Juan, soy ${nombreCorto}. Acabo de empezar el one-to-one.`)}`;
   const boton = (url: string, txt: string) =>
     `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#12B76A;color:#ffffff;font-weight:bold;padding:12px 22px;text-decoration:none;border-radius:8px;">${escapeHtml(txt)}</a></p>`;
   const html = `

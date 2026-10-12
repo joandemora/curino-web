@@ -60,7 +60,7 @@
       if (!d || !d.lead) { location.replace('/partners/#solicitud'); return; }
       var l = d.lead, nombre = String(l.nombre || '').split(' ')[0];
       $('#ll-titulo').textContent = (nombre ? nombre + ', reserva' : 'Reserva') + ' tu llamada de admisión';
-      $('#ll-wa').href = 'https://wa.me/34611965612?text=' + encodeURIComponent('Hola Juan, soy ' + (nombre || '…') + '. Tengo una duda sobre la llamada de admisión del intensivo.');
+      $('#ll-wa').href = 'https://api.whatsapp.com/send?phone=34611965612&text=' + encodeURIComponent('Hola Juan, soy ' + (nombre || '…') + '. Tengo una duda sobre la llamada de admisión del intensivo.');
       if (l.llamada_at) {
         $('#ll-texto').hidden = false;
         $('#ll-texto').textContent = 'Ya tienes una llamada reservada para el ' + new Date(l.llamada_at).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })

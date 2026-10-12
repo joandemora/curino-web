@@ -152,7 +152,7 @@ export async function construirVars(
     // Llamada de admisión: con token va al calendario con los datos
     // prellenados; sin token, al formulario de /partners.
     enlace_llamada: token ? `${SITE}/partners/llamada/${q}` : `${SITE}/partners/#solicitud`,
-    enlace_whatsapp: `https://wa.me/${WA}?text=${encodeURIComponent(`Hola Juan, soy ${nombre || 'yo'}. Tengo una duda sobre el intensivo Curino Partners.`)}`,
+    enlace_whatsapp: `https://api.whatsapp.com/send?phone=${WA}&text=${encodeURIComponent(`Hola Juan, soy ${nombre || 'yo'}. Tengo una duda sobre el intensivo Curino Partners.`)}`,
     plazas_libres: libres === null ? '' : String(libres),
     plazas_totales: abierta ? String(abierta.plazas_totales) : '',
     precio_oferta_sesion: eur(SESION.precioOfertaCents),
