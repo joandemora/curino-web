@@ -2,3 +2,6 @@ Inter (Rasmus Andersson) · SIL Open Font License 1.1 · https://github.com/rsms
 Inter-Regular.ttf e Inter-Bold.ttf: instancias estáticas (wght 400 / 700, opsz 14)
 de la fuente variable, recortadas a latín (U+0020–017F, puntuación, €, ×) y con
 los glifos compuestos descompuestos para que pdf-lib/fontkit puedan subconjuntarlas.
+Open Sans (Steve Matteson) · SIL Open Font License 1.1 · https://github.com/googlefonts/opensans
+OpenSans-Regular.ttf y OpenSans-Bold.ttf: instancias estáticas (wght 400 / 700, wdth 100),
+mismo recorte a latín y glifos compuestos descompuestos. Base64 en opensans.ts.

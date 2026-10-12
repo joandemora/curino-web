@@ -15,15 +15,15 @@ import type { Lamina, Medir, Prim } from './alzado.ts';
 import { LOGO_ALTO, LOGO_PATH } from './logo.ts';
 
 // Tipos mínimos de pdf-lib que usamos (evita depender del paquete aquí).
-interface Fuente { widthOfTextAtSize(t: string, size: number): number }
+export interface Fuente { widthOfTextAtSize(t: string, size: number): number }
 interface Color { type: string }
-interface Pagina {
+export interface Pagina {
   drawRectangle(o: Record<string, unknown>): void;
   drawLine(o: Record<string, unknown>): void;
   drawSvgPath(path: string, o: Record<string, unknown>): void;
   drawText(t: string, o: Record<string, unknown>): void;
 }
-interface Documento { addPage(size: [number, number]): Pagina }
+export interface Documento { addPage(size: [number, number]): Pagina }
 export interface LibPdf {
   rgb(r: number, g: number, b: number): Color;
   degrees(d: number): unknown;
@@ -34,52 +34,60 @@ export function medirConFuentes(f: FuentesPdf): Medir {
   return (t, size, bold) => (bold ? f.bold : f.regular).widthOfTextAtSize(t, size);
 }
 
-export function pintarLaminas(doc: Documento, laminas: Lamina[], fuentes: FuentesPdf, lib: LibPdf): void {
-  const color = (hex: string) => {
-    const v = parseInt(hex.slice(1), 16);
-    return lib.rgb(((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255);
-  };
-  for (const l of laminas) {
-    const page = doc.addPage([l.ancho, l.alto]);
-    const H = l.alto;
-    for (const p of l.prims) pintar(page, p, H);
-  }
+export function colorPdf(lib: LibPdf, hex: string): Color {
+  const v = parseInt(hex.slice(1), 16);
+  return lib.rgb(((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255);
+}
 
-  function pintar(page: Pagina, p: Prim, H: number) {
+export function pintarLaminas(doc: Documento, laminas: Lamina[], fuentes: FuentesPdf, lib: LibPdf): void {
+  for (const l of laminas) pintarPrims(doc.addPage([l.ancho, l.alto]), l.prims, l.alto, fuentes, lib);
+}
+
+/**
+ * Pinta primitivas (pt, y hacia abajo) en una página de alto H. Con t, cada
+ * punto pasa a (dx + x·s, dy + y·s): así se encaja un dibujo en otra página
+ * (p. ej. bajo cada partida del presupuesto); grosores y textos escalan igual.
+ */
+export function pintarPrims(page: Pagina, prims: Prim[], H: number, fuentes: FuentesPdf, lib: LibPdf, t = { s: 1, dx: 0, dy: 0 }): void {
+  const color = (hex: string) => colorPdf(lib, hex);
+  const X = (x: number) => t.dx + x * t.s;
+  const Y = (y: number) => H - (t.dy + y * t.s);
+  for (const p of prims) {
     switch (p.k) {
       case 'rect':
         page.drawRectangle({
-          x: p.x, y: H - p.y - p.h, width: p.w, height: p.h,
+          x: X(p.x), y: Y(p.y + p.h), width: p.w * t.s, height: p.h * t.s,
           ...(p.fill ? { color: color(p.fill), opacity: p.opacity ?? 1 } : {}),
-          ...(p.stroke ? { borderColor: color(p.stroke), borderWidth: p.sw ?? 1 } : { borderWidth: 0 })
+          ...(p.stroke ? { borderColor: color(p.stroke), borderWidth: (p.sw ?? 1) * t.s } : { borderWidth: 0 })
         });
         break;
       case 'line':
-        page.drawLine({ start: { x: p.x1, y: H - p.y1 }, end: { x: p.x2, y: H - p.y2 }, thickness: p.sw, color: color(p.stroke) });
+        page.drawLine({ start: { x: X(p.x1), y: Y(p.y1) }, end: { x: X(p.x2), y: Y(p.y2) }, thickness: p.sw * t.s, color: color(p.stroke) });
         break;
       case 'poly': {
-        const d = 'M ' + p.pts.map(([x, y]) => `${x} ${y}`).join(' L ') + ' Z';
+        const d = 'M ' + p.pts.map(([x, y]) => `${t.dx + x * t.s} ${t.dy + y * t.s}`).join(' L ') + ' Z';
         page.drawSvgPath(d, {
           x: 0, y: H,
           ...(p.fill ? { color: color(p.fill), opacity: p.opacity ?? 1 } : {}),
-          ...(p.stroke ? { borderColor: color(p.stroke), borderWidth: p.sw ?? 1, borderOpacity: p.opacity ?? 1 } : {})
+          ...(p.stroke ? { borderColor: color(p.stroke), borderWidth: (p.sw ?? 1) * t.s, borderOpacity: p.opacity ?? 1 } : {})
         });
         break;
       }
       case 'text': {
         const font = p.bold ? fuentes.bold : fuentes.regular;
-        const w = font.widthOfTextAtSize(p.t, p.size);
+        const size = p.size * t.s;
+        const w = font.widthOfTextAtSize(p.t, size);
         const off = p.anchor === 'middle' ? w / 2 : p.anchor === 'end' ? w : 0;
         if (p.vertical) {
           // Se lee de abajo arriba; el ancla va a lo largo del eje vertical.
-          page.drawText(p.t, { x: p.x, y: H - p.y - off, size: p.size, font, color: color(p.color), rotate: lib.degrees(90) });
+          page.drawText(p.t, { x: X(p.x), y: Y(p.y) - off, size, font, color: color(p.color), rotate: lib.degrees(90) });
         } else {
-          page.drawText(p.t, { x: p.x - off, y: H - p.y, size: p.size, font, color: color(p.color) });
+          page.drawText(p.t, { x: X(p.x) - off, y: Y(p.y), size, font, color: color(p.color) });
         }
         break;
       }
       case 'logo':
-        page.drawSvgPath(LOGO_PATH, { x: p.x, y: H - p.y, scale: p.h / LOGO_ALTO, color: color(p.color) });
+        page.drawSvgPath(LOGO_PATH, { x: X(p.x), y: Y(p.y), scale: (p.h * t.s) / LOGO_ALTO, color: color(p.color) });
         break;
     }
   }

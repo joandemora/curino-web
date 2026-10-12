@@ -46,7 +46,8 @@ INTERIOR DE CADA MÓDULO: zonas de arriba abajo; entre dos zonas hay siempre una
 
 FORMATO
 - codigo A.01, A.02… en orden; titulo en mayúsculas tipo «ARMARIO A MEDIDA 200 cm» o «ARMARIO A MEDIDA EN L»; sin subtítulo ni formato (se generan solos).
-- frente.acabado en singular y minúsculas («lacada», «roble natural»); modelo «moldurada» o «lisa»; apertura «abatible» o «corredera».
+- frente.acabado en singular y minúsculas («lacada», «roble natural»); modelo «moldurada» o «lisa» (el de la mayoría de puertas); apertura «abatible» o «corredera».
+- Si en un mismo frente hay puertas lisas y molduradas, pon el modelo general en el frente y «modelo» solo en las puertas que sean distintas.
 - notas solo si aportan algo técnico (máx. una frase).
 - Solo existe lo que está en el esquema. Los tiradores los coloca el dibujo (por parejas, en las puertas que se juntan; «tirador» de una puerta solo para cambiar el lado). No prometas en el mensaje detalles que el esquema no recoge (colores, herrajes concretos, iluminación…): si el alumno los pide, dile que van en las notas o en el presupuesto.
 
@@ -214,5 +215,67 @@ export async function pedirAClaude(o: {
   return {
     resultado: { tipo: 'error', mensaje: 'La IA no ha conseguido un proyecto coherente. Revisa las medidas o dale más detalle.', errores: ultimosErrores },
     llamadas
+  };
+}
+
+// ── Textos del presupuesto (F3) ─────────────────────────────────────
+// Claude solo redacta subtítulo e introducción de cada partida; las líneas
+// técnicas (medidas, módulos) salen del JSON y no se tocan.
+export const SISTEMA_TEXTOS = `Redactas los textos comerciales de las partidas de un presupuesto de armarios a medida (Curino Partners). Para cada partida devuelves:
+- subtitulo: una frase de máximo 90 caracteres del estilo «Armario a medida de 200 cm con puertas molduradas lacadas» o «Armario en L a medida con puertas molduradas lacadas».
+- intro: 1 o 2 frases (máximo 300 caracteres) que describan el conjunto para el cliente final, con tono sobrio y profesional. Puede quedar vacía si no aporta.
+Reglas: español de España; no inventes medidas, materiales, marcas ni prestaciones que no estén en la ficha; las medidas, si las citas, en cm y exactamente como en la ficha. Responde SIEMPRE con la herramienta redactar_textos.`;
+
+const HERRAMIENTA_TEXTOS = {
+  name: 'redactar_textos',
+  description: 'Devuelve subtítulo e introducción de cada partida.',
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['partidas'],
+    properties: {
+      partidas: {
+        type: 'array',
+        items: {
+          type: 'object', additionalProperties: false, required: ['codigo', 'subtitulo', 'intro'],
+          properties: { codigo: { type: 'string' }, subtitulo: { type: 'string', maxLength: 120 }, intro: { type: 'string', maxLength: 400 } }
+        }
+      }
+    }
+  },
+  cache_control: { type: 'ephemeral' }
+};
+
+export async function redactarTextos(o: {
+  clave: string; modelo: string; proyecto: Proyecto;
+  partidas: { codigo: string; titulo: string; tecnico: string; materiales: string }[];
+  fetch?: typeof fetch;
+}): Promise<{ textos: { codigo: string; subtitulo: string; intro: string }[] | null; llamadas: Llamada[]; error?: string }> {
+  const f = o.fetch ?? fetch;
+  const ficha = o.partidas.map((p) => `### ${p.codigo} · ${p.titulo}\n${p.tecnico}\n${p.materiales}`).join('\n\n');
+  const r = await f('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': o.clave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: o.modelo, max_tokens: 4000,
+      system: [{ type: 'text', text: SISTEMA_TEXTOS, cache_control: { type: 'ephemeral' } }],
+      tools: [HERRAMIENTA_TEXTOS],
+      messages: [{ role: 'user', content: `Ficha técnica de las partidas:\n\n${ficha}\n\nProyecto (JSON):\n${JSON.stringify(o.proyecto)}` }]
+    })
+  });
+  const d = await r.json().catch(() => ({}));
+  const uso: Uso = {
+    input_tokens: d?.usage?.input_tokens ?? 0, output_tokens: d?.usage?.output_tokens ?? 0,
+    cache_creation_input_tokens: d?.usage?.cache_creation_input_tokens ?? 0, cache_read_input_tokens: d?.usage?.cache_read_input_tokens ?? 0
+  };
+  const llamadas = [{ uso, ok: r.ok }];
+  if (!r.ok) return { textos: null, llamadas, error: d?.error?.type ?? `http_${r.status}` };
+  const b = (d.content ?? []).find((x: Bloque) => x.type === 'tool_use') as { input?: { partidas?: unknown } } | undefined;
+  const lista = Array.isArray(b?.input?.partidas) ? b!.input!.partidas as Record<string, unknown>[] : null;
+  if (!lista) return { textos: null, llamadas, error: 'sin_textos' };
+  const codigos = new Set(o.partidas.map((p) => p.codigo));
+  return {
+    llamadas,
+    textos: lista
+      .filter((x) => codigos.has(String(x.codigo)))
+      .map((x) => ({ codigo: String(x.codigo), subtitulo: String(x.subtitulo ?? '').slice(0, 120), intro: String(x.intro ?? '').slice(0, 400) }))
   };
 }

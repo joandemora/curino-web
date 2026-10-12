@@ -98,6 +98,20 @@ test('láminas: formato, cotas y pies como en la referencia', () => {
   assert.deepEqual(laton, [5, 4, 5]);
 });
 
+test('puertas lisas y molduradas en el mismo frente', () => {
+  const p = ejemplo();
+  const f = p.armarios[1].cuerpos[0].frente;
+  (f.piezas[0] as any).modelo = 'lisa';
+  (f.piezas[1] as any).modelo = 'lisa';
+  assert.deepEqual(errores(p), []);
+  assert.equal(descripcionFrente(f), 'Puertas abatibles molduradas y lisas lacadas');
+  // 2 puertas molduradas × 2 paneles × 2 líneas de moldura = 8 rectángulos sin relleno
+  const molduras = laminasProyecto(p)[1].prims.filter((x) => x.k === 'rect' && !x.fill && x.stroke === '#1d1d1b').length;
+  assert.equal(molduras, 8);
+  (f.piezas[2] as any).modelo = 'cristal';
+  assert.match(errores(p).join('\n'), /piezas\[2\]\.modelo: valor no válido/);
+});
+
 test('SVG bien formado', () => {
   const svg = laminaSvg(laminasProyecto(ejemplo())[1]);
   assert.ok(svg.startsWith('<svg') && svg.endsWith('</svg>'));

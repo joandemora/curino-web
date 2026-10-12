@@ -25,6 +25,7 @@
 
 export type Formato = 'A3' | 'A4';
 export type LadoTirador = 'izq' | 'der';
+export type ModeloPuerta = 'moldurada' | 'lisa';
 
 export type Zona =
   | { tipo: 'altillo'; alto: number; etiqueta?: string }
@@ -43,12 +44,12 @@ export interface Modulo {
 }
 
 export type PiezaFrente =
-  | { tipo: 'puerta'; ancho: number; tirador?: LadoTirador }
+  | { tipo: 'puerta'; ancho: number; tirador?: LadoTirador; modelo?: ModeloPuerta }
   | { tipo: 'fijo'; ancho: number; etiqueta?: string };
 
 export interface Frente {
   apertura: 'abatible' | 'corredera';
-  modelo: 'moldurada' | 'lisa';
+  modelo: ModeloPuerta;        // por defecto de todas las puertas del frente
   acabado?: string;            // «lacada», «roble natural»…
   tirador?: 'laton' | 'ninguno';
   separacion_suelo?: number;   // cm entre puertas y suelo (def. 2)
@@ -169,7 +170,7 @@ export const ESQUEMA_JSON = {
                       type: 'array', minItems: 1, maxItems: 16,
                       items: {
                         oneOf: [
-                          { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'puerta' }, ancho: num(20, 120, 'Ancho de la puerta en cm.'), tirador: { enum: ['izq', 'der'] } } },
+                          { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'puerta' }, ancho: num(20, 120, 'Ancho de la puerta en cm.'), tirador: { enum: ['izq', 'der'] }, modelo: { enum: ['moldurada', 'lisa'], description: 'Solo si esta puerta es distinta del modelo del frente.' } } },
                           { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'fijo' }, ancho: num(3, 200, 'Ancho del frente fijo en cm.'), etiqueta } }
                         ]
                       }
@@ -327,8 +328,9 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
         const rp = `${rf}.piezas[${ip}]`;
         if (!esObj(p)) { err(rp, 'debe ser un objeto'); frenteOk = false; return; }
         if (p.tipo === 'puerta') {
-          campos(p, rp, ['tipo', 'ancho', 'tirador']);
+          campos(p, rp, ['tipo', 'ancho', 'tirador', 'modelo']);
           opcion(p, 'tirador', rp, ['izq', 'der']);
+          opcion(p, 'modelo', rp, ['moldurada', 'lisa']);
           const ap = numero(p, 'ancho', rp, 20, 120, true);
           if (ap === undefined) frenteOk = false; else sumaFrente += ap;
         } else if (p.tipo === 'fijo') {
