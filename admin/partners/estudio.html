@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Partners · Estudio — Curino admin</title>
+<link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/assets/css/admin-shell.css">
+<link rel="stylesheet" href="/admin/partners/partners-admin.css">
+<style>
+.es-grid{display:grid;grid-template-columns:230px minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:1100px){.es-grid{grid-template-columns:1fr}}
+.es-card{background:#fff;border:1px solid #e5e2da;border-radius:10px;padding:12px}
+.es-lista{list-style:none;margin:8px 0 0;padding:0;max-height:60vh;overflow:auto}
+.es-lista li{padding:8px 9px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1.3}
+.es-lista li:hover{background:#f4f2ec}
+.es-lista li.on{background:#161616;color:#fff}
+.es-lista small{display:block;opacity:.65;font-size:11.5px}
+.es-form input{width:100%;box-sizing:border-box;margin:4px 0;padding:7px 9px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
+.es-cab{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.es-cab h2{margin:0;font-size:17px}
+.es-versiones{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.es-v{border:1px solid #d6d2c8;background:#fff;border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
+.es-v.on{background:#161616;color:#fff;border-color:#161616}
+.es-v.actual::after{content:' ●';color:#12B76A}
+.es-hojas{display:flex;flex-direction:column;gap:14px}
+.es-hoja{background:#fff;border:1px solid #e5e2da;border-radius:6px;overflow:hidden}
+.es-hoja svg{display:block;width:100%;height:auto}
+.es-vacio{padding:50px 20px;text-align:center;color:#8a867c;font-size:14px}
+.es-chat{display:flex;flex-direction:column;height:calc(100vh - 170px);min-height:420px;padding:0}
+.es-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
+.es-msg{max-width:92%;padding:8px 11px;border-radius:10px;font-size:13px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.es-msg.usuario{align-self:flex-end;background:#161616;color:#fff}
+.es-msg.asistente{align-self:flex-start;background:#f4f2ec}
+.es-msg.pregunta{background:#fff6dd;border:1px solid #f0dc9c}
+.es-msg .es-meta{display:block;margin-top:4px;font-size:11px;opacity:.6}
+.es-msg .es-meta a{color:inherit}
+.es-compose{border-top:1px solid #e5e2da;padding:10px}
+.es-compose textarea{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;border:1px solid #d6d2c8;border-radius:8px;padding:8px;font:inherit;font-size:13px}
+.es-fila{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px}
+.es-adj{font-size:12px;color:#5f5b52;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.es-trabajando{font-size:12.5px;color:#5f5b52;padding:4px 2px}
+.es-trabajando::before{content:'';display:inline-block;width:10px;height:10px;margin-right:6px;border:2px solid #12B76A;border-right-color:transparent;border-radius:50%;animation:es-g 0.8s linear infinite;vertical-align:-1px}
+@keyframes es-g{to{transform:rotate(360deg)}}
+.es-error{color:#b42318;font-size:12.5px;margin-top:4px}
+</style>
+</head>
+<body class="hidden-until-auth">
+<main class="ash-content">
+  <div class="pa-hero">
+    <div><h1>Estudio Curino</h1><p>Alzados de armarios a partir de un plano, un croquis o una descripción. Claude prepara la ficha técnica y el dibujo sale con el estilo Curino. <span class="pa-muted">(F2 · solo admin)</span></p></div>
+  </div>
+  <div class="es-grid">
+    <aside class="es-card">
+      <form class="es-form" id="esNuevo" autocomplete="off">
+        <strong style="font-size:13px">Nuevo proyecto</strong>
+        <input id="esNombre" placeholder="Cliente o proyecto" maxlength="80" required>
+        <input id="esRef" placeholder="Referencia (opcional)" maxlength="40">
+        <button class="pa-btn primary" type="submit" style="width:100%;margin-top:4px">Crear</button>
+      </form>
+      <ul class="es-lista" id="esLista"><li class="pa-muted">Cargando…</li></ul>
+    </aside>
+
+    <section>
+      <div class="es-card" id="esZona"><div class="es-vacio">Crea un proyecto o elige uno de la lista.</div></div>
+    </section>
+
+    <aside class="es-card es-chat" id="esChat" hidden>
+      <div class="es-msgs" id="esMsgs"></div>
+      <form class="es-compose" id="esForm">
+        <textarea id="esTexto" placeholder="Describe el armario o pide un cambio: «el módulo 2 con 4 cajones», «altillo de 40»…" maxlength="4000"></textarea>
+        <div class="es-fila">
+          <label class="pa-btn" style="cursor:pointer">📎 Plano<input type="file" id="esArchivos" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden></label>
+          <span class="es-adj" id="esAdj"></span>
+          <button class="pa-btn primary" type="submit" id="esEnviar">Enviar</button>
+        </div>
+        <div class="es-error" id="esError" hidden></div>
+      </form>
+    </aside>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/admin-shell.js"></script>
+<script src="/admin/partners/partners-admin.js"></script>
+<script>
+(function () {
+  'use strict';
+  var supa, proyectos = [], actual = null, versiones = [], viendo = 0, ocupado = false;
+  var $ = function (q) { return document.querySelector(q); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var fecha = function (d) { return new Date(d).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+
+  initAdminShell({ activeSection: 'partners-estudio', title: 'Partners · Estudio' })
+    .then(function (ctx) {
+      supa = ctx.supabase;
+      var id = new URLSearchParams(location.search).get('p');
+      return cargarLista().then(function () { if (id) abrir(id); });
+    })
+    .catch(function () {});
+
+  // Llamada a la Edge Function con el mensaje de error legible
+  function api(body) {
+    return supa.functions.invoke('estudio-ia', { body: body }).then(function (r) {
+      if (!r.error) return r.data;
+      var ctx = r.error.context;
+      return (ctx && ctx.json ? ctx.json() : Promise.reject(r.error)).then(function (d) {
+        var e = new Error((d && (d.error || d.mensaje)) || 'Error'); e.datos = d; throw e;
+      });
+    });
+  }
+
+  function cargarLista() {
+    return supa.from('estudio_proyectos').select('id, nombre, referencia, version_actual, updated_at').order('updated_at', { ascending: false }).then(function (r) {
+      proyectos = r.data || [];
+      $('#esLista').innerHTML = proyectos.length ? proyectos.map(function (p) {
+        return '<li data-id="' + p.id + '"' + (actual && actual.id === p.id ? ' class="on"' : '') + '>' + esc(p.nombre) +
+          '<small>' + (p.referencia ? esc(p.referencia) + ' · ' : '') + (p.version_actual ? 'v' + p.version_actual : 'sin versión') + ' · ' + fecha(p.updated_at) + '</small></li>';
+      }).join('') : '<li class="pa-muted">Aún no hay proyectos.</li>';
+    });
+  }
+  $('#esLista').addEventListener('click', function (e) { var li = e.target.closest('li[data-id]'); if (li) abrir(li.dataset.id); });
+
+  $('#esNuevo').addEventListener('submit', function (e) {
+    e.preventDefault();
+    api({ action: 'crear', nombre: $('#esNombre').value, referencia: $('#esRef').value }).then(function (d) {
+      $('#esNombre').value = ''; $('#esRef').value = '';
+      actual = d.proyecto;
+      return cargarLista().then(function () { abrir(d.proyecto.id); });
+    }).catch(function (err) { alertaError(err.message); });
+  });
+
+  function abrir(id) {
+    history.replaceState(null, '', '?p=' + id);
+    return Promise.all([
+      supa.from('estudio_proyectos').select('*').eq('id', id).maybeSingle(),
+      supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', id).order('numero'),
+      supa.from('estudio_mensajes').select('rol, texto, version, pregunta, created_at').eq('proyecto_id', id).order('created_at')
+    ]).then(function (rs) {
+      actual = rs[0].data; versiones = rs[1].data || [];
+      if (!actual) return;
+      $('#esChat').hidden = false;
+      document.querySelectorAll('#esLista li').forEach(function (li) { li.classList.toggle('on', li.dataset.id === id); });
+      pintarChat(rs[2].data || []);
+      viendo = actual.version_actual;
+      pintarZona();
+      if (viendo) cargarVersion(viendo);
+    });
+  }
+
+  function pintarZona(svgs) {
+    var p = actual;
+    var chips = versiones.map(function (v) {
+      return '<button type="button" class="es-v' + (v.numero === viendo ? ' on' : '') + (v.numero === p.version_actual ? ' actual' : '') +
+        '" data-v="' + v.numero + '" title="' + esc((v.origen === 'restaurada' ? '' : 'IA · ') + (v.nota || '') + ' · ' + fecha(v.created_at)) + '">v' + v.numero + '</button>';
+    }).join('');
+    var acciones = viendo ? '<button type="button" class="pa-btn" id="esPdf">Descargar PDF v' + viendo + '</button>' : '';
+    if (viendo && viendo !== p.version_actual) acciones = '<button type="button" class="pa-btn primary" id="esRestaurar">Volver a v' + viendo + '</button> ' + acciones;
+    acciones += ' <button type="button" class="pa-btn" id="esBorrar">Borrar</button>';
+    $('#esZona').innerHTML =
+      '<div class="es-cab"><div><h2>' + esc(p.nombre) + (p.referencia ? ' <span class="pa-muted" style="font-weight:400">· ' + esc(p.referencia) + '</span>' : '') + '</h2>' +
+      '<div class="es-versiones">' + (chips || '<span class="pa-muted" style="font-size:12.5px">Sin versiones todavía</span>') + '</div></div>' +
+      '<div class="pa-btns">' + acciones + '</div></div>' +
+      '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) { return '<div class="es-hoja" title="' + esc(s.codigo) + '">' + s.svg + '</div>'; }).join('')
+        : '<div class="es-vacio">' + (viendo ? 'Cargando alzados…' : 'Sube un plano o describe el armario en el chat y Claude preparará la primera versión.') + '</div>') + '</div>';
+  }
+
+  $('#esZona').addEventListener('click', function (e) {
+    var v = e.target.closest('[data-v]');
+    if (v) { viendo = Number(v.dataset.v); pintarZona(); cargarVersion(viendo); return; }
+    if (e.target.id === 'esPdf') return descargarPdf(e.target);
+    if (e.target.id === 'esRestaurar') {
+      e.target.disabled = true;
+      return api({ action: 'restaurar', proyecto_id: actual.id, numero: viendo }).then(function () { return abrir(actual.id); }).then(cargarLista)
+        .catch(function (err) { alertaError(err.message); });
+    }
+    if (e.target.id === 'esBorrar') {
+      // Confirmación en dos pasos, sin diálogos del navegador
+      if (!e.target.dataset.ok) { e.target.dataset.ok = '1'; e.target.textContent = '¿Seguro? Pulsa otra vez'; e.target.classList.add('primary'); return; }
+      return api({ action: 'borrar', proyecto_id: actual.id }).then(function () {
+        actual = null; history.replaceState(null, '', location.pathname);
+        $('#esChat').hidden = true;
+        $('#esZona').innerHTML = '<div class="es-vacio">Proyecto borrado.</div>';
+        return cargarLista();
+      }).catch(function (err) { alertaError(err.message); });
+    }
+  });
+
+  function cargarVersion(n) {
+    return api({ action: 'render', proyecto_id: actual.id, numero: n }).then(function (d) { if (viendo === n) pintarZona(d.svgs); })
+      .catch(function (err) { $('#esHojas').innerHTML = '<div class="es-vacio">' + esc(err.message) + '</div>'; });
+  }
+
+  function descargarPdf(btn) {
+    btn.disabled = true;
+    api({ action: 'pdf', proyecto_id: actual.id, numero: viendo }).then(function (d) {
+      var bin = atob(d.base64), arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+      a.download = d.nombre; document.body.appendChild(a); a.click(); a.remove();
+    }).catch(function (err) { alertaError(err.message); }).then(function () { btn.disabled = false; });
+  }
+
+  // ── Chat ──
+  function pintarChat(msgs) {
+    $('#esMsgs').innerHTML = msgs.length ? msgs.map(burbuja).join('')
+      : '<div class="es-vacio" style="padding:20px 6px">Adjunta un plano (PDF o foto) y cuéntale lo que quieres: medidas del hueco, alto, fondo, puertas, interior…</div>';
+    $('#esMsgs').scrollTop = 1e9;
+  }
+  function burbuja(m) {
+    var meta = [];
+    if (m.version) meta.push('<a href="#" data-ir="' + m.version + '">v' + m.version + '</a>');
+    if (m.uso) meta.push(Number(m.uso.tokens.entrada + m.uso.tokens.salida + m.uso.tokens.cache_escritura + m.uso.tokens.cache_lectura).toLocaleString('es-ES') + ' tokens · ' + String(m.uso.coste_usd).replace('.', ',') + ' $');
+    if (m.created_at) meta.push(fecha(m.created_at));
+    return '<div class="es-msg ' + m.rol + (m.pregunta ? ' pregunta' : '') + '">' + esc(m.texto) + (meta.length ? '<span class="es-meta">' + meta.join(' · ') + '</span>' : '') + '</div>';
+  }
+  $('#esMsgs').addEventListener('click', function (e) {
+    var a = e.target.closest('[data-ir]'); if (!a) return;
+    e.preventDefault(); viendo = Number(a.dataset.ir); pintarZona(); cargarVersion(viendo);
+  });
+  $('#esArchivos').addEventListener('change', function () {
+    var fs = Array.prototype.slice.call(this.files);
+    $('#esAdj').textContent = fs.map(function (f) { return f.name; }).join(', ');
+  });
+  function alertaError(t) { var el = $('#esError'); el.textContent = t; el.hidden = !t; }
+
+  $('#esForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (ocupado || !actual) return;
+    var texto = $('#esTexto').value.trim();
+    var archivos = Array.prototype.slice.call($('#esArchivos').files || []);
+    if (!texto && !archivos.length) return;
+    ocupado = true; alertaError('');
+    $('#esEnviar').disabled = true;
+    var msgs = $('#esMsgs');
+    if (msgs.querySelector('.es-vacio')) msgs.innerHTML = '';
+    msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'usuario', texto: texto + (archivos.length ? '\n📎 ' + archivos.map(function (f) { return f.name; }).join(', ') : '') }) +
+      '<div class="es-trabajando" id="esTrab">Subiendo…</div>');
+    msgs.scrollTop = 1e9;
+
+    // 1) subida de archivos con URL firmada, 2) mensaje a Claude
+    var ids = [];
+    var subir = archivos.reduce(function (p, f) {
+      return p.then(function () {
+        return api({ action: 'subida', proyecto_id: actual.id, nombre: f.name, tipo: f.type, bytes: f.size }).then(function (d) {
+          return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: f.type }).then(function (r) {
+            if (r.error) throw new Error('No se ha podido subir «' + f.name + '».');
+            ids.push(d.archivo_id);
+          });
+        });
+      });
+    }, Promise.resolve());
+
+    subir.then(function () {
+      $('#esTrab').textContent = 'Claude está trabajando… (puede tardar hasta un minuto)';
+      return api({ action: 'mensaje', proyecto_id: actual.id, texto: texto, archivo_ids: ids });
+    }).then(function (d) {
+      $('#esTexto').value = ''; $('#esArchivos').value = ''; $('#esAdj').textContent = '';
+      var t = d.tipo === 'pregunta' ? [d.mensaje].concat(d.preguntas.map(function (p) { return '• ' + p; })).filter(Boolean).join('\n') : d.mensaje;
+      $('#esTrab').remove();
+      msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'asistente', texto: t, pregunta: d.tipo === 'pregunta', version: d.version, uso: d.uso }));
+      msgs.scrollTop = 1e9;
+      if (d.tipo === 'proyecto') {
+        actual.version_actual = d.version; viendo = d.version;
+        return supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', actual.id).order('numero')
+          .then(function (r) { versiones = r.data || []; pintarZona(d.svgs); return cargarLista(); });
+      }
+    }).catch(function (err) {
+      var t = $('#esTrab'); if (t) t.remove();
+      alertaError(err.message);
+    }).then(function () { ocupado = false; $('#esEnviar').disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>
