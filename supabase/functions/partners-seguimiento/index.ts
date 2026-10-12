@@ -105,7 +105,7 @@ ${row('Perfil one-to-one', lead.perfil_one_to_one ? 'Sí' : 'No')}${row('Eligió
 ${row('Vio el precio', lead.precio_visto_at ? 'Sí' : 'No')}${row('Inició checkout', lead.checkout_iniciado_at ? 'Sí' : 'No')}
 ${row('utm_source / campaign', [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' / '))}${row('utm_content', lead.utm_content)}
 </table>
-<p style="margin-top:18px"><a href="https://wa.me/${tel}?text=${encodeURIComponent(texto)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:10px 18px;text-decoration:none;border-radius:4px">Escribirle por WhatsApp</a></p>
+<p style="margin-top:18px"><a href="https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(texto)}" style="display:inline-block;background:#12B76A;color:#161616;font-weight:bold;padding:10px 18px;text-decoration:none;border-radius:4px">Escribirle por WhatsApp</a></p>
 <p style="font-size:12px;color:#888">Solicitud completada: ${esc(lead.completada_at)} · ID ${esc(lead.id)}</p>
 </body></html>`;
 }

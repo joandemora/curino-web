@@ -198,7 +198,7 @@
         + 'He visto que rellenaste la solicitud para la formación pero no llegaste a agendar la llamada de admisión… no sé si por tema de disponibilidad.\n'
         + '¿Te parece si buscamos un hueco que te vaya bien? Si prefieres, puedes elegirlo tú aquí: ' + r.data.url;
       var tel = String((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
-      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+      window.open('https://api.whatsapp.com/send?phone=' + tel + '&text=' + encodeURIComponent(texto), '_blank', 'noopener');
     });
   });
 
@@ -214,7 +214,7 @@
       if (m) { PA.toast('Formaciones enviadas por email'); cargar(); return; }
       var texto = 'Hola ' + r.data.nombre + ', como hablamos, aquí tienes las opciones para empezar: ' + r.data.url;
       var tel = String((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
-      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+      window.open('https://api.whatsapp.com/send?phone=' + tel + '&text=' + encodeURIComponent(texto), '_blank', 'noopener');
     });
   });
 
@@ -230,7 +230,7 @@
       if (m) { PA.toast('Enlace de pago enviado por email'); cargar(); return; }
       var texto = 'Hola ' + r.data.nombre + ', como hablamos, aquí tienes tu enlace para reservar tu plaza en el intensivo de ' + (r.data.mes || 'octubre') + ': ' + r.data.url;
       var tel = String((s.telefono_prefijo || '') + (s.telefono || '')).replace(/\D/g, '');
-      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+      window.open('https://api.whatsapp.com/send?phone=' + tel + '&text=' + encodeURIComponent(texto), '_blank', 'noopener');
     });
   });
   document.addEventListener('click', function (e) {
