@@ -38,7 +38,8 @@
         { id: 'partners-emails',      label: 'Emails',      href: '/admin/partners/emails.html' },
         { id: 'partners-secuencias',  label: 'Secuencias',  href: '/admin/partners/secuencias.html' },
         { id: 'partners-estudio',     label: 'Estudio',     href: '/admin/partners/estudio.html' },
-        { id: 'partners-estudio-tarifa', label: 'Tarifa Estudio', href: '/admin/partners/estudio-tarifa.html' }
+        { id: 'partners-estudio-tarifa', label: 'Tarifa Estudio', href: '/admin/partners/estudio-tarifa.html' },
+        { id: 'partners-estudio-alumnos', label: 'Alumnos Estudio', href: '/admin/partners/estudio-alumnos.html' }
       ]
     },
     { id: 'dashboard', label: 'Dashboard', href: '/admin/' },

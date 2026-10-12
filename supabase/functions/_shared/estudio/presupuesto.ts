@@ -102,8 +102,8 @@ export const PLANTILLA_ADMIN: Plantilla = {
   tipo: 'curino',
   empresa: 'SISTEMA & CURINO SLU',
   nif: 'B24788580',
-  direccion_1: 'CL BALMES 379, 2-3',
-  direccion_2: '08022 BARCELONA (BARCELONA)',
+  direccion_1: 'Carrer de Balmes 252, 5-2',
+  direccion_2: '08006 Barcelona',
   email: 'info@casacurino.com',
   telefono: '(+34) 678 660 324',
   lema: 'TAILOR MADE HAUTE FURNITURE',
@@ -126,6 +126,24 @@ export const PLANTILLA_ALUMNO: Plantilla = {
   empresa: '', nif: '', direccion_1: '', direccion_2: '', email: '', telefono: '',
   lema: '', iban: '', ciudad_firma: '', firmante: '', cargo: ''
 };
+
+/** Datos que un alumno tiene que rellenar antes de descargar el presupuesto. */
+export function faltanPlantilla(p: Plantilla): string[] {
+  const f: string[] = [];
+  const vacio = (v: string | null | undefined) => !v || !String(v).trim();
+  if (vacio(p.empresa)) f.push('Empresa');
+  if (vacio(p.nif)) f.push('NIF / CIF');
+  if (vacio(p.direccion_1) || vacio(p.direccion_2)) f.push('Dirección completa');
+  if (vacio(p.email)) f.push('Email');
+  if (vacio(p.telefono)) f.push('Teléfono');
+  if (vacio(p.iban)) f.push('IBAN');
+  if (vacio(p.firmante)) f.push('Firmante');
+  if (!p.firma_path) f.push('Firma');
+  if (vacio(p.condiciones)) f.push('Condiciones');
+  if (!p.forma_pago?.length) f.push('Forma de pago');
+  if (p.tipo === 'propia' && !p.logo_path) f.push('Logo (plantilla propia)');
+  return f;
+}
 
 const NIF_CURINO = /B-?24788580/i;
 /** Un alumno nunca puede emitir con los datos de SISTEMA & CURINO. */

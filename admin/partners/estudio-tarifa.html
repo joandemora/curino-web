@@ -6,34 +6,11 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Partners · Tarifa del Estudio — Curino admin</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/tokens.css">
 <link rel="stylesheet" href="/assets/css/admin-shell.css">
 <link rel="stylesheet" href="/admin/partners/partners-admin.css">
-<style>
-.tf-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-@media (max-width:1100px){.tf-grid{grid-template-columns:1fr}}
-.tf-card{background:#fff;border:1px solid #e5e2da;border-radius:10px;padding:14px 16px}
-.tf-card h2{font-size:16px;margin:0 0 4px}
-.tf-card h3{font-size:13px;margin:16px 0 6px;color:#5f5b52;text-transform:uppercase;letter-spacing:.04em}
-.tf-tabla{width:100%;border-collapse:collapse;font-size:13px}
-.tf-tabla td,.tf-tabla th{padding:4px 6px;border-bottom:1px solid #f0ede6;text-align:left}
-.tf-tabla th{font-weight:600;color:#5f5b52;font-size:12px}
-.tf-in{width:96px;padding:5px 7px;border:1px solid #d6d2c8;border-radius:6px;font:inherit;font-size:13px;text-align:right}
-.tf-in:placeholder-shown{background:#fff7e0;border-color:#f0dc9c}
-.tf-u{color:#8a867c;font-size:12px;padding-left:4px}
-.tf-f label{display:block;font-size:12px;color:#5f5b52;margin:8px 0 2px}
-.tf-f input[type=text],.tf-f input[type=email],.tf-f textarea,.tf-f select{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid #d6d2c8;border-radius:7px;font:inherit;font-size:13px}
-.tf-f textarea{min-height:90px;resize:vertical}
-.tf-dos{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-.tf-fp{display:grid;grid-template-columns:1fr 70px 26px;gap:6px;margin-bottom:6px}
-.tf-img{display:flex;gap:10px;align-items:center;margin-top:4px}
-.tf-img img{max-height:46px;max-width:160px;border:1px solid #e5e2da;border-radius:5px;background:#fff}
-.tf-pie{display:flex;gap:10px;align-items:center;margin-top:14px}
-.tf-ok{color:#12B76A;font-size:12.5px}
-.tf-err{color:#b42318;font-size:12.5px}
-.tf-aviso{background:#fff7e0;border:1px solid #f0dc9c;border-radius:8px;padding:8px 10px;font-size:12.5px;margin:8px 0}
-</style>
+<link rel="stylesheet" href="/assets/css/estudio-ui.css">
 </head>
 <body class="hidden-until-auth">
 <main class="ash-content">
@@ -41,171 +18,24 @@
   <div class="pa-hero">
     <div><h1>Tarifa y plantilla del Estudio</h1><p>Precios PVP sin IVA con los que se calcula cada partida. Un campo vacío es <strong>PENDIENTE</strong>: esa partida sale sin precio hasta que lo rellenes (o se pone a mano en el presupuesto).</p></div>
   </div>
-  <div class="tf-grid">
-    <section class="tf-card">
-      <h2>Tarifa Curino (por defecto)</h2>
-      <p class="pa-muted" style="font-size:12.5px;margin:0">La usan los alumnos que no tengan tarifa propia.</p>
-      <div id="tfConceptos"><p class="pa-muted">Cargando…</p></div>
-      <h3>Descuento e IVA</h3>
-      <table class="tf-tabla"><tbody>
-        <tr><td>Descuento profesional por defecto</td><td><input class="tf-in" id="tfDto" inputmode="decimal" placeholder="PENDIENTE"><span class="tf-u">%</span></td></tr>
-        <tr><td>IVA</td><td><input class="tf-in" id="tfIva" inputmode="decimal" placeholder="PENDIENTE"><span class="tf-u">%</span></td></tr>
-      </tbody></table>
-      <div class="tf-pie"><button class="pa-btn primary" id="tfGuardar">Guardar tarifa</button><span id="tfMsg"></span></div>
-    </section>
-
-    <section class="tf-card tf-f">
-      <h2>Mi plantilla de presupuesto</h2>
-      <p class="pa-muted" style="font-size:12.5px;margin:0">Desde la cuenta de admin los presupuestos salen con los datos de SISTEMA &amp; CURINO. Los alumnos siempre con los suyos.</p>
-      <div class="tf-aviso" id="tfIbanAviso" hidden>Falta el IBAN: sin él, el presupuesto sale sin el bloque «Transferencia bancaria».</div>
-      <label>Estilo</label>
-      <select id="plTipo"><option value="curino">Plantilla Curino (logo &amp; CURINO)</option><option value="propia">Propia (logo y color propios)</option></select>
-      <div class="tf-dos">
-        <div><label>Empresa</label><input type="text" id="plEmpresa" maxlength="80"></div>
-        <div><label>NIF / CIF</label><input type="text" id="plNif" maxlength="20"></div>
-        <div><label>Dirección (línea 1)</label><input type="text" id="plDir1" maxlength="80"></div>
-        <div><label>Dirección (línea 2)</label><input type="text" id="plDir2" maxlength="80"></div>
-        <div><label>Email</label><input type="email" id="plEmail" maxlength="80"></div>
-        <div><label>Teléfono</label><input type="text" id="plTel" maxlength="30"></div>
-        <div><label>Lema</label><input type="text" id="plLema" maxlength="50"></div>
-        <div><label>IBAN</label><input type="text" id="plIban" maxlength="40" autocomplete="off"></div>
-        <div><label>Firmante</label><input type="text" id="plFirmante" maxlength="80"></div>
-        <div><label>Cargo</label><input type="text" id="plCargo" maxlength="60"></div>
-        <div><label>Ciudad de firma</label><input type="text" id="plCiudad" maxlength="40"></div>
-        <div><label>Color (plantilla propia)</label><input type="text" id="plColor" maxlength="7" placeholder="#1d1d1b"></div>
-      </div>
-      <label><input type="checkbox" id="plIva"> Mostrar IVA y total con IVA (si no: «IMPUESTOS IVA NO INCLUIDOS»)</label>
-      <label>Forma de pago</label>
-      <div id="plFp"></div>
-      <button type="button" class="pa-btn" id="plFpMas">+ Plazo</button>
-      <label>Materiales (se añaden a cada partida)</label>
-      <textarea id="plMateriales"></textarea>
-      <label>Condiciones (las líneas que acaban en «:» son títulos)</label>
-      <textarea id="plCondiciones" style="min-height:180px"></textarea>
-      <label>Logo (solo plantilla propia) · PNG o JPG</label>
-      <div class="tf-img"><img id="plLogoVer" alt="" hidden><input type="file" id="plLogo" accept="image/png,image/jpeg"></div>
-      <label>Firma · PNG o JPG (mejor con fondo transparente)</label>
-      <div class="tf-img"><img id="plFirmaVer" alt="" hidden><input type="file" id="plFirma" accept="image/png,image/jpeg"></div>
-      <div class="tf-pie"><button class="pa-btn primary" id="plGuardar">Guardar plantilla</button><span id="plMsg"></span></div>
-    </section>
-  </div>
+  <div class="tf-grid"><div id="tfApp"></div><div id="plApp"></div></div>
 </main>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/js/admin-shell.js"></script>
 <script src="/admin/partners/partners-admin.js"></script>
+<script src="/assets/js/estudio-ui.js"></script>
 <script>
-(function () {
-  'use strict';
-  var supa, conceptos = [], plantilla = null, rutas = { logo: null, firma: null };
-  var $ = function (q) { return document.querySelector(q); };
-  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
-  var num = function (v) { return v === null || v === undefined ? '' : String(v).replace('.', ','); };
-  var UN = { ml: '€/ml', ud: '€/ud', '%': '%' };
-
-  initAdminShell({ activeSection: 'partners-estudio-tarifa', title: 'Partners · Tarifa del Estudio' })
-    .then(function (ctx) { supa = ctx.supabase; return Promise.all([cargarTarifa(), cargarPlantilla()]); })
-    .catch(function () {});
-
-  function api(body) {
-    return supa.functions.invoke('estudio-ia', { body: body }).then(function (r) {
-      if (!r.error) return r.data;
-      var c = r.error.context;
-      return (c && c.json ? c.json() : Promise.reject(r.error)).then(function (d) { throw new Error((d && d.error) || 'Error'); });
-    });
-  }
-  function msg(el, t, ok) { el.className = ok ? 'tf-ok' : 'tf-err'; el.textContent = t; }
-
-  // ── Tarifa ──
-  function cargarTarifa() {
-    return api({ action: 'tarifa', de: 'curino' }).then(function (d) {
-      conceptos = d.conceptos;
-      var v = d.tarifa.valores, html = '';
-      // Cuerpo: matriz fondo × alto
-      var cuerpo = conceptos.filter(function (c) { return c.clave.indexOf('cuerpo_') === 0; });
-      if (cuerpo.length) {
-        var altos = ['alto hasta 240', 'alto 241–270', 'alto más de 270'];
-        var fondos = ['fondo hasta 45', 'fondo 46–65', 'fondo más de 65'];
-        html += '<h3>Cuerpo · €/metro lineal</h3><table class="tf-tabla"><thead><tr><th></th>' + altos.map(function (a) { return '<th>' + a + '</th>'; }).join('') + '</tr></thead><tbody>';
-        fondos.forEach(function (f, i) {
-          html += '<tr><td>' + f + '</td>' + altos.map(function (_, j) {
-            var k = 'cuerpo_f' + i + '_a' + j;
-            return '<td><input class="tf-in" data-k="' + k + '" inputmode="decimal" placeholder="PENDIENTE" value="' + esc(num(v[k])) + '"></td>';
-          }).join('') + '</tr>';
-        });
-        html += '</tbody></table>';
-      }
-      var grupos = {};
-      conceptos.filter(function (c) { return c.clave.indexOf('cuerpo_') !== 0; }).forEach(function (c) { (grupos[c.grupo] = grupos[c.grupo] || []).push(c); });
-      Object.keys(grupos).forEach(function (g) {
-        html += '<h3>' + esc(g) + '</h3><table class="tf-tabla"><tbody>' + grupos[g].map(function (c) {
-          return '<tr><td>' + esc(c.nombre) + (c.ayuda ? '<br><span class="pa-muted" style="font-size:11.5px">' + esc(c.ayuda) + '</span>' : '') +
-            '</td><td style="white-space:nowrap"><input class="tf-in" data-k="' + c.clave + '" inputmode="decimal" placeholder="PENDIENTE" value="' + esc(num(v[c.clave])) + '"><span class="tf-u">' + UN[c.unidad] + '</span></td></tr>';
-        }).join('') + '</tbody></table>';
-      });
-      $('#tfConceptos').innerHTML = html;
-      $('#tfDto').value = num(d.tarifa.descuento_pct);
-      $('#tfIva').value = num(d.tarifa.iva_pct);
-    });
-  }
-  $('#tfGuardar').addEventListener('click', function () {
-    var valores = {};
-    document.querySelectorAll('#tfConceptos [data-k]').forEach(function (i) { valores[i.dataset.k] = i.value.trim() === '' ? null : i.value.trim(); });
-    api({ action: 'tarifa_guardar', de: 'curino', valores: valores, descuento_pct: $('#tfDto').value, iva_pct: $('#tfIva').value })
-      .then(function (d) { msg($('#tfMsg'), 'Guardada' + (d.pendientes ? ' · ' + d.pendientes + ' conceptos PENDIENTE' : ''), true); return cargarTarifa(); })
-      .catch(function (e) { msg($('#tfMsg'), e.message); });
-  });
-
-  // ── Plantilla ──
-  var CAMPOS = { plEmpresa: 'empresa', plNif: 'nif', plDir1: 'direccion_1', plDir2: 'direccion_2', plEmail: 'email', plTel: 'telefono', plLema: 'lema', plIban: 'iban', plFirmante: 'firmante', plCargo: 'cargo', plCiudad: 'ciudad_firma', plColor: 'color', plMateriales: 'materiales', plCondiciones: 'condiciones' };
-  function cargarPlantilla() {
-    return api({ action: 'plantilla' }).then(function (d) {
-      plantilla = d.plantilla;
-      Object.keys(CAMPOS).forEach(function (id) { $('#' + id).value = plantilla[CAMPOS[id]] || ''; });
-      $('#plTipo').value = plantilla.tipo; $('#plIva').checked = !!plantilla.mostrar_iva;
-      rutas.logo = plantilla.logo_path; rutas.firma = plantilla.firma_path;
-      ver('#plLogoVer', d.logo_url); ver('#plFirmaVer', d.firma_url);
-      $('#tfIbanAviso').hidden = !!plantilla.iban;
-      pintarFp(plantilla.forma_pago || []);
-    });
-  }
-  function ver(sel, url) { var i = $(sel); i.hidden = !url; if (url) i.src = url; }
-  function pintarFp(fp) {
-    $('#plFp').innerHTML = fp.map(function (x) {
-      return '<div class="tf-fp"><input type="text" class="fpC" value="' + esc(x.concepto) + '" maxlength="40"><input type="text" class="fpP tf-in" value="' + esc(num(x.pct)) + '" inputmode="decimal"><button type="button" class="pa-btn fpX" title="Quitar">×</button></div>';
-    }).join('');
-  }
-  function leerFp() {
-    return Array.prototype.map.call(document.querySelectorAll('#plFp .tf-fp'), function (r) {
-      return { concepto: r.querySelector('.fpC').value, pct: r.querySelector('.fpP').value.replace(',', '.') };
-    });
-  }
-  $('#plFpMas').addEventListener('click', function () { var fp = leerFp(); fp.push({ concepto: '', pct: '' }); pintarFp(fp); });
-  $('#plFp').addEventListener('click', function (e) { if (e.target.classList.contains('fpX')) e.target.closest('.tf-fp').remove(); });
-
-  function subir(campo, input) {
-    var f = input.files && input.files[0];
-    if (!f) return Promise.resolve();
-    return api({ action: 'plantilla_subida', campo: campo, tipo: f.type, bytes: f.size }).then(function (d) {
-      return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: f.type }).then(function (r) {
-        if (r.error) throw new Error('No se ha podido subir la imagen.');
-        rutas[campo] = d.path;
-      });
-    });
-  }
-  $('#plGuardar').addEventListener('click', function () {
-    var b = $('#plGuardar'); b.disabled = true;
-    subir('logo', $('#plLogo')).then(function () { return subir('firma', $('#plFirma')); }).then(function () {
-      var datos = { tipo: $('#plTipo').value, mostrar_iva: $('#plIva').checked, forma_pago: leerFp(), logo_path: rutas.logo, firma_path: rutas.firma };
-      Object.keys(CAMPOS).forEach(function (id) { datos[CAMPOS[id]] = $('#' + id).value; });
-      return api({ action: 'plantilla_guardar', datos: datos });
-    }).then(function () {
-      $('#plLogo').value = ''; $('#plFirma').value = '';
-      msg($('#plMsg'), 'Plantilla guardada', true);
-      return cargarPlantilla();
-    }).catch(function (e) { msg($('#plMsg'), e.message); }).then(function () { b.disabled = false; });
-  });
-})();
+initAdminShell({ activeSection: 'partners-estudio-tarifa', title: 'Partners · Tarifa del Estudio' }).then(function (c) {
+  var ctx = { supa: c.supabase, modo: 'admin',
+    rutas: {
+      estudio: function (pid) { return '/admin/partners/estudio.html' + (pid ? '?p=' + pid : ''); },
+      presupuesto: function (pid) { return '/admin/partners/estudio-presupuesto.html?p=' + pid; },
+      datos: function () { return '/admin/partners/estudio-tarifa.html'; },
+      tarifa: function () { return '/admin/partners/estudio-tarifa.html'; }
+    } };
+  EstudioUI.tarifa(document.getElementById('tfApp'), ctx, 'curino');
+  EstudioUI.plantilla(document.getElementById('plApp'), ctx);
+}).catch(function () {});
 </script>
 </body>
 </html>

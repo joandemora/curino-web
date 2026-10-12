@@ -26,7 +26,7 @@ import { dibujoSvg } from '../_shared/estudio/svg.ts'
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from '../_shared/estudio/logo.ts'
 import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tarifa.ts'
 import {
-  generarPresupuesto, totales, validarPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
+  generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
   type DocPresupuesto, type Plantilla
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
@@ -255,6 +255,12 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
 
   const v = await versionDatos(doc.version);
   if (!v) return json({ error: 'No encuentro la versión del presupuesto.' }, 400);
+
+  // Un alumno no descarga (PDF ni Excel) sin sus datos de emisor completos.
+  if (!duenoAdmin) {
+    const faltan = faltanPlantilla(plantilla);
+    if (faltan.length) return json({ error: `Antes de descargar el presupuesto completa «Mis datos y plantilla»: falta ${faltan.join(', ')}.`, faltan }, 400);
+  }
 
   if (action === 'presupuesto_dibujos') {
     const pdf = await PDFDocument.create(); pdf.registerFontkit(fontkit);
