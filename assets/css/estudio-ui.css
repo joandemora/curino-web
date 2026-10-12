@@ -4,6 +4,7 @@
  * (admin: /admin/partners/estudio*.html · alumnos: /partners/estudio/).
  * Prefijos: es- proyectos y chat · pr- presupuesto · tf- tarifa y plantilla.
  */
+[hidden]{display:none!important}
 /* ── de estudio.html ── */
 .es-grid{display:grid;grid-template-columns:230px minmax(0,1fr) 340px;gap:16px;align-items:start}
 @media (max-width:1100px){.es-grid{grid-template-columns:1fr}}
