@@ -159,7 +159,7 @@
       return '<button type="button" class="es-v' + (v.numero === viendo ? ' on' : '') + (v.numero === p.version_actual ? ' actual' : '') +
         '" data-v="' + v.numero + '" title="' + esc((v.origen === 'restaurada' ? '' : 'IA · ') + (v.nota || '') + ' · ' + fecha(v.created_at)) + '">v' + v.numero + '</button>';
     }).join('');
-    var acciones = viendo ? '<button type="button" class="pa-btn" id="esPdf">Descargar PDF v' + viendo + '</button>' : '';
+    var acciones = viendo ? '<a class="pa-btn primary" href="/admin/partners/estudio-presupuesto.html?p=' + p.id + '">Presupuesto</a> <button type="button" class="pa-btn" id="esPdf">Descargar PDF v' + viendo + '</button>' : '';
     if (viendo && viendo !== p.version_actual) acciones = '<button type="button" class="pa-btn primary" id="esRestaurar">Volver a v' + viendo + '</button> ' + acciones;
     acciones += ' <button type="button" class="pa-btn" id="esBorrar">Borrar</button>';
     $('#esZona').innerHTML =

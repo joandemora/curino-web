@@ -15,6 +15,7 @@
 //               proyecto (sin versión aún: con todos los archivos) o aplica
 //               el cambio pedido. Versión nueva o preguntas. Devuelve SVG.
 //   'restaurar' { proyecto_id, numero } → versión nueva copia de vN.
+//   'importar'  { proyecto_id, datos, nota? } → JSON pegado a mano (validado) → versión nueva.
 //   'render'    { proyecto_id, numero? } → SVG de cada armario.
 //   'pdf'       { proyecto_id, numero? } → PDF de alzados (base64).
 //   'borrar'    { proyecto_id } → borra proyecto, historial y archivos.
@@ -24,7 +25,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { construirMensajes, costeUsd, pedirAClaude, type Adjunto, type MensajeChat } from '../_shared/estudio/ia.ts'
-import type { Proyecto } from '../_shared/estudio/esquema.ts'
+import { validarProyecto, type Proyecto } from '../_shared/estudio/esquema.ts'
 import { pdfProyecto, svgsProyecto } from './render.ts'
 import { accionPresupuesto, esAccionPresupuesto } from './presupuesto.ts'
 
@@ -110,7 +111,7 @@ Deno.serve(async (req) => {
       const { data } = await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).eq('numero', n).maybeSingle();
       return data as { numero: number; datos: Proyecto } | null;
     };
-    const nuevaVersion = async (datos: Proyecto, origen: 'ia' | 'restaurada', nota: string | null) => {
+    const nuevaVersion = async (datos: Proyecto, origen: 'ia' | 'restaurada' | 'manual', nota: string | null) => {
       datos.referencia = proyecto.referencia || undefined;
       datos.cliente = proyecto.nombre;
       if (!datos.referencia) delete datos.referencia;
@@ -212,6 +213,15 @@ Deno.serve(async (req) => {
       console.error('estudio-ia: sin proyecto válido', resultado.detalle ?? '', JSON.stringify(resultado.errores ?? []).slice(0, 2000));
       // El detalle técnico solo se devuelve a admin.
       return json({ tipo: 'error', mensaje: resultado.mensaje, detalle: esAdmin ? resultado.detalle ?? resultado.errores ?? null : null, uso }, 502);
+    }
+
+    if (action === 'importar') {
+      // Solo admin: JSON del proyecto pegado a mano → versión nueva (validada).
+      const v = validarProyecto(body?.datos);
+      if (!v.ok) return json({ error: 'El JSON no es válido.', errores: v.errores.slice(0, 30) }, 400);
+      const numero = await nuevaVersion(v.proyecto, 'manual', String(body?.nota || 'Importado a mano').slice(0, 200));
+      await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, rol: 'asistente', texto: `Proyecto importado a mano como v${numero}.`, version: numero });
+      return json({ version: numero, svgs: await svgsProyecto(v.proyecto) });
     }
 
     if (action === 'restaurar') {

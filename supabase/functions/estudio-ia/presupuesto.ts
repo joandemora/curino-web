@@ -23,6 +23,7 @@ import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
 import { laminasProyecto, dibujoLamina } from '../_shared/estudio/alzado.ts'
 import { medirConFuentes } from '../_shared/estudio/pdf.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
+import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from '../_shared/estudio/logo.ts'
 import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tarifa.ts'
 import {
   generarPresupuesto, totales, validarPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
@@ -260,7 +261,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const inter = { regular: await pdf.embedFont(interRegular(), { subset: true }), bold: await pdf.embedFont(interBold(), { subset: true }) };
     const medir = medirConFuentes(inter);
     const css = interCss();
-    return json({ dibujos: laminasProyecto(v.datos, medir).map((l) => { const d = dibujoLamina(l, medir); return { codigo: l.codigo, svg: dibujoSvg(d.prims, d.caja, css), ancho: d.caja.w, alto: d.caja.h }; }) });
+    const logo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${LOGO_ANCHO} ${LOGO_ALTO}" width="${LOGO_ANCHO}" height="${LOGO_ALTO}"><path d="${LOGO_PATH}" fill="#000000"/></svg>`;
+    return json({
+      logo, plantilla, iva_pct: tarifa.iva_pct,
+      dibujos: laminasProyecto(v.datos, medir).map((l) => { const d = dibujoLamina(l, medir); return { codigo: l.codigo, svg: dibujoSvg(d.prims, d.caja, css), ancho: d.caja.w, alto: d.caja.h }; })
+    });
   }
 
   if (action === 'presupuesto_pdf') {
