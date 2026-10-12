@@ -4,7 +4,9 @@
 // del proyecto (esquema.ts) y aplica los cambios que pide el alumno en el
 // chat. Claude no dibuja ni calcula precios: solo rellena el esquema.
 //
-// Dos herramientas y tool_choice 'any' (siempre responde con una):
+// Dos herramientas (tool_choice automático: claude-sonnet-5-5 no admite
+// forzarlas; el prompt exige usar una y, si contesta solo con texto, se le
+// recuerda y al final ese texto se trata como pregunta):
 //   - guardar_proyecto { mensaje, proyecto } → proyecto completo validado.
 //   - preguntar { mensaje, preguntas[] }     → falta una medida o hay dudas.
 // Si el JSON no pasa validarProyecto(), se le devuelven los errores como
@@ -46,6 +48,7 @@ FORMATO
 - codigo A.01, A.02… en orden; titulo en mayúsculas tipo «ARMARIO A MEDIDA 200 cm» o «ARMARIO A MEDIDA EN L»; sin subtítulo ni formato (se generan solos).
 - frente.acabado en singular y minúsculas («lacada», «roble natural»); modelo «moldurada» o «lisa»; apertura «abatible» o «corredera».
 - notas solo si aportan algo técnico (máx. una frase).
+- Solo existe lo que está en el esquema. Los tiradores los coloca el dibujo (por parejas, en las puertas que se juntan; «tirador» de una puerta solo para cambiar el lado). No prometas en el mensaje detalles que el esquema no recoge (colores, herrajes concretos, iluminación…): si el alumno los pide, dile que van en las notas o en el presupuesto.
 
 CAMBIOS
 - Cuando ya hay un proyecto y el alumno pide un cambio («el módulo 2 con 4 cajones», «altillo de 40»), devuelve el proyecto COMPLETO con solo ese cambio; todo lo demás igual. Si el cambio rompe una suma (p. ej. un módulo más ancho), reajusta lo mínimo y dilo.
@@ -135,7 +138,7 @@ export function costeUsd(u: Uso, p: Precios): number {
 export type Resultado =
   | { tipo: 'proyecto'; mensaje: string; proyecto: Proyecto }
   | { tipo: 'pregunta'; mensaje: string; preguntas: string[] }
-  | { tipo: 'error'; mensaje: string; errores?: ErrorValidacion[] };
+  | { tipo: 'error'; mensaje: string; errores?: ErrorValidacion[]; detalle?: string };
 
 export interface Llamada { uso: Uso; ok: boolean }
 
@@ -159,7 +162,6 @@ export async function pedirAClaude(o: {
         max_tokens: MAX_TOKENS,
         system: [{ type: 'text', text: SISTEMA, cache_control: { type: 'ephemeral' } }],
         tools: HERRAMIENTAS,
-        tool_choice: { type: 'any' },
         messages: mensajes
       })
     });
@@ -173,13 +175,22 @@ export async function pedirAClaude(o: {
     llamadas.push({ uso, ok: r.ok });
     if (!r.ok) {
       const tipo = d?.error?.type ?? `http_${r.status}`;
-      return { resultado: { tipo: 'error', mensaje: `La IA no ha podido responder (${tipo}). Inténtalo de nuevo en un momento.` }, llamadas };
+      return { resultado: { tipo: 'error', mensaje: `La IA no ha podido responder (${tipo}). Inténtalo de nuevo en un momento.`, detalle: String(d?.error?.message ?? '').slice(0, 500) }, llamadas };
     }
     if (d.stop_reason === 'max_tokens') {
       return { resultado: { tipo: 'error', mensaje: 'El proyecto es demasiado grande para una sola respuesta. Divide la petición (por ejemplo, armario a armario).' }, llamadas };
     }
     const uso_herr = (d.content ?? []).find((b: Bloque) => b.type === 'tool_use') as { id: string; name: string; input: Record<string, unknown> } | undefined;
-    if (!uso_herr) return { resultado: { tipo: 'error', mensaje: 'La IA no ha devuelto un proyecto. Vuelve a intentarlo.' }, llamadas };
+    if (!uso_herr) {
+      const texto = (d.content ?? []).filter((b: Bloque) => b.type === 'text').map((b: Bloque) => String(b.text)).join('\n').trim();
+      if (intento < REINTENTOS && d.content?.length) {
+        mensajes.push({ role: 'assistant', content: d.content });
+        mensajes.push({ role: 'user', content: 'Responde llamando a guardar_proyecto (proyecto completo) o a preguntar.' });
+        continue;
+      }
+      if (texto) return { resultado: { tipo: 'pregunta', mensaje: texto, preguntas: [] }, llamadas };
+      return { resultado: { tipo: 'error', mensaje: 'La IA no ha devuelto un proyecto. Vuelve a intentarlo.' }, llamadas };
+    }
 
     if (uso_herr.name === 'preguntar') {
       const preguntas = Array.isArray(uso_herr.input.preguntas) ? (uso_herr.input.preguntas as unknown[]).map(String).slice(0, 6) : [];

@@ -28,8 +28,10 @@
 .es-v.actual::after{content:' ●';color:#12B76A}
 .es-hojas{display:flex;flex-direction:column;gap:14px}
 .es-hoja{background:#fff;border:1px solid #e5e2da;border-radius:6px;overflow:hidden}
+.es-hoja{cursor:zoom-in}
 .es-hoja svg{display:block;width:100%;height:auto}
 .es-vacio{padding:50px 20px;text-align:center;color:#8a867c;font-size:14px}
+.es-chat[hidden]{display:none}
 .es-chat{display:flex;flex-direction:column;height:calc(100vh - 170px);min-height:420px;padding:0}
 .es-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
 .es-msg{max-width:92%;padding:8px 11px;border-radius:10px;font-size:13px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
@@ -169,6 +171,13 @@
   }
 
   $('#esZona').addEventListener('click', function (e) {
+    var hoja = e.target.closest('.es-hoja');
+    if (hoja) {
+      // Lámina a tamaño completo en otra pestaña
+      var url = URL.createObjectURL(new Blob(['<!DOCTYPE html><meta charset="utf-8"><title>' + esc(hoja.title) + '</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"><body style="margin:0;background:#888">' + hoja.innerHTML.replace('<svg ', '<svg style="display:block;width:100%;height:auto;background:#fff" ') + '</body>'], { type: 'text/html' }));
+      window.open(url, '_blank');
+      return;
+    }
     var v = e.target.closest('[data-v]');
     if (v) { viendo = Number(v.dataset.v); pintarZona(); cargarVersion(viendo); return; }
     if (e.target.id === 'esPdf') return descargarPdf(e.target);

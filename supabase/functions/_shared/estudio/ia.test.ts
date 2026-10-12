@@ -51,10 +51,10 @@ test('respuesta válida a la primera', async () => {
   const r = await pedirAClaude({ clave: 'k', modelo: 'claude-sonnet-5-5', mensajes: [{ role: 'user', content: 'x' }], fetch: f });
   assert.equal(r.resultado.tipo, 'proyecto');
   assert.equal(r.llamadas.length, 1);
-  // prompt caching en sistema y herramientas; siempre responde con herramienta
+  // prompt caching en sistema y herramientas; tool_choice automático
   assert.equal(cuerpos[0].system[0].cache_control.type, 'ephemeral');
   assert.equal(cuerpos[0].tools.at(-1).cache_control.type, 'ephemeral');
-  assert.deepEqual(cuerpos[0].tool_choice, { type: 'any' });
+  assert.equal(cuerpos[0].tool_choice, undefined);
 });
 
 test('JSON no válido → se devuelven los errores y lo corrige', async () => {
@@ -85,6 +85,15 @@ test('pregunta cuando falta una medida', async () => {
   const { f } = apiFalsa([herramienta('preguntar', { mensaje: 'Me falta el alto.', preguntas: ['¿Qué alto tiene el armario?'] })]);
   const r = await pedirAClaude({ clave: 'k', modelo: 'm', mensajes: [{ role: 'user', content: 'x' }], fetch: f });
   assert.deepEqual(r.resultado, { tipo: 'pregunta', mensaje: 'Me falta el alto.', preguntas: ['¿Qué alto tiene el armario?'] });
+});
+
+test('contesta solo con texto → recordatorio y, si insiste, se trata como pregunta', async () => {
+  const soloTexto = { stop_reason: 'end_turn', usage, content: [{ type: 'text', text: '¿El armario llega al techo?' }] };
+  const { f, cuerpos } = apiFalsa([soloTexto, soloTexto, soloTexto]);
+  const r = await pedirAClaude({ clave: 'k', modelo: 'm', mensajes: [{ role: 'user', content: 'x' }], fetch: f });
+  assert.equal(r.llamadas.length, REINTENTOS + 1);
+  assert.match(cuerpos[1].messages.at(-1).content, /Responde llamando a guardar_proyecto/);
+  assert.deepEqual(r.resultado, { tipo: 'pregunta', mensaje: '¿El armario llega al techo?', preguntas: [] });
 });
 
 test('error de la API', async () => {

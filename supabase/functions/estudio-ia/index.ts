@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       const { data: hist } = await supa.from('estudio_mensajes').select('rol, texto').eq('proyecto_id', proyectoId).order('created_at');
       const nombresNuevos = (archivos ?? []).filter((a) => pedidos.includes(a.id)).map((a) => a.nombre);
       const textoGuardado = [texto, nombresNuevos.length ? `📎 ${nombresNuevos.join(', ')}` : ''].filter(Boolean).join('\n');
-      await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, rol: 'usuario', texto: textoGuardado });
+      const { data: msgUsuario } = await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, rol: 'usuario', texto: textoGuardado }).select('id').single();
 
       const mensajes = construirMensajes({ historial: (hist ?? []) as MensajeChat[], adjuntos, actual, peticion: texto });
       const { resultado, llamadas } = await pedirAClaude({ clave, modelo, mensajes });
@@ -202,8 +202,11 @@ Deno.serve(async (req) => {
         await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, rol: 'asistente', texto: t, pregunta: true });
         return json({ tipo: 'pregunta', mensaje: resultado.mensaje, preguntas: resultado.preguntas, uso });
       }
-      console.error('estudio-ia: sin proyecto válido', JSON.stringify(resultado.errores ?? []).slice(0, 2000));
-      return json({ tipo: 'error', mensaje: resultado.mensaje, uso }, 502);
+      // Sin respuesta útil: se quita el mensaje del alumno para que pueda reintentar sin duplicados.
+      if (msgUsuario?.id) await supa.from('estudio_mensajes').delete().eq('id', msgUsuario.id);
+      console.error('estudio-ia: sin proyecto válido', resultado.detalle ?? '', JSON.stringify(resultado.errores ?? []).slice(0, 2000));
+      // El detalle técnico solo se devuelve a admin.
+      return json({ tipo: 'error', mensaje: resultado.mensaje, detalle: esAdmin ? resultado.detalle ?? resultado.errores ?? null : null, uso }, 502);
     }
 
     if (action === 'restaurar') {
