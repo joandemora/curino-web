@@ -1,0 +1,4 @@
+Inter (Rasmus Andersson) · SIL Open Font License 1.1 · https://github.com/rsms/inter
+Inter-Regular.ttf e Inter-Bold.ttf: instancias estáticas (wght 400 / 700, opsz 14)
+de la fuente variable, recortadas a latín (U+0020–017F, puntuación, €, ×) y con
+los glifos compuestos descompuestos para que pdf-lib/fontkit puedan subconjuntarlas.

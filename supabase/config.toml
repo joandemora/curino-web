@@ -176,3 +176,12 @@ entrypoint = "./functions/resend-webhook/index.ts"
 [functions.cal-webhook]
 enabled = true
 verify_jwt = false
+
+[functions.estudio-ia]
+enabled = true
+verify_jwt = true
+import_map = "./functions/estudio-ia/deno.json"
+entrypoint = "./functions/estudio-ia/index.ts"
+# Estudio Curino (2026-10). verify_jwt=true + comprobacion propia de
+# user_roles.role = 'admin' (F1: solo 'ping'; F4 abrira a alumnos activos).
+# Usa el secret ANTHROPIC_API_KEY; nunca lo devuelve.

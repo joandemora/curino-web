@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "referencia": "PRUEBA",
+  "cliente": "Cliente PRUEBA",
+  "armarios": [
+    {
+      "codigo": "A.01",
+      "titulo": "ARMARIO A MEDIDA EN L",
+      "subtitulo": "Cuerpo principal 190 × 280 × 60 cm (2 × 95) + módulo lateral 100 × 280 × 40 cm",
+      "notas": "Alto 280 cm libre (suelo acabado descontado). Lateral con fondo 40 cm: barra extraíble frontal para prendas largas.",
+      "cuerpos": [
+        {
+          "nombre": "CUERPO PRINCIPAL",
+          "ancho": 190, "alto": 280, "fondo": 60,
+          "modulos": [
+            { "ancho": 95, "interior": [
+              { "tipo": "altillo", "alto": 50 },
+              { "tipo": "perchero", "alto": 99.3 },
+              { "tipo": "perchero" }
+            ] },
+            { "ancho": 95, "interior": [
+              { "tipo": "altillo", "alto": 50 },
+              { "tipo": "perchero" },
+              { "tipo": "cajonera", "cajones": 4 }
+            ] }
+          ],
+          "frente": {
+            "apertura": "abatible", "modelo": "moldurada", "acabado": "lacada", "tirador": "laton",
+            "piezas": [
+              { "tipo": "fijo", "ancho": 47.5 },
+              { "tipo": "puerta", "ancho": 47.5 },
+              { "tipo": "puerta", "ancho": 47.5 },
+              { "tipo": "puerta", "ancho": 47.5, "tirador": "der" }
+            ]
+          }
+        },
+        {
+          "nombre": "LATERAL · fondo 40",
+          "ancho": 100, "alto": 280, "fondo": 40,
+          "modulos": [
+            { "ancho": 100, "interior": [
+              { "tipo": "hueco", "alto": 36.2, "etiqueta": "Estante" },
+              { "tipo": "hueco", "alto": 38.1, "etiqueta": "Estante" },
+              { "tipo": "perchero_extraible" }
+            ] }
+          ],
+          "frente": {
+            "apertura": "abatible", "modelo": "moldurada", "acabado": "lacada", "tirador": "laton",
+            "piezas": [
+              { "tipo": "puerta", "ancho": 50 },
+              { "tipo": "puerta", "ancho": 50 }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "codigo": "A.02",
+      "titulo": "ARMARIO A MEDIDA 200 cm",
+      "subtitulo": "2 módulos de 100 cm · 200 × 274 × 60 cm",
+      "cuerpos": [
+        {
+          "ancho": 200, "alto": 274, "fondo": 60,
+          "modulos": [
+            { "ancho": 100, "interior": [
+              { "tipo": "altillo", "alto": 50 },
+              { "tipo": "perchero", "alto": 96.6 },
+              { "tipo": "perchero" }
+            ] },
+            { "ancho": 100, "interior": [
+              { "tipo": "altillo", "alto": 50 },
+              { "tipo": "perchero" },
+              { "tipo": "cajonera", "cajones": 4 }
+            ] }
+          ],
+          "frente": {
+            "apertura": "abatible", "modelo": "moldurada", "acabado": "lacada", "tirador": "laton",
+            "piezas": [
+              { "tipo": "puerta", "ancho": 50 },
+              { "tipo": "puerta", "ancho": 50 },
+              { "tipo": "puerta", "ancho": 50 },
+              { "tipo": "puerta", "ancho": 50 }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "codigo": "A.03",
+      "titulo": "ARMARIO A MEDIDA 260 cm",
+      "cuerpos": [
+        {
+          "ancho": 260, "alto": 248, "fondo": 60,
+          "modulos": [
+            { "ancho": 104, "interior": [
+              { "tipo": "altillo", "alto": 40 },
+              { "tipo": "perchero", "alto": 89.1 },
+              { "tipo": "perchero", "alto": 75.1 },
+              { "tipo": "balda_inferior" }
+            ] },
+            { "ancho": 104, "interior": [
+              { "tipo": "altillo", "alto": 40 },
+              { "tipo": "perchero" },
+              { "tipo": "cajonera", "cajones": 4 }
+            ] },
+            { "ancho": 52, "interior": [
+              { "tipo": "altillo", "alto": 40 },
+              { "tipo": "estantes", "estantes": 5 }
+            ] }
+          ],
+          "frente": {
+            "apertura": "abatible", "modelo": "moldurada", "acabado": "lacada", "tirador": "laton",
+            "piezas": [
+              { "tipo": "puerta", "ancho": 52 },
+              { "tipo": "puerta", "ancho": 52 },
+              { "tipo": "puerta", "ancho": 52 },
+              { "tipo": "puerta", "ancho": 52 },
+              { "tipo": "puerta", "ancho": 52 }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
