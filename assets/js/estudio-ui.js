@@ -226,6 +226,7 @@
         // Si falla, el servidor no guarda el mensaje (o lo retira): se quita la burbuja
         var us = msgs.querySelectorAll('.es-msg.usuario'); if (us.length) us[us.length - 1].remove();
         alertaError(err.message);
+        if (err.datos && err.datos.sin_credito && ctx.alCambiar) ctx.alCambiar();
       }).then(function () { ocupado = false; $('#esEnviar').disabled = false; });
     });
 
