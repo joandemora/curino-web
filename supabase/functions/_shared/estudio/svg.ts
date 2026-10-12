@@ -34,6 +34,15 @@ function prim(p: Prim): string {
   }
 }
 
+/** Solo el dibujo (sin cabecera), recortado a su caja; css opcional (p. ej. @font-face embebida). */
+export function dibujoSvg(prims: Prim[], caja: { x: number; y: number; w: number; h: number }, css = ''): string {
+  const m = 4;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n(caja.x - m)} ${n(caja.y - m)} ${n(caja.w + 2 * m)} ${n(caja.h + 2 * m)}" width="${n(caja.w + 2 * m)}" height="${n(caja.h + 2 * m)}" font-family="Inter, 'Helvetica Neue', Arial, sans-serif">` +
+    (css ? `<style>${css}</style>` : '') +
+    `<rect x="${n(caja.x - m)}" y="${n(caja.y - m)}" width="100%" height="100%" fill="#ffffff"/>` +
+    prims.map(prim).join('') + `</svg>`;
+}
+
 export function laminaSvg(l: Lamina): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(l.ancho)} ${n(l.alto)}" font-family="Inter, 'Helvetica Neue', Arial, sans-serif">` +
     `<rect width="100%" height="100%" fill="#ffffff"/>` +

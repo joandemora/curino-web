@@ -32,6 +32,31 @@ export interface Lamina {
   ancho: number;   // pt
   alto: number;    // pt
   prims: Prim[];
+  inicioDibujo: number;  // prims[0..inicioDibujo) = cabecera y pie; el resto, el dibujo
+}
+
+/** Caja (pt) que ocupa una lista de primitivas. */
+export function cajaPrims(prims: Prim[], medir: Medir = medirAprox): { x: number; y: number; w: number; h: number } {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const pt = (x: number, y: number) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+  for (const p of prims) {
+    if (p.k === 'rect') { pt(p.x, p.y); pt(p.x + p.w, p.y + p.h); }
+    else if (p.k === 'line') { pt(p.x1, p.y1); pt(p.x2, p.y2); }
+    else if (p.k === 'poly') p.pts.forEach(([x, y]) => pt(x, y));
+    else if (p.k === 'text') {
+      const w = medir(p.t, p.size, !!p.bold);
+      const off = p.anchor === 'middle' ? w / 2 : p.anchor === 'end' ? w : 0;
+      if (p.vertical) { pt(p.x - p.size, p.y - off); pt(p.x + 2, p.y - off + w); }
+      else { pt(p.x - off, p.y - p.size); pt(p.x - off + w, p.y + p.size * 0.25); }
+    } else if (p.k === 'logo') { pt(p.x, p.y); pt(p.x + p.h * 3.76, p.y + p.h); }
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/** Solo el dibujo de la lámina (sin cabecera ni pie) y su caja. */
+export function dibujoLamina(l: Lamina, medir: Medir = medirAprox) {
+  const prims = l.prims.slice(l.inicioDibujo);
+  return { prims, caja: cajaPrims(prims, medir) };
 }
 
 /** Ancho en pt de un texto (Inter). pdf.ts usa las métricas reales de la fuente. */
@@ -151,12 +176,21 @@ export function subtituloAuto(a: Armario): string {
     .filter(Boolean).join(' · ');
 }
 
+/** Modelos de puerta presentes en el frente (el de cada puerta o el del frente). */
+export function modelosPuertas(f: Frente): ('moldurada' | 'lisa')[] {
+  const m = new Set<'moldurada' | 'lisa'>();
+  for (const p of f.piezas) if (p.tipo === 'puerta') m.add(p.modelo ?? f.modelo);
+  return [...m];
+}
+
 export function descripcionFrente(f: Frente): string {
   const pl = (s: string) => s.split(' ').map((w, i) => (i === 0 && /[aeiou]$/i.test(w) ? w + 's' : w)).join(' ');
+  const modelos = modelosPuertas(f);
+  const modelo = modelos.length > 1 ? 'molduradas y lisas' : (modelos[0] ?? f.modelo) === 'moldurada' ? 'molduradas' : 'lisas';
   return [
     'Puertas',
     f.apertura === 'abatible' ? 'abatibles' : 'correderas',
-    f.modelo === 'moldurada' ? 'molduradas' : 'lisas',
+    modelo,
     f.acabado ? pl(f.acabado.trim()) : ''
   ].filter(Boolean).join(' ');
 }
@@ -246,6 +280,7 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
   const pie = [p.referencia ? `Presupuesto ${p.referencia}` : '', p.cliente ?? ''].filter(Boolean).join(' · ');
   if (pie) text(pg.mr, pg.pie, pie, 7.5, E.suave, 'end');
   if (a.notas) text(pg.ml, pg.pie, a.notas, 7.5, E.suave);
+  const inicioDibujo = prims.length;
 
   // ── Vistas ──
   a.cuerpos.forEach((c, ic) => {
@@ -395,7 +430,7 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
       if (pz.tipo === 'fijo') {
         etiqueta((d0 + d1) / 2, (arriba + bajo) / 2, pz.etiqueta ?? 'FRENTE FIJO\nLISO', 6.5, false, E.suave);
       } else {
-        if (f.modelo === 'moldurada') {
+        if ((pz.modelo ?? f.modelo) === 'moldurada') {
           const mg = cm(pz.ancho * E.moldura), mi = cm(pz.ancho * E.moldura_interior);
           const tr = cm(E.travesano) / 2;
           const paneles: [number, number][] = [[arriba + mg, travesano - tr], [travesano + tr, bajo - mg]];
@@ -425,5 +460,5 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
     x += W;
   });
 
-  return { codigo: a.codigo, formato, ancho: pg.w, alto: pg.h, prims };
+  return { codigo: a.codigo, formato, ancho: pg.w, alto: pg.h, prims, inicioDibujo };
 }
