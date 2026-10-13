@@ -23,7 +23,7 @@ export const EVENTOS_NECESARIOS = [
   'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'
 ];
 
-const ACCIONES = new Set(['creditos', 'comprar_pack', 'comprar_plan', 'portal', 'stripe_diagnostico']);
+const ACCIONES = new Set(['creditos', 'comprar_pack', 'comprar_plan', 'portal', 'stripe_diagnostico', 'stripe_eventos_estudio']);
 export const esAccionTienda = (a: string) => ACCIONES.has(a);
 /** Acciones que puede usar un antiguo alumno sin acceso activo (para suscribirse). */
 export const accionSinAcceso = (a: string) => a === 'creditos' || a === 'comprar_plan' || a === 'portal';
@@ -75,6 +75,23 @@ export async function accionTienda(action: string, o: {
       portal_activo: ((portales as Any).data ?? []).length > 0,
       error: (hooks as Any).error || (portales as Any).error || null
     });
+  }
+
+  if (action === 'stripe_eventos_estudio') {
+    // Admin, solo lectura: últimos eventos de Stripe del Estudio (pagos, reembolsos) y si quedan entregas pendientes.
+    if (!o.esAdmin) return json({ error: 'forbidden' }, 403);
+    const s = stripe();
+    const todos = await s.events.list({ limit: 100, created: { gte: Math.floor(Date.now() / 1000) - 3 * 86400 } }).autoPagingToArray({ limit: 500 });
+    const tipos: Record<string, number> = {};
+    for (const e of todos) tipos[e.type] = (tipos[e.type] ?? 0) + 1;
+    const out = todos.filter((e) => {
+      const ob: Any = e.data.object;
+      return ob?.metadata?.purpose?.startsWith?.('estudio') || ob?.subscription_details?.metadata?.purpose === 'estudio_plan' || e.type === 'charge.refunded' || e.type.startsWith('checkout.session');
+    }).map((e) => {
+      const ob: Any = e.data.object;
+      return { id: e.id, tipo: e.type, creado: new Date(e.created * 1000).toISOString(), pendientes: e.pending_webhooks, objeto: ob?.id, purpose: ob?.metadata?.purpose ?? null, pago: ob?.payment_status ?? ob?.status ?? null, importe: ob?.amount_total ?? ob?.amount ?? null, reembolsado: ob?.amount_refunded ?? null, pi: ob?.payment_intent ?? null };
+    });
+    return json({ eventos: out, tipos, total: todos.length });
   }
 
   if (action === 'creditos') {
