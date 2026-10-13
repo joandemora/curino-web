@@ -11,7 +11,7 @@
 //                     plantilla completa o qué falta.
 // Solo admin:
 //   'admin_alumnos'        → alumnos (compras + accesos) con estado, crédito y gasto; config; coste del mes.
-//   'admin_acceso'         { email, acceso_hasta?, cortado?, concedido?, credito_mensual_usd?, nota? }
+//   'admin_acceso'         { email, acceso_hasta?, cortado?, concedido?, credito_mensual_usd?, nota?, ilimitado?, almacenamiento_mb?, emisor_curino? }
 //   'admin_credito'        { email, usd, nota? } → ampliación de crédito del mes.
 //   'admin_config'         { modelo, precio_*, credito_mensual_usd, meses_tras_fin, max_*, abierto_alumnos }
 //   'acceso_enlace_prueba' { email } → devuelve el enlace (solo emails «prueba», no lo envía).
@@ -28,13 +28,30 @@ export interface EstadoAlumno {
   email: string; nombre: string | null; productos: string | null; acceso_hasta: string | null;
   activo: boolean; cortado: boolean; concedido: boolean; credito_usd: number; gastado_usd: number; proyectos: number;
   saldo_usd: number; suscripcion: string | null; suscripcion_hasta: string | null; puede_suscribirse: boolean;
+  // Accesos especiales (estudio_accesos): sin tope de créditos, cuota propia, emite como Curino
+  ilimitado: boolean; almacenamiento_mb: number | null; emisor_curino: boolean;
 }
 
 export async function estadoAlumno(supa: Any, email: string): Promise<EstadoAlumno | null> {
   const { data } = await supa.rpc('estudio_alumnos', { p_email: email.toLowerCase() });
   const r = Array.isArray(data) ? data[0] : null;
   if (!r) return null;
-  return { ...r, credito_usd: Number(r.credito_usd ?? 0), gastado_usd: Number(r.gastado_usd ?? 0), saldo_usd: Number(r.saldo_usd ?? 0) };
+  const { data: a } = await supa.from('estudio_accesos').select('ilimitado, almacenamiento_mb, emisor_curino').eq('email', email.toLowerCase()).maybeSingle();
+  return {
+    ...r, ilimitado: !!a?.ilimitado, almacenamiento_mb: a?.almacenamiento_mb ?? null, emisor_curino: !!a?.emisor_curino,
+    credito_usd: Number(r.credito_usd ?? 0), gastado_usd: Number(r.gastado_usd ?? 0), saldo_usd: Number(r.saldo_usd ?? 0)
+  };
+}
+
+/** ¿Emite como SISTEMA & CURINO? Admin o acceso con emisor_curino (por user_id del dueño). */
+export async function emisorCurinoDe(supa: Any, userId: string): Promise<boolean> {
+  const { data: rol } = await supa.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  if (rol) return true;
+  const { data: u } = await supa.auth.admin.getUserById(userId);
+  const email = String(u?.user?.email || '').toLowerCase();
+  if (!email) return false;
+  const { data: a } = await supa.from('estudio_accesos').select('emisor_curino').eq('email', email).maybeSingle();
+  return !!a?.emisor_curino;
 }
 
 /** Puede entrar si es alumno activo y el Estudio está abierto (o tiene acceso concedido para pruebas). */
@@ -48,7 +65,7 @@ export function puedeEntrar(e: EstadoAlumno | null, cfg: Any): { ok: boolean; mo
 export const creditos = (usd: number) => Math.round((Number(usd) || 0) * 100);
 
 export function sinCredito(e: EstadoAlumno | null): string | null {
-  if (!e) return null;
+  if (!e || e.ilimitado) return null;
   if (e.gastado_usd >= e.credito_usd && e.saldo_usd <= 0) {
     return `Has gastado los ${creditos(e.credito_usd)} créditos de este mes. Se renuevan el día 1; si los necesitas antes, compra un pack en «Créditos y plan».`;
   }
@@ -60,7 +77,7 @@ export function sinCredito(e: EstadoAlumno | null): string | null {
  * empezar la petición se descuenta del saldo de packs (movimiento «consumo»).
  */
 export async function descontarSaldo(supa: Any, e: EstadoAlumno | null, userId: string, coste: number): Promise<void> {
-  if (!e || !(coste > 0)) return;
+  if (!e || e.ilimitado || !(coste > 0)) return;
   const quedaba = Math.max(0, e.credito_usd - e.gastado_usd);
   const exceso = Math.round((coste - quedaba) * 1e6) / 1e6;
   if (exceso > 0 && e.saldo_usd > 0) {
@@ -127,8 +144,9 @@ export async function accionYo(supa: Any, email: string, userId: string, esAdmin
     puede_suscribirse: !!e?.puede_suscribirse && (!!cfg?.abierto_alumnos || !!e?.concedido),
     alumno: e ? { nombre: e.nombre, productos: e.productos, acceso_hasta: e.acceso_hasta, suscripcion: e.suscripcion } : null,
     // En créditos (1 crédito = 0,01 $ de coste real)
-    credito: e ? { mes: creditos(e.credito_usd), gastados: creditos(e.gastado_usd), restantes: Math.max(0, creditos(e.credito_usd) - creditos(e.gastado_usd)), saldo: creditos(e.saldo_usd) } : null,
-    faltan: esAdmin ? [] : faltanPlantilla(plantilla)
+    credito: e ? { ilimitado: e.ilimitado, mes: creditos(e.credito_usd), gastados: creditos(e.gastado_usd), restantes: Math.max(0, creditos(e.credito_usd) - creditos(e.gastado_usd)), saldo: creditos(e.saldo_usd) } : null,
+    emisor_curino: esAdmin || !!e?.emisor_curino,
+    faltan: esAdmin || e?.emisor_curino ? [] : faltanPlantilla(plantilla)
   });
 }
 
@@ -161,6 +179,9 @@ export async function accionAdminAcceso(action: string, supa: Any, userId: strin
     if ('cortado' in (body ?? {})) fila.cortado = body.cortado === true;
     if ('concedido' in (body ?? {})) fila.concedido = body.concedido === true;
     if ('credito_mensual_usd' in (body ?? {})) fila.credito_mensual_usd = num(body.credito_mensual_usd, 0, 1000);
+    if ('ilimitado' in (body ?? {})) fila.ilimitado = body.ilimitado === true;
+    if ('emisor_curino' in (body ?? {})) fila.emisor_curino = body.emisor_curino === true;
+    if ('almacenamiento_mb' in (body ?? {})) { const mb = num(body.almacenamiento_mb, 10, 1048576); fila.almacenamiento_mb = mb === null ? null : Math.round(mb); }
     if ('nota' in (body ?? {})) fila.nota = String(body.nota || '').slice(0, 300) || null;
     const r = ya ? await supa.from('estudio_accesos').update(fila).eq('email', email) : await supa.from('estudio_accesos').insert(fila);
     if (r.error) throw r.error;

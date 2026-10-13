@@ -912,6 +912,8 @@
         rutas.logo = p.logo_path; rutas.firma = p.firma_path;
         ver('#plLogoVer', d.logo_url); ver('#plFirmaVer', d.firma_url);
         pintarFp(p.forma_pago || []);
+        // Cuenta propia de Curino en el área de alumnos: emite como SISTEMA & CURINO
+        if (alumno && d.emisor_curino) el.querySelector('.tf-f > p.pa-muted').innerHTML = 'Esta cuenta emite los presupuestos con los datos de SISTEMA &amp; CURINO.';
         var f = $('#plFaltan');
         if (alumno && yo && yo.faltan.length) { f.hidden = false; f.textContent = 'Para descargar presupuestos te falta: ' + yo.faltan.join(', ') + '.'; }
         else if (!alumno && !p.iban) { f.hidden = false; f.textContent = 'Falta el IBAN: sin él, el presupuesto sale sin el bloque «Transferencia bancaria».'; }
@@ -1015,7 +1017,7 @@
           kpi('Ticket medio', eur0(m.ticket_medio), 'por venta') +
           kpi('Proyectos creados', String(m.proyectos), admin ? (m.alumnos_con_actividad + ' alumnos con actividad') : '') +
           kpi('Pendientes de respuesta', String(m.pendientes.length), viejo !== null ? 'el más antiguo, hace ' + viejo + (viejo === 1 ? ' día' : ' días') : 'ninguno') +
-          (c ? kpi('Créditos del mes', cr(c.restantes), 'de ' + cr(c.mes) + (c.saldo > 0 ? ' · +' + cr(c.saldo) + ' de packs' : '')) : '') +
+          (c ? (c.ilimitado ? kpi('Créditos', 'Ilimitados', cr(c.gastados) + ' gastados este mes') : kpi('Créditos del mes', cr(c.restantes), 'de ' + cr(c.mes) + (c.saldo > 0 ? ' · +' + cr(c.saldo) + ' de packs' : ''))) : '') +
           '</div>';
         // Rentabilidad real (facturas y costes de los proyectos)
         var r = m.real;

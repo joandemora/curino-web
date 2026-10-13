@@ -231,6 +231,8 @@ export async function accionProyecto(action: string, ctx: {
   if (!UUID.test(pid)) return json({ error: 'proyecto_id no válido' }, 400);
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
+  // Cuota: la propia del acceso (estudio_accesos.almacenamiento_mb) o la general
+  const cuotaMb = Number(ctx.alumno?.almacenamiento_mb ?? cfg?.almacenamiento_mb ?? 1024);
 
   if (action === 'documentos') {
     const { data } = await supa.from('estudio_documentos').select('*').eq('proyecto_id', pid).order('created_at', { ascending: false });
@@ -254,15 +256,15 @@ export async function accionProyecto(action: string, ctx: {
     const lista = [];
     for (const f of data ?? []) lista.push({ ...f, url: await firmar(f.path) });
     const usado = await usoAlmacenamiento(supa, proyecto.user_id);
-    return json({ ficheros: lista, almacenamiento: { usado, limite: Number(cfg?.almacenamiento_mb ?? 1024) * 1024 * 1024 } });
+    return json({ ficheros: lista, almacenamiento: { usado, limite: cuotaMb * 1024 * 1024 } });
   }
   if (action === 'fichero_subida') {
     const mime = String(body?.mime || '');
     const bytes = Number(body?.bytes || 0);
     if (!MIME[mime]) return json({ error: 'Formato no admitido: PDF, imagen (JPG, PNG, WEBP) o Excel.' }, 400);
     if (!(bytes > 0) || bytes > MAX_FICHERO) return json({ error: 'El archivo supera 20 MB.' }, 400);
-    const limite = Number(cfg?.almacenamiento_mb ?? 1024) * 1024 * 1024;
-    if ((await usoAlmacenamiento(supa, proyecto.user_id)) + bytes > limite) return json({ error: `Has llegado al límite de almacenamiento (${cfg?.almacenamiento_mb ?? 1024} MB). Borra archivos que no necesites.` }, 400);
+    const limite = cuotaMb * 1024 * 1024;
+    if ((await usoAlmacenamiento(supa, proyecto.user_id)) + bytes > limite) return json({ error: `Has llegado al límite de almacenamiento (${cuotaMb} MB). Borra archivos que no necesites.` }, 400);
     const path = `${proyecto.user_id}/${pid}/archivos/${crypto.randomUUID()}.${MIME[mime]}`;
     const { data: s, error } = await supa.storage.from('estudio').createSignedUploadUrl(path);
     if (error) throw error;
