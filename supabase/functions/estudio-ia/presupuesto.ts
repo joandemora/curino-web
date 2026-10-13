@@ -184,8 +184,9 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', proyectoId).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
   const duenoAdmin = await emisorCurinoDe(supa, proyecto.user_id);
-  const { data: guardado } = await supa.from('estudio_presupuestos').select('datos, estado, estado_at, enviado_at, aceptado_at, rechazado_at').eq('proyecto_id', proyectoId).maybeSingle();
-  const doc: DocPresupuesto | null = guardado?.datos ?? null;
+  const { data: guardado } = await supa.from('estudio_presupuestos').select('datos, estado, estado_at, enviado_at, aceptado_at, rechazado_at, importe').eq('proyecto_id', proyectoId).maybeSingle();
+  // Importado del histórico (solo número e importe): no hay documento editable
+  const doc: DocPresupuesto | null = guardado?.datos?.importado ? null : guardado?.datos ?? null;
   const tarifa = await cargarTarifa(supa, proyecto.user_id);
   const plantilla = await cargarPlantilla(supa, proyecto.user_id, duenoAdmin);
   const guardar = async (d: DocPresupuesto) => {
@@ -199,7 +200,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   };
   const versionDatos = async (n: number) => (await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).eq('numero', n).maybeSingle()).data as { numero: number; datos: Proyecto } | null;
   const estado = { estado: guardado?.estado ?? 'borrador', estado_at: guardado?.estado_at ?? null, enviado_at: guardado?.enviado_at ?? null, aceptado_at: guardado?.aceptado_at ?? null, rechazado_at: guardado?.rechazado_at ?? null };
-  const respuesta = (d: DocPresupuesto | null) => ({ presupuesto: d, totales: d ? totales(d, tarifa.iva_pct ?? 21) : null, iva_pct: tarifa.iva_pct, tarifa_propia: tarifa.propia, version_actual: proyecto.version_actual, ...estado });
+  const importado = guardado?.datos?.importado ? { numero: guardado.datos.numero ?? null, importe: guardado.importe ?? null } : null;
+  const respuesta = (d: DocPresupuesto | null) => ({ presupuesto: d, importado: d ? null : importado, totales: d ? totales(d, tarifa.iva_pct ?? 21) : null, iva_pct: tarifa.iva_pct, tarifa_propia: tarifa.propia, version_actual: proyecto.version_actual, ...estado });
 
   if (action === 'presupuesto') return json(respuesta(doc));
 

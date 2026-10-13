@@ -33,8 +33,7 @@ const MIME: Record<string, string> = {
   'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx', 'application/vnd.ms-excel': 'xls'
 };
-const MAX_FICHERO = 20 * 1024 * 1024;
-const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente', 'foto_obra', 'otro'];
+const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente', 'foto_obra', 'plano', 'otro'];
 const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
@@ -233,6 +232,7 @@ export async function accionProyecto(action: string, ctx: {
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
   // Cuota: la propia del acceso (estudio_accesos.almacenamiento_mb) o la general
   const cuotaMb = Number(ctx.alumno?.almacenamiento_mb ?? cfg?.almacenamiento_mb ?? 1024);
+  const maxFichero = (ctx.alumno?.max_fichero_mb ?? 20) * 1024 * 1024;
 
   if (action === 'documentos') {
     const { data } = await supa.from('estudio_documentos').select('*').eq('proyecto_id', pid).order('created_at', { ascending: false });
@@ -244,7 +244,7 @@ export async function accionProyecto(action: string, ctx: {
     const tipo = String(body?.tipo || '');
     if (tipo !== 'presupuesto_xlsx') return json({ error: 'Tipo no válido' }, 400);
     const bytes = Number(body?.bytes || 0);
-    if (!(bytes > 0) || bytes > MAX_FICHERO) return json({ error: 'Archivo demasiado grande' }, 400);
+    if (!(bytes > 0) || bytes > maxFichero) return json({ error: 'Archivo demasiado grande' }, 400);
     const path = `${proyecto.user_id}/${pid}/documentos/${crypto.randomUUID()}.xlsx`;
     const { data: s, error } = await supa.storage.from('estudio').createSignedUploadUrl(path);
     if (error) throw error;
@@ -262,7 +262,7 @@ export async function accionProyecto(action: string, ctx: {
     const mime = String(body?.mime || '');
     const bytes = Number(body?.bytes || 0);
     if (!MIME[mime]) return json({ error: 'Formato no admitido: PDF, imagen (JPG, PNG, WEBP) o Excel.' }, 400);
-    if (!(bytes > 0) || bytes > MAX_FICHERO) return json({ error: 'El archivo supera 20 MB.' }, 400);
+    if (!(bytes > 0) || bytes > maxFichero) return json({ error: `El archivo supera ${maxFichero / 1048576} MB.` }, 400);
     const limite = cuotaMb * 1024 * 1024;
     if ((await usoAlmacenamiento(supa, proyecto.user_id)) + bytes > limite) return json({ error: `Has llegado al límite de almacenamiento (${cuotaMb} MB). Borra archivos que no necesites.` }, 400);
     const path = `${proyecto.user_id}/${pid}/archivos/${crypto.randomUUID()}.${MIME[mime]}`;

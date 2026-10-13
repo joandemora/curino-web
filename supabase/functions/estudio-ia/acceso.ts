@@ -11,7 +11,7 @@
 //                     plantilla completa o qué falta.
 // Solo admin:
 //   'admin_alumnos'        → alumnos (compras + accesos) con estado, crédito y gasto; config; coste del mes.
-//   'admin_acceso'         { email, acceso_hasta?, cortado?, concedido?, credito_mensual_usd?, nota?, ilimitado?, almacenamiento_mb?, emisor_curino? }
+//   'admin_acceso'         { email, acceso_hasta?, cortado?, concedido?, credito_mensual_usd?, nota?, ilimitado?, almacenamiento_mb?, max_fichero_mb?, emisor_curino? }
 //   'admin_credito'        { email, usd, nota? } → ampliación de crédito del mes.
 //   'admin_config'         { modelo, precio_*, credito_mensual_usd, meses_tras_fin, max_*, abierto_alumnos }
 //   'acceso_enlace_prueba' { email } → devuelve el enlace (solo emails «prueba», no lo envía).
@@ -29,16 +29,16 @@ export interface EstadoAlumno {
   activo: boolean; cortado: boolean; concedido: boolean; credito_usd: number; gastado_usd: number; proyectos: number;
   saldo_usd: number; suscripcion: string | null; suscripcion_hasta: string | null; puede_suscribirse: boolean;
   // Accesos especiales (estudio_accesos): sin tope de créditos, cuota propia, emite como Curino
-  ilimitado: boolean; almacenamiento_mb: number | null; emisor_curino: boolean;
+  ilimitado: boolean; almacenamiento_mb: number | null; max_fichero_mb: number | null; emisor_curino: boolean;
 }
 
 export async function estadoAlumno(supa: Any, email: string): Promise<EstadoAlumno | null> {
   const { data } = await supa.rpc('estudio_alumnos', { p_email: email.toLowerCase() });
   const r = Array.isArray(data) ? data[0] : null;
   if (!r) return null;
-  const { data: a } = await supa.from('estudio_accesos').select('ilimitado, almacenamiento_mb, emisor_curino').eq('email', email.toLowerCase()).maybeSingle();
+  const { data: a } = await supa.from('estudio_accesos').select('ilimitado, almacenamiento_mb, max_fichero_mb, emisor_curino').eq('email', email.toLowerCase()).maybeSingle();
   return {
-    ...r, ilimitado: !!a?.ilimitado, almacenamiento_mb: a?.almacenamiento_mb ?? null, emisor_curino: !!a?.emisor_curino,
+    ...r, ilimitado: !!a?.ilimitado, almacenamiento_mb: a?.almacenamiento_mb ?? null, max_fichero_mb: a?.max_fichero_mb ?? null, emisor_curino: !!a?.emisor_curino,
     credito_usd: Number(r.credito_usd ?? 0), gastado_usd: Number(r.gastado_usd ?? 0), saldo_usd: Number(r.saldo_usd ?? 0)
   };
 }
@@ -182,6 +182,7 @@ export async function accionAdminAcceso(action: string, supa: Any, userId: strin
     if ('ilimitado' in (body ?? {})) fila.ilimitado = body.ilimitado === true;
     if ('emisor_curino' in (body ?? {})) fila.emisor_curino = body.emisor_curino === true;
     if ('almacenamiento_mb' in (body ?? {})) { const mb = num(body.almacenamiento_mb, 10, 1048576); fila.almacenamiento_mb = mb === null ? null : Math.round(mb); }
+    if ('max_fichero_mb' in (body ?? {})) { const mb = num(body.max_fichero_mb, 1, 250); fila.max_fichero_mb = mb === null ? null : Math.round(mb); }
     if ('nota' in (body ?? {})) fila.nota = String(body.nota || '').slice(0, 300) || null;
     const r = ya ? await supa.from('estudio_accesos').update(fila).eq('email', email) : await supa.from('estudio_accesos').insert(fila);
     if (r.error) throw r.error;

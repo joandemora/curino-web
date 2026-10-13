@@ -34,6 +34,7 @@ const mesClave = (iso: string) => new Date(iso).toLocaleDateString('sv-SE', { ti
 
 function importeDe(p: Any, iva: number): number | null {
   if (p.importe !== null && p.importe !== undefined) return Number(p.importe);
+  if (!p.datos?.partidas) return null;   // importado sin importe
   const t = totales(p.datos as DocPresupuesto, iva);
   return t.pendientes ? null : t.importe;
 }
@@ -151,6 +152,9 @@ export async function accionNegocio(action: string, o: {
     if (!esAdmin) return json({ error: 'forbidden' }, 403);
     const { data: admins } = await supa.from('user_roles').select('user_id').eq('role', 'admin');
     const fuera = new Set((admins ?? []).map((a: Any) => a.user_id));
+    // Tampoco las cuentas que emiten como Curino (cuenta propia de Juan)
+    const { data: propias } = await supa.from('estudio_accesos').select('email').eq('emisor_curino', true);
+    for (const a of propias ?? []) { const { data: u } = await supa.rpc('estudio_alumnos', { p_email: a.email }); if (u?.[0]?.user_id) fuera.add(u[0].user_id); }
     const { data: todos } = await supa.from('estudio_proyectos').select('id, user_id, nombre, created_at');
     const proyectos = (todos ?? []).filter((p: Any) => !fuera.has(p.user_id));   // sin los proyectos de admin
     const ids = proyectos.map((p: Any) => p.id);
