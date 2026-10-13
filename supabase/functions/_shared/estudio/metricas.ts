@@ -2,14 +2,17 @@
 //
 // Estudio Curino · métricas de un proyecto (sin dependencias: se prueba en Node).
 // Reglas acordadas con Juan (2026-10):
-//   - Facturación (sin IVA) = suma de facturas a cliente subidas (base); si no
-//     hay ninguna, el importe del presupuesto aceptado sin IVA. Así no se
-//     cuenta dos veces lo facturado y lo presupuestado.
+//   - Facturación (sin IVA) = presupuesto aceptado sin IVA. Las facturas a
+//     cliente son cobros (no sustituyen la facturación); solo si su suma
+//     (bases) supera el presupuesto aceptado se usan como facturación
+//     (hubo ampliaciones). Regla de Juan, 2026-10-13.
 //   - Costes (sin IVA) = facturas de proveedor (base) + costes manuales.
 //   - Margen = facturación − costes; en % sobre la facturación. Sin costes el
 //     margen es null (la tarjeta muestra «—», no un 100 % engañoso).
 //   - Cobros: plazos de la forma de pago sobre el total CON IVA; fecha
 //     prevista por defecto: 1.º al aceptar, cada siguiente +30 días.
+//     Cobrado = el mayor entre los plazos marcados y el total (con IVA) de
+//     las facturas a cliente; un plazo cubierto por las facturas no vence.
 //   - Avisos: margen < 30 %, cobros vencidos (fecha prevista pasada sin cobrar).
 
 export const CATEGORIAS: Record<string, string> = {
@@ -44,8 +47,10 @@ export function metricasProyecto(o: {
   const facturasCliente = o.ficheros.filter((f) => f.tipo === 'factura_cliente');
   const facturasProv = o.ficheros.filter((f) => f.tipo === 'factura_proveedor');
   const aceptado = o.presupuesto?.estado === 'aceptado' ? Number(o.presupuesto.importe ?? 0) : 0;
-  const facturacion = facturasCliente.length ? suma(facturasCliente.map((f) => Number(f.base ?? 0))) : aceptado;
-  const origen = facturasCliente.length ? 'facturas' : (aceptado ? 'presupuesto' : null);
+  const baseFacturas = suma(facturasCliente.map((f) => Number(f.base ?? 0)));
+  const porFacturas = baseFacturas > aceptado;
+  const facturacion = porFacturas ? baseFacturas : aceptado;
+  const origen = porFacturas ? 'facturas' : (aceptado ? 'presupuesto' : null);
 
   const porCategoria: Record<string, number> = {};
   const add = (k: string, v: number) => { porCategoria[k] = r2((porCategoria[k] ?? 0) + (Number(v) || 0)); };
@@ -57,13 +62,17 @@ export function metricasProyecto(o: {
   const margenPct = hayCostes && facturacion > 0 ? Math.round((1000 * (facturacion - costes)) / facturacion) / 10 : null;
 
   const totalCobros = suma(o.cobros.map((c) => c.importe));
-  const cobrado = suma(o.cobros.filter((c) => c.cobrado).map((c) => c.importe));
-  const vencidos = o.cobros.filter((c) => !c.cobrado && c.fecha_prevista && c.fecha_prevista < o.hoy)
+  const totalFacturas = suma(facturasCliente.map((f) => Number(f.total ?? (Number(f.base ?? 0) * 1.21))));
+  const cobrado = Math.max(suma(o.cobros.filter((c) => c.cobrado).map((c) => c.importe)), totalFacturas);
+  // Plazos cubiertos por las facturas a cliente (en orden): cuentan como cobrados
+  let acum = 0;
+  const cubierto = o.cobros.map((c) => { acum += Number(c.importe) || 0; return acum <= totalFacturas + 0.5; });
+  const vencidos = o.cobros.filter((c, i) => !c.cobrado && !cubierto[i] && c.fecha_prevista && c.fecha_prevista < o.hoy)
     .map((c) => ({ concepto: c.concepto, importe: c.importe, fecha_prevista: c.fecha_prevista!, dias: Math.round((Date.parse(o.hoy) - Date.parse(c.fecha_prevista!)) / 86_400_000) }));
 
   // Línea temporal: cobros (+, con IVA) y pagos a proveedores / costes (−, sin IVA) por fecha
   const eventos = [
-    ...o.cobros.map((c) => ({ fecha: (c.cobrado ? c.fecha_cobro : c.fecha_prevista) || o.hoy, tipo: 'cobro', concepto: c.concepto, importe: c.importe, real: c.cobrado })),
+    ...o.cobros.map((c, i) => ({ fecha: (c.cobrado ? c.fecha_cobro : c.fecha_prevista) || o.hoy, tipo: 'cobro', concepto: c.concepto, importe: c.importe, real: c.cobrado || cubierto[i] })),
     ...facturasProv.map((f) => ({ fecha: f.fecha || o.hoy, tipo: 'pago', concepto: f.proveedor || 'Proveedor', importe: Number(f.total ?? f.base ?? 0), real: true })),
     ...o.costes.map((c) => ({ fecha: c.fecha || o.hoy, tipo: 'pago', concepto: c.concepto || CATEGORIAS[c.categoria] || 'Coste', importe: c.importe, real: true }))
   ].sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -76,7 +85,7 @@ export function metricasProyecto(o: {
   return {
     facturacion, origen_facturacion: origen, costes, costes_por_categoria: Object.entries(porCategoria).map(([k, v]) => ({ categoria: k, nombre: CATEGORIAS[k], importe: v })),
     margen, margen_pct: margenPct,
-    cobros: { total: totalCobros, cobrado, pendiente: r2(totalCobros - cobrado), vencidos },
+    cobros: { total: totalCobros, cobrado, pendiente: Math.max(0, r2(totalCobros - cobrado)), facturado_cliente: totalFacturas, vencidos },
     eventos, avisos
   };
 }
