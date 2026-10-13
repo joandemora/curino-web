@@ -37,7 +37,7 @@ const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente'
 const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
-const ACCIONES = new Set(['proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
+const ACCIONES = new Set(['leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
   'fichero_borrar', 'fichero_leer_ia', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
 export const esAccionProyecto = (a: string) => ACCIONES.has(a);
 
@@ -176,6 +176,31 @@ export async function accionProyecto(action: string, ctx: {
     const r = await supa.from('estudio_ficheros').update(fila).eq('id', f.id).select('*').single();
     if (r.error) throw r.error;
     return json({ fichero: r.data });
+  }
+  if (action === 'leer_paginas') {
+    // Solo admin: lee con IA las páginas (imágenes) de un documento SIN guardar nada en él; registra el uso.
+    if (!esAdmin) return json({ error: 'forbidden' }, 403);
+    let imgs = Array.isArray(body?.imagenes) ? body.imagenes.slice(0, 12).filter((x: Any) => /^image\/(jpeg|png|webp)$/.test(x?.tipo) && typeof x?.base64 === 'string') : [];
+    // O rutas temporales del bucket (_tmp/leer/…): se descargan aquí
+    if (!imgs.length && Array.isArray(body?.paths)) {
+      for (const pth of body.paths.slice(0, 12).filter((x: Any) => typeof x === 'string' && x.startsWith('_tmp/leer/') && !x.includes('..'))) {
+        const { data: b } = await supa.storage.from('estudio').download(pth);
+        if (!b) continue;
+        const u8 = new Uint8Array(await b.arrayBuffer());
+        let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+        imgs.push({ tipo: 'image/jpeg', base64: btoa(bin) });
+      }
+    }
+    if (!imgs.length) return json({ error: 'Sin imágenes' }, 400);
+    const nombre = String(body?.nombre || 'documento').slice(0, 120);
+    const r = await leerFactura({ clave: ctx.clave, modelo: ctx.modelo, adjunto: { tipo: imgs[0].tipo, base64: imgs[0].base64, nombre }, paginas: imgs.map((x: Any) => ({ tipo: x.tipo, base64: x.base64, nombre })) });
+    const precios = { entrada: Number(cfg?.precio_entrada ?? 2), salida: Number(cfg?.precio_salida ?? 10), cache_escritura: Number(cfg?.precio_cache_escritura ?? 2.5), cache_lectura: Number(cfg?.precio_cache_lectura ?? 0.1) };
+    let coste = 0;
+    for (const l of r.llamadas) {
+      const c = costeUsd(l.uso, precios); coste += c;
+      await supa.from('estudio_uso').insert({ user_id: userId, proyecto_id: null, accion: 'leer_paginas', modelo: ctx.modelo, input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens, cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens, coste_usd: c, ok: l.ok });
+    }
+    return json({ datos: r.datos, error: r.error ?? null, creditos: Math.max(1, Math.round(coste * 100)) });
   }
   if (action === 'fichero_leer_ia') {
     const f = await dueno('estudio_ficheros', String(body?.id || ''));
