@@ -147,7 +147,9 @@ async function extras(supa: Any, proyectos: Any[], presupuestos: Any[], serie: A
       costes: (c.data ?? []).filter((x: Any) => x.proyecto_id === p.id),
       cobros: (cb.data ?? []).filter((x: Any) => x.proyecto_id === p.id)
     });
-    if (m.margen !== null && pr.aceptado_at) {
+    // Margen fiable: con facturación y todos los costes con importe (sin «pendiente de revisar»)
+    const costeSinImporte = (f.data ?? []).some((x: Any) => x.proyecto_id === p.id && x.tipo === 'factura_proveedor' && (x.base === null || x.base === undefined));
+    if (m.margen !== null && m.facturacion > 0 && !costeSinImporte && pr.aceptado_at) {
       const k = mesClave(pr.aceptado_at), a = porMes.get(k) ?? { f: 0, c: 0 };
       a.f += m.facturacion; a.c += m.costes; porMes.set(k, a);
     }
