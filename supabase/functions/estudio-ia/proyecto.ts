@@ -37,7 +37,7 @@ const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente'
 const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
-const ACCIONES = new Set(['proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
+const ACCIONES = new Set(['proyecto_montaje', 'proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
   'fichero_borrar', 'fichero_leer_ia', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
 export const esAccionProyecto = (a: string) => ACCIONES.has(a);
 
@@ -314,6 +314,19 @@ export async function accionProyecto(action: string, ctx: {
     const { pres, cobros } = await datosProyecto(supa, pid);
     if (pres?.estado !== 'aceptado') return json({ error: 'Los cobros se calculan cuando el presupuesto está aceptado.' }, 400);
     return json({ cobros: await asegurarCobros(supa, proyecto, pres, cobros, true) });
+  }
+  if (action === 'proyecto_montaje') {
+    // Fecha prevista de montaje y montado (sí/no + fecha real)
+    const fila: Any = {};
+    if (body?.montaje_previsto !== undefined) fila.montaje_previsto = fecha(body.montaje_previsto);
+    if (body?.montado !== undefined) {
+      fila.montado = body.montado === true;
+      fila.montado_at = fila.montado ? (fecha(body.montado_at) || null) : null;
+      fila.montaje_nota = fila.montado ? (proyecto.montaje_nota && !body.montado_at ? proyecto.montaje_nota : null) : null;
+    } else if (body?.montado_at !== undefined) { fila.montado_at = fecha(body.montado_at); if (fila.montado_at) fila.montaje_nota = null; }
+    const r = await supa.from('estudio_proyectos').update(fila).eq('id', pid).select('montaje_previsto, montado, montado_at, montaje_nota').single();
+    if (r.error) throw r.error;
+    return json({ ok: true, ...r.data });
   }
   if (action === 'proyecto_iva') {
     // Cambia el tipo de IVA; los plazos se reescalan al nuevo total con IVA (se conservan fechas y cobrados)

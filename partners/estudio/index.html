@@ -83,7 +83,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   };
   var ctx = function () {
     return {
-      supa: supa, modo: 'alumno', rutas: rutas,
+      supa: supa, modo: 'alumno', rutas: rutas, usuario: yo && yo.email,
       alAbrir: function () {},
       alCambiar: refrescarYo
     };
