@@ -131,7 +131,9 @@
 .ng-ley{font-size:12px;color:#5f5b52;display:inline-flex;align-items:center;gap:6px}
 .ng-ley i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:8px}
 .ng-graf{width:100%;height:auto;display:block;margin-top:6px}
-.ng-graf text{font-size:10.5px;fill:#8a867c;font-family:'Open Sans',Arial,sans-serif}
+.ng-graf text{font-size:12px;fill:#8a867c;font-family:'Open Sans',Arial,sans-serif}
+.ng-graf{max-height:280px}
+.ng-vacio{padding:34px 10px;text-align:center;color:#8a867c;font-size:13.5px}
 .ng-dos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .ng-dos>.ng-card{margin-bottom:14px}
 @media (max-width:860px){.ng-dos{grid-template-columns:1fr}}

@@ -752,7 +752,8 @@
   // ════════════════════════════════════════════════════════════════
   var ESTADOS = [['borrador', 'Borrador'], ['enviado', 'Enviado'], ['aceptado', 'Aceptado'], ['rechazado', 'Rechazado']];
   var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  var eur0 = function (n) { return n === null || n === undefined ? '—' : Math.round(n).toLocaleString('es-ES') + ' €'; };
+  // Miles con punto también en 4 cifras (toLocaleString('es-ES') no agrupa 2450)
+  var eur0 = function (n) { return n === null || n === undefined ? '—' : (n < 0 ? '-' : '') + String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; };
   function selectEstado(pid, estado) {
     return '<select class="ng-estado ng-e-' + estado + '" data-pid="' + pid + '">' + ESTADOS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === estado ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select>';
   }
@@ -764,22 +765,26 @@
   }
   /** Gráfica de barras (presupuestado vs aceptado) de los últimos 12 meses, en SVG. */
   function grafica(serie) {
-    var W = 720, H = 220, izq = 46, abajo = 26, arriba = 12;
-    var max = Math.max.apply(null, serie.map(function (m) { return Math.max(m.presupuestado, m.aceptado); }).concat([1]));
-    var paso = Math.pow(10, Math.floor(Math.log10(max))); var tope = Math.ceil(max / paso) * paso;
-    var hUtil = H - abajo - arriba, wCol = (W - izq) / serie.length, wBar = Math.min(18, wCol / 3);
+    var W = 1000, H = 250, izq = 64, abajo = 28, arriba = 12;
+    var max = Math.max.apply(null, serie.map(function (m) { return Math.max(m.presupuestado, m.aceptado); }).concat([0]));
+    if (!(max > 0)) return '<div class="ng-vacio">Cuando marques presupuestos como enviados o aceptados verás aquí su evolución mes a mes.</div>';
+    // Tope «redondo» para que las 4 divisiones salgan en cifras limpias
+    var bruto = max / 4, p10 = Math.pow(10, Math.floor(Math.log10(bruto)));
+    var paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * p10; }).filter(function (v) { return v >= bruto; })[0];
+    var tope = paso * 4;
+    var hUtil = H - abajo - arriba, wCol = (W - izq) / serie.length, wBar = Math.min(22, wCol / 3);
     var y = function (v) { return arriba + hUtil - (v / tope) * hUtil; };
     var g = '';
     for (var i = 0; i <= 4; i++) {
       var v = (tope / 4) * i, yy = y(v);
       g += '<line x1="' + izq + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="#ece9e2"/>' +
-        '<text x="' + (izq - 6) + '" y="' + (yy + 3.5) + '" text-anchor="end">' + (v >= 1000 ? Math.round(v / 100) / 10 + 'k' : Math.round(v)) + '</text>';
+        '<text x="' + (izq - 8) + '" y="' + (yy + 4) + '" text-anchor="end">' + eur0(v) + '</text>';
     }
     serie.forEach(function (m, k) {
       var cx = izq + wCol * k + wCol / 2;
       g += '<rect x="' + (cx - wBar - 1) + '" y="' + y(m.presupuestado) + '" width="' + wBar + '" height="' + (y(0) - y(m.presupuestado)) + '" fill="#d9d3c8" rx="2"><title>Presupuestado ' + eur0(m.presupuestado) + '</title></rect>' +
         '<rect x="' + (cx + 1) + '" y="' + y(m.aceptado) + '" width="' + wBar + '" height="' + (y(0) - y(m.aceptado)) + '" fill="#161616" rx="2"><title>Aceptado ' + eur0(m.aceptado) + '</title></rect>' +
-        '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + MESES[Number(m.mes.slice(5)) - 1] + '</text>';
+        '<text x="' + cx + '" y="' + (H - 9) + '" text-anchor="middle">' + MESES[Number(m.mes.slice(5)) - 1] + '</text>';
     });
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ng-graf" role="img" aria-label="Presupuestado y aceptado por mes">' + g + '</svg>';
   }
