@@ -23,6 +23,7 @@ import { sendMetaEvent, adConsentAllowed } from '../_shared/meta-capi.ts'
 import { sendSesionConfirmationEmail } from '../_shared/sesion-emails.ts'
 import { SESION } from '../_shared/sesion-config.ts'
 import { ONE_TO_ONE } from '../_shared/one-to-one-config.ts'
+import { handleEstudioPack, handleEstudioPlanCheckout, handleEstudioInvoicePaid, handleEstudioSubscription, handleEstudioRefunded } from './estudio.ts'
 import { sendOneToOneWelcomeEmail, sendOneToOneAvisoEmail } from '../_shared/one-to-one-emails.ts'
 import {
   generateBuyerInvoicePdf,
@@ -167,7 +168,7 @@ Deno.serve(async (req) => {
         // Partners (Intensivo, Sesión, One-to-one): si el pago queda
         // pendiente no se da de alta ni se factura; se espera a
         // checkout.session.async_payment_succeeded.
-        if (['clase', 'sesion', 'one_to_one'].includes(String(session.metadata?.purpose || ''))
+        if (['clase', 'sesion', 'one_to_one', 'estudio_pack'].includes(String(session.metadata?.purpose || ''))
             && session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
           console.log(`checkout ${session.id} (${session.metadata?.purpose}) pendiente de pago (${session.payment_status}): se espera a async_payment_succeeded`);
           break;
@@ -196,6 +197,10 @@ Deno.serve(async (req) => {
           await handleOneToOneCompleted(supabase, session);
         } else if (purpose === 'curso') {
           await handleCursoCompleted(supabase, session);
+        } else if (purpose === 'estudio_pack') {
+          await handleEstudioPack(supabase, session);
+        } else if (purpose === 'estudio_plan') {
+          await handleEstudioPlanCheckout(supabase, stripe, session);
         } else {
           await handleCheckoutCompleted(supabase, stripe, session);
         }
@@ -210,9 +215,26 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // Reembolsos (Intensivo, Sesión 1:1, One-to-one): rectificativas y estado.
+      // Reembolsos (Intensivo, Sesión 1:1, One-to-one, Estudio): rectificativas y estado.
       case 'charge.refunded': {
         await handleChargeRefunded(supabase, stripe, event.data.object as Stripe.Charge);
+        break;
+      }
+
+      // Estudio Curino · plan mensual (Stripe Billing): cuotas y estado.
+      case 'invoice.paid': {
+        await handleEstudioInvoicePaid(supabase, stripe, event.data.object as Stripe.Invoice);
+        break;
+      }
+      case 'invoice.payment_failed': {
+        const inv = event.data.object as Stripe.Invoice;
+        console.warn(`invoice ${inv.id}: pago fallido (${inv.customer_email || inv.customer}); el estado llega con customer.subscription.updated`);
+        break;
+      }
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted': {
+        await handleEstudioSubscription(supabase, event.data.object as Stripe.Subscription);
         break;
       }
 
@@ -1440,6 +1462,7 @@ async function handleChargeRefunded(
     // ¿Es una Sesion 1:1 o un One-to-one?
     await handleSesionRefunded(supabase, stripe, charge, paymentIntent);
     await handleOneToOneRefunded(supabase, stripe, charge, paymentIntent);
+    await handleEstudioRefunded(supabase, stripe, charge, paymentIntent);
     return;
   }
 

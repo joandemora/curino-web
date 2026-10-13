@@ -31,6 +31,7 @@ import {
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos } from '../_shared/estudio/ia.ts'
+import { descontarSaldo, type EstadoAlumno } from './acceso.ts'
 import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/inter.ts'
 import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensans.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
@@ -40,6 +41,7 @@ type Any = any;
 export interface Ctx {
   supa: Any; userId: string; esAdmin: boolean; cfg: Any; clave: string; modelo: string; body: Any;
   json: (b: unknown, s?: number) => Response; base64: (b: Uint8Array) => string;
+  alumno?: EstadoAlumno | null;
 }
 
 const ACCIONES = new Set(['tarifa', 'tarifa_guardar', 'plantilla', 'plantilla_guardar', 'plantilla_subida',
@@ -108,6 +110,7 @@ async function usar(ctx: Ctx, proyectoId: string, llamadas: { uso: Any; ok: bool
       coste_usd: coste, ok: l.ok
     });
   }
+  if (!ctx.esAdmin) await descontarSaldo(ctx.supa, ctx.alumno ?? null, ctx.userId, total);
   return Math.round(total * 10000) / 10000;
 }
 
@@ -179,16 +182,22 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
   const { data: rolDueno } = await supa.from('user_roles').select('role').eq('user_id', proyecto.user_id).eq('role', 'admin').maybeSingle();
   const duenoAdmin = !!rolDueno;
-  const { data: guardado } = await supa.from('estudio_presupuestos').select('datos').eq('proyecto_id', proyectoId).maybeSingle();
+  const { data: guardado } = await supa.from('estudio_presupuestos').select('datos, estado, estado_at, enviado_at, aceptado_at, rechazado_at').eq('proyecto_id', proyectoId).maybeSingle();
   const doc: DocPresupuesto | null = guardado?.datos ?? null;
   const tarifa = await cargarTarifa(supa, proyecto.user_id);
   const plantilla = await cargarPlantilla(supa, proyecto.user_id, duenoAdmin);
   const guardar = async (d: DocPresupuesto) => {
-    const r = await supa.from('estudio_presupuestos').upsert({ proyecto_id: proyectoId, datos: d, updated_at: new Date().toISOString() });
+    // Importes cacheados (sin IVA) para «Mi negocio»; null si hay partidas sin precio.
+    const t = totales(d, tarifa.iva_pct ?? 21);
+    const r = await supa.from('estudio_presupuestos').upsert({
+      proyecto_id: proyectoId, datos: d, updated_at: new Date().toISOString(),
+      importe: t.pendientes ? null : t.importe, pvp: t.pendientes ? null : t.pvp
+    });
     if (r.error) throw r.error;
   };
   const versionDatos = async (n: number) => (await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).eq('numero', n).maybeSingle()).data as { numero: number; datos: Proyecto } | null;
-  const respuesta = (d: DocPresupuesto | null) => ({ presupuesto: d, totales: d ? totales(d, tarifa.iva_pct ?? 21) : null, iva_pct: tarifa.iva_pct, tarifa_propia: tarifa.propia, version_actual: proyecto.version_actual });
+  const estado = { estado: guardado?.estado ?? 'borrador', estado_at: guardado?.estado_at ?? null, enviado_at: guardado?.enviado_at ?? null, aceptado_at: guardado?.aceptado_at ?? null, rechazado_at: guardado?.rechazado_at ?? null };
+  const respuesta = (d: DocPresupuesto | null) => ({ presupuesto: d, totales: d ? totales(d, tarifa.iva_pct ?? 21) : null, iva_pct: tarifa.iva_pct, tarifa_propia: tarifa.propia, version_actual: proyecto.version_actual, ...estado });
 
   if (action === 'presupuesto') return json(respuesta(doc));
 
@@ -268,8 +277,10 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const medir = medirConFuentes(inter);
     const css = interCss();
     const logo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${LOGO_ANCHO} ${LOGO_ALTO}" width="${LOGO_ANCHO}" height="${LOGO_ALTO}"><path d="${LOGO_PATH}" fill="#000000"/></svg>`;
+    const firmar = async (path: string | null) => path ? (await supa.storage.from('estudio').createSignedUrl(path, 600)).data?.signedUrl ?? null : null;
     return json({
       logo, plantilla, iva_pct: tarifa.iva_pct,
+      firma_url: await firmar(plantilla.firma_path), logo_url: plantilla.tipo === 'propia' ? await firmar(plantilla.logo_path) : null,
       dibujos: laminasProyecto(v.datos, medir).map((l) => { const d = dibujoLamina(l, medir); return { codigo: l.codigo, svg: dibujoSvg(d.prims, d.caja, css), ancho: d.caja.w, alto: d.caja.h }; })
     });
   }

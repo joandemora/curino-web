@@ -32,7 +32,9 @@ import { construirMensajes, costeUsd, pedirAClaude, type Adjunto, type MensajeCh
 import { validarProyecto, type Proyecto } from '../_shared/estudio/esquema.ts'
 import { pdfProyecto, svgsProyecto } from './render.ts'
 import { accionPresupuesto, esAccionPresupuesto } from './presupuesto.ts'
-import { accionAdminAcceso, accionEnlace, accionYo, esAccionAdminAcceso, estadoAlumno, puedeEntrar, sinCredito } from './acceso.ts'
+import { accionAdminAcceso, accionEnlace, accionYo, descontarSaldo, esAccionAdminAcceso, estadoAlumno, puedeEntrar, sinCredito } from './acceso.ts'
+import { accionTienda, accionSinAcceso, esAccionTienda } from './tienda.ts'
+import { accionNegocio, esAccionNegocio } from './negocio.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -83,8 +85,12 @@ Deno.serve(async (req) => {
     if (action === 'yo') return await accionYo(supa, email, userId, esAdmin, cfg, json);
     if (!esAdmin) {
       const p = puedeEntrar(alumno, cfg);
-      if (!p.ok) return json({ error: p.motivo, sin_acceso: true }, 403);
+      // Sin acceso activo, un antiguo alumno solo puede suscribirse (Créditos y plan)
+      const exAlumno = !!alumno?.puede_suscribirse && (!!cfg?.abierto_alumnos || !!alumno?.concedido);
+      if (!p.ok && !(exAlumno && accionSinAcceso(action))) return json({ error: p.motivo, sin_acceso: true }, 403);
     }
+    if (esAccionTienda(action)) return await accionTienda(action, { supa, userId, email, esAdmin, cfg, alumno, body, json });
+    if (esAccionNegocio(action)) return await accionNegocio(action, { supa, userId, esAdmin, body, json });
     if (esAccionAdminAcceso(action)) {
       if (!esAdmin) return json({ error: 'forbidden' }, 403);
       return await accionAdminAcceso(action, supa, userId, body, json);
@@ -124,7 +130,7 @@ Deno.serve(async (req) => {
     }
 
     // Tarifa, plantilla y presupuesto (F3)
-    if (esAccionPresupuesto(action)) return await accionPresupuesto(action, { supa, userId, esAdmin, cfg, clave, modelo, body, json, base64 });
+    if (esAccionPresupuesto(action)) return await accionPresupuesto(action, { supa, userId, esAdmin, cfg, clave, modelo, body, json, base64, alumno });
 
     // El resto de acciones trabajan sobre un proyecto propio (o cualquiera si admin).
     const proyectoId = String(body?.proyecto_id || '');
@@ -209,6 +215,7 @@ Deno.serve(async (req) => {
         cache_escritura: Number(cfg?.precio_cache_escritura ?? 2.5), cache_lectura: Number(cfg?.precio_cache_lectura ?? 0.1)
       };
       let coste = 0;
+      const alFinal = () => descontarSaldo(supa, alumno, userId, coste);
       for (const l of llamadas) {
         const c = costeUsd(l.uso, precios);
         coste += c;
@@ -224,6 +231,7 @@ Deno.serve(async (req) => {
         cache_escritura: s.cache_escritura + l.uso.cache_creation_input_tokens, cache_lectura: s.cache_lectura + l.uso.cache_read_input_tokens
       }), { entrada: 0, salida: 0, cache_escritura: 0, cache_lectura: 0 });
       const uso = { llamadas: llamadas.length, tokens, coste_usd: Math.round(coste * 10000) / 10000 };
+      if (!esAdmin) await alFinal();
 
       if (resultado.tipo === 'proyecto') {
         const numero = await nuevaVersion(resultado.proyecto, 'ia', texto.slice(0, 200) || null);

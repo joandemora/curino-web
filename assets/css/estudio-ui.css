@@ -110,3 +110,56 @@
 .pa-btn:hover{border-color:#111}
 .pa-btn.primary{background:#111;color:#fff;border-color:#111}
 .pa-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── Mi negocio y Créditos (ng-, cr-) ── */
+.ng{font-family:'Open Sans',Arial,sans-serif;color:#161616}
+.ng-cab{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.ng-cab h1{font-family:'Schibsted Grotesk','Open Sans',Arial,sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em;margin:0}
+.ng-periodos{display:inline-flex;background:#fff;border:1px solid #e5e2da;border-radius:999px;padding:3px}
+.ng-periodos button{border:0;background:none;font:inherit;font-size:13px;padding:6px 14px;border-radius:999px;cursor:pointer;color:#5f5b52}
+.ng-periodos button.on{background:#161616;color:#fff}
+.ng-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.ng-kpi{background:#fff;border:1px solid #e5e2da;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-height:92px}
+.ng-kpi span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a867c}
+.ng-kpi b{font-family:'Schibsted Grotesk','Open Sans',Arial,sans-serif;font-weight:800;font-size:28px;letter-spacing:-.02em;line-height:1.1}
+.ng-kpi small{font-size:12px;color:#8a867c}
+.ng-kpi.fuerte{background:#161616;border-color:#161616;color:#fff}
+.ng-kpi.fuerte span,.ng-kpi.fuerte small{color:#b9b6ad}
+.ng-card{background:#fff;border:1px solid #e5e2da;border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.ng-card h2{font-family:'Schibsted Grotesk','Open Sans',Arial,sans-serif;font-weight:800;font-size:16px;margin:0 0 8px}
+.ng-card-cab{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.ng-ley{font-size:12px;color:#5f5b52;display:inline-flex;align-items:center;gap:6px}
+.ng-ley i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:8px}
+.ng-graf{width:100%;height:auto;display:block;margin-top:6px}
+.ng-graf text{font-size:10.5px;fill:#8a867c;font-family:'Open Sans',Arial,sans-serif}
+.ng-dos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ng-dos>.ng-card{margin-bottom:14px}
+@media (max-width:860px){.ng-dos{grid-template-columns:1fr}}
+.ng-lista{list-style:none;margin:0;padding:0}
+.ng-lista li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #f0ede6}
+.ng-lista li:first-child{border-top:0}
+.ng-lista li>div{flex:1;min-width:0}
+.ng-lista strong{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ng-lista small{color:#8a867c;font-size:12px}
+.ng-imp{font-weight:700;font-size:13.5px;white-space:nowrap}
+.ng-estado{font:inherit;font-size:12px;border:1px solid #e5e2da;border-radius:999px;padding:3px 8px;background:#fff;cursor:pointer}
+.ng-tag{font-size:11.5px;border-radius:999px;padding:2px 9px;text-transform:capitalize;white-space:nowrap}
+.ng-e-borrador{background:#f4f2ec;color:#5f5b52}.ng-e-enviado{background:#fff5d6;color:#8a6200;border-color:#f0dc9c}
+.ng-e-aceptado{background:#e7f7ee;color:#0b7a46;border-color:#bfe8d1}.ng-e-rechazado{background:#fde8e6;color:#b42318;border-color:#f6c5bf}
+.ng-tabla{width:100%;border-collapse:collapse;font-size:13px}
+.ng-tabla th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8a867c;font-weight:600;padding:6px 8px;border-bottom:1px solid #e5e2da}
+.ng-tabla td{padding:8px;border-bottom:1px solid #f0ede6;white-space:nowrap}
+.ng-ok{background:#e7f7ee;border:1px solid #bfe8d1;color:#0b7a46;border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:12px}
+.pr-estado{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#5f5b52;margin-left:6px}
+.cr-grande{font-family:'Schibsted Grotesk','Open Sans',Arial,sans-serif;font-weight:800;font-size:32px;letter-spacing:-.02em;margin:4px 0 8px}
+.cr-grande small{font-family:'Open Sans',Arial,sans-serif;font-weight:400;font-size:13px;color:#8a867c;letter-spacing:0}
+.cr-barra{height:8px;background:#f0ede6;border-radius:4px;overflow:hidden}
+.cr-barra span{display:block;height:100%;background:#12B76A}
+.cr-saldo{font-size:13.5px;margin:10px 0 0}.cr-saldo small{color:#8a867c}
+.cr-inc{margin:0 0 12px;padding-left:18px;font-size:13.5px;line-height:1.7}
+.cr-plan{border-color:#161616}
+.cr-btn{padding:9px 18px;font-size:13.5px}
+.cr-packs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.cr-pack{border:1px solid #e5e2da;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.cr-pack b{font-family:'Schibsted Grotesk','Open Sans',Arial,sans-serif;font-weight:800;font-size:24px}
+.cr-pack span{font-size:13px;color:#5f5b52}
