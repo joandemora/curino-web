@@ -47,85 +47,112 @@
   }
 
   // ════════════════════════════════════════════════════════════════
-  // Proyectos + chat
+  // Proyectos: tarjetas y ficha (Diseño · Documentos · Archivos · Métricas)
   // ════════════════════════════════════════════════════════════════
-  function proyectos(el, ctx, pidInicial) {
-    var supa = ctx.supa, lista = [], actual = null, versiones = [], viendo = 0, ocupado = false;
+  var EST_NOMBRE = { borrador: 'Borrador', enviado: 'Enviado', aceptado: 'Aceptado', rechazado: 'Rechazado' };
+  var eurN = function (n) { return n === null || n === undefined ? '—' : (n < 0 ? '-' : '') + String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; };
+  var dia = function (d) { return d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; };
+  var pctTxt = function (n) { return n === null || n === undefined ? '—' : String(n).replace('.', ',') + ' %'; };
+
+  function proyectos(el, ctx, pid, tab) {
+    if (pid) return fichaProyecto(el, ctx, pid, tab || 'diseno');
+    var lista = [], q = '', estado = '', orden = 'fecha';
+    el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>Proyectos</h1><div class="pj-filtros">' +
+      '<input type="search" id="pjBuscar" placeholder="Buscar cliente o referencia">' +
+      '<select id="pjEstado"><option value="">Todos los estados</option><option value="sin">Sin presupuesto</option>' + Object.keys(EST_NOMBRE).map(function (k) { return '<option value="' + k + '">' + EST_NOMBRE[k] + '</option>'; }).join('') + '</select>' +
+      '<select id="pjOrden"><option value="fecha">Más recientes</option><option value="importe">Mayor importe</option><option value="margen">Mayor margen</option></select></div></div>' +
+      '<div class="pj-grid" id="pjGrid"><p class="pa-muted">Cargando…</p></div></div>';
+    function pintar() {
+      var f = lista.filter(function (p) {
+        var txt = (p.nombre + ' ' + (p.referencia || '') + ' ' + (p.numero || '')).toLowerCase();
+        return (!q || txt.indexOf(q) >= 0) && (!estado || (estado === 'sin' ? !p.estado : p.estado === estado));
+      }).sort(function (a, b) {
+        if (orden === 'importe') return (b.importe || 0) - (a.importe || 0);
+        if (orden === 'margen') return (b.margen_pct === null ? -1e9 : b.margen_pct) - (a.margen_pct === null ? -1e9 : a.margen_pct);
+        return String(b.actualizado).localeCompare(String(a.actualizado));
+      });
+      var nueva = '<form class="pj-card pj-nueva" id="pjNueva" autocomplete="off"><div class="pj-mas">+</div><strong>Nuevo proyecto</strong>' +
+        '<input id="pjNombre" placeholder="Cliente o proyecto" maxlength="80" required><input id="pjRef" placeholder="Referencia (opcional)" maxlength="40"><button class="pa-btn primary" type="submit">Crear</button></form>';
+      document.getElementById('pjGrid').innerHTML = nueva + f.map(function (p) {
+        var m = p.margen_pct;
+        return '<a class="pj-card" href="' + ctx.rutas.estudio(p.id) + '" data-id="' + p.id + '">' +
+          '<div class="pj-mini">' + (p.miniatura || '<span>Sin alzados todavía</span>') + '</div>' +
+          '<div class="pj-info"><div class="pj-fila"><strong>' + esc(p.nombre) + '</strong>' + (p.estado ? '<span class="ng-tag ng-e-' + p.estado + '">' + EST_NOMBRE[p.estado] + '</span>' : '<span class="ng-tag ng-e-borrador">Sin presupuesto</span>') + '</div>' +
+          '<small>' + esc([p.referencia, p.numero && p.numero !== p.referencia ? 'n.º ' + p.numero : '', p.version ? 'v' + p.version : ''].filter(Boolean).join(' · ') || '—') + '</small>' +
+          '<div class="pj-nums"><span><b>' + eurN(p.importe) + '</b>importe</span><span class="' + (m !== null && m < 30 ? 'pj-bajo' : '') + '"><b>' + pctTxt(m) + '</b>margen</span><span><b>' + dia(p.actualizado) + '</b>modificado</span></div></div></a>';
+      }).join('') + (f.length ? '' : '<p class="pa-muted pj-vacio">' + (lista.length ? 'Ningún proyecto con esos filtros.' : 'Crea tu primer proyecto con la tarjeta «Nuevo proyecto».') + '</p>');
+      document.getElementById('pjNueva').addEventListener('submit', function (e) {
+        e.preventDefault();
+        api(ctx, { action: 'crear', nombre: document.getElementById('pjNombre').value, referencia: document.getElementById('pjRef').value })
+          .then(function (d) { location.href = ctx.rutas.estudio(d.proyecto.id); if (ctx.alNavegar) ctx.alNavegar(); })
+          .catch(function (err) { alert(err.message); });
+      });
+    }
+    el.querySelector('#pjBuscar').addEventListener('input', function () { q = this.value.trim().toLowerCase(); pintar(); });
+    el.querySelector('#pjEstado').addEventListener('change', function () { estado = this.value; pintar(); });
+    el.querySelector('#pjOrden').addEventListener('change', function () { orden = this.value; pintar(); });
+    api(ctx, { action: 'proyectos_lista' }).then(function (d) { lista = d.proyectos; pintar(); })
+      .catch(function (e) { document.getElementById('pjGrid').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+  }
+
+  function fichaProyecto(el, ctx, pid, tab) {
+    var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['archivos', 'Archivos'], ['metricas', 'Métricas']];
+    el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
+      '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
+      '<a href="' + ctx.rutas.presupuesto(pid) + '">Presupuesto</a></nav></div><div id="pjCuerpo"></div></div>';
+    ctx.supa.from('estudio_proyectos').select('nombre, referencia').eq('id', pid).maybeSingle().then(function (r) {
+      if (r.data) document.getElementById('pjTitulo').innerHTML = esc(r.data.nombre) + (r.data.referencia ? ' <span class="pa-muted">· ' + esc(r.data.referencia) + '</span>' : '');
+    });
+    var cuerpo = el.querySelector('#pjCuerpo');
+    if (tab === 'documentos') return documentosProyecto(cuerpo, ctx, pid);
+    if (tab === 'archivos') return archivosProyecto(cuerpo, ctx, pid);
+    if (tab === 'metricas') return metricasProyecto(cuerpo, ctx, pid);
+    return disenoProyecto(cuerpo, ctx, pid);
+  }
+
+  // ── Diseño: chat con Claude, versiones y alzados ──
+  function disenoProyecto(el, ctx, pid) {
+    var supa = ctx.supa, actual = null, versiones = [], viendo = 0, ocupado = false;
     el.innerHTML =
-      '<div class="es-grid">' +
-      '<aside class="es-card"><form class="es-form" id="esNuevo" autocomplete="off"><strong style="font-size:13px">Nuevo proyecto</strong>' +
-      '<input id="esNombre" placeholder="Cliente o proyecto" maxlength="80" required><input id="esRef" placeholder="Referencia (opcional)" maxlength="40">' +
-      '<button class="pa-btn primary" type="submit" style="width:100%;margin-top:4px">Crear</button></form>' +
-      '<ul class="es-lista" id="esLista"><li class="pa-muted">Cargando…</li></ul></aside>' +
-      '<section><div class="es-card" id="esZona"><div class="es-vacio">Crea un proyecto o elige uno de la lista.</div></div></section>' +
+      '<div class="es-grid es-grid-2">' +
+      '<section><div class="es-card" id="esZona"><div class="es-vacio">Cargando…</div></div></section>' +
       '<aside class="es-card es-chat" id="esChat" hidden><div class="es-msgs" id="esMsgs"></div>' +
       '<form class="es-compose" id="esForm"><textarea id="esTexto" placeholder="Describe el armario o pide un cambio: «el módulo 2 con 4 cajones», «altillo de 40»…" maxlength="4000"></textarea>' +
       '<div class="es-fila"><label class="pa-btn" style="cursor:pointer">📎 Plano<input type="file" id="esArchivos" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden></label>' +
       '<span class="es-adj" id="esAdj"></span><button class="pa-btn primary" type="submit" id="esEnviar">Enviar</button></div>' +
       '<div class="es-error" id="esError" hidden></div></form></aside></div>';
-
-    function alertaError(t, html) { var e = $('#esError'); e[html ? 'innerHTML' : 'textContent'] = t; e.hidden = !t; }
-
-    function cargarLista() {
-      // RLS: el alumno ve solo los suyos; admin ve todos (aquí, solo los propios)
-      return supa.auth.getUser().then(function (u) {
-        var q = supa.from('estudio_proyectos').select('id, nombre, referencia, version_actual, updated_at').order('updated_at', { ascending: false });
-        if (u.data && u.data.user) q = q.eq('user_id', u.data.user.id);
-        return q;
-      }).then(function (r) {
-        lista = r.data || [];
-        $('#esLista').innerHTML = lista.length ? lista.map(function (p) {
-          return '<li data-id="' + p.id + '"' + (actual && actual.id === p.id ? ' class="on"' : '') + '>' + esc(p.nombre) +
-            '<small>' + (p.referencia ? esc(p.referencia) + ' · ' : '') + (p.version_actual ? 'v' + p.version_actual : 'sin versión') + ' · ' + fecha(p.updated_at) + '</small></li>';
-        }).join('') : '<li class="pa-muted">Aún no hay proyectos.</li>';
-      });
-    }
-    $('#esLista').addEventListener('click', function (e) { var li = e.target.closest('li[data-id]'); if (li) abrir(li.dataset.id); });
-    $('#esNuevo').addEventListener('submit', function (e) {
-      e.preventDefault();
-      api(ctx, { action: 'crear', nombre: $('#esNombre').value, referencia: $('#esRef').value }).then(function (d) {
-        $('#esNombre').value = ''; $('#esRef').value = '';
-        actual = d.proyecto;
-        return cargarLista().then(function () { abrir(d.proyecto.id); });
-      }).catch(function (err) { alert(err.message); });
-    });
-
-    function abrir(id) {
-      if (ctx.alAbrir) ctx.alAbrir(id);
+    function alertaError(t) { var e = $('#esError'); e.textContent = t; e.hidden = !t; }
+    function abrir() {
       return Promise.all([
-        supa.from('estudio_proyectos').select('*').eq('id', id).maybeSingle(),
-        supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', id).order('numero'),
-        supa.from('estudio_mensajes').select('rol, texto, version, pregunta, created_at').eq('proyecto_id', id).order('created_at')
+        supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle(),
+        supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', pid).order('numero'),
+        supa.from('estudio_mensajes').select('rol, texto, version, pregunta, created_at').eq('proyecto_id', pid).order('created_at')
       ]).then(function (rs) {
         actual = rs[0].data; versiones = rs[1].data || [];
-        if (!actual) return;
+        if (!actual) { $('#esZona').innerHTML = '<div class="es-vacio">Proyecto no encontrado.</div>'; return; }
         $('#esChat').hidden = false;
-        document.querySelectorAll('#esLista li').forEach(function (li) { li.classList.toggle('on', li.dataset.id === id); });
         pintarChat(rs[2].data || []);
         viendo = actual.version_actual;
         pintarZona();
         if (viendo) cargarVersion(viendo);
       });
     }
-
     function pintarZona(svgs) {
       var p = actual;
       var chips = versiones.map(function (v) {
         return '<button type="button" class="es-v' + (v.numero === viendo ? ' on' : '') + (v.numero === p.version_actual ? ' actual' : '') +
           '" data-v="' + v.numero + '" title="' + esc((v.origen === 'ia' ? 'IA · ' : '') + (v.nota || '') + ' · ' + fecha(v.created_at)) + '">v' + v.numero + '</button>';
       }).join('');
-      var acciones = viendo ? '<a class="pa-btn primary" href="' + ctx.rutas.presupuesto(p.id) + '">Presupuesto</a> <button type="button" class="pa-btn" id="esPdf">Descargar alzados v' + viendo + '</button>' : '';
+      var acciones = viendo ? '<button type="button" class="pa-btn" id="esPdf">Descargar alzados v' + viendo + '</button>' : '';
       if (viendo && viendo !== p.version_actual) acciones = '<button type="button" class="pa-btn primary" id="esRestaurar">Volver a v' + viendo + '</button> ' + acciones;
-      acciones += ' <button type="button" class="pa-btn" id="esBorrar">Borrar</button>';
+      acciones += ' <button type="button" class="pa-btn" id="esBorrar">Borrar proyecto</button>';
       $('#esZona').innerHTML =
-        '<div class="es-cab"><div><h2>' + esc(p.nombre) + (p.referencia ? ' <span class="pa-muted" style="font-weight:400">· ' + esc(p.referencia) + '</span>' : '') + '</h2>' +
-        '<div class="es-versiones">' + (chips || '<span class="pa-muted" style="font-size:12.5px">Sin versiones todavía</span>') + '</div></div>' +
+        '<div class="es-cab"><div class="es-versiones">' + (chips || '<span class="pa-muted" style="font-size:12.5px">Sin versiones todavía</span>') + '</div>' +
         '<div class="pa-btns">' + acciones + '</div></div>' +
         '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) { return '<div class="es-hoja" title="' + esc(s.codigo) + '">' + s.svg + '</div>'; }).join('')
           : '<div class="es-vacio">' + (viendo ? 'Cargando alzados…' : 'Sube un plano o describe el armario en el chat y Claude preparará la primera versión.') + '</div>') + '</div>';
     }
-
-    $('#esZona').addEventListener('click', function (e) {
+    el.addEventListener('click', function (e) {
       var hoja = e.target.closest('.es-hoja');
       if (hoja) {
         var url = URL.createObjectURL(new Blob(['<!DOCTYPE html><meta charset="utf-8"><title>' + esc(hoja.title) + '</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"><body style="margin:0;background:#888">' + hoja.innerHTML.replace('<svg ', '<svg style="display:block;width:100%;height:auto;background:#fff" ') + '</body>'], { type: 'text/html' }));
@@ -134,34 +161,29 @@
       }
       var v = e.target.closest('[data-v]');
       if (v) { viendo = Number(v.dataset.v); pintarZona(); cargarVersion(viendo); return; }
-      if (e.target.id === 'esPdf') return descargarAlzados(e.target);
+      var ir = e.target.closest('[data-ir]');
+      if (ir) { e.preventDefault(); viendo = Number(ir.dataset.ir); pintarZona(); cargarVersion(viendo); return; }
+      if (e.target.id === 'esPdf') {
+        e.target.disabled = true;
+        api(ctx, { action: 'pdf', proyecto_id: pid, numero: viendo }).then(function (d) { descargar(base64Blob(d.base64, 'application/pdf'), d.nombre); })
+          .catch(function (err) { alertaError(err.message); }).then(function () { e.target.disabled = false; });
+        return;
+      }
       if (e.target.id === 'esRestaurar') {
         e.target.disabled = true;
-        return api(ctx, { action: 'restaurar', proyecto_id: actual.id, numero: viendo }).then(function () { return abrir(actual.id); }).then(cargarLista)
-          .catch(function (err) { alertaError(err.message); });
+        api(ctx, { action: 'restaurar', proyecto_id: pid, numero: viendo }).then(abrir).catch(function (err) { alertaError(err.message); });
+        return;
       }
       if (e.target.id === 'esBorrar') {
         if (!e.target.dataset.ok) { e.target.dataset.ok = '1'; e.target.textContent = '¿Seguro? Pulsa otra vez'; e.target.classList.add('primary'); return; }
-        return api(ctx, { action: 'borrar', proyecto_id: actual.id }).then(function () {
-          actual = null; if (ctx.alAbrir) ctx.alAbrir(null);
-          $('#esChat').hidden = true;
-          $('#esZona').innerHTML = '<div class="es-vacio">Proyecto borrado.</div>';
-          return cargarLista();
-        }).catch(function (err) { alertaError(err.message); });
+        api(ctx, { action: 'borrar', proyecto_id: pid }).then(function () { location.href = ctx.rutas.estudio(); if (ctx.alNavegar) ctx.alNavegar(); })
+          .catch(function (err) { alertaError(err.message); });
       }
     });
-
     function cargarVersion(n) {
-      return api(ctx, { action: 'render', proyecto_id: actual.id, numero: n }).then(function (d) { if (viendo === n) pintarZona(d.svgs); })
+      return api(ctx, { action: 'render', proyecto_id: pid, numero: n }).then(function (d) { if (viendo === n) pintarZona(d.svgs); })
         .catch(function (err) { $('#esHojas').innerHTML = '<div class="es-vacio">' + esc(err.message) + '</div>'; });
     }
-    function descargarAlzados(btn) {
-      btn.disabled = true;
-      api(ctx, { action: 'pdf', proyecto_id: actual.id, numero: viendo }).then(function (d) {
-        descargar(base64Blob(d.base64, 'application/pdf'), d.nombre);
-      }).catch(function (err) { alertaError(err.message); }).then(function () { btn.disabled = false; });
-    }
-
     function pintarChat(msgs) {
       $('#esMsgs').innerHTML = msgs.length ? msgs.map(burbuja).join('')
         : '<div class="es-vacio" style="padding:20px 6px">Adjunta un plano (PDF o foto) y cuéntale lo que quieres: medidas del hueco, alto, fondo, puertas, interior…</div>';
@@ -174,14 +196,7 @@
       if (m.created_at) meta.push(fecha(m.created_at));
       return '<div class="es-msg ' + m.rol + (m.pregunta ? ' pregunta' : '') + '">' + esc(m.texto) + (meta.length ? '<span class="es-meta">' + meta.join(' · ') + '</span>' : '') + '</div>';
     }
-    $('#esMsgs').addEventListener('click', function (e) {
-      var a = e.target.closest('[data-ir]'); if (!a) return;
-      e.preventDefault(); viendo = Number(a.dataset.ir); pintarZona(); cargarVersion(viendo);
-    });
-    $('#esArchivos').addEventListener('change', function () {
-      $('#esAdj').textContent = Array.prototype.map.call(this.files, function (f) { return f.name; }).join(', ');
-    });
-
+    $('#esArchivos').addEventListener('change', function () { $('#esAdj').textContent = Array.prototype.map.call(this.files, function (f) { return f.name; }).join(', '); });
     $('#esForm').addEventListener('submit', function (e) {
       e.preventDefault();
       if (ocupado || !actual) return;
@@ -192,23 +207,21 @@
       $('#esEnviar').disabled = true;
       var msgs = $('#esMsgs');
       if (msgs.querySelector('.es-vacio')) msgs.innerHTML = '';
-      msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'usuario', texto: texto + (archivos.length ? '\n📎 ' + archivos.map(function (f) { return f.name; }).join(', ') : '') }) +
-        '<div class="es-trabajando" id="esTrab">Subiendo…</div>');
+      msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'usuario', texto: texto + (archivos.length ? '\n📎 ' + archivos.map(function (f) { return f.name; }).join(', ') : '') }) + '<div class="es-trabajando" id="esTrab">Subiendo…</div>');
       msgs.scrollTop = 1e9;
       var ids = [];
-      var subir = archivos.reduce(function (p, f) {
+      archivos.reduce(function (p, f) {
         return p.then(function () {
-          return api(ctx, { action: 'subida', proyecto_id: actual.id, nombre: f.name, tipo: f.type, bytes: f.size }).then(function (d) {
+          return api(ctx, { action: 'subida', proyecto_id: pid, nombre: f.name, tipo: f.type, bytes: f.size }).then(function (d) {
             return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: f.type }).then(function (r) {
               if (r.error) throw new Error('No se ha podido subir «' + f.name + '».');
               ids.push(d.archivo_id);
             });
           });
         });
-      }, Promise.resolve());
-      subir.then(function () {
+      }, Promise.resolve()).then(function () {
         $('#esTrab').textContent = 'Claude está trabajando… (puede tardar hasta un minuto)';
-        return api(ctx, { action: 'mensaje', proyecto_id: actual.id, texto: texto, archivo_ids: ids });
+        return api(ctx, { action: 'mensaje', proyecto_id: pid, texto: texto, archivo_ids: ids });
       }).then(function (d) {
         $('#esTexto').value = ''; $('#esArchivos').value = ''; $('#esAdj').textContent = '';
         var t = d.tipo === 'pregunta' ? [d.mensaje].concat(d.preguntas.map(function (p) { return '• ' + p; })).filter(Boolean).join('\n') : d.mensaje;
@@ -218,19 +231,198 @@
         if (ctx.alCambiar) ctx.alCambiar();
         if (d.tipo === 'proyecto') {
           actual.version_actual = d.version; viendo = d.version;
-          return supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', actual.id).order('numero')
-            .then(function (r) { versiones = r.data || []; pintarZona(d.svgs); return cargarLista(); });
+          return supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', pid).order('numero')
+            .then(function (r) { versiones = r.data || []; pintarZona(d.svgs); });
         }
       }).catch(function (err) {
         var t = $('#esTrab'); if (t) t.remove();
-        // Si falla, el servidor no guarda el mensaje (o lo retira): se quita la burbuja
         var us = msgs.querySelectorAll('.es-msg.usuario'); if (us.length) us[us.length - 1].remove();
         alertaError(err.message);
         if (err.datos && err.datos.sin_credito && ctx.alCambiar) ctx.alCambiar();
       }).then(function () { ocupado = false; $('#esEnviar').disabled = false; });
     });
+    abrir();
+  }
 
-    cargarLista().then(function () { if (pidInicial) abrir(pidInicial); });
+  // ── Documentos: todo lo generado, por versión y fecha ──
+  var TIPO_DOC = { alzados_pdf: 'Alzados (PDF)', presupuesto_pdf: 'Presupuesto (PDF)', presupuesto_xlsx: 'Presupuesto (Excel)' };
+  function documentosProyecto(el, ctx, pid) {
+    el.innerHTML = '<div class="ng-card"><h2>Documentos</h2><p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Se guardan solos cada vez que descargas alzados o el presupuesto (PDF o Excel).</p><div id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
+    function cargar() {
+      api(ctx, { action: 'documentos', proyecto_id: pid }).then(function (d) {
+        if (!d.documentos.length) { el.querySelector('#dcLista').innerHTML = '<p class="pa-muted">Aún no hay documentos. Descarga los alzados o el presupuesto y aparecerán aquí.</p>'; return; }
+        var grupos = {};
+        d.documentos.forEach(function (x) { var k = x.version ? 'Versión v' + x.version : 'Sin versión'; (grupos[k] = grupos[k] || []).push(x); });
+        el.querySelector('#dcLista').innerHTML = Object.keys(grupos).map(function (g) {
+          return '<h3 class="dc-grupo">' + esc(g) + '</h3><ul class="ng-lista">' + grupos[g].map(function (x) {
+            return '<li><div><strong>' + esc(TIPO_DOC[x.tipo] || x.tipo) + (x.numero ? ' · n.º ' + esc(x.numero) : '') + '</strong><small>' + esc(x.nombre) + ' · ' + fecha(x.created_at) + ' · ' + Math.max(1, Math.round(x.bytes / 1024)) + ' KB</small></div>' +
+              '<a class="pa-btn" href="' + esc(x.url) + '" target="_blank" rel="noopener">Ver</a><a class="pa-btn" href="' + esc(x.url) + '&download=' + encodeURIComponent(x.nombre) + '">Descargar</a><button class="pa-btn" data-borrar="' + x.id + '">Borrar</button></li>';
+          }).join('') + '</ul>';
+        }).join('');
+      }).catch(function (e) { el.querySelector('#dcLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    }
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-borrar]'); if (!b) return;
+      if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('primary'); return; }
+      api(ctx, { action: 'doc_borrar', id: b.dataset.borrar }).then(cargar).catch(function (err) { alert(err.message); });
+    });
+    cargar();
+  }
+
+  // ── Archivos propios ──
+  var TIPO_F = { factura_proveedor: 'Factura de proveedor', presupuesto_proveedor: 'Presupuesto de proveedor', factura_cliente: 'Factura a cliente', foto_obra: 'Foto de obra', otro: 'Otro' };
+  function archivosProyecto(el, ctx, pid) {
+    var supa = ctx.supa;
+    el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Archivos</h2><span class="pa-muted" id="arUso" style="font-size:12px"></span></div>' +
+      '<form class="ar-subir" id="arForm"><select id="arTipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '">' + TIPO_F[k] + '</option>'; }).join('') + '</select>' +
+      '<input type="file" id="arFile" accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" required><button class="pa-btn primary" type="submit">Subir</button><span class="pa-muted" style="font-size:12px">PDF, foto o Excel · máx. 20 MB</span></form>' +
+      '<div id="arMsg" class="pr-msg"></div><div id="arLista"><p class="pa-muted">Cargando…</p></div></div>';
+    var msg = function (t, tipo) { var m = el.querySelector('#arMsg'); m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; };
+    function cargar() {
+      api(ctx, { action: 'ficheros', proyecto_id: pid }).then(function (d) {
+        var a = d.almacenamiento;
+        el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
+        el.querySelector('#arLista').innerHTML = d.ficheros.length ? d.ficheros.map(function (f) {
+          var esImg = /^image\//.test(f.mime), leible = /^(application\/pdf|image\/)/.test(f.mime);
+          return '<div class="ar-fila" data-id="' + f.id + '"><a class="ar-ver" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + (esImg ? '<img src="' + esc(f.url) + '" alt="">' : '<span>' + esc((f.nombre.split('.').pop() || '').toUpperCase()) + '</span>') + '</a>' +
+            '<div class="ar-campos"><div class="ar-top"><strong>' + esc(f.nombre) + '</strong><small>' + fecha(f.created_at) + (f.leido_ia ? ' · leído con IA' : '') + '</small></div>' +
+            '<div class="ar-g"><label>Tipo<select data-k="tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === f.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select></label>' +
+            '<label>Proveedor / cliente<input data-k="proveedor" value="' + esc(f.proveedor || '') + '"></label>' +
+            '<label>Fecha<input type="date" data-k="fecha" value="' + esc(f.fecha || '') + '"></label>' +
+            '<label>Base (€)<input data-k="base" inputmode="decimal" value="' + numOut(f.base) + '"></label>' +
+            '<label>IVA (€)<input data-k="iva" inputmode="decimal" value="' + numOut(f.iva) + '"></label>' +
+            '<label>Total (€)<input data-k="total" inputmode="decimal" value="' + numOut(f.total) + '"></label></div>' +
+            '<div class="pa-btns"><button class="pa-btn primary" data-a="guardar">Guardar</button>' + (leible ? '<button class="pa-btn" data-a="ia">Leer con IA</button>' : '') +
+            '<a class="pa-btn" href="' + esc(f.url) + '&download=' + encodeURIComponent(f.nombre) + '">Descargar</a><button class="pa-btn" data-a="borrar">Borrar</button></div></div></div>';
+        }).join('') : '<p class="pa-muted">Sube facturas y presupuestos de proveedores, facturas al cliente o fotos de obra. Las facturas cuentan en las métricas del proyecto.</p>';
+      }).catch(function (e) { el.querySelector('#arLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    }
+    el.querySelector('#arForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = el.querySelector('#arFile').files[0]; if (!f) return;
+      var mime = f.type || (/\.xlsx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : /\.xls$/i.test(f.name) ? 'application/vnd.ms-excel' : '');
+      msg('Subiendo…');
+      api(ctx, { action: 'fichero_subida', proyecto_id: pid, nombre: f.name, mime: mime, bytes: f.size, tipo: el.querySelector('#arTipo').value }).then(function (d) {
+        return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: mime }).then(function (r) {
+          if (r.error) throw new Error('No se ha podido subir el archivo.');
+          return api(ctx, { action: 'fichero_guardar', id: d.id, subido: true, tipo: el.querySelector('#arTipo').value });
+        });
+      }).then(function () { el.querySelector('#arFile').value = ''; msg('Archivo subido', 'ok'); cargar(); })
+        .catch(function (err) { msg(err.message, 'err'); });
+    });
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-a]'); if (!b) return;
+      var fila = b.closest('.ar-fila'), id = fila.dataset.id;
+      if (b.dataset.a === 'guardar') {
+        var datos = { action: 'fichero_guardar', id: id };
+        fila.querySelectorAll('[data-k]').forEach(function (i) { datos[i.dataset.k] = i.value; });
+        api(ctx, datos).then(function () { msg('Guardado', 'ok'); }).catch(function (err) { msg(err.message, 'err'); });
+      } else if (b.dataset.a === 'ia') {
+        if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = 'Gasta ≈ 1–2 créditos · ¿leer?'; b.classList.add('primary'); return; }
+        b.disabled = true; b.textContent = 'Leyendo…';
+        api(ctx, { action: 'fichero_leer_ia', id: id }).then(function (d) { msg('Leído con IA (' + d.creditos + (d.creditos === 1 ? ' crédito' : ' créditos') + '). Revisa los datos.', 'ok'); cargar(); if (ctx.alCambiar) ctx.alCambiar(); })
+          .catch(function (err) { msg(err.message, 'err'); b.disabled = false; b.textContent = 'Leer con IA'; });
+      } else if (b.dataset.a === 'borrar') {
+        if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('primary'); return; }
+        api(ctx, { action: 'fichero_borrar', id: id }).then(cargar).catch(function (err) { msg(err.message, 'err'); });
+      }
+    });
+    cargar();
+  }
+
+  // ── Métricas del proyecto ──
+  var COL_CAT = { proveedores: '#161616', materiales: '#8a6234', mano_obra: '#12B76A', transporte: '#b9b6ad', montaje: '#5f5b52', otros: '#d9d3c8' };
+  var NOM_CAT = { materiales: 'Materiales', mano_obra: 'Mano de obra', transporte: 'Transporte', montaje: 'Montaje', otros: 'Otros' };
+  function barrasFCM(m) {
+    var filas = [['Facturación', m.facturacion, '#d9d3c8'], ['Costes', m.costes, '#161616'], ['Margen', m.margen === null ? 0 : m.margen, m.margen !== null && m.margen < 0 ? '#b42318' : '#12B76A']];
+    var max = Math.max.apply(null, filas.map(function (f) { return Math.abs(f[1]); }).concat([1]));
+    return '<div class="mt-barras">' + filas.map(function (f) {
+      return '<div class="mt-barra"><span>' + f[0] + '</span><div><i style="width:' + Math.max(0.5, Math.abs(f[1]) / max * 100) + '%;background:' + f[2] + '"></i></div><b>' + eurN(f[1]) + '</b></div>';
+    }).join('') + '</div>';
+  }
+  function donut(cats) {
+    var total = cats.reduce(function (s, c) { return s + c.importe; }, 0);
+    if (!(total > 0)) return '<div class="ng-vacio">Sin costes todavía.</div>';
+    var R = 70, r = 44, cx = 90, cy = 90, a = -Math.PI / 2, svg = '';
+    cats.forEach(function (c) {
+      var ang = (c.importe / total) * Math.PI * 2, a2 = a + ang, large = ang > Math.PI ? 1 : 0;
+      var p = function (rad, t) { return [cx + rad * Math.cos(t), cy + rad * Math.sin(t)]; };
+      var A = p(R, a), B = p(R, a2), C = p(r, a2), D = p(r, a);
+      if (cats.length === 1) svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R + r) / 2 + '" fill="none" stroke="' + (COL_CAT[c.categoria] || '#999') + '" stroke-width="' + (R - r) + '"/>';
+      else svg += '<path d="M' + A + ' A' + R + ' ' + R + ' 0 ' + large + ' 1 ' + B + ' L' + C + ' A' + r + ' ' + r + ' 0 ' + large + ' 0 ' + D + ' Z" fill="' + (COL_CAT[c.categoria] || '#999') + '"><title>' + esc(c.nombre) + ' ' + eurN(c.importe) + '</title></path>';
+      a = a2;
+    });
+    svg += '<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" class="mt-dt">' + eurN(total) + '</text>';
+    return '<div class="mt-donut"><svg viewBox="0 0 180 180">' + svg + '</svg><ul>' + cats.map(function (c) {
+      return '<li><i style="background:' + (COL_CAT[c.categoria] || '#999') + '"></i>' + esc(c.nombre) + '<b>' + eurN(c.importe) + '</b><small>' + Math.round(c.importe / total * 100) + ' %</small></li>';
+    }).join('') + '</ul></div>';
+  }
+  function lineaTiempo(eventos) {
+    if (!eventos.length) return '<div class="ng-vacio">Sin cobros ni pagos todavía.</div>';
+    var W = 1000, H = 230, izq = 70, abajo = 30, arriba = 14;
+    var t = function (f) { return new Date(f + 'T12:00:00').getTime(); };
+    var t0 = t(eventos[0].fecha), t1 = Math.max(t(eventos[eventos.length - 1].fecha), t0 + 86400000 * 7);
+    var acc = { cobro: 0, pago: 0 }, ptos = { cobro: [[t0, 0]], pago: [[t0, 0]] };
+    eventos.forEach(function (e) { acc[e.tipo] += e.importe; ptos[e.tipo].push([t(e.fecha), acc[e.tipo]]); });
+    var max = Math.max(acc.cobro, acc.pago, 1);
+    var X = function (v) { return izq + (v - t0) / (t1 - t0) * (W - izq - 10); }, Y = function (v) { return arriba + (H - abajo - arriba) * (1 - v / max); };
+    var linea = function (l, col) { var d = ''; l.forEach(function (p, i) { d += (i ? ' H' + X(p[0]) + ' V' + Y(p[1]) : 'M' + X(p[0]) + ' ' + Y(p[1])); }); d += ' H' + X(t1); return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.5"/>'; };
+    var g = '';
+    for (var i = 0; i <= 4; i++) { var v = max / 4 * i; g += '<line x1="' + izq + '" x2="' + W + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="#ece9e2"/><text x="' + (izq - 8) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + eurN(v) + '</text>'; }
+    g += linea(ptos.cobro, '#12B76A') + linea(ptos.pago, '#161616');
+    eventos.forEach(function (e) { g += '<circle cx="' + X(t(e.fecha)) + '" cy="' + (H - abajo + 8) + '" r="3.5" fill="' + (e.tipo === 'cobro' ? (e.real ? '#12B76A' : '#fff') : '#161616') + '" stroke="' + (e.tipo === 'cobro' ? '#12B76A' : '#161616') + '"><title>' + esc(e.concepto) + ' · ' + eurN(e.importe) + ' · ' + dia(e.fecha) + (e.tipo === 'cobro' && !e.real ? ' (previsto)' : '') + '</title></circle>'; });
+    g += '<text x="' + izq + '" y="' + (H - 2) + '">' + dia(eventos[0].fecha) + '</text><text x="' + W + '" y="' + (H - 2) + '" text-anchor="end">' + dia(new Date(t1).toISOString().slice(0, 10)) + '</text>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ng-graf">' + g + '</svg>';
+  }
+  function metricasProyecto(el, ctx, pid) {
+    el.innerHTML = '<p class="pa-muted">Cargando…</p>';
+    function cargar() {
+      api(ctx, { action: 'metricas_proyecto', proyecto_id: pid }).then(function (m) {
+        var html = '';
+        if (m.avisos.length) html += m.avisos.map(function (a) { return '<div class="eu-faltan">' + esc(a) + '</div>'; }).join('');
+        html += '<div class="ng-kpis">' +
+          '<div class="ng-kpi fuerte"><span>Facturación</span><b>' + eurN(m.facturacion) + '</b><small>' + (m.origen_facturacion === 'facturas' ? 'facturas a cliente' : m.origen_facturacion === 'presupuesto' ? 'presupuesto aceptado' : 'sin IVA') + '</small></div>' +
+          '<div class="ng-kpi"><span>Costes</span><b>' + eurN(m.costes) + '</b><small>sin IVA</small></div>' +
+          '<div class="ng-kpi"><span>Margen bruto</span><b class="' + (m.margen_pct !== null && m.margen_pct < 30 ? 'mt-rojo' : '') + '">' + eurN(m.margen) + '</b><small>' + pctTxt(m.margen_pct) + '</small></div>' +
+          '<div class="ng-kpi"><span>Cobrado</span><b>' + eurN(m.cobros.cobrado) + '</b><small>de ' + eurN(m.cobros.total) + ' con IVA</small></div>' +
+          '<div class="ng-kpi"><span>Pendiente de cobro</span><b>' + eurN(m.cobros.pendiente) + '</b><small>' + (m.cobros.vencidos.length ? m.cobros.vencidos.length + ' vencido' + (m.cobros.vencidos.length === 1 ? '' : 's') : 'nada vencido') + '</small></div></div>';
+        html += '<div class="ng-dos"><div class="ng-card"><h2>Facturación, coste y margen</h2>' + barrasFCM(m) + '</div><div class="ng-card"><h2>Costes por categoría</h2>' + donut(m.costes_por_categoria) + '</div></div>';
+        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Cobros y pagos</h2><span class="ng-ley"><i style="background:#12B76A"></i>Cobros (con IVA) <i style="background:#161616"></i>Pagos</span></div>' + lineaTiempo(m.eventos) + '</div>';
+        // Cobros
+        html += '<div class="ng-dos"><div class="ng-card"><div class="ng-card-cab"><h2>Cobros</h2>' + (m.presupuesto && m.presupuesto.estado === 'aceptado' ? '<button class="pa-btn" id="mtRegen">Recalcular plazos</button>' : '') + '</div>' +
+          (m.cobros_lista.length ? '<table class="ng-tabla mt-cobros"><thead><tr><th>Plazo</th><th>Importe</th><th>Previsto</th><th>Cobrado</th></tr></thead><tbody>' + m.cobros_lista.map(function (c) {
+            var vencido = !c.cobrado && c.fecha_prevista && c.fecha_prevista < new Date().toISOString().slice(0, 10);
+            return '<tr data-cobro="' + c.id + '"' + (vencido ? ' class="mt-vencido"' : '') + '><td>' + esc(c.concepto) + (c.pct ? ' <small class="pa-muted">' + String(c.pct).replace('.', ',') + ' %</small>' : '') + '</td><td><input data-c="importe" inputmode="decimal" value="' + numOut(c.importe) + '"></td>' +
+              '<td><input type="date" data-c="fecha_prevista" value="' + esc(c.fecha_prevista || '') + '"></td><td><label class="mt-check"><input type="checkbox" data-c="cobrado"' + (c.cobrado ? ' checked' : '') + '> <input type="date" data-c="fecha_cobro" value="' + esc(c.fecha_cobro || '') + '"' + (c.cobrado ? '' : ' disabled') + '></label></td></tr>';
+          }).join('') + '</tbody></table>' : '<p class="pa-muted">' + (m.presupuesto && m.presupuesto.estado === 'aceptado' ? 'Sin plazos.' : 'Los plazos se crean al marcar el presupuesto como aceptado (con la forma de pago de tu plantilla).') + '</p>') + '</div>';
+        // Costes manuales
+        html += '<div class="ng-card"><h2>Costes manuales</h2><p class="pa-muted" style="font-size:12.5px;margin:0 0 8px">Sin IVA. Las facturas de proveedor se suman solas desde «Archivos».</p>' +
+          '<ul class="ng-lista">' + m.costes_lista.map(function (c) { return '<li><div><strong>' + esc(c.concepto || NOM_CAT[c.categoria]) + '</strong><small>' + NOM_CAT[c.categoria] + ' · ' + dia(c.fecha) + '</small></div><span class="ng-imp">' + eurN(c.importe) + '</span><button class="pa-btn" data-coste-borrar="' + c.id + '">×</button></li>'; }).join('') + '</ul>' +
+          '<form class="mt-coste" id="mtCoste"><select name="categoria">' + Object.keys(NOM_CAT).map(function (k) { return '<option value="' + k + '">' + NOM_CAT[k] + '</option>'; }).join('') + '</select>' +
+          '<input name="concepto" placeholder="Concepto"><input name="fecha" type="date"><input name="importe" inputmode="decimal" placeholder="€ sin IVA" required><button class="pa-btn primary" type="submit">Añadir</button></form></div></div>';
+        el.innerHTML = html;
+      }).catch(function (e) { el.innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    }
+    el.addEventListener('change', function (e) {
+      var tr = e.target.closest('[data-cobro]'); if (!tr) return;
+      var k = e.target.dataset.c, datos = { action: 'cobro_guardar', id: tr.dataset.cobro };
+      if (k === 'cobrado') { datos.cobrado = e.target.checked; datos.fecha_cobro = tr.querySelector('[data-c="fecha_cobro"]').value; }
+      else datos[k] = e.target.value;
+      api(ctx, datos).then(cargar).catch(function (err) { alert(err.message); });
+    });
+    el.addEventListener('submit', function (e) {
+      if (e.target.id !== 'mtCoste') return;
+      e.preventDefault();
+      var f = e.target;
+      api(ctx, { action: 'coste_guardar', proyecto_id: pid, categoria: f.categoria.value, concepto: f.concepto.value, fecha: f.fecha.value, importe: f.importe.value })
+        .then(cargar).catch(function (err) { alert(err.message); });
+    });
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-coste-borrar]');
+      if (b) return api(ctx, { action: 'coste_borrar', id: b.dataset.costeBorrar }).then(cargar).catch(function (err) { alert(err.message); });
+      if (e.target.id === 'mtRegen') api(ctx, { action: 'cobros_regenerar', proyecto_id: pid }).then(cargar).catch(function (err) { alert(err.message); });
+    });
+    cargar();
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -354,6 +546,10 @@
           .then(function (d) { descargar(base64Blob(d.base64, 'application/pdf'), d.nombre); return 'PDF descargado'; });
       }, 'Generando PDF…');
       if (id === 'prExcel') bloquear(function () {
+        excel.guardar = function (blob, nombre, d) {
+          return api(ctx, { action: 'doc_subida', proyecto_id: pid, tipo: 'presupuesto_xlsx', version: d.version, numero: d.numero, nombre: nombre, bytes: blob.size })
+            .then(function (r) { return ctx.supa.storage.from('estudio').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type }); });
+        };
         return guardar().then(function () { return api(ctx, { action: 'presupuesto_dibujos', proyecto_id: pid }); }).then(function (d) { return excel(d, doc, proyecto); });
       }, 'Generando Excel…');
     });
@@ -605,8 +801,12 @@
     ws.pageSetup.printArea = 'A1:L' + fila;
 
     return Promise.all(tareas).then(function () { return wb.xlsx.writeBuffer(); }).then(function (buf) {
-      descargar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Presupuesto_' + (doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_') + '.xlsx');
-      return 'Excel descargado';
+      var tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      var nombre = 'Presupuesto_' + (doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_') + '.xlsx';
+      var blob = new Blob([buf], { type: tipo });
+      descargar(blob, nombre);
+      // Se guarda también en «Documentos» del proyecto
+      return (excel.guardar ? excel.guardar(blob, nombre, doc) : Promise.resolve()).then(function () { return 'Excel descargado y guardado en Documentos'; }, function () { return 'Excel descargado'; });
     });
   }
 
@@ -817,6 +1017,18 @@
           kpi('Pendientes de respuesta', String(m.pendientes.length), viejo !== null ? 'el más antiguo, hace ' + viejo + (viejo === 1 ? ' día' : ' días') : 'ninguno') +
           (c ? kpi('Créditos del mes', cr(c.restantes), 'de ' + cr(c.mes) + (c.saldo > 0 ? ' · +' + cr(c.saldo) + ' de packs' : '')) : '') +
           '</div>';
+        // Rentabilidad real (facturas y costes de los proyectos)
+        var r = m.real;
+        if (r) {
+          html += '<div class="ng-card"><div class="ng-card-cab"><h2>Rentabilidad real</h2><span class="pa-muted" style="font-size:12px">Proyectos aceptados o facturados en el periodo · sin IVA</span></div>' +
+            '<div class="ng-kpis ng-kpis-in">' + kpi('Facturación', eur0(r.facturacion), '') + kpi('Costes', eur0(r.costes), 'proveedores y costes manuales') +
+            kpi('Margen bruto', eur0(r.margen), r.margen_pct === null ? 'añade costes en cada proyecto' : String(r.margen_pct).replace('.', ',') + ' %', false) + '</div>' +
+            (r.ranking.length ? '<h3 class="dc-grupo">Proyectos por margen</h3><ul class="ng-lista">' + r.ranking.map(function (x, i) {
+              var bajo = x.margen_pct !== null && x.margen_pct < 30;
+              return '<li><span class="ng-pos">' + (i + 1) + '</span><div><strong>' + esc(x.cliente) + '</strong><small>' + (x.alumno ? esc(x.alumno) + ' · ' : '') + 'facturación ' + eur0(x.facturacion) + ' · costes ' + eur0(x.costes) + '</small></div>' +
+                '<span class="ng-imp">' + eur0(x.margen) + '</span><span class="ng-tag ' + (x.margen_pct === null ? 'ng-e-borrador' : bajo ? 'ng-e-rechazado' : 'ng-e-aceptado') + '">' + (x.margen_pct === null ? 'sin costes' : String(x.margen_pct).replace('.', ',') + ' %') + '</span></li>';
+            }).join('') + '</ul>' : '<p class="pa-muted" style="margin:4px 0 0">Aún no hay proyectos aceptados o facturados en el periodo.</p>') + '</div>';
+        }
         html += '<div class="ng-card"><div class="ng-card-cab"><h2>Evolución mensual</h2><span class="ng-ley"><i style="background:#d9d3c8"></i>Presupuestado <i style="background:#161616"></i>Aceptado</span></div>' + grafica(m.serie) + '</div>';
         var lista = function (titulo, filas, conDias) {
           return '<div class="ng-card"><h2>' + titulo + '</h2>' + (filas.length ? '<ul class="ng-lista">' + filas.map(function (f) {

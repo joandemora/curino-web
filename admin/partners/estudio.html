@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/assets/css/admin-shell.css">
 <link rel="stylesheet" href="/admin/partners/partners-admin.css">
 <link rel="stylesheet" href="/assets/css/estudio-ui.css">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@800&display=swap" rel="stylesheet">
 </head>
 <body class="hidden-until-auth">
 <main class="ash-content">
@@ -29,13 +30,13 @@ initAdminShell({ activeSection: 'partners-estudio', title: 'Partners · Estudio'
   EstudioUI.proyectos(document.getElementById('esApp'), {
     supa: c.supabase, modo: 'admin',
     rutas: {
-      estudio: function (pid) { return '/admin/partners/estudio.html' + (pid ? '?p=' + pid : ''); },
+      estudio: function (pid, tab) { return '/admin/partners/estudio.html' + (pid ? '?p=' + pid + (tab && tab !== 'diseno' ? '&t=' + tab : '') : ''); },
       presupuesto: function (pid) { return '/admin/partners/estudio-presupuesto.html?p=' + pid; },
       datos: function () { return '/admin/partners/estudio-tarifa.html'; },
       tarifa: function () { return '/admin/partners/estudio-tarifa.html'; }
     },
-    alAbrir: function (pid) { history.replaceState(null, '', pid ? '?p=' + pid : location.pathname); }
-  }, new URLSearchParams(location.search).get('p'));
+    alAbrir: function () {}
+  }, new URLSearchParams(location.search).get('p'), new URLSearchParams(location.search).get('t'));
 }).catch(function () {});
 </script>
 </body>

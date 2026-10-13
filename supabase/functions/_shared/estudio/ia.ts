@@ -279,3 +279,47 @@ export async function redactarTextos(o: {
       .map((x) => ({ codigo: String(x.codigo), subtitulo: String(x.subtitulo ?? '').slice(0, 120), intro: String(x.intro ?? '').slice(0, 400) }))
   };
 }
+
+// ── Leer una factura o presupuesto de proveedor (ficha del proyecto) ─
+const HERRAMIENTA_FACTURA = {
+  name: 'datos_factura',
+  description: 'Devuelve los datos leídos del documento. Usa null en lo que no se vea con claridad; no inventes.',
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['tipo', 'proveedor', 'fecha', 'base', 'iva', 'total'],
+    properties: {
+      tipo: { enum: ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente', 'foto_obra', 'otro'] },
+      proveedor: { type: ['string', 'null'], description: 'Emisor del documento (empresa o persona).' },
+      fecha: { type: ['string', 'null'], description: 'Fecha del documento en formato AAAA-MM-DD.' },
+      base: { type: ['number', 'null'], description: 'Base imponible en euros.' },
+      iva: { type: ['number', 'null'], description: 'Cuota de IVA en euros.' },
+      total: { type: ['number', 'null'], description: 'Total en euros, IVA incluido.' }
+    }
+  }
+};
+
+export async function leerFactura(o: { clave: string; modelo: string; adjunto: Adjunto; fetch?: typeof fetch }):
+  Promise<{ datos: Record<string, unknown> | null; llamadas: Llamada[]; error?: string }> {
+  const f = o.fetch ?? fetch;
+  const bloque = o.adjunto.tipo === 'application/pdf'
+    ? { type: 'document', source: { type: 'base64', media_type: o.adjunto.tipo, data: o.adjunto.base64 } }
+    : { type: 'image', source: { type: 'base64', media_type: o.adjunto.tipo, data: o.adjunto.base64 } };
+  const r = await f('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': o.clave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: o.modelo, max_tokens: 600,
+      system: 'Lees facturas, presupuestos y tickets de un taller de carpintería en España. Extrae emisor, fecha e importes en euros. Responde siempre con la herramienta datos_factura.',
+      tools: [HERRAMIENTA_FACTURA],
+      messages: [{ role: 'user', content: [bloque, { type: 'text', text: `Archivo: ${o.adjunto.nombre}. Extrae los datos.` }] }]
+    })
+  });
+  const d = await r.json().catch(() => ({}));
+  const uso: Uso = {
+    input_tokens: d?.usage?.input_tokens ?? 0, output_tokens: d?.usage?.output_tokens ?? 0,
+    cache_creation_input_tokens: d?.usage?.cache_creation_input_tokens ?? 0, cache_read_input_tokens: d?.usage?.cache_read_input_tokens ?? 0
+  };
+  const llamadas = [{ uso, ok: r.ok }];
+  if (!r.ok) return { datos: null, llamadas, error: d?.error?.type ?? `http_${r.status}` };
+  const b = (d.content ?? []).find((x: Bloque) => x.type === 'tool_use') as { input?: Record<string, unknown> } | undefined;
+  return { datos: b?.input ?? null, llamadas, error: b ? undefined : 'sin_datos' };
+}

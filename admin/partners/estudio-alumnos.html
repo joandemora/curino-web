@@ -50,6 +50,7 @@
       <div><label>Lectura de caché ($/millón)</label><input id="cfPr" inputmode="decimal"></div>
       <div><label>Tamaño máx. de archivo (MB)</label><input id="cfMb" inputmode="numeric"></div>
       <div><label>Páginas máx. por PDF</label><input id="cfPag" inputmode="numeric"></div>
+      <div><label>Almacenamiento por alumno (MB)</label><input id="cfAlm" inputmode="numeric"></div>
     </div>
     <label class="ea-abierto"><input type="checkbox" id="cfAbierto"> <span><strong>Estudio abierto a alumnos</strong> · si está desactivado, solo entran admin y los accesos «concedidos» (pruebas).</span></label>
     <div class="tf-pie"><button class="pa-btn primary" id="cfGuardar">Guardar configuración</button><span id="cfMsg"></span></div>
@@ -174,7 +175,7 @@
       var c = d.config || {};
       $('#cfModelo').value = c.modelo || ''; $('#cfCredito').value = crd(c.credito_mensual_usd); $('#cfMeses').value = c.meses_tras_fin;
       $('#cfHora').value = c.max_llamadas_hora; $('#cfPe').value = num(c.precio_entrada); $('#cfPs').value = num(c.precio_salida);
-      $('#cfPw').value = num(c.precio_cache_escritura); $('#cfPr').value = num(c.precio_cache_lectura); $('#cfMb').value = c.max_mb; $('#cfPag').value = c.max_paginas;
+      $('#cfPw').value = num(c.precio_cache_escritura); $('#cfPr').value = num(c.precio_cache_lectura); $('#cfMb').value = c.max_mb; $('#cfPag').value = c.max_paginas; $('#cfAlm').value = c.almacenamiento_mb;
       $('#cfAbierto').checked = !!c.abierto_alumnos;
       pintarPacks(c);
       var activos = d.alumnos.filter(function (a) { return a.activo; }).length;
@@ -235,7 +236,7 @@
     var v = function (id) { return $(id).value.trim().replace(',', '.'); };
     api({ action: 'admin_config', modelo: v('#cfModelo'), credito_mensual_usd: (parseInt(v('#cfCredito'), 10) || 0) / 100, meses_tras_fin: v('#cfMeses'), max_llamadas_hora: v('#cfHora'),
       precio_entrada: v('#cfPe'), precio_salida: v('#cfPs'), precio_cache_escritura: v('#cfPw'), precio_cache_lectura: v('#cfPr'),
-      max_mb: v('#cfMb'), max_paginas: v('#cfPag'), abierto_alumnos: $('#cfAbierto').checked })
+      max_mb: v('#cfMb'), max_paginas: v('#cfPag'), almacenamiento_mb: v('#cfAlm'), abierto_alumnos: $('#cfAbierto').checked })
       .then(function () { msg('#cfMsg', 'Guardado', true); return cargar(); }).catch(function (e) { msg('#cfMsg', e.message); });
   });
 })();
