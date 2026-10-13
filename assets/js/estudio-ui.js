@@ -104,10 +104,27 @@
     var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['archivos', 'Archivos'], ['metricas', 'Métricas']];
     el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
-      '<a href="' + ctx.rutas.presupuesto(pid) + '">Presupuesto</a></nav></div><div id="pjCuerpo"></div></div>';
-    ctx.supa.from('estudio_proyectos').select('nombre, referencia').eq('id', pid).maybeSingle().then(function (r) {
-      if (r.data) document.getElementById('pjTitulo').innerHTML = esc(r.data.nombre) + (r.data.referencia ? ' <span class="pa-muted">· ' + esc(r.data.referencia) + '</span>' : '');
+      '<a href="' + ctx.rutas.presupuesto(pid) + '">Presupuesto</a></nav></div><div class="pj-montaje" id="pjMontaje"></div><div id="pjCuerpo"></div></div>';
+    ctx.supa.from('estudio_proyectos').select('nombre, referencia, montaje_previsto, montado, montado_at, montaje_nota').eq('id', pid).maybeSingle().then(function (r) {
+      if (!r.data) return;
+      document.getElementById('pjTitulo').innerHTML = esc(r.data.nombre) + (r.data.referencia ? ' <span class="pa-muted">· ' + esc(r.data.referencia) + '</span>' : '');
+      pintarMontaje(r.data);
     });
+    // Fecha prevista de montaje y «Montado» (sí/no + fecha real)
+    function pintarMontaje(d) {
+      var z = document.getElementById('pjMontaje'); if (!z) return;
+      z.innerHTML = '<label>Fecha prevista de montaje <input type="date" id="pmPrev" value="' + (d.montaje_previsto || '') + '"></label>' +
+        '<label class="pm-chk"><input type="checkbox" id="pmMont"' + (d.montado ? ' checked' : '') + '> Montado</label>' +
+        '<label' + (d.montado ? '' : ' hidden') + ' id="pmRealL">Fecha real <input type="date" id="pmReal" value="' + (d.montado_at || '') + '"></label>' +
+        (d.montaje_nota ? '<small class="pa-muted">' + esc(d.montaje_nota) + '</small>' : '') + '<span class="pr-msg" id="pmMsg"></span>';
+      var guardar = function (body) {
+        api(ctx, Object.assign({ action: 'proyecto_montaje', proyecto_id: pid }, body)).then(function (x) { pintarMontaje(x); var m = document.getElementById('pmMsg'); if (m) m.textContent = 'Guardado'; })
+          .catch(function (e) { alert(e.message); });
+      };
+      z.querySelector('#pmPrev').addEventListener('change', function () { guardar({ montaje_previsto: this.value || null }); });
+      z.querySelector('#pmMont').addEventListener('change', function () { guardar({ montado: this.checked, montado_at: this.checked ? (z.querySelector('#pmReal').value || new Date().toLocaleDateString('sv-SE')) : undefined }); });
+      z.querySelector('#pmReal').addEventListener('change', function () { guardar({ montado_at: this.value || null }); });
+    }
     var cuerpo = el.querySelector('#pjCuerpo');
     if (tab === 'documentos') return documentosProyecto(cuerpo, ctx, pid);
     if (tab === 'archivos') return archivosProyecto(cuerpo, ctx, pid);
@@ -968,22 +985,39 @@
   function selectEstado(pid, estado) {
     return '<select class="ng-estado ng-e-' + estado + '" data-pid="' + pid + '">' + ESTADOS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === estado ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select>';
   }
-  function cambiarEstado(ctx, sel, despues) {
+  function cambiarEstado(ctx, sel, despues, extra) {
+    var antes = sel.dataset.estado || (sel.className.match(/ng-e-(\w+)/) || [])[1] || 'borrador';
     sel.disabled = true;
-    api(ctx, { action: 'presupuesto_estado', proyecto_id: sel.dataset.pid, estado: sel.value })
-      .then(function () { sel.className = 'ng-estado ng-e-' + sel.value; if (despues) despues(); })
-      .catch(function (e) { alert(e.message); }).then(function () { sel.disabled = false; });
+    api(ctx, Object.assign({ action: 'presupuesto_estado', proyecto_id: sel.dataset.pid, estado: sel.value }, extra || {}))
+      .then(function () { sel.className = 'ng-estado ng-e-' + sel.value; sel.dataset.estado = sel.value; sel.disabled = false; if (despues) despues(); })
+      .catch(function (e) {
+        sel.disabled = false;
+        // Aceptar exige la fecha prevista de montaje: ventana obligatoria
+        if (e.datos && e.datos.falta_montaje) return pedirMontaje(function (f) { cambiarEstado(ctx, sel, despues, { montaje_previsto: f }); }, function () { sel.value = antes; });
+        alert(e.message); sel.value = antes;
+      });
+  }
+  /** Ventana modal: fecha prevista de montaje (obligatoria para aceptar). */
+  function pedirMontaje(ok, cancelar) {
+    var m = document.createElement('div');
+    m.className = 'eu-modal';
+    m.innerHTML = '<form class="eu-modal-caja"><h2>Fecha prevista de montaje</h2><p class="pa-muted" style="font-size:13px;margin:4px 0 12px">Para aceptar el presupuesto, indica cuándo está previsto el montaje. Aparecerá en el calendario de «Mi negocio».</p>' +
+      '<input type="date" required id="euMontaje"><div class="eu-modal-bot"><button type="button" class="pa-btn" id="euCancelar">Cancelar</button><button class="pa-btn primary" type="submit">Aceptar presupuesto</button></div></form>';
+    document.body.appendChild(m);
+    var inp = m.querySelector('#euMontaje'); inp.focus();
+    m.querySelector('#euCancelar').addEventListener('click', function () { m.remove(); if (cancelar) cancelar(); });
+    m.querySelector('form').addEventListener('submit', function (e) { e.preventDefault(); if (!inp.value) return; m.remove(); ok(inp.value); });
   }
   /** Gráfica de barras (presupuestado vs aceptado) de los últimos 12 meses, en SVG. */
   function grafica(serie) {
     var W = 1000, H = 250, izq = 64, abajo = 28, arriba = 12;
-    var max = Math.max.apply(null, serie.map(function (m) { return Math.max(m.presupuestado, m.aceptado); }).concat([0]));
+    var max = Math.max.apply(null, serie.map(function (m) { return Math.max(m.presupuestado, m.aceptado, m.margen || 0); }).concat([0]));
     if (!(max > 0)) return '<div class="ng-vacio">Cuando marques presupuestos como enviados o aceptados verás aquí su evolución mes a mes.</div>';
     // Tope «redondo» para que las 4 divisiones salgan en cifras limpias
     var bruto = max / 4, p10 = Math.pow(10, Math.floor(Math.log10(bruto)));
     var paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * p10; }).filter(function (v) { return v >= bruto; })[0];
     var tope = paso * 4;
-    var hUtil = H - abajo - arriba, wCol = (W - izq) / serie.length, wBar = Math.min(22, wCol / 3);
+    var hUtil = H - abajo - arriba, wCol = (W - izq) / serie.length, wBar = Math.min(20, wCol / 4);
     var y = function (v) { return arriba + hUtil - (v / tope) * hUtil; };
     var g = '';
     for (var i = 0; i <= 4; i++) {
@@ -993,21 +1027,92 @@
     }
     serie.forEach(function (m, k) {
       var cx = izq + wCol * k + wCol / 2;
-      g += '<rect x="' + (cx - wBar - 1) + '" y="' + y(m.presupuestado) + '" width="' + wBar + '" height="' + (y(0) - y(m.presupuestado)) + '" fill="#d9d3c8" rx="2"><title>Presupuestado ' + eur0(m.presupuestado) + '</title></rect>' +
-        '<rect x="' + (cx + 1) + '" y="' + y(m.aceptado) + '" width="' + wBar + '" height="' + (y(0) - y(m.aceptado)) + '" fill="#161616" rx="2"><title>Aceptado ' + eur0(m.aceptado) + '</title></rect>' +
+      var mg = Math.max(0, m.margen || 0), tMg = 'Margen ' + eur0(m.margen || 0) + (m.margen_pct != null ? ' (' + String(m.margen_pct).replace('.', ',') + ' %)' : ' · sin proyectos con costes');
+      g += '<rect x="' + (cx - 1.5 * wBar - 2) + '" y="' + y(m.presupuestado) + '" width="' + wBar + '" height="' + (y(0) - y(m.presupuestado)) + '" fill="#d9d3c8" rx="2"><title>Presupuestado ' + eur0(m.presupuestado) + '</title></rect>' +
+        '<rect x="' + (cx - 0.5 * wBar) + '" y="' + y(m.aceptado) + '" width="' + wBar + '" height="' + (y(0) - y(m.aceptado)) + '" fill="#161616" rx="2"><title>Aceptado ' + eur0(m.aceptado) + '</title></rect>' +
+        '<rect x="' + (cx + 0.5 * wBar + 2) + '" y="' + y(mg) + '" width="' + wBar + '" height="' + (y(0) - y(mg)) + '" fill="#12B76A" rx="2"><title>' + tMg + '</title></rect>' +
         '<text x="' + cx + '" y="' + (H - 9) + '" text-anchor="middle">' + MESES[Number(m.mes.slice(5)) - 1] + '</text>';
     });
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ng-graf" role="img" aria-label="Presupuestado y aceptado por mes">' + g + '</svg>';
   }
+  /** Calendario de montajes: vista mes (flechas) o lista + aceptados sin fecha. */
+  var calEstado = { mes: null, vista: 'mes' };
+  function calendario(el, ctx, items, recargar) {
+    if (!el) return;
+    var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    var hoyIso = hoy.toLocaleDateString('sv-SE');
+    if (!calEstado.mes) calEstado.mes = hoyIso.slice(0, 7);
+    var dias = function (f) { return Math.round((new Date(f + 'T00:00:00') - hoy) / 86400000); };
+    var conFecha = items.filter(function (p) { return p.montaje_previsto; });
+    var sinFecha = items.filter(function (p) { return !p.montaje_previsto && !p.montado; });
+    var nom = function (p) { return esc(p.nombre); };
+    var clase = function (p) { var d = dias(p.montaje_previsto); return p.montado ? 'montado' : d >= 0 && d <= 7 ? 'prox' : d < 0 ? 'atrasado' : ''; };
+    var chip = function (p) {
+      return '<a class="ng-cal-it ' + clase(p) + '" href="' + ctx.rutas.estudio(p.id, 'metricas') + '" title="' + esc(p.nombre) + ' · ' + eur0(p.importe) + ' · ' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente de cobro') + (p.montado ? ' · montado' : '') + '">' +
+        '<b>' + nom(p) + '</b><span>' + eur0(p.importe) + ' · <i class="ng-cobro ' + p.cobro + '">' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente') + '</i></span></a>';
+    };
+    var y = Number(calEstado.mes.slice(0, 4)), mo = Number(calEstado.mes.slice(5)) - 1;
+    var NOMBRES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    var cab = '<div class="ng-card-cab"><h2>Calendario de montajes</h2><span class="ng-cal-ctl">' +
+      (calEstado.vista === 'mes' ? '<button class="pa-btn" data-cal="prev" aria-label="Mes anterior">‹</button><b class="ng-cal-mes">' + NOMBRES[mo] + ' ' + y + '</b><button class="pa-btn" data-cal="next" aria-label="Mes siguiente">›</button><button class="pa-btn" data-cal="hoy">Hoy</button>' : '') +
+      '<button class="pa-btn' + (calEstado.vista === 'mes' ? ' on' : '') + '" data-cal="vmes">Mes</button><button class="pa-btn' + (calEstado.vista === 'lista' ? ' on' : '') + '" data-cal="vlista">Lista</button></span></div>' +
+      '<p class="ng-cal-ley"><i class="prox"></i>Montaje en 7 días o menos <i class="atrasado"></i>Fecha pasada sin montar <i class="montado"></i>Montado</p>';
+    var cuerpo = '';
+    if (calEstado.vista === 'mes') {
+      var primero = new Date(y, mo, 1), off = (primero.getDay() + 6) % 7, nd = new Date(y, mo + 1, 0).getDate();
+      cuerpo = '<div class="ng-cal"><div class="ng-cal-dow">' + ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'].map(function (d) { return '<span>' + d + '</span>'; }).join('') + '</div><div class="ng-cal-grid">';
+      for (var i = 0; i < off; i++) cuerpo += '<div class="ng-cal-dia vacio"></div>';
+      for (var d = 1; d <= nd; d++) {
+        var iso = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        var del = conFecha.filter(function (p) { return p.montaje_previsto === iso; });
+        cuerpo += '<div class="ng-cal-dia' + (iso === hoyIso ? ' hoy' : '') + '"><span class="ng-cal-n">' + d + '</span>' + del.map(chip).join('') + '</div>';
+      }
+      cuerpo += '</div></div>';
+    } else {
+      var orden = conFecha.slice().sort(function (a, b) { return a.montaje_previsto.localeCompare(b.montaje_previsto); });
+      cuerpo = orden.length ? '<ul class="ng-lista ng-cal-lista">' + orden.map(function (p) {
+        var dd = dias(p.montaje_previsto);
+        return '<li class="' + clase(p) + '"><span class="ng-cal-fecha">' + new Date(p.montaje_previsto + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) + '</span><div><a href="' + ctx.rutas.estudio(p.id, 'metricas') + '"><strong>' + nom(p) + '</strong></a><small>' + (p.montado ? 'montado' : dd === 0 ? 'hoy' : dd > 0 ? 'en ' + dd + (dd === 1 ? ' día' : ' días') : 'hace ' + (-dd) + (dd === -1 ? ' día' : ' días') + ', sin marcar como montado') + '</small></div>' +
+          '<span class="ng-imp">' + eur0(p.importe) + '</span><i class="ng-cobro ' + p.cobro + '">' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente') + '</i></li>';
+      }).join('') + '</ul>' : '<p class="pa-muted">Aún no hay montajes con fecha.</p>';
+    }
+    var sin = '<h3 class="dc-grupo">Aceptados sin fecha de montaje' + (sinFecha.length ? ' (' + sinFecha.length + ')' : '') + '</h3>' + (sinFecha.length ? '<ul class="ng-lista">' + sinFecha.map(function (p) {
+      return '<li><div><a href="' + ctx.rutas.estudio(p.id, 'metricas') + '"><strong>' + nom(p) + '</strong></a><small>' + eur0(p.importe) + ' · ' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente de cobro') + '</small></div>' +
+        '<span class="ng-cal-poner"><input type="date" data-mfecha="' + p.id + '"><button class="pa-btn" data-mguardar="' + p.id + '">Guardar</button><button class="pa-btn" data-mmontado="' + p.id + '" title="Ya está montado">Montado</button></span></li>';
+    }).join('') + '</ul>' : '<p class="pa-muted" style="margin:4px 0 0">Todos los aceptados tienen fecha de montaje o están montados.</p>');
+    el.innerHTML = cab + cuerpo + sin;
+    el.onclick = function (e) {
+      var b = e.target.closest('[data-cal]');
+      if (b) {
+        var k = b.dataset.cal, dt = new Date(y, mo, 1);
+        if (k === 'prev') dt.setMonth(mo - 1); else if (k === 'next') dt.setMonth(mo + 1); else if (k === 'hoy') dt = new Date();
+        if (k === 'vmes') calEstado.vista = 'mes'; else if (k === 'vlista') calEstado.vista = 'lista'; else calEstado.mes = dt.toLocaleDateString('sv-SE').slice(0, 7);
+        return calendario(el, ctx, items, recargar);
+      }
+      var g = e.target.closest('[data-mguardar]'), mt = e.target.closest('[data-mmontado]');
+      if (g) {
+        var f = el.querySelector('[data-mfecha="' + g.dataset.mguardar + '"]').value;
+        if (!f) return alert('Elige la fecha prevista de montaje.');
+        api(ctx, { action: 'proyecto_montaje', proyecto_id: g.dataset.mguardar, montaje_previsto: f }).then(recargar).catch(function (err) { alert(err.message); });
+      }
+      if (mt) {
+        var fr = el.querySelector('[data-mfecha="' + mt.dataset.mmontado + '"]').value;
+        api(ctx, { action: 'proyecto_montaje', proyecto_id: mt.dataset.mmontado, montado: true, montado_at: fr || undefined }).then(recargar).catch(function (err) { alert(err.message); });
+      }
+    };
+  }
   function negocio(el, ctx, opts) {
     opts = opts || {};
-    var admin = !!opts.agregado, periodo = 'mes';
+    var admin = !!opts.agregado, periodo = 'anio', clavePer = 'estudio-periodo';
+    // Recordar el último periodo elegido (por usuario y navegador)
+    try { var guardado = localStorage.getItem(clavePer + ':' + (ctx.usuario || '')); if (['mes', 'trimestre', 'anio', 'todo'].indexOf(guardado) >= 0) periodo = guardado; } catch (e) { /* sin almacenamiento */ }
     el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>' + (admin ? 'Negocio de los alumnos' : 'Mi negocio') + '</h1>' +
-      '<div class="ng-periodos">' + [['mes', 'Mes'], ['trimestre', 'Trimestre'], ['anio', 'Año'], ['todo', 'Todo']].map(function (p) { return '<button data-per="' + p[0] + '"' + (p[0] === periodo ? ' class="on"' : '') + '>' + p[1] + '</button>'; }).join('') + '</div></div>' +
+      '<div class="ng-periodos">' + [['mes', 'Mes'], ['trimestre', 'Trimestre'], ['anio', 'Año'], ['todo', 'Todo']].map(function (p) { return '<button data-per="' + p[0] + '"' + (p[0] === periodo ? ' class="on"' : '') + (p[0] === 'anio' ? ' title="Últimos 12 meses"' : '') + '>' + p[1] + '</button>'; }).join('') + '</div></div>' +
       '<div id="ngCuerpo"><p class="pa-muted">Cargando…</p></div></div>';
     el.querySelector('.ng-periodos').addEventListener('click', function (e) {
       var b = e.target.closest('[data-per]'); if (!b) return;
       periodo = b.dataset.per;
+      try { localStorage.setItem(clavePer + ':' + (ctx.usuario || ''), periodo); } catch (err) { /* sin almacenamiento */ }
       el.querySelectorAll('.ng-periodos button').forEach(function (x) { x.classList.toggle('on', x === b); });
       cargar();
     });
@@ -1040,7 +1145,8 @@
                 '<span class="ng-imp">' + eur0(x.margen) + '</span><span class="ng-tag ' + (x.margen_pct === null ? 'ng-e-borrador' : bajo ? 'ng-e-rechazado' : 'ng-e-aceptado') + '">' + (x.margen_pct === null ? 'sin costes' : String(x.margen_pct).replace('.', ',') + ' %') + '</span></li>';
             }).join('') + '</ul>' : '<p class="pa-muted" style="margin:4px 0 0">Aún no hay proyectos aceptados o facturados en el periodo.</p>') + '</div>';
         }
-        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Evolución mensual</h2><span class="ng-ley"><i style="background:#d9d3c8"></i>Presupuestado <i style="background:#161616"></i>Aceptado</span></div>' + grafica(m.serie) + '</div>';
+        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Evolución mensual</h2><span class="ng-ley"><i style="background:#d9d3c8"></i>Presupuestado <i style="background:#161616"></i>Aceptado <i style="background:#12B76A"></i>Margen</span></div>' + grafica(m.serie) + '</div>';
+        if (!admin) html += '<div class="ng-card" id="ngCal"></div>';
         var lista = function (titulo, filas, conDias) {
           return '<div class="ng-card"><h2>' + titulo + '</h2>' + (filas.length ? '<ul class="ng-lista">' + filas.map(function (f) {
             return '<li><div><strong>' + esc(f.cliente || '—') + '</strong><small>' + (f.numero ? esc(f.numero) + ' · ' : '') + (conDias ? 'enviado hace ' + f.dias + (f.dias === 1 ? ' día' : ' días') : new Date(f.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })) + '</small></div>' +
@@ -1061,6 +1167,7 @@
             '</tbody></table></div>' : '<p class="pa-muted">Sin actividad de alumnos en el periodo.</p>') + '</div>';
         }
         el.querySelector('#ngCuerpo').innerHTML = html;
+        if (!admin) calendario(el.querySelector('#ngCal'), ctx, m.calendario || [], cargar);
       }).catch(function (e) { el.querySelector('#ngCuerpo').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     }
     var cr = function (n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };

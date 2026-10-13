@@ -238,3 +238,39 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 /* Caducidad de presupuestos */
 .pr-nota{color:#b54708;font-size:12px}
 .ng-aviso{border-color:#f5c26b;background:#fffaf0}
+
+/* Montaje: modal, franja de la ficha y calendario */
+.eu-modal{position:fixed;inset:0;background:rgba(22,22,22,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.eu-modal-caja{background:#fff;border-radius:12px;padding:20px 22px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.eu-modal-caja h2{margin:0;font-size:18px}
+.eu-modal-caja input[type=date]{width:100%;padding:9px 10px;border:1px solid #d9d3c8;border-radius:8px;font-size:15px}
+.eu-modal-bot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.pj-montaje{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;background:#fff;border:1px solid #ece9e2;border-radius:10px;padding:8px 12px;margin:-4px 0 14px;font-size:13px}
+.pj-montaje input[type=date]{padding:4px 6px;border:1px solid #d9d3c8;border-radius:6px;margin-left:6px}
+.pj-montaje .pm-chk{display:flex;align-items:center;gap:6px}
+.pj-montaje [hidden]{display:none!important}
+.ng-cal-ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ng-cal-ctl .pa-btn{padding:4px 10px;font-size:12.5px}
+.ng-cal-ctl .pa-btn.on{background:#161616;color:#fff;border-color:#161616}
+.ng-cal-mes{min-width:120px;text-align:center;text-transform:capitalize;font-size:14px}
+.ng-cal-ley{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#8a867c;margin:4px 0 10px}
+.ng-cal-ley i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:#fff;border:1px solid #d9d3c8}
+.ng-cal-ley i.prox{background:#12B76A;border-color:#12B76A}.ng-cal-ley i.atrasado{background:#fef3c7;border-color:#f5c26b}.ng-cal-ley i.montado{background:#e7e5df;border-color:#d9d3c8}
+.ng-cal-dow,.ng-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.ng-cal-dow span{font-size:11px;color:#8a867c;text-transform:uppercase;text-align:center;padding:2px 0}
+.ng-cal-dia{min-height:86px;border:1px solid #ece9e2;border-radius:8px;padding:4px;background:#fff;display:flex;flex-direction:column;gap:3px;min-width:0}
+.ng-cal-dia.vacio{background:transparent;border-color:transparent}
+.ng-cal-dia.hoy{border-color:#161616}
+.ng-cal-n{font-size:11px;color:#8a867c}
+.ng-cal-it{display:block;border-radius:6px;padding:3px 5px;background:#f4f2ec;color:#161616;text-decoration:none;font-size:11px;line-height:1.25;overflow:hidden}
+.ng-cal-it b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ng-cal-it span{color:#5f5b52}
+.ng-cal-it.prox{background:#12B76A;color:#fff}.ng-cal-it.prox span,.ng-cal-it.prox i{color:#fff}
+.ng-cal-it.atrasado{background:#fef3c7}
+.ng-cal-it.montado{background:#e7e5df;color:#8a867c}
+.ng-cobro{font-style:normal;font-size:11px}.ng-cobro.pendiente{color:#b54708}.ng-cobro.cobrado{color:#12B76A}
+.ng-cal-lista li.montado{opacity:.6}.ng-cal-lista li.prox .ng-cal-fecha{color:#12B76A;font-weight:700}
+.ng-cal-fecha{min-width:110px;font-size:13px}
+.ng-cal-poner{display:flex;gap:6px;align-items:center}
+.ng-cal-poner input{padding:4px 6px;border:1px solid #d9d3c8;border-radius:6px}
+@media (max-width:700px){.ng-cal-dia{min-height:58px}.ng-cal-it span{display:none}.ng-cal-poner{flex-wrap:wrap}}
