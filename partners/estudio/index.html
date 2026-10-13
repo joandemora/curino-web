@@ -150,6 +150,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
     if (!c) { el.hidden = true; return; }
     el.hidden = false;
     var cr = function (n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+    if (c.ilimitado) { el.innerHTML = 'Créditos: <b>ilimitados</b>'; return; }
     el.innerHTML = 'Créditos del mes: <b>' + cr(c.restantes) + '</b> de ' + cr(c.mes) + (c.saldo > 0 ? ' · +' + cr(c.saldo) + ' de packs' : '');
   }
   function salir() { supa.auth.signOut().then(function () { history.replaceState(null, '', location.pathname); pintarLogin(); }); }

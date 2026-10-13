@@ -31,7 +31,7 @@ import {
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos } from '../_shared/estudio/ia.ts'
-import { descontarSaldo, type EstadoAlumno } from './acceso.ts'
+import { descontarSaldo, emisorCurinoDe, type EstadoAlumno } from './acceso.ts'
 import { guardarDocumento } from './proyecto.ts'
 import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/inter.ts'
 import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensans.ts'
@@ -117,6 +117,8 @@ async function usar(ctx: Ctx, proyectoId: string, llamadas: { uso: Any; ok: bool
 
 export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Response> {
   const { supa, userId, esAdmin, body, json } = ctx;
+  // Emite como SISTEMA & CURINO: admin o acceso especial (cuenta propia de Juan)
+  const emisor = esAdmin || !!ctx.alumno?.emisor_curino;
 
   // ── Tarifa ──
   if (action === 'tarifa') {
@@ -142,19 +144,19 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
 
   // ── Plantilla ──
   if (action === 'plantilla') {
-    const p = await cargarPlantilla(supa, userId, esAdmin);
+    const p = await cargarPlantilla(supa, userId, emisor);
     const firmar = async (path: string | null) => path ? (await supa.storage.from('estudio').createSignedUrl(path, 3600)).data?.signedUrl ?? null : null;
-    return json({ plantilla: p, emisor_curino: esAdmin, logo_url: await firmar(p.logo_path), firma_url: await firmar(p.firma_path) });
+    return json({ plantilla: p, emisor_curino: emisor, logo_url: await firmar(p.logo_path), firma_url: await firmar(p.firma_path) });
   }
   if (action === 'plantilla_guardar') {
-    const base = esAdmin ? PLANTILLA_ADMIN : PLANTILLA_ALUMNO;
+    const base = emisor ? PLANTILLA_ADMIN : PLANTILLA_ALUMNO;
     const p = limpiarPlantilla(body?.datos ?? {}, base);
     const propio = `${userId}/plantilla/`;
     if (p.logo_path && !p.logo_path.startsWith(propio)) p.logo_path = null;
     if (p.firma_path && !p.firma_path.startsWith(propio)) p.firma_path = null;
-    const error = validarPlantilla(p, esAdmin);
+    const error = validarPlantilla(p, emisor);
     if (error) return json({ error }, 400);
-    if (!esAdmin) {
+    if (!emisor) {
       for (const ib of await ibanesCurino(supa)) {
         const e = validarPlantilla(p, false, ib);
         if (e) return json({ error: e }, 400);
@@ -181,8 +183,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (!UUID.test(proyectoId)) return json({ error: 'proyecto_id no válido' }, 400);
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', proyectoId).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
-  const { data: rolDueno } = await supa.from('user_roles').select('role').eq('user_id', proyecto.user_id).eq('role', 'admin').maybeSingle();
-  const duenoAdmin = !!rolDueno;
+  const duenoAdmin = await emisorCurinoDe(supa, proyecto.user_id);
   const { data: guardado } = await supa.from('estudio_presupuestos').select('datos, estado, estado_at, enviado_at, aceptado_at, rechazado_at').eq('proyecto_id', proyectoId).maybeSingle();
   const doc: DocPresupuesto | null = guardado?.datos ?? null;
   const tarifa = await cargarTarifa(supa, proyecto.user_id);
