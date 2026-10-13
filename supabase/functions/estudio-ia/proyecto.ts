@@ -37,7 +37,7 @@ const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente'
 const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
-const ACCIONES = new Set(['leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
+const ACCIONES = new Set(['proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
   'fichero_borrar', 'fichero_leer_ia', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
 export const esAccionProyecto = (a: string) => ACCIONES.has(a);
 
@@ -96,8 +96,8 @@ async function plantillaDe(supa: Any, userId: string): Promise<Plantilla> {
 /** Crea los plazos por defecto si el presupuesto está aceptado y aún no hay ninguno. */
 async function asegurarCobros(supa: Any, proyecto: Any, pres: Any, existentes: Any[], forzar = false) {
   if ((!forzar && existentes.length) || pres?.estado !== 'aceptado' || !(Number(pres.importe) > 0)) return existentes;
-  const { data: tarifa } = await supa.from('estudio_tarifas').select('iva_pct').or(`user_id.eq.${proyecto.user_id},user_id.is.null`).order('user_id', { nullsFirst: false }).limit(1).maybeSingle();
-  const iva = Number(tarifa?.iva_pct ?? 21);
+  // IVA del proyecto (21 % por defecto, 10 % reformas de vivienda)
+  const iva = Number(proyecto.iva_pct ?? 21);
   const pl = await plantillaDe(supa, proyecto.user_id);
   const aceptado = new Date(pres.aceptado_at || Date.now()).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
   const plazos = cobrosPorDefecto(pl.forma_pago || [], Math.round(Number(pres.importe) * (1 + iva / 100) * 100) / 100, aceptado);
@@ -315,11 +315,24 @@ export async function accionProyecto(action: string, ctx: {
     if (pres?.estado !== 'aceptado') return json({ error: 'Los cobros se calculan cuando el presupuesto está aceptado.' }, 400);
     return json({ cobros: await asegurarCobros(supa, proyecto, pres, cobros, true) });
   }
+  if (action === 'proyecto_iva') {
+    // Cambia el tipo de IVA; los plazos se reescalan al nuevo total con IVA (se conservan fechas y cobrados)
+    const nuevo = Number(body?.iva_pct);
+    if (![0, 4, 10, 21].includes(nuevo)) return json({ error: 'Tipo de IVA no válido (21, 10, 4 o 0 %).' }, 400);
+    const viejo = Number(proyecto.iva_pct ?? 21);
+    const r = await supa.from('estudio_proyectos').update({ iva_pct: nuevo }).eq('id', pid);
+    if (r.error) throw r.error;
+    if (nuevo !== viejo) {
+      const { data: cob } = await supa.from('estudio_cobros').select('id, importe').eq('proyecto_id', pid);
+      for (const c of cob ?? []) await supa.from('estudio_cobros').update({ importe: Math.round(Number(c.importe) * (1 + nuevo / 100) / (1 + viejo / 100) * 100) / 100 }).eq('id', c.id);
+    }
+    return json({ ok: true, iva_pct: nuevo });
+  }
   if (action === 'metricas_proyecto') {
     const d = await datosProyecto(supa, pid);
     const cobros = await asegurarCobros(supa, proyecto, d.pres, d.cobros);
     const m = metricasProyecto({ presupuesto: d.pres, ficheros: d.ficheros, costes: d.costes, cobros, hoy: hoyMadrid() });
-    return json({ ...m, presupuesto: d.pres ? { estado: d.pres.estado, importe: d.pres.importe, numero: d.pres.datos?.numero || null } : null, costes_lista: d.costes, cobros_lista: cobros });
+    return json({ ...m, iva_pct: Number(proyecto.iva_pct ?? 21), presupuesto: d.pres ? { estado: d.pres.estado, importe: d.pres.importe, numero: d.pres.datos?.numero || null } : null, costes_lista: d.costes, cobros_lista: cobros });
   }
   return json({ error: 'accion_desconocida' }, 400);
 }

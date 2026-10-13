@@ -188,6 +188,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   // Importado del histórico (solo número e importe): no hay documento editable
   const doc: DocPresupuesto | null = guardado?.datos?.importado ? null : guardado?.datos ?? null;
   const tarifa = await cargarTarifa(supa, proyecto.user_id);
+  // El IVA es del proyecto (21 % por defecto, 10 % reformas), no de la tarifa
+  if (proyecto.iva_pct !== null && proyecto.iva_pct !== undefined) tarifa.iva_pct = Number(proyecto.iva_pct);
   const plantilla = await cargarPlantilla(supa, proyecto.user_id, duenoAdmin);
   const guardar = async (d: DocPresupuesto) => {
     // Importes cacheados (sin IVA) para «Mi negocio»; null si hay partidas sin precio.

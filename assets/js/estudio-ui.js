@@ -389,12 +389,12 @@
           '<div class="ng-kpi fuerte"><span>Facturación</span><b>' + eurN(m.facturacion) + '</b><small>' + (m.origen_facturacion === 'facturas' ? 'facturas a cliente (superan el presupuesto)' : m.origen_facturacion === 'presupuesto' ? 'presupuesto aceptado' : 'sin IVA') + '</small></div>' +
           '<div class="ng-kpi"><span>Costes</span><b>' + eurN(m.costes) + '</b><small>sin IVA</small></div>' +
           '<div class="ng-kpi"><span>Margen bruto</span><b class="' + (m.margen_pct !== null && m.margen_pct < 30 ? 'mt-rojo' : '') + '">' + eurN(m.margen) + '</b><small>' + pctTxt(m.margen_pct) + '</small></div>' +
-          '<div class="ng-kpi"><span>Cobrado</span><b>' + eurN(m.cobros.cobrado) + '</b><small>de ' + eurN(m.cobros.total) + ' con IVA</small></div>' +
+          '<div class="ng-kpi"><span>Cobrado</span><b>' + eurN(m.cobros.cobrado) + '</b><small>de ' + eurN(m.cobros.total) + ' con IVA (' + String(m.iva_pct == null ? 21 : m.iva_pct) + ' %)</small></div>' +
           '<div class="ng-kpi"><span>Pendiente de cobro</span><b>' + eurN(m.cobros.pendiente) + '</b><small>' + (m.cobros.vencidos.length ? m.cobros.vencidos.length + ' vencido' + (m.cobros.vencidos.length === 1 ? '' : 's') : 'nada vencido') + '</small></div></div>';
         html += '<div class="ng-dos"><div class="ng-card"><h2>Facturación, coste y margen</h2>' + barrasFCM(m) + '</div><div class="ng-card"><h2>Costes por categoría</h2>' + donut(m.costes_por_categoria) + '</div></div>';
         html += '<div class="ng-card"><div class="ng-card-cab"><h2>Cobros y pagos</h2><span class="ng-ley"><i style="background:#12B76A"></i>Cobros (con IVA) <i style="background:#161616"></i>Pagos</span></div>' + lineaTiempo(m.eventos) + '</div>';
         // Cobros
-        html += '<div class="ng-dos"><div class="ng-card"><div class="ng-card-cab"><h2>Cobros</h2>' + (m.presupuesto && m.presupuesto.estado === 'aceptado' ? '<button class="pa-btn" id="mtRegen">Recalcular plazos</button>' : '') + '</div>' +
+        html += '<div class="ng-dos"><div class="ng-card"><div class="ng-card-cab"><h2>Cobros</h2><span><label class="pa-muted" style="font-size:12px">IVA del proyecto <select id="mtIva">' + [21, 10, 4, 0].map(function (v) { return '<option value="' + v + '"' + (Number(m.iva_pct) === v ? ' selected' : '') + '>' + v + ' %</option>'; }).join('') + '</select></label> ' + (m.presupuesto && m.presupuesto.estado === 'aceptado' ? '<button class="pa-btn" id="mtRegen">Recalcular plazos</button>' : '') + '</span></div>' +
           (m.cobros_lista.length ? '<table class="ng-tabla mt-cobros"><thead><tr><th>Plazo</th><th>Importe</th><th>Previsto</th><th>Cobrado</th></tr></thead><tbody>' + m.cobros_lista.map(function (c) {
             var vencido = !c.cobrado && c.fecha_prevista && c.fecha_prevista < new Date().toISOString().slice(0, 10);
             return '<tr data-cobro="' + c.id + '"' + (vencido ? ' class="mt-vencido"' : '') + '><td>' + esc(c.concepto) + (c.pct ? ' <small class="pa-muted">' + String(c.pct).replace('.', ',') + ' %</small>' : '') + '</td><td><input data-c="importe" inputmode="decimal" value="' + numOut(c.importe) + '"></td>' +
@@ -426,6 +426,9 @@
       var b = e.target.closest('[data-coste-borrar]');
       if (b) return api(ctx, { action: 'coste_borrar', id: b.dataset.costeBorrar }).then(cargar).catch(function (err) { alert(err.message); });
       if (e.target.id === 'mtRegen') api(ctx, { action: 'cobros_regenerar', proyecto_id: pid }).then(cargar).catch(function (err) { alert(err.message); });
+    });
+    el.addEventListener('change', function (e) {
+      if (e.target.id === 'mtIva') api(ctx, { action: 'proyecto_iva', proyecto_id: pid, iva_pct: Number(e.target.value) }).then(cargar).catch(function (err) { alert(err.message); });
     });
     cargar();
   }
