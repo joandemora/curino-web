@@ -21,6 +21,7 @@ import {
 // deno-lint-ignore no-explicit-any
 type Any = any;
 const URL_ESTUDIO = 'https://www.casacurino.com/partners/estudio/';
+const creditos = (usd: number) => Math.round((Number(usd) || 0) * 100);   // 1 crédito = 0,01 $ de coste real
 const fmtEur = (c: number) => (c / 100).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 export const esPurposeEstudio = (p: string) => p === 'estudio_pack' || p === 'estudio_plan';
@@ -58,7 +59,7 @@ async function facturaYEmail(supabase: Any, compra: Any, o: { concepto: string; 
     await resendSend({
       from: 'Curino Partners — Ventas <noreply@casacurino.com>', to: ['info@casacurino.com'], reply_to: compra.email,
       subject: `Estudio · ${compra.tipo === 'pack' ? 'pack de crédito' : 'cuota del plan'}: ${compra.email}`,
-      html: `<p>${escapeHtml(compra.email)} · ${fmtEur(compra.importe_cents)} · factura ${escapeHtml(numero)}${compra.tipo === 'pack' ? ` · +${compra.usd} $ de crédito IA` : ''}</p>`
+      html: `<p>${escapeHtml(compra.email)} · ${fmtEur(compra.importe_cents)} · factura ${escapeHtml(numero)}${compra.tipo === 'pack' ? ` · +${creditos(compra.usd)} créditos (${compra.usd} $ de coste real)` : ''}</p>`
     });
   } catch (e) { console.error('estudio: aviso info@ fallo', e); }
 }
@@ -93,8 +94,8 @@ export async function handleEstudioPack(supabase: Any, session: Stripe.Checkout.
   console.log(`estudio_pack: ${compra.id} +${usd} $ para ${email}`);
   try {
     await facturaYEmail(supabase, compra, {
-      concepto: `Estudio Curino: pack de crédito IA (${usd} $)`, asunto: 'Crédito añadido a tu Estudio Curino',
-      parrafo: `Hemos añadido <b>${usd} $</b> de crédito IA a tu Estudio. No caduca: se usa cuando se agota el crédito incluido de cada mes.`,
+      concepto: `Estudio Curino: pack de ${creditos(usd)} créditos de IA`, asunto: 'Créditos añadidos a tu Estudio Curino',
+      parrafo: `Hemos añadido <b>${creditos(usd)} créditos</b> a tu Estudio. No caducan: se usan cuando se acaban los créditos incluidos de cada mes.`,
       nombre: (cd?.name || email), direccion
     });
   } catch (e) { console.error('estudio_pack: factura/email fallo', compra.id, e); }
@@ -165,7 +166,7 @@ export async function handleEstudioInvoicePaid(supabase: Any, stripe: Stripe, in
   if (error || !compra) { console.error('estudio_plan: cuota insert fallo', invoice.id, error); return; }
   try {
     await facturaYEmail(supabase, compra, {
-      concepto: 'Estudio Curino: plan mensual (acceso y crédito IA mensual)', asunto: 'Tu plan del Estudio Curino',
+      concepto: 'Estudio Curino: plan mensual (acceso y créditos de IA mensuales)', asunto: 'Tu plan del Estudio Curino',
       parrafo: invoice.billing_reason === 'subscription_create'
         ? 'Tu plan mensual del Estudio ya está activo. Puedes gestionarlo (tarjeta, facturas o baja) desde «Créditos y plan».'
         : 'Hemos renovado tu plan mensual del Estudio.',
@@ -201,7 +202,7 @@ export async function handleEstudioRefunded(supabase: Any, stripe: Stripe, charg
         factura_original_fecha: row.factura_original_fecha, motivo: row.motivo, importe_cents: row.importe_cents,
         comprador_nombre: row.comprador_nombre, comprador_email: row.comprador_email, comprador_nif: row.comprador_nif,
         comprador_direccion: row.comprador_direccion ? String(row.comprador_direccion).split(' · ') : [],
-        concepto: compra.tipo === 'pack' ? `Estudio Curino: pack de crédito IA (${compra.usd} $)` : 'Estudio Curino: plan mensual'
+        concepto: compra.tipo === 'pack' ? `Estudio Curino: pack de ${creditos(compra.usd)} créditos de IA` : 'Estudio Curino: plan mensual'
       });
       const path = await uploadPdfToInvoices(supabase, `estudio/${compra.id}-rect-${rf.id}.pdf`, pdf);
       await supabase.from('facturas_rectificativas_clase').update({ pdf_url: path }).eq('id', row.id);

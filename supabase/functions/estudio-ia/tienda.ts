@@ -11,7 +11,7 @@
 // Precios con IVA incluido. El cobro y las facturas (EST) los hace stripe-webhook.
 
 import Stripe from 'https://esm.sh/stripe@17.3.0?target=deno'
-import type { EstadoAlumno } from './acceso.ts'
+import { creditos, type EstadoAlumno } from './acceso.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -46,7 +46,7 @@ const consentimiento = (tipo: 'pack' | 'plan') => ({
   custom_text: {
     terms_of_service_acceptance: {
       message: tipo === 'pack'
-        ? `Solicito recibir el crédito de inmediato y acepto que con ello pierdo el derecho de desistimiento. Acepto las [condiciones del Estudio Curino](${COND}).`
+        ? `Solicito recibir los créditos de inmediato y acepto que con ello pierdo el derecho de desistimiento. Acepto las [condiciones del Estudio Curino](${COND}).`
         : `Solicito que el plan empiece de inmediato. Sé que puedo desistir en 14 días y que, si lo hago, pagaré la parte proporcional del periodo disfrutado. Acepto las [condiciones del Estudio Curino](${COND}).`
     }
   }
@@ -98,11 +98,14 @@ export async function accionTienda(action: string, o: {
     const [{ data: sus }, { data: compras }] = await Promise.all([
       supa.from('estudio_suscripciones').select('estado, current_period_end, cancel_at_period_end').eq('user_id', userId).maybeSingle(),
       supa.from('estudio_compras').select('id, tipo, usd, importe_cents, estado, invoice_number, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(24)
+        .then((r: Any) => ({ data: (r.data ?? []).map((c: Any) => ({ ...c, creditos: creditos(c.usd), usd: undefined })) }))
     ]);
+    // Todo en créditos (1 crédito = 0,01 $ de coste real)
     return json({
-      packs, plan: { eur: Number(cfg?.plan_eur ?? 29), usd: Number(cfg?.plan_usd ?? 15) },
-      saldo: Number(alumno?.saldo_usd ?? 0),
-      credito: alumno ? { usd: alumno.credito_usd, gastado: Math.round(alumno.gastado_usd * 100) / 100, restante: Math.max(0, Math.round((alumno.credito_usd - alumno.gastado_usd) * 100) / 100) } : null,
+      packs: packs.map((p) => ({ id: p.id, eur: p.eur, creditos: creditos(p.usd) })),
+      plan: { eur: Number(cfg?.plan_eur ?? 79), creditos: creditos(Number(cfg?.plan_usd ?? 7)) },
+      saldo: creditos(Number(alumno?.saldo_usd ?? 0)),
+      credito: alumno ? { mes: creditos(alumno.credito_usd), gastados: creditos(alumno.gastado_usd), restantes: Math.max(0, creditos(alumno.credito_usd) - creditos(alumno.gastado_usd)) } : null,
       acceso: alumno ? { activo: alumno.activo, hasta: alumno.acceso_hasta, productos: alumno.productos } : null,
       suscripcion: sus ?? null, compras: compras ?? []
     });
@@ -117,8 +120,8 @@ export async function accionTienda(action: string, o: {
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment', customer,
       line_items: [{ quantity: 1, price_data: { currency: 'eur', unit_amount: Math.round(pack.eur * 100), product_data: {
-        name: `Estudio Curino · Pack de crédito IA (${pack.usd} $)`,
-        description: 'Crédito para la IA del Estudio Curino (alzados desde planos y textos de presupuesto). No caduca.'
+        name: `Estudio Curino · Pack de ${creditos(pack.usd)} créditos`,
+        description: 'Créditos para la IA del Estudio Curino (alzados desde planos y textos de presupuesto). No caducan.'
       } } }],
       billing_address_collection: 'required', tax_id_collection: { enabled: true },
       customer_update: { name: 'auto', address: 'auto' },
@@ -137,13 +140,13 @@ export async function accionTienda(action: string, o: {
     if (!alumno?.puede_suscribirse) return json({ error: 'El plan es para alumnos y antiguos alumnos de Curino Partners.' }, 403);
     const { data: sus } = await supa.from('estudio_suscripciones').select('estado, current_period_end').eq('user_id', userId).maybeSingle();
     if (sus && ['active', 'trialing', 'past_due'].includes(sus.estado)) return json({ error: 'Ya tienes el plan activo: gestiónalo desde «Gestionar mi suscripción».' }, 400);
-    const eur = Number(cfg?.plan_eur ?? 29), usd = Number(cfg?.plan_usd ?? 15);
+    const eur = Number(cfg?.plan_eur ?? 79), usd = Number(cfg?.plan_usd ?? 7);
     const s = stripe();
     const customer = await clienteStripe(supa, s, userId, email);
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription', customer,
       line_items: [{ quantity: 1, price_data: { currency: 'eur', unit_amount: Math.round(eur * 100), recurring: { interval: 'month' }, product_data: {
-        name: `Estudio Curino · Plan mensual (${usd} $ de crédito IA al mes)`
+        name: `Estudio Curino · Plan mensual (${creditos(usd)} créditos al mes)`
       } } }],
       billing_address_collection: 'required', tax_id_collection: { enabled: true },
       customer_update: { name: 'auto', address: 'auto' },
