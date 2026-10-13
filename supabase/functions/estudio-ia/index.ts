@@ -126,9 +126,16 @@ Deno.serve(async (req) => {
       const nombre = String(body?.nombre || '').trim().slice(0, 80);
       const referencia = String(body?.referencia || '').trim().slice(0, 40) || null;
       if (!nombre) return json({ error: 'Pon el nombre del cliente o del proyecto.' }, 400);
-      const { data, error } = await supa.from('estudio_proyectos').insert({ user_id: userId, nombre, referencia }).select('*').single();
-      if (error) throw error;
-      return json({ proyecto: data });
+      // N.º correlativo por usuario (01, 02…): el nombre se guarda como «NN - Nombre»
+      const limpio = nombre.replace(/^\d{1,4}\s*-\s*/, '');
+      for (let intento = 0; intento < 3; intento++) {
+        const { data: ult } = await supa.from('estudio_proyectos').select('numero').eq('user_id', userId).not('numero', 'is', null).order('numero', { ascending: false }).limit(1).maybeSingle();
+        const n = Number(ult?.numero ?? 0) + 1;
+        const { data, error } = await supa.from('estudio_proyectos').insert({ user_id: userId, numero: n, nombre: `${String(n).padStart(2, '0')} - ${limpio}`.slice(0, 90), referencia }).select('*').single();
+        if (!error) return json({ proyecto: data });
+        if (error.code !== '23505') throw error;   // n.º ocupado a la vez: reintenta
+      }
+      return json({ error: 'No he podido numerar el proyecto. Inténtalo de nuevo.' }, 409);
     }
 
     // Tarifa, plantilla y presupuesto (F3)

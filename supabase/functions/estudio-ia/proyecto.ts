@@ -115,7 +115,7 @@ export async function accionProyecto(action: string, ctx: {
   const firmar = async (path: string) => (await supa.storage.from('estudio').createSignedUrl(path, 3600)).data?.signedUrl ?? null;
 
   if (action === 'proyectos_lista') {
-    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, nombre, referencia, version_actual, updated_at, created_at, miniatura').eq('user_id', userId).order('updated_at', { ascending: false });
+    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, referencia, version_actual, updated_at, created_at, miniatura').eq('user_id', userId).order('updated_at', { ascending: false });
     const lista = proyectos ?? [];
     const ids = lista.map((p: Any) => p.id);
     const vacio = { data: [] };
@@ -140,7 +140,7 @@ export async function accionProyecto(action: string, ctx: {
       });
       const ultima = [p.updated_at, pr?.updated_at].filter(Boolean).sort().pop();
       out.push({
-        id: p.id, nombre: p.nombre, referencia: p.referencia, version: p.version_actual, miniatura: p.miniatura || null,
+        id: p.id, num: p.numero ?? null, nombre: p.nombre, referencia: p.referencia, version: p.version_actual, miniatura: p.miniatura || null,
         estado: pr?.estado ?? null, numero: pr?.datos?.numero || null, importe: pr?.importe ?? null,
         facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct, actualizado: ultima
       });
