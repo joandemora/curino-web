@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Estudio Curino</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Inter:wght@400;700&family=Schibsted+Grotesk:wght@800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/estudio-ui.css">
 <!--
   /partners/estudio/ · área privada del Estudio Curino para alumnos (F4).
@@ -22,8 +22,9 @@
 body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans',Arial,sans-serif;font-size:14px}
 .eu-top{background:var(--negro);color:#fff;padding:0 16px}
 .eu-top-in{max-width:1500px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;min-height:56px}
-.eu-logo{font-family:Inter,Arial,sans-serif;font-weight:700;letter-spacing:.02em;font-size:17px;color:#fff;text-decoration:none;white-space:nowrap}
-.eu-logo span{font-weight:400;opacity:.7;margin-left:6px}
+.eu-logo{display:inline-flex;align-items:center;gap:10px;color:#fff;text-decoration:none;white-space:nowrap}
+.eu-logo img{height:24px;width:auto;display:block}
+.eu-logo span{font-family:'Schibsted Grotesk',Arial,sans-serif;font-weight:800;font-size:15px;letter-spacing:-.01em;opacity:.75;border-left:1px solid rgba(255,255,255,.35);padding-left:10px}
 .eu-tabs{display:flex;flex-wrap:wrap;gap:2px;flex:1}
 .eu-tabs a{color:#cfcfc8;text-decoration:none;padding:8px 10px;border-radius:7px;font-size:13.5px}
 .eu-tabs a.on,.eu-tabs a:hover{color:#fff;background:rgba(255,255,255,.1)}
@@ -33,6 +34,9 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
 .eu-main{max-width:1500px;margin:0 auto;padding:18px 16px 40px}
 .eu-caja{max-width:440px;margin:60px auto;background:#fff;border:1px solid var(--linea);border-radius:12px;padding:26px 24px}
 .eu-caja h1{font-size:22px;margin:0 0 6px;font-weight:700}
+.eu-caja-logo{background:var(--negro);margin:-26px -24px 18px;padding:18px 24px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:10px}
+.eu-caja-logo img{height:26px;width:auto}
+.eu-caja-logo span{color:#fff;font-family:'Schibsted Grotesk',Arial,sans-serif;font-weight:800;font-size:15px;opacity:.75;border-left:1px solid rgba(255,255,255,.35);padding-left:10px}
 .eu-caja p{color:#5f5b52;font-size:14px;line-height:1.5}
 .eu-caja input{width:100%;padding:11px 12px;border:1px solid #d6d2c8;border-radius:8px;font:inherit;font-size:15px;margin:6px 0 10px}
 .eu-caja button{width:100%;padding:12px;border:0;border-radius:8px;background:var(--verde);color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
@@ -45,11 +49,13 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
 </head>
 <body>
 <header class="eu-top"><div class="eu-top-in">
-  <a class="eu-logo" href="#proyectos">&amp; CURINO<span>Estudio</span></a>
+  <a class="eu-logo" href="#negocio"><img src="/assets/imagenes/estudio/curino-logo-blanco.svg" alt="&amp; CURINO" width="100" height="24"><span>Estudio</span></a>
   <nav class="eu-tabs" id="euTabs" hidden>
+    <a href="#negocio" data-t="negocio">Mi negocio</a>
     <a href="#proyectos" data-t="proyectos">Proyectos</a>
     <a href="#datos" data-t="datos">Mis datos y plantilla</a>
     <a href="#tarifa" data-t="tarifa">Mi tarifa</a>
+    <a href="#creditos" data-t="creditos">Créditos y plan</a>
   </nav>
   <span class="eu-cred" id="euCred" hidden></span>
   <button class="eu-salir" id="euSalir" hidden>Salir</button>
@@ -62,7 +68,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
 <script>
 (function () {
   'use strict';
-  var supa, yo = null;
+  var supa, yo = null, soloPlan = false;
   var $ = function (q) { return document.querySelector(q); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var usd = function (n) { return Number(n || 0).toFixed(2).replace('.', ',') + ' $'; };
@@ -70,6 +76,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
 
   var rutas = {
     estudio: function (pid) { return '#proyectos' + (pid ? '/' + pid : ''); },
+    creditos: function () { return '#creditos'; },
     presupuesto: function (pid) { return '#presupuesto/' + pid; },
     datos: function () { return '#datos'; },
     tarifa: function () { return '#tarifa'; }
@@ -95,7 +102,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   // ── Acceso con enlace mágico ──
   function pintarLogin(aviso) {
     $('#euTabs').hidden = true; $('#euCred').hidden = true; $('#euSalir').hidden = true;
-    main.innerHTML = '<div class="eu-caja"><h1>Estudio Curino</h1>' +
+    main.innerHTML = '<div class="eu-caja"><div class="eu-caja-logo"><img src="/assets/imagenes/estudio/curino-logo-blanco.svg" alt="&amp; CURINO" width="110" height="26"><span>Estudio</span></div><h1>Estudio Curino</h1>' +
       '<p>La herramienta de alzados y presupuestos para alumnos de Curino Partners. Escribe el email con el que te inscribiste y te mandamos un enlace para entrar.</p>' +
       (aviso ? '<p class="eu-err">' + esc(aviso) + '</p>' : '') +
       '<form id="euLogin"><input type="email" id="euEmail" placeholder="tu@email.com" autocomplete="email" required><button type="submit" id="euBtn">Enviarme el enlace</button></form><p id="euMsg"></p></div>';
@@ -115,6 +122,17 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   function entrar() {
     return EstudioUI.api(ctx(), { action: 'yo' }).then(function (d) {
       yo = d;
+      if (!d.acceso.ok && d.puede_suscribirse) {
+        // Antiguo alumno: su acceso incluido terminó; puede seguir con el plan mensual.
+        soloPlan = true;
+        $('#euTabs').hidden = false; $('#euSalir').hidden = false;
+        document.querySelectorAll('#euTabs a').forEach(function (a) { a.hidden = a.dataset.t !== 'creditos'; });
+        main.innerHTML = '';
+        if (!/^#creditos/.test(location.hash)) history.replaceState(null, '', '#creditos');
+        window.addEventListener('hashchange', ruta);
+        ruta();
+        return;
+      }
       if (!d.acceso.ok) {
         main.innerHTML = '<div class="eu-caja"><h1>Estudio Curino</h1><p>' + esc(d.acceso.motivo) + '</p><p>Si crees que es un error, escríbenos a <a href="mailto:info@casacurino.com">info@casacurino.com</a>.</p><button id="euOtra">Entrar con otro email</button></div>';
         $('#euOtra').addEventListener('click', salir);
@@ -138,10 +156,11 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
 
   // ── Rutas (#proyectos[/id] · #presupuesto/id · #datos · #tarifa) ──
   function ruta() {
-    var h = location.hash.replace(/^#/, '') || 'proyectos';
+    var h = location.hash.replace(/^#/, '') || 'negocio';
+    if (soloPlan && h.indexOf('creditos') !== 0) h = 'creditos';
     var partes = h.split('/'), t = partes[0], id = partes[1];
-    document.querySelectorAll('#euTabs a').forEach(function (a) { a.classList.toggle('on', a.dataset.t === (t === 'presupuesto' ? 'proyectos' : t)); });
-    var aviso = yo && yo.faltan && yo.faltan.length && t !== 'datos'
+    document.querySelectorAll('#euTabs a').forEach(function (a) { a.classList.toggle('on', a.dataset.t === (t === 'presupuesto' ? 'proyectos' : (['negocio', 'proyectos', 'datos', 'tarifa', 'creditos'].indexOf(t) < 0 ? 'negocio' : t))); });
+    var aviso = !soloPlan && yo && yo.faltan && yo.faltan.length && (t === 'proyectos' || t === 'presupuesto')
       ? '<div class="eu-aviso">Para descargar presupuestos completa <a href="#datos">Mis datos y plantilla</a>: falta ' + esc(yo.faltan.join(', ')) + '.</div>' : '';
     main.innerHTML = aviso + '<div id="euVista"></div>';
     var v = $('#euVista');
@@ -152,8 +171,13 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
       v.className = 'tf-grid'; EstudioUI.plantilla(v, ctx());
     } else if (t === 'tarifa') {
       v.className = 'tf-grid'; EstudioUI.tarifa(v, ctx(), 'mia');
-    } else {
+    } else if (t === 'creditos') {
+      if (soloPlan) v.insertAdjacentHTML('beforebegin', '<div class="eu-aviso">Tu acceso incluido en el curso ha terminado. Con el plan mensual sigues usando el Estudio con tus proyectos y datos.</div>');
+      EstudioUI.creditos(v, ctx(), { ok: id === 'ok' });
+    } else if (t === 'proyectos') {
       EstudioUI.proyectos(v, ctx(), id);
+    } else {
+      EstudioUI.negocio(v, ctx());
     }
   }
 })();

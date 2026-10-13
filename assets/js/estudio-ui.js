@@ -247,7 +247,8 @@
     });
 
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
-    function cargar(d) { doc = d.presupuesto; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; pintar(); }
+    var estadoP = 'borrador', estadoAt = null;
+    function cargar(d) { doc = d.presupuesto; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador'; estadoAt = d.estado_at; pintar(); }
 
     function pintar() {
       if (!doc) {
@@ -263,6 +264,7 @@
       var html = '<div class="pr-barra"><button class="pa-btn primary" id="prGuardar">Guardar</button><button class="pa-btn" id="prTextos">Redactar textos con IA</button>' +
         '<button class="pa-btn" id="prPdf">Descargar PDF</button><button class="pa-btn" id="prExcel">Descargar Excel</button>' +
         (doc.version !== versionActual ? '<button class="pa-btn" id="prGenerar">Actualizar a v' + versionActual + '</button>' : '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>') +
+        '<span class="pr-estado">Estado ' + selectEstado(pid, estadoP) + (estadoAt ? ' <small class="pa-muted">desde el ' + new Date(estadoAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '</small>' : '') + '</span>' +
         '<span id="prMsg" class="pr-msg"></span></div>';
       html += '<div class="pr-card pr-f"><div class="pr-cab">' + cab.map(function (c) {
         return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]]) + '"></div>';
@@ -323,7 +325,10 @@
         : '<span>PVP sin IVA: ' + eur(r2(pvp)) + '</span><span>Dto. profesional: ' + eur(r2(imp - pvp)) + '</span><span>Importe total: <b>' + eur(r2(imp)) + '</b></span><span class="pa-muted">IVA ' + numOut(iva) + '%: ' + eur(r2(imp * iva / 100)) + '</span>';
     }
     el.addEventListener('input', function () { if (doc) recalcular(); });
-    el.addEventListener('change', function (e) { if (e.target.dataset && e.target.dataset.p === 'precio_manual') recalcular(); });
+    el.addEventListener('change', function (e) {
+      if (e.target.dataset && e.target.dataset.p === 'precio_manual') recalcular();
+      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { estadoP = e.target.value; estadoAt = new Date().toISOString(); aviso('Estado: ' + e.target.options[e.target.selectedIndex].text, 'ok'); });
+    });
 
     function guardar() { return api(ctx, { action: 'presupuesto_guardar', proyecto_id: pid, datos: leer() }).then(cargar); }
     function bloquear(fn, t) {
@@ -371,90 +376,234 @@
     });
   }
 
-  // Excel con la estructura del presupuesto de referencia: una partida por bloque y su dibujo debajo.
+  // ── Excel imprimible igual que el PDF ──
+  // Misma rejilla que presupuesto-pdf.ts (pt): columnas con los anchos del PDF,
+  // filas con sus alturas, márgenes = marco, saltos de página manuales y filas
+  // de relleno hasta el final de cada página; marco y barra negra con bordes;
+  // dibujos anclados (absolutos) al tamaño del PDF. Importes: los números
+  // editables van en columnas ocultas (M–P) y lo visible es una fórmula que
+  // escribe «6.373,52 €» igual en cualquier idioma del ordenador. Fuente Arial:
+  // un .xlsx no admite fuente alternativa y Open Sans casi nunca está instalada
+  // (LibreOffice la cambiaba por una con serifas); Arial está en Windows y Mac y
+  // LibreOffice la sustituye por Liberation Sans, con las mismas medidas.
+  var XL = {
+    alto: 733.3,                                   // alto útil de página (842 − márgenes del marco)
+    cols: [25.1, 44.2, 88, 81, 35, 32, 33, 47, 43, 58.5, 47, 25.1], // A–L en pt (17,7 → 576,6 del PDF)
+    gris: 'FFF2F2F2', negro: 'FF000000'
+  };
+  function medidor() {
+    var c = document.createElement('canvas').getContext('2d');
+    return function (t, size, bold) { c.font = (bold ? '700 ' : '400 ') + size + 'px Arial, "Liberation Sans", Helvetica, sans-serif'; return c.measureText(t).width; };
+  }
+  function partirTexto(t, ancho, size, medir) {
+    var out = [];
+    String(t || '').split('\n').forEach(function (par) {
+      if (!par.trim()) { out.push(''); return; }
+      var linea = '';
+      par.split(/\s+/).forEach(function (w) {
+        var prueba = linea ? linea + ' ' + w : w;
+        if (medir(prueba, size) > ancho && linea) { out.push(linea); linea = w; } else linea = prueba;
+      });
+      out.push(linea);
+    });
+    return out;
+  }
+  /** Fórmula que escribe el importe de la celda «ref» como 6.373,52 € sin depender del idioma de Excel. */
+  function fEur(ref) {
+    var c = 'ROUND(ABS(' + ref + ')*100,0)', e = 'INT(' + c + '/100)';
+    return 'IF(' + ref + '<0,"-","")&IF(' + e + '>=1000000,INT(' + e + '/1000000)&"."&TEXT(MOD(INT(' + e + '/1000),1000),"000")&"."&TEXT(MOD(' + e + ',1000),"000"),' +
+      'IF(' + e + '>=1000,INT(' + e + '/1000)&"."&TEXT(MOD(' + e + ',1000),"000"),' + e + '&""))&","&TEXT(MOD(' + c + ',100),"00")&" €"';
+  }
+  function fPct(ref) { return 'SUBSTITUTE(ROUND(' + ref + '*100,2)&"",".",",")&"%"'; }
+  function eurTxt(n) { if (n === null || n === undefined) return 'PENDIENTE'; var p = Math.abs(n).toFixed(2).split('.'); return (n < 0 ? '-' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1] + ' €'; }
+  function aDataUrl(url) {
+    return fetch(url).then(function (r) { return r.blob(); }).then(function (b) {
+      return new Promise(function (ok) { var fr = new FileReader(); fr.onload = function () { ok({ data: fr.result, tipo: b.type }); }; fr.readAsDataURL(b); });
+    });
+  }
+
   function excel(d, doc, proyecto) {
     if (!window.ExcelJS) throw new Error('No se ha cargado el generador de Excel.');
-    var pl = d.plantilla, ivaPct = d.iva_pct == null ? 21 : Number(d.iva_pct);
+    var pl = d.plantilla, ivaPct = d.iva_pct == null ? 21 : Number(d.iva_pct), medir = medidor();
+    var curino = pl.tipo === 'curino', acento = !curino && /^#[0-9a-f]{6}$/i.test(pl.color || '') ? 'FF' + pl.color.slice(1).toUpperCase() : XL.negro;
     var wb = new ExcelJS.Workbook();
-    var ws = wb.addWorksheet(('PRESUPUESTO ' + (doc.numero || '')).trim().slice(0, 31), { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } } });
-    ws.columns = [6.2, 10.3, 20.2, 20.3, 8.2, 8.2, 8.2, 11.3, 11.3, 12.5, 14].map(function (w) { return { width: w }; });
-    var F = 'Open Sans', EUR = '#,##0.00 "€"', GRIS = { argb: 'FF808080' };
-    var put = function (ref, v, o) { var c = ws.getCell(ref); c.value = v; c.font = Object.assign({ name: F, size: 8 }, (o && o.font) || {}); if (o && o.al) c.alignment = o.al; if (o && o.fmt) c.numFmt = o.fmt; return c; };
-    var tareas = [];
-    if (pl.tipo === 'curino') tareas.push(png(d.logo, 360).then(function (im) { ws.addImage(wb.addImage({ base64: im.data, extension: 'png' }), { tl: { col: 1, row: 1 }, ext: { width: 160, height: 160 * im.h / im.w } }); }));
-    else put('B3', pl.empresa, { font: { size: 16, bold: true } });
-    [pl.direccion_1, pl.direccion_2, pl.email, pl.telefono].forEach(function (t, k) { if (t) put('K' + (4 + k), t, { font: { size: 7, color: { argb: 'FF434343' } }, al: { horizontal: 'right' } }); });
-    if (pl.lema) put('K9', pl.lema, { font: { size: 11, bold: true }, al: { horizontal: 'right' } });
-    put('B11', 'PRESUPUESTO', { font: { size: 15 } });
-    put('B12', new Date(doc.fecha + 'T12:00:00'), { fmt: 'd/m/yyyy' });
-    [['B', 'A LA ATENCIÓN DE', doc.atencion], ['D', 'PROYECTO', doc.proyecto], ['F', 'N.º DE PRESUPUESTO', doc.numero], ['J', 'VALIDEZ OFERTA', doc.validez]].forEach(function (c) {
-      put(c[0] + '14', c[1], { font: { color: { argb: 'FF434343' } } }); put(c[0] + '15', String(c[2] || '').toUpperCase(), { font: { size: 7, color: { argb: 'FF666666' } } });
+    var ws = wb.addWorksheet(('PRESUPUESTO ' + (doc.numero || '')).trim().slice(0, 31), {
+      views: [{ showGridLines: false }],
+      pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true,
+        margins: { left: 0.246, right: 0.246, top: 0.746, bottom: 0.764, header: 0, footer: 0 } }
     });
-    if (doc.proyecto_2) put('D16', doc.proyecto_2.toUpperCase(), { font: { size: 7, color: { argb: 'FF666666' } } });
-    var fila = 19, filasLinea = [];
-    var cabecera = function () {
-      ['CANTIDAD', 'PRODUCTO', 'MATERIAL Y GROSOR', 'MEDIDAS EN CM', '', '', 'PRECIO', 'PVP', 'DTO. PROFESIONAL', 'IMPORTE'].forEach(function (t, k) {
-        if (t) put(String.fromCharCode(66 + k) + fila, t, { font: { color: { argb: 'FF404040' } }, al: { horizontal: 'center', vertical: 'middle', wrapText: true } });
+    ws.columns = XL.cols.map(function (pt) { return { width: Math.max(1, (pt * 96 / 72 - 5) / 7) }; })
+      .concat([{ width: 12, hidden: true }, { width: 8, hidden: true }, { width: 12, hidden: true }, { width: 12, hidden: true }]);
+    var F = { name: 'Arial', family: 2 };
+    var fuente = function (o) { return Object.assign({}, F, { size: 7, color: { argb: 'FF000000' } }, o || {}); };
+    var COL = 'ABCDEFGHIJKL';
+    var fila = 0, enPagina = 0, iniPagina = 1, tareas = [], filasPartida = [];
+
+    function nueva(h) { fila++; ws.getRow(fila).height = h; enPagina += h; return fila; }
+    function texto(ref, v, o) {
+      o = o || {};
+      var c = ws.getCell(ref); c.value = v;
+      c.font = fuente(o.font); c.alignment = Object.assign({ vertical: 'bottom', horizontal: 'left' }, o.al || {});
+      return c;
+    }
+    function relleno(r, desde, hasta, argb) { for (var k = desde; k <= hasta; k++) ws.getCell(COL[k] + r).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
+    function linea(r, desde, hasta, lado, estilo) { for (var k = desde; k <= hasta; k++) { var c = ws.getCell(COL[k] + r); c.border = Object.assign({}, c.border || {}); c.border[lado] = { style: estilo || 'thin', color: { argb: XL.negro } }; } }
+    /** Cierra la página: relleno hasta el alto útil, línea inferior, laterales del marco y salto. */
+    function cerrarPagina(barraAbajo) {
+      var resto = XL.alto - enPagina - (barraAbajo ? 4.7 : 0) - 0.6;
+      while (resto > 0.5) { var h = Math.min(400, resto); nueva(h); resto -= h; }
+      if (barraAbajo) { var rb = nueva(4.7); relleno(rb, 0, 11, acento); }
+      else linea(fila, 0, 11, 'bottom', 'thin');
+      for (var r = iniPagina; r <= fila; r++) { linea(r, 0, 0, 'left', 'thin'); linea(r, 11, 11, 'right', 'thin'); }
+      ws.getRow(fila).addPageBreak();
+      iniPagina = fila + 1; enPagina = 0;
+    }
+    function cabeceraTabla(primeraDePagina) {
+      var r1 = nueva(10.2), r2 = nueva(10.2), g = { color: { argb: 'FF404040' } };
+      if (primeraDePagina) linea(r1, 0, 11, 'top', 'thin');
+      linea(r1, 1, 10, 'top', 'thin'); linea(r2, 1, 10, 'bottom', 'thin');
+      [['B', 'CANTIDAD'], ['C', 'PRODUCTO'], ['D', 'MATERIAL Y GROSOR'], ['H', 'PRECIO'], ['I', 'PVP'], ['K', 'IMPORTE']].forEach(function (x) {
+        ws.mergeCells(x[0] + r1 + ':' + x[0] + r2);
+        texto(x[0] + r1, x[1], { font: g, al: { vertical: 'middle', horizontal: 'center' } });
       });
-      ws.mergeCells('E' + fila + ':G' + fila);
-      ['ANCHO', 'ALTO', 'FONDO'].forEach(function (t, k) { put(String.fromCharCode(69 + k) + (fila + 1), t, { font: { size: 7, color: { argb: 'FF404040' } }, al: { horizontal: 'center' } }); });
-      for (var col = 2; col <= 11; col++) { ws.getCell(fila, col).border = { top: { style: 'thin' } }; ws.getCell(fila + 1, col).border = { bottom: { style: 'thin' } }; }
-      put('B' + (fila + 2), doc.seccion, { font: { bold: true } });
-      fila += 3;
-    };
-    doc.partidas.forEach(function (p) {
-      cabecera();
-      var texto = [p.titulo, p.subtitulo, '', p.intro, p.intro ? '' : null, p.tecnico, '', p.materiales].filter(function (x) { return x !== null; }).join('\n').replace(/\n{3,}/g, '\n\n');
-      var lineas = texto.split('\n').reduce(function (n, l) { return n + Math.max(1, Math.ceil(l.length / 62)); }, 0);
-      var r = fila;
+      ws.mergeCells('E' + r1 + ':G' + r1);
+      texto('E' + r1, 'MEDIDAS EN CM', { font: g, al: { horizontal: 'center' } });
+      texto('J' + r1, 'DTO.', { font: g, al: { horizontal: 'center' } });
+      [['E', 'ANCHO'], ['F', 'ALTO'], ['G', 'FONDO']].forEach(function (x) { texto(x[0] + r2, x[1], { font: { size: 5.5, color: g.color }, al: { horizontal: 'center', vertical: 'top' } }); });
+      texto('J' + r2, 'PROFESIONAL', { font: g, al: { horizontal: 'center', vertical: 'top' } });
+      var r3 = nueva(21);
+      texto('B' + r3, (doc.seccion || '').toUpperCase(), { font: { bold: true }, al: { vertical: 'middle' } });
+    }
+    function png64(o) { return o.data.split(',')[1]; }
+
+    // ── Página 1: cabecera ──
+    var rb = nueva(4.8); relleno(rb, 0, 11, acento);
+    nueva(15.5);
+    var rLogo = nueva(10);
+    if (curino) tareas.push(png(d.logo, 400).then(function (im) { ws.addImage(wb.addImage({ base64: png64(im), extension: 'png' }), { tl: { col: 1, row: rLogo - 1 }, ext: { width: 101.5 * 96 / 72, height: 27 * 96 / 72 }, editAs: 'absolute' }); }));
+    else if (d.logo_url) tareas.push(aDataUrl(d.logo_url).then(function (im) {
+      return new Promise(function (ok) { var i = new Image(); i.onload = function () { var k = Math.min(150 / i.width, 34 / i.height); ws.addImage(wb.addImage({ base64: png64(im), extension: /png/.test(im.tipo) ? 'png' : 'jpeg' }), { tl: { col: 1, row: rLogo - 1 }, ext: { width: i.width * k * 96 / 72, height: i.height * k * 96 / 72 }, editAs: 'absolute' }); ok(); }; i.onerror = ok; i.src = im.data; });
+    }));
+    else texto('B' + rLogo, (pl.empresa || '').toUpperCase(), { font: { size: 16, bold: true } });
+    var dir = [pl.direccion_1, pl.direccion_2, pl.email, pl.telefono].filter(Boolean);
+    for (var k = 0; k < 4; k++) { var rr = k === 0 ? rLogo : nueva(10); if (dir[k]) texto('K' + rr, dir[k], { font: { size: 5.5, color: { argb: 'FF434343' } }, al: { horizontal: 'right' } }); }
+    nueva(30);
+    var rLema = nueva(12); if (pl.lema) texto('K' + rLema, pl.lema.toUpperCase(), { font: { size: 9.5, bold: true, color: { argb: acento } }, al: { horizontal: 'right' } });
+    nueva(26);
+    texto('B' + nueva(18), 'PRESUPUESTO', { font: { size: 13.5 } });
+    var fc = doc.fecha.split('-'); texto('B' + nueva(11), Number(fc[2]) + '/' + Number(fc[1]) + '/' + fc[0], { font: { color: { argb: 'FF1D1E1E' } } });
+    nueva(15);
+    var rEt = nueva(11), rVa = nueva(11), rVa2 = nueva(10);
+    [['B', 'A LA ATENCIÓN DE', doc.atencion], ['D', 'PROYECTO', doc.proyecto], ['E', 'N.º DE PRESUPUESTO', doc.numero], ['J', 'VALIDEZ OFERTA', doc.validez]].forEach(function (c) {
+      texto(c[0] + rEt, c[1], { font: { color: { argb: 'FF434343' } } });
+      texto(c[0] + rVa, String(c[2] || '').toUpperCase(), { font: { size: 5.5, color: { argb: 'FF666666' } } });
+    });
+    if (doc.proyecto_2) texto('D' + rVa2, doc.proyecto_2.toUpperCase(), { font: { size: 5.5, color: { argb: 'FF666666' } } });
+    nueva(223.1 - enPagina);
+
+    // ── Partidas: una por página, caja gris y dibujo debajo ──
+    doc.partidas.forEach(function (p, i) {
+      if (i > 0) cabeceraTabla(true); else cabeceraTabla(false);
+      var cuerpo = [p.subtitulo].concat(p.intro ? ['', p.intro] : []).concat(['', p.tecnico, '', p.materiales]).join('\n').replace(/\n{3,}/g, '\n\n');
+      var lineas = 1 + partirTexto(cuerpo, 262, 7, medir).length;
+      var alto = Math.min(409, lineas * 10.9 + 6);
+      var r = nueva(alto);
       ws.mergeCells('C' + r + ':G' + r);
-      put('C' + r, { richText: [{ text: p.titulo + '\n', font: { name: F, size: 8, bold: true } }, { text: texto.slice(p.titulo.length + 1), font: { name: F, size: 8 } }] }, { al: { wrapText: true, vertical: 'top' } });
-      ws.getRow(r).height = Math.min(409, lineas * 11 + 6);
-      put('B' + r, p.cantidad, { al: { horizontal: 'center', vertical: 'middle' } });
-      if (p.precio === null) put('H' + r, 'PENDIENTE', { al: { horizontal: 'right', vertical: 'middle' } });
-      else put('H' + r, p.precio, { fmt: EUR, al: { vertical: 'middle' } });
-      put('I' + r, p.precio === null ? 'PENDIENTE' : { formula: 'H' + r + '*B' + r }, { fmt: EUR, font: { color: GRIS }, al: { horizontal: 'right', vertical: 'middle' } });
-      put('J' + r, (p.dto_pct || 0) / 100, { fmt: '0%', al: { horizontal: 'center', vertical: 'middle' } });
-      put('K' + r, p.precio === null ? 'PENDIENTE' : { formula: 'I' + r + '*(1-J' + r + ')' }, { fmt: EUR, font: { bold: true }, al: { horizontal: 'right', vertical: 'middle' } });
-      for (var col = 2; col <= 11; col++) ws.getCell(r, col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
-      filasLinea.push(r);
-      var dib = d.dibujos.filter(function (x) { return x.codigo === p.codigo; })[0];
-      fila = r + 1;
-      if (dib) {
-        var filaImg = fila, anchoPx = 620, altoPx = anchoPx * dib.alto / dib.ancho;
-        tareas.push(png(dib.svg, 1400).then(function (im) { ws.addImage(wb.addImage({ base64: im.data, extension: 'png' }), { tl: { col: 2, row: filaImg }, ext: { width: anchoPx, height: altoPx } }); }));
-        fila += Math.ceil(altoPx / 20) + 1;
+      var c = ws.getCell('C' + r);
+      c.value = { richText: [{ text: p.titulo + '\n', font: fuente({ bold: true }) }, { text: cuerpo, font: fuente() }] };
+      c.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+      relleno(r, 1, 10, XL.gris);
+      var med = { vertical: 'middle' };
+      texto('B' + r, p.cantidad, { al: { vertical: 'middle', horizontal: 'center' } });
+      if (p.precio === null) {
+        ['H', 'I', 'K'].forEach(function (q) { texto(q + r, 'PENDIENTE', { font: q === 'K' ? { bold: true } : q === 'I' ? { color: { argb: 'FF808080' } } : {}, al: { vertical: 'middle', horizontal: 'right' } }); });
+      } else {
+        ws.getCell('M' + r).value = p.precio;
+        ws.getCell('O' + r).value = { formula: 'M' + r + '*B' + r, result: r2(p.precio * p.cantidad) };
+        ws.getCell('P' + r).value = { formula: 'O' + r + '*(1-N' + r + ')', result: r2(p.precio * p.cantidad * (1 - p.dto_pct / 100)) };
+        texto('H' + r, { formula: fEur('M' + r), result: eurTxt(p.precio) }, { al: { vertical: 'middle', horizontal: 'right' } });
+        texto('I' + r, { formula: fEur('O' + r), result: eurTxt(r2(p.precio * p.cantidad)) }, { font: { color: { argb: 'FF808080' } }, al: { vertical: 'middle', horizontal: 'right' } });
+        texto('K' + r, { formula: fEur('P' + r), result: eurTxt(r2(p.precio * p.cantidad * (1 - p.dto_pct / 100))) }, { font: { bold: true }, al: { vertical: 'middle', horizontal: 'right' } });
+        filasPartida.push(r);
       }
-      fila += 2;
+      ws.getCell('N' + r).value = (p.dto_pct || 0) / 100;
+      texto('J' + r, { formula: fPct('N' + r), result: String(Math.round(p.dto_pct * 100) / 100).replace('.', ',') + '%' }, { al: med });
+      ws.getCell('J' + r).alignment = { vertical: 'middle', horizontal: 'center' };
+      // Dibujo (mismo tamaño que en el PDF)
+      var dib = d.dibujos.filter(function (x) { return x.codigo === p.codigo; })[0];
+      if (dib) {
+        var y0 = enPagina + 4, hMax = Math.max(120, Math.min(260, XL.alto - 12 - y0));
+        var kk = Math.min(461 / dib.ancho, hMax / dib.alto), w = dib.ancho * kk, h = dib.alto * kk;
+        nueva(4);
+        var rd = nueva(h + 2);
+        var colOff = (87 - 87) + (461 - w) / 2 - 2;   // centrado en 85 → 546 como el PDF
+        tareas.push(png(dib.svg, 1600).then(function (im) {
+          ws.addImage(wb.addImage({ base64: png64(im), extension: 'png' }), { tl: { col: 2 + colOff / 88, row: rd - 1 }, ext: { width: w * 96 / 72, height: h * 96 / 72 }, editAs: 'absolute' });
+        }));
+      }
+      cerrarPagina(false);
     });
-    var sum = function (col) { return filasLinea.map(function (r) { return col + r; }).join(','); };
+
+    // ── Última página: forma de pago, totales, condiciones y firmas ──
+    linea(fila + 1, 0, 11, 'top', 'thin');
+    nueva(48.5);
     var hayPend = doc.partidas.some(function (p) { return p.precio === null; });
-    var t = fila + 1;
-    put('B' + t, 'FORMA DE PAGO', { font: { bold: true } });
-    (pl.forma_pago || []).forEach(function (fp, k) { put('B' + (t + 1 + k), fp.concepto); put('D' + (t + 1 + k), fp.pct / 100, { fmt: '0%' }); });
-    put('H' + t, 'PVP SIN IVA'); put('K' + t, hayPend ? 'PENDIENTE' : { formula: 'SUM(' + sum('I') + ')' }, { fmt: EUR, font: { color: GRIS }, al: { horizontal: 'right' } });
-    put('H' + (t + 2), 'DTO. PROFESIONAL'); put('K' + (t + 2), hayPend ? 'PENDIENTE' : { formula: 'SUM(' + sum('K') + ')-SUM(' + sum('I') + ')' }, { fmt: EUR, al: { horizontal: 'right' } });
-    put('H' + (t + 3), 'IMPORTE TOTAL', { font: { bold: true } }); put('K' + (t + 3), hayPend ? 'PENDIENTE' : { formula: 'SUM(' + sum('K') + ')' }, { fmt: EUR, font: { bold: true }, al: { horizontal: 'right' } });
+    var sum = function (col) { return filasPartida.length ? 'SUM(' + filasPartida.map(function (r) { return col + r; }).join(',') + ')' : '0'; };
+    var tot = { pvp: 0, imp: 0 };
+    doc.partidas.forEach(function (p) { if (p.precio !== null) { tot.pvp += p.precio * p.cantidad; tot.imp += p.precio * p.cantidad * (1 - p.dto_pct / 100); } });
+    tot.pvp = r2(tot.pvp); tot.imp = r2(tot.imp);
+    var etq = function (r, t, bold) { ws.mergeCells('G' + r + ':J' + r); texto('G' + r, t, { font: bold ? { bold: true } : {}, al: { horizontal: 'right' } }); };
+    var valor = function (r, ref, formula, res, o) {
+      ws.getCell(ref).value = { formula: formula, result: res };
+      texto('K' + r, hayPend ? 'PENDIENTE' : { formula: fEur(ref), result: eurTxt(res) }, Object.assign({ al: { horizontal: 'right' } }, o || {}));
+    };
+    var rFp = nueva(11);
+    texto('B' + rFp, 'FORMA DE PAGO', { font: { bold: true } }); linea(rFp, 1, 10, 'bottom', 'thin');
+    etq(rFp, 'PVP SIN IVA'); valor(rFp, 'O' + rFp, sum('O'), tot.pvp, { font: { size: 8, color: { argb: 'FF808080' } } });
+    var plazos = pl.forma_pago || [];
+    var rows = [];
+    for (var j = 0; j < Math.max(3, plazos.length); j++) rows.push(nueva(j === 2 ? 16 : 12));
+    plazos.forEach(function (fp, j) { ws.mergeCells('B' + rows[j] + ':C' + rows[j]); texto('B' + rows[j], (fp.concepto || '').toUpperCase()); texto('D' + rows[j], fp.pct + '%', { al: { horizontal: 'right' } }); });
+    etq(rows[1], 'DTO.  PROFESIONAL'); valor(rows[1], 'O' + rows[1], sum('P') + '-' + sum('O'), r2(tot.imp - tot.pvp), { font: { size: 8 } });
+    etq(rows[2], 'IMPORTE TOTAL', true); valor(rows[2], 'O' + rows[2], sum('P'), tot.imp, { font: { size: 8, bold: true } });
+    var rIva = nueva(14);
     if (pl.mostrar_iva) {
-      put('H' + (t + 4), 'IVA (' + ivaPct + '%)'); put('K' + (t + 4), hayPend ? 'PENDIENTE' : { formula: 'K' + (t + 3) + '*' + ivaPct / 100 }, { fmt: EUR, al: { horizontal: 'right' } });
-      put('H' + (t + 5), 'TOTAL CON IVA', { font: { bold: true } }); put('K' + (t + 5), hayPend ? 'PENDIENTE' : { formula: 'K' + (t + 3) + '+K' + (t + 4) }, { fmt: EUR, font: { bold: true }, al: { horizontal: 'right' } });
-    } else put('K' + (t + 4), 'IMPUESTOS IVA NO INCLUIDOS', { font: { size: 7 }, al: { horizontal: 'right' } });
-    var y = t + Math.max(5, (pl.forma_pago || []).length + 2);
-    if (pl.iban) { put('B' + y, 'TRANSFERENCIA BANCARIA', { font: { bold: true } }); put('B' + (y + 1), pl.iban); y += 2; }
-    y += 2;
-    (pl.condiciones || '').split('\n').forEach(function (l) {
-      ws.mergeCells('B' + y + ':K' + y);
-      put('B' + y, l, { font: /:\s*$/.test(l) ? {} : { color: GRIS }, al: { wrapText: true, vertical: 'top' } });
-      ws.getRow(y).height = Math.max(12, Math.ceil(l.length / 135) * 11);
-      y++;
+      etq(rIva, 'IVA (' + ivaPct + '%)'); valor(rIva, 'O' + rIva, 'O' + rows[2] + '*' + ivaPct / 100, r2(tot.imp * ivaPct / 100), { font: { size: 8 } });
+      var rTc = nueva(14); etq(rTc, 'TOTAL CON IVA', true); valor(rTc, 'O' + rTc, 'O' + rows[2] + '+O' + rIva, r2(tot.imp * (1 + ivaPct / 100)), { font: { size: 8, bold: true } });
+    } else texto('K' + rIva, 'IMPUESTOS IVA NO INCLUIDOS', { font: { size: 5.5 }, al: { horizontal: 'right', vertical: 'top' } });
+    if (pl.iban) {
+      var rT = nueva(12); texto('B' + rT, 'TRANSFERENCIA BANCARIA', { font: { bold: true } }); linea(rT, 1, 3, 'bottom', 'thin');
+      ws.mergeCells('B' + nueva(12) + ':E' + fila); texto('B' + fila, pl.iban);
+    }
+    nueva(Math.max(8, 209.3 - enPagina));
+    (pl.condiciones || '').split('\n').forEach(function (par) {
+      var n = Math.max(1, partirTexto(par, 500, 7, medir).length), h = n * 10.4;
+      if (enPagina + h > XL.alto - 8) { cerrarPagina(false); linea(fila + 1, 0, 11, 'top', 'thin'); nueva(20); }
+      var r = nueva(h);
+      ws.mergeCells('B' + r + ':K' + r);
+      texto('B' + r, par, { font: /:\s*$/.test(par) ? {} : { color: { argb: 'FF808080' } }, al: { wrapText: true, vertical: 'top' } });
     });
-    y += 2;
-    if (pl.ciudad_firma) put('B' + y, 'EN ' + pl.ciudad_firma.toUpperCase() + ' A,');
-    put('B' + (y + 2), new Date(doc.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), { font: { bold: true } });
-    y += 5;
-    put('B' + y, 'CLIENTE', { font: { bold: true, size: 9 } }); put('B' + (y + 1), (doc.atencion || '').toUpperCase());
-    put('H' + y, (pl.empresa || '').toUpperCase(), { font: { bold: true, size: 9 } });
-    [pl.nif, [pl.direccion_1, pl.direccion_2].filter(Boolean).join(' '), pl.cargo, pl.firmante].forEach(function (l, k) { if (l) put('H' + (y + 1 + k), l, { font: k === 2 ? { bold: true } : {} }); });
+    if (enPagina > XL.alto - 190) { cerrarPagina(false); linea(fila + 1, 0, 11, 'top', 'thin'); nueva(20); }
+    nueva(30);
+    if (pl.ciudad_firma) texto('B' + nueva(12), 'EN ' + pl.ciudad_firma.toUpperCase() + ' A,', { font: { size: 8, color: { argb: 'FF434343' } } });
+    nueva(9);
+    texto('B' + nueva(12), new Date(doc.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), { font: { size: 7.5, bold: true, color: { argb: 'FF434343' } } });
+    nueva(18);
+    var rCli = nueva(12);
+    texto('B' + rCli, 'CLIENTE', { font: { size: 8, bold: true, color: { argb: 'FF434343' } } });
+    texto('H' + rCli, (pl.empresa || '').toUpperCase(), { font: { size: 8, bold: true, color: { argb: 'FF434343' } } });
+    var der = [[pl.nif], [[pl.direccion_1, pl.direccion_2].filter(Boolean).join(' ')], [pl.cargo, true], [pl.firmante]].filter(function (x) { return x[0]; });
+    var rAt = nueva(10.6); texto('B' + rAt, (doc.atencion || '').toUpperCase(), { font: { size: 6, color: { argb: 'FF434343' } } });
+    der.forEach(function (x, j) { var r = j === 0 ? rAt : nueva(10.6); texto('H' + r, x[0], { font: { size: 6, bold: !!x[1], color: { argb: 'FF434343' } } }); });
+    if (d.firma_url) {
+      var rF = nueva(72);
+      tareas.push(aDataUrl(d.firma_url).then(function (im) {
+        return new Promise(function (ok) { var i = new Image(); i.onload = function () { var k = Math.min(145 / i.width, 67 / i.height); ws.addImage(wb.addImage({ base64: png64(im), extension: /png/.test(im.tipo) ? 'png' : 'jpeg' }), { tl: { col: 6 + 16 / 33, row: rF - 1 }, ext: { width: i.width * k * 96 / 72, height: i.height * k * 96 / 72 }, editAs: 'absolute' }); ok(); }; i.onerror = ok; i.src = im.data; });
+      }));
+    }
+    cerrarPagina(true);
+    ws.pageSetup.printArea = 'A1:L' + fila;
+
     return Promise.all(tareas).then(function () { return wb.xlsx.writeBuffer(); }).then(function (buf) {
       descargar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Presupuesto_' + (doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_') + '.xlsx');
       return 'Excel descargado';
@@ -597,5 +746,140 @@
     cargar();
   }
 
-  window.EstudioUI = { proyectos: proyectos, presupuesto: presupuesto, tarifa: tarifa, plantilla: plantilla, api: api };
+
+  // ════════════════════════════════════════════════════════════════
+  // Mi negocio
+  // ════════════════════════════════════════════════════════════════
+  var ESTADOS = [['borrador', 'Borrador'], ['enviado', 'Enviado'], ['aceptado', 'Aceptado'], ['rechazado', 'Rechazado']];
+  var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  var eur0 = function (n) { return n === null || n === undefined ? '—' : Math.round(n).toLocaleString('es-ES') + ' €'; };
+  function selectEstado(pid, estado) {
+    return '<select class="ng-estado ng-e-' + estado + '" data-pid="' + pid + '">' + ESTADOS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === estado ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select>';
+  }
+  function cambiarEstado(ctx, sel, despues) {
+    sel.disabled = true;
+    api(ctx, { action: 'presupuesto_estado', proyecto_id: sel.dataset.pid, estado: sel.value })
+      .then(function () { sel.className = 'ng-estado ng-e-' + sel.value; if (despues) despues(); })
+      .catch(function (e) { alert(e.message); }).then(function () { sel.disabled = false; });
+  }
+  /** Gráfica de barras (presupuestado vs aceptado) de los últimos 12 meses, en SVG. */
+  function grafica(serie) {
+    var W = 720, H = 220, izq = 46, abajo = 26, arriba = 12;
+    var max = Math.max.apply(null, serie.map(function (m) { return Math.max(m.presupuestado, m.aceptado); }).concat([1]));
+    var paso = Math.pow(10, Math.floor(Math.log10(max))); var tope = Math.ceil(max / paso) * paso;
+    var hUtil = H - abajo - arriba, wCol = (W - izq) / serie.length, wBar = Math.min(18, wCol / 3);
+    var y = function (v) { return arriba + hUtil - (v / tope) * hUtil; };
+    var g = '';
+    for (var i = 0; i <= 4; i++) {
+      var v = (tope / 4) * i, yy = y(v);
+      g += '<line x1="' + izq + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="#ece9e2"/>' +
+        '<text x="' + (izq - 6) + '" y="' + (yy + 3.5) + '" text-anchor="end">' + (v >= 1000 ? Math.round(v / 100) / 10 + 'k' : Math.round(v)) + '</text>';
+    }
+    serie.forEach(function (m, k) {
+      var cx = izq + wCol * k + wCol / 2;
+      g += '<rect x="' + (cx - wBar - 1) + '" y="' + y(m.presupuestado) + '" width="' + wBar + '" height="' + (y(0) - y(m.presupuestado)) + '" fill="#d9d3c8" rx="2"><title>Presupuestado ' + eur0(m.presupuestado) + '</title></rect>' +
+        '<rect x="' + (cx + 1) + '" y="' + y(m.aceptado) + '" width="' + wBar + '" height="' + (y(0) - y(m.aceptado)) + '" fill="#161616" rx="2"><title>Aceptado ' + eur0(m.aceptado) + '</title></rect>' +
+        '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + MESES[Number(m.mes.slice(5)) - 1] + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ng-graf" role="img" aria-label="Presupuestado y aceptado por mes">' + g + '</svg>';
+  }
+  function negocio(el, ctx, opts) {
+    opts = opts || {};
+    var admin = !!opts.agregado, periodo = 'mes';
+    el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>' + (admin ? 'Negocio de los alumnos' : 'Mi negocio') + '</h1>' +
+      '<div class="ng-periodos">' + [['mes', 'Mes'], ['trimestre', 'Trimestre'], ['anio', 'Año'], ['todo', 'Todo']].map(function (p) { return '<button data-per="' + p[0] + '"' + (p[0] === periodo ? ' class="on"' : '') + '>' + p[1] + '</button>'; }).join('') + '</div></div>' +
+      '<div id="ngCuerpo"><p class="pa-muted">Cargando…</p></div></div>';
+    el.querySelector('.ng-periodos').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-per]'); if (!b) return;
+      periodo = b.dataset.per;
+      el.querySelectorAll('.ng-periodos button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      cargar();
+    });
+    el.addEventListener('change', function (e) { if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, cargar); });
+    function kpi(etq, valor, sub, fuerte) { return '<div class="ng-kpi' + (fuerte ? ' fuerte' : '') + '"><span>' + etq + '</span><b>' + valor + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>'; }
+    function cargar() {
+      var piden = [api(ctx, { action: admin ? 'admin_negocio' : 'negocio', periodo: periodo })];
+      if (!admin) piden.push(api(ctx, { action: 'yo' }).catch(function () { return null; }));
+      return Promise.all(piden).then(function (rs) {
+        var m = rs[0], yo = rs[1], c = yo && yo.credito;
+        var viejo = m.pendientes.length ? m.pendientes[0].dias : null;
+        var html = '<div class="ng-kpis">' +
+          kpi('Ventas · aceptado', eur0(m.ventas), m.aceptados + (m.aceptados === 1 ? ' presupuesto' : ' presupuestos'), true) +
+          kpi('Presupuestado', eur0(m.presupuestado), m.enviados + (m.enviados === 1 ? ' enviado' : ' enviados')) +
+          kpi('Tasa de cierre', m.tasa_cierre === null ? '—' : String(m.tasa_cierre).replace('.', ',') + ' %', 'aceptados / enviados') +
+          kpi('Ticket medio', eur0(m.ticket_medio), 'por venta') +
+          kpi('Proyectos creados', String(m.proyectos), admin ? (m.alumnos_con_actividad + ' alumnos con actividad') : '') +
+          kpi('Pendientes de respuesta', String(m.pendientes.length), viejo !== null ? 'el más antiguo, hace ' + viejo + (viejo === 1 ? ' día' : ' días') : 'ninguno') +
+          (c ? kpi('Crédito IA del mes', usd(c.restante), 'de ' + usd(c.usd) + (c.saldo > 0 ? ' · ' + usd(c.saldo) + ' de packs' : '')) : '') +
+          '</div>';
+        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Evolución mensual</h2><span class="ng-ley"><i style="background:#d9d3c8"></i>Presupuestado <i style="background:#161616"></i>Aceptado</span></div>' + grafica(m.serie) + '</div>';
+        var lista = function (titulo, filas, conDias) {
+          return '<div class="ng-card"><h2>' + titulo + '</h2>' + (filas.length ? '<ul class="ng-lista">' + filas.map(function (f) {
+            return '<li><div><strong>' + esc(f.cliente || '—') + '</strong><small>' + (f.numero ? esc(f.numero) + ' · ' : '') + (conDias ? 'enviado hace ' + f.dias + (f.dias === 1 ? ' día' : ' días') : new Date(f.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })) + '</small></div>' +
+              '<span class="ng-imp">' + eur0(f.importe) + '</span>' + (admin ? '<span class="ng-tag ng-e-' + f.estado + '">' + f.estado + '</span>' : selectEstado(f.proyecto_id, f.estado)) + '</li>';
+          }).join('') + '</ul>' : '<p class="pa-muted" style="margin:6px 0 0">' + (conDias ? 'Nada pendiente de respuesta.' : 'Aún no hay presupuestos.') + '</p>') + '</div>';
+        };
+        html += '<div class="ng-dos">' + lista('Pendientes de respuesta', m.pendientes, true) + lista('Últimos presupuestos', m.ultimos, false) + '</div>';
+        if (admin && m.alumnos) {
+          html += '<div class="ng-card"><h2>Por alumno</h2>' + (m.alumnos.length ? '<div style="overflow-x:auto"><table class="ng-tabla"><thead><tr><th>Alumno</th><th>Proyectos</th><th>Enviados</th><th>Presupuestado</th><th>Aceptados</th><th>Ventas</th><th>Cierre</th><th>Pendientes</th></tr></thead><tbody>' +
+            m.alumnos.map(function (a) { return '<tr><td>' + esc(a.email) + '</td><td>' + a.proyectos + '</td><td>' + a.enviados + '</td><td>' + eur0(a.presupuestado) + '</td><td>' + a.aceptados + '</td><td><b>' + eur0(a.ventas) + '</b></td><td>' + (a.tasa_cierre === null ? '—' : String(a.tasa_cierre).replace('.', ',') + ' %') + '</td><td>' + a.pendientes + '</td></tr>'; }).join('') +
+            '</tbody></table></div>' : '<p class="pa-muted">Sin actividad de alumnos en el periodo.</p>') + '</div>';
+        }
+        el.querySelector('#ngCuerpo').innerHTML = html;
+      }).catch(function (e) { el.querySelector('#ngCuerpo').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    }
+    var usd = function (n) { return Number(n || 0).toFixed(2).replace('.', ',') + ' $'; };
+    cargar();
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // Créditos y plan (Stripe)
+  // ════════════════════════════════════════════════════════════════
+  function creditos(el, ctx, opts) {
+    opts = opts || {};
+    var usd = function (n) { return Number(n || 0).toFixed(2).replace('.', ',') + ' $'; };
+    var eur = function (n) { return Number(n).toLocaleString('es-ES', { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' €'; };
+    var dia = function (d) { return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'; };
+    el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>Créditos y plan</h1></div>' + (opts.ok ? '<div class="ng-ok">Pago recibido. El crédito o el plan aparecen aquí en unos segundos (recarga si no lo ves).</div>' : '') + '<div id="crCuerpo"><p class="pa-muted">Cargando…</p></div></div>';
+    function ir(accion, extra) {
+      return function (e) {
+        e.target.disabled = true;
+        api(ctx, Object.assign({ action: accion }, extra || {})).then(function (d) { location.href = d.url; })
+          .catch(function (err) { alert(err.message); e.target.disabled = false; });
+      };
+    }
+    api(ctx, { action: 'creditos' }).then(function (d) {
+      var c = d.credito, s = d.suscripcion, vigente = s && ['active', 'trialing', 'past_due'].indexOf(s.estado) >= 0;
+      var pct = c && c.usd > 0 ? Math.min(100, Math.round(100 * c.gastado / c.usd)) : 0;
+      var html = '<div class="ng-dos">';
+      html += '<div class="ng-card"><h2>Tu crédito IA</h2>' + (c
+        ? '<p class="cr-grande">' + usd(c.restante) + ' <small>de ' + usd(c.usd) + ' este mes</small></p><div class="cr-barra"><span style="width:' + pct + '%"></span></div>' +
+          '<p class="pa-muted" style="font-size:12.5px">Se renueva el día 1 de cada mes.</p>'
+        : '<p class="pa-muted">Sin crédito mensual.</p>') +
+        '<p class="cr-saldo">Saldo de packs: <b>' + usd(d.saldo) + '</b> <small>· no caduca; se usa cuando se acaba el del mes</small></p>' +
+        (d.acceso && d.acceso.hasta ? '<p class="pa-muted" style="font-size:12.5px;margin:6px 0 0">Acceso al Estudio ' + (d.acceso.activo ? 'hasta el ' : 'terminó el ') + dia(d.acceso.hasta) + '</p>' : '') + '</div>';
+      html += '<div class="ng-card cr-plan"><h2>Plan mensual</h2><p class="cr-grande">' + eur(d.plan.eur) + ' <small>/ mes</small></p>' +
+        '<ul class="cr-inc"><li>Acceso al Estudio cuando termine el incluido en tu curso</li><li>' + usd(d.plan.usd) + ' de crédito IA cada mes</li><li>Cancela cuando quieras</li></ul>' +
+        (vigente
+          ? '<p class="ng-ok" style="margin:8px 0">' + (s.cancel_at_period_end ? 'Se cancela el ' + dia(s.current_period_end) : 'Activo · se renueva el ' + dia(s.current_period_end)) + (s.estado === 'past_due' ? ' · <b>pago pendiente</b>' : '') + '</p><button class="pa-btn" id="crPortal">Gestionar mi suscripción</button>'
+          : '<button class="pa-btn primary cr-btn" id="crPlan">Suscribirme</button>') + '</div></div>';
+      if (d.packs.length && (!d.acceso || d.acceso.activo)) {
+        html += '<div class="ng-card"><h2>Packs de crédito IA</h2><p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Pago único. Se suman a tu saldo y no caducan.</p><div class="cr-packs">' +
+          d.packs.map(function (p) { return '<div class="cr-pack"><b>' + eur(p.eur) + '</b><span>+' + usd(p.usd) + ' de crédito IA</span><button class="pa-btn primary" data-pack="' + esc(p.id) + '">Comprar</button></div>'; }).join('') + '</div></div>';
+      }
+      if (d.compras.length) {
+        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Mis compras</h2>' + (s || d.compras.length ? '<button class="pa-btn" id="crPortal2">Facturas y tarjeta</button>' : '') + '</div><ul class="ng-lista">' + d.compras.map(function (x) {
+          return '<li><div><strong>' + (x.tipo === 'pack' ? 'Pack de crédito (+' + usd(x.usd) + ')' : 'Plan mensual') + '</strong><small>' + dia(x.created_at) + (x.invoice_number ? ' · factura ' + esc(x.invoice_number) : '') + '</small></div><span class="ng-imp">' + eur(x.importe_cents / 100) + '</span>' + (x.estado === 'reembolsada' ? '<span class="ng-tag ng-e-rechazado">reembolsada</span>' : '') + '</li>';
+        }).join('') + '</ul></div>';
+      }
+      html += '<p class="pa-muted" style="font-size:12px">Precios con IVA incluido. Pago seguro con Stripe; la factura te llega por email. Al comprar aceptas las <a href="/partners/condiciones/#estudio" target="_blank">condiciones del Estudio</a>.</p>';
+      var cuerpo = el.querySelector('#crCuerpo');
+      cuerpo.innerHTML = html;
+      var b = cuerpo.querySelector('#crPlan'); if (b) b.addEventListener('click', ir('comprar_plan'));
+      ['#crPortal', '#crPortal2'].forEach(function (q) { var x = cuerpo.querySelector(q); if (x) x.addEventListener('click', ir('portal')); });
+      cuerpo.querySelectorAll('[data-pack]').forEach(function (x) { x.addEventListener('click', ir('comprar_pack', { pack_id: x.dataset.pack })); });
+    }).catch(function (e) { el.querySelector('#crCuerpo').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+  }
+
+  window.EstudioUI = { proyectos: proyectos, presupuesto: presupuesto, tarifa: tarifa, plantilla: plantilla, negocio: negocio, creditos: creditos, api: api };
 })();

@@ -27,13 +27,14 @@ export const URL_ESTUDIO = 'https://www.casacurino.com/partners/estudio/';
 export interface EstadoAlumno {
   email: string; nombre: string | null; productos: string | null; acceso_hasta: string | null;
   activo: boolean; cortado: boolean; concedido: boolean; credito_usd: number; gastado_usd: number; proyectos: number;
+  saldo_usd: number; suscripcion: string | null; suscripcion_hasta: string | null; puede_suscribirse: boolean;
 }
 
 export async function estadoAlumno(supa: Any, email: string): Promise<EstadoAlumno | null> {
   const { data } = await supa.rpc('estudio_alumnos', { p_email: email.toLowerCase() });
   const r = Array.isArray(data) ? data[0] : null;
   if (!r) return null;
-  return { ...r, credito_usd: Number(r.credito_usd ?? 0), gastado_usd: Number(r.gastado_usd ?? 0) };
+  return { ...r, credito_usd: Number(r.credito_usd ?? 0), gastado_usd: Number(r.gastado_usd ?? 0), saldo_usd: Number(r.saldo_usd ?? 0) };
 }
 
 /** Puede entrar si es alumno activo y el Estudio está abierto (o tiene acceso concedido para pruebas). */
@@ -45,10 +46,23 @@ export function puedeEntrar(e: EstadoAlumno | null, cfg: Any): { ok: boolean; mo
 
 export function sinCredito(e: EstadoAlumno | null): string | null {
   if (!e) return null;
-  if (e.gastado_usd >= e.credito_usd) {
-    return `Has agotado el crédito de IA de este mes (${e.credito_usd.toFixed(2).replace('.', ',')} $). Se renueva el día 1; si lo necesitas antes, pídeselo a Curino.`;
+  if (e.gastado_usd >= e.credito_usd && e.saldo_usd <= 0) {
+    return `Has agotado el crédito de IA de este mes (${e.credito_usd.toFixed(2).replace('.', ',')} $). Se renueva el día 1; si lo necesitas antes, compra un pack en «Créditos y plan».`;
   }
   return null;
+}
+
+/**
+ * Tras gastar «coste» $, la parte que excede el crédito mensual que quedaba al
+ * empezar la petición se descuenta del saldo de packs (movimiento «consumo»).
+ */
+export async function descontarSaldo(supa: Any, e: EstadoAlumno | null, userId: string, coste: number): Promise<void> {
+  if (!e || !(coste > 0)) return;
+  const quedaba = Math.max(0, e.credito_usd - e.gastado_usd);
+  const exceso = Math.round((coste - quedaba) * 1e6) / 1e6;
+  if (exceso > 0 && e.saldo_usd > 0) {
+    await supa.from('estudio_saldo').insert({ user_id: userId, email: e.email, usd: -Math.min(exceso, e.saldo_usd), motivo: 'consumo' });
+  }
 }
 
 async function enlaceMagico(supa: Any, email: string): Promise<string | null> {
@@ -106,8 +120,10 @@ export async function accionYo(supa: Any, email: string, userId: string, esAdmin
   const plantilla: Plantilla = { ...PLANTILLA_ALUMNO, ...(pl?.datos ?? {}) };
   return json({
     email, admin: esAdmin, acceso: esAdmin ? { ok: true } : puedeEntrar(e, cfg),
-    alumno: e ? { nombre: e.nombre, productos: e.productos, acceso_hasta: e.acceso_hasta } : null,
-    credito: e ? { usd: e.credito_usd, gastado: Math.round(e.gastado_usd * 100) / 100, restante: Math.max(0, Math.round((e.credito_usd - e.gastado_usd) * 100) / 100) } : null,
+    // Antiguo alumno sin acceso: puede entrar a «Créditos y plan» para suscribirse
+    puede_suscribirse: !!e?.puede_suscribirse && (!!cfg?.abierto_alumnos || !!e?.concedido),
+    alumno: e ? { nombre: e.nombre, productos: e.productos, acceso_hasta: e.acceso_hasta, suscripcion: e.suscripcion } : null,
+    credito: e ? { usd: e.credito_usd, gastado: Math.round(e.gastado_usd * 100) / 100, restante: Math.max(0, Math.round((e.credito_usd - e.gastado_usd) * 100) / 100), saldo: Math.round(e.saldo_usd * 100) / 100 } : null,
     faltan: esAdmin ? [] : faltanPlantilla(plantilla)
   });
 }
@@ -166,6 +182,12 @@ export async function accionAdminAcceso(action: string, supa: Any, userId: strin
       const v = num(c[k], min, max); if (v !== null) fila[k] = Math.round(v);
     }
     if (typeof c.abierto_alumnos === 'boolean') fila.abierto_alumnos = c.abierto_alumnos;
+    for (const [k, max] of [['plan_eur', 1000], ['plan_usd', 1000]] as const) { const v = num(c[k], 0, max); if (v !== null) fila[k] = v; }
+    if (Array.isArray(c.packs)) {
+      const packs = c.packs.slice(0, 6).map((p: Any, i: number) => ({ id: String(p?.id || `p${i + 1}`).replace(/[^\w-]/g, '').slice(0, 20) || `p${i + 1}`, eur: num(p?.eur, 1, 1000), usd: num(p?.usd, 0.5, 1000) }))
+        .filter((p: Any) => p.eur !== null && p.usd !== null);
+      fila.packs = packs;
+    }
     const r = await supa.from('estudio_config').update(fila).eq('id', 1);
     if (r.error) throw r.error;
     return json({ ok: true });

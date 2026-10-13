@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Partners · Alumnos del Estudio — Curino admin</title>
 <link rel="icon" type="image/png" href="/assets/imagenes/favicon-curino.png">
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Schibsted+Grotesk:wght@800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/tokens.css">
 <link rel="stylesheet" href="/assets/css/admin-shell.css">
 <link rel="stylesheet" href="/admin/partners/partners-admin.css">
@@ -55,6 +55,20 @@
     <div class="tf-pie"><button class="pa-btn primary" id="cfGuardar">Guardar configuración</button><span id="cfMsg"></span></div>
   </section>
 
+  <div id="eaNegocio" style="margin-bottom:6px"></div>
+
+  <section class="tf-card" style="margin-bottom:14px">
+    <h2>Packs de crédito y plan mensual</h2>
+    <p class="pa-muted" style="font-size:12.5px;margin:2px 0 8px">Precios con IVA incluido (cobro con Stripe en la cuenta de SISTEMA &amp; CURINO; facturas EST-AAAA-NNNNNN). El crédito de los packs no caduca; el del plan es mensual.</p>
+    <div class="ea-cfg" id="pkPacks"></div>
+    <div class="ea-cfg" style="margin-top:8px"><div><label>Plan mensual (€/mes)</label><input id="pkPlanEur" inputmode="decimal"></div><div><label>Crédito IA incluido en el plan ($/mes)</label><input id="pkPlanUsd" inputmode="decimal"></div></div>
+    <div class="tf-pie"><button class="pa-btn primary" id="pkGuardar">Guardar precios</button><span id="pkMsg"></span></div>
+    <h3 style="font-size:13px;margin:16px 0 6px">Stripe</h3>
+    <div id="pkStripe" class="pa-muted" style="font-size:13px">Comprobando…</div>
+    <h3 style="font-size:13px;margin:16px 0 6px">Últimas compras del Estudio</h3>
+    <div id="pkCompras" class="pa-muted" style="font-size:13px">Cargando…</div>
+  </section>
+
   <section class="tf-card" style="margin-bottom:14px">
     <h2>Conceder acceso sin compra</h2>
     <p class="pa-muted" style="font-size:12.5px;margin:2px 0 8px">Para pruebas o invitados. Entran aunque el Estudio no esté abierto.</p>
@@ -85,8 +99,46 @@
   var api = function (b) { return EstudioUI.api(ctx, b); };
 
   initAdminShell({ activeSection: 'partners-estudio-alumnos', title: 'Partners · Alumnos del Estudio' })
-    .then(function (c) { ctx = { supa: c.supabase, modo: 'admin' }; return cargar(); })
+    .then(function (c) {
+      ctx = { supa: c.supabase, modo: 'admin' };
+      EstudioUI.negocio($('#eaNegocio'), ctx, { agregado: true });
+      cargarStripe(); cargarCompras();
+      return cargar();
+    })
     .catch(function () {});
+
+  // ── Packs, plan, Stripe y compras ──
+  function pintarPacks(c) {
+    var packs = (c.packs || []).slice(0, 3);
+    while (packs.length < 3) packs.push({ id: 'p' + (packs.length + 1), eur: '', usd: '' });
+    $('#pkPacks').innerHTML = packs.map(function (p, i) {
+      return '<div><label>Pack ' + (i + 1) + ' · precio (€)</label><input class="pkE" data-id="' + esc(p.id) + '" inputmode="decimal" value="' + num(p.eur) + '"></div>' +
+        '<div><label>Pack ' + (i + 1) + ' · crédito IA ($)</label><input class="pkU" inputmode="decimal" value="' + num(p.usd) + '"></div>';
+    }).join('');
+    $('#pkPlanEur').value = num(c.plan_eur); $('#pkPlanUsd').value = num(c.plan_usd);
+  }
+  $('#pkGuardar').addEventListener('click', function () {
+    var es = document.querySelectorAll('.pkE'), us = document.querySelectorAll('.pkU'), packs = [];
+    es.forEach(function (e, i) { if (e.value.trim() && us[i].value.trim()) packs.push({ id: e.dataset.id, eur: e.value.replace(',', '.'), usd: us[i].value.replace(',', '.') }); });
+    api({ action: 'admin_config', packs: packs, plan_eur: $('#pkPlanEur').value.replace(',', '.'), plan_usd: $('#pkPlanUsd').value.replace(',', '.') })
+      .then(function () { msg('#pkMsg', 'Guardado', true); return cargar(); }).catch(function (e) { msg('#pkMsg', e.message); });
+  });
+  function cargarStripe() {
+    api({ action: 'stripe_diagnostico' }).then(function (d) {
+      $('#pkStripe').innerHTML =
+        (d.faltan.length ? '<div class="eu-faltan">Faltan eventos en el webhook de Stripe (<code>…/functions/v1/stripe-webhook</code>): <b>' + d.faltan.map(esc).join(', ') + '</b></div>' : '<p class="tf-ok">Webhook con todos los eventos necesarios.</p>') +
+        (d.portal_activo ? '<p class="tf-ok">Customer Portal activo.</p>' : '<div class="eu-faltan">El Customer Portal no está activado: Stripe → Configuración → Facturación → Portal de clientes.</div>') +
+        (d.error ? '<p class="tf-err">' + esc(d.error) + '</p>' : '');
+    }).catch(function (e) { $('#pkStripe').textContent = e.message; });
+  }
+  function cargarCompras() {
+    ctx.supa.from('estudio_compras').select('email, tipo, usd, importe_cents, estado, invoice_number, created_at').order('created_at', { ascending: false }).limit(20).then(function (r) {
+      var l = r.data || [];
+      $('#pkCompras').innerHTML = l.length ? '<table class="ng-tabla"><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Importe</th><th>Factura</th><th>Estado</th></tr></thead><tbody>' + l.map(function (x) {
+        return '<tr><td>' + dia(x.created_at) + '</td><td>' + esc(x.email) + '</td><td>' + (x.tipo === 'pack' ? 'Pack +' + usd(x.usd) : 'Plan mensual') + '</td><td>' + (x.importe_cents / 100).toFixed(2).replace('.', ',') + ' €</td><td>' + esc(x.invoice_number || '—') + '</td><td>' + esc(x.estado) + '</td></tr>';
+      }).join('') + '</tbody></table>' : 'Aún no hay compras.';
+    });
+  }
 
   function msg(sel, t, ok) { var m = $(sel); m.className = ok ? 'tf-ok' : 'tf-err'; m.textContent = t; }
 
@@ -98,6 +150,7 @@
       $('#cfHora').value = c.max_llamadas_hora; $('#cfPe').value = num(c.precio_entrada); $('#cfPs').value = num(c.precio_salida);
       $('#cfPw').value = num(c.precio_cache_escritura); $('#cfPr').value = num(c.precio_cache_lectura); $('#cfMb').value = c.max_mb; $('#cfPag').value = c.max_paginas;
       $('#cfAbierto').checked = !!c.abierto_alumnos;
+      pintarPacks(c);
       var activos = d.alumnos.filter(function (a) { return a.activo; }).length;
       var gastoAlumnos = d.alumnos.reduce(function (s, a) { return s + Number(a.gastado_usd || 0); }, 0);
       $('#eaKpis').innerHTML = [
@@ -117,7 +170,7 @@
       '<td>' + esc(a.productos || '—') + '</td><td>' + dia(a.fin_curso) + '</td>' +
       '<td>' + (a.acceso_hasta ? dia(a.acceso_hasta) : 'Sin fecha') + (a.ampliado ? ' <span class="pa-muted" style="font-size:11px">(manual)</span>' : '') + '</td>' +
       '<td>' + est + '</td>' +
-      '<td style="min-width:120px">' + usd(a.gastado_usd) + ' de ' + usd(a.credito_usd) + '<div class="ea-bar"><span class="' + (pct >= 100 ? 'lleno' : '') + '" style="width:' + pct + '%"></span></div></td>' +
+      '<td style="min-width:120px">' + usd(a.gastado_usd) + ' de ' + usd(a.credito_usd) + '<div class="ea-bar"><span class="' + (pct >= 100 ? 'lleno' : '') + '" style="width:' + pct + '%"></span></div>' + (Number(a.saldo_usd) > 0 ? '<span class="pa-muted" style="font-size:11.5px">+ ' + usd(a.saldo_usd) + ' de packs</span>' : '') + (a.suscripcion ? '<br><span class="pa-muted" style="font-size:11.5px">Plan: ' + esc(a.suscripcion) + '</span>' : '') + '</td>' +
       '<td>' + (a.proyectos || 0) + '</td>' +
       '<td><div class="ea-acc">' +
       '<button class="pa-btn" data-a="ampliar">Acceso hasta…</button>' +
