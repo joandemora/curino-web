@@ -815,7 +815,7 @@
           kpi('Ticket medio', eur0(m.ticket_medio), 'por venta') +
           kpi('Proyectos creados', String(m.proyectos), admin ? (m.alumnos_con_actividad + ' alumnos con actividad') : '') +
           kpi('Pendientes de respuesta', String(m.pendientes.length), viejo !== null ? 'el más antiguo, hace ' + viejo + (viejo === 1 ? ' día' : ' días') : 'ninguno') +
-          (c ? kpi('Crédito IA del mes', usd(c.restante), 'de ' + usd(c.usd) + (c.saldo > 0 ? ' · ' + usd(c.saldo) + ' de packs' : '')) : '') +
+          (c ? kpi('Créditos del mes', cr(c.restantes), 'de ' + cr(c.mes) + (c.saldo > 0 ? ' · +' + cr(c.saldo) + ' de packs' : '')) : '') +
           '</div>';
         html += '<div class="ng-card"><div class="ng-card-cab"><h2>Evolución mensual</h2><span class="ng-ley"><i style="background:#d9d3c8"></i>Presupuestado <i style="background:#161616"></i>Aceptado</span></div>' + grafica(m.serie) + '</div>';
         var lista = function (titulo, filas, conDias) {
@@ -833,7 +833,7 @@
         el.querySelector('#ngCuerpo').innerHTML = html;
       }).catch(function (e) { el.querySelector('#ngCuerpo').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     }
-    var usd = function (n) { return Number(n || 0).toFixed(2).replace('.', ',') + ' $'; };
+    var cr = function (n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
     cargar();
   }
 
@@ -842,10 +842,10 @@
   // ════════════════════════════════════════════════════════════════
   function creditos(el, ctx, opts) {
     opts = opts || {};
-    var usd = function (n) { return Number(n || 0).toFixed(2).replace('.', ',') + ' $'; };
+    var cr = function (n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
     var eur = function (n) { return Number(n).toLocaleString('es-ES', { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' €'; };
     var dia = function (d) { return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'; };
-    el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>Créditos y plan</h1></div>' + (opts.ok ? '<div class="ng-ok">Pago recibido. El crédito o el plan aparecen aquí en unos segundos (recarga si no lo ves).</div>' : '') + '<div id="crCuerpo"><p class="pa-muted">Cargando…</p></div></div>';
+    el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>Créditos y plan</h1></div>' + (opts.ok ? '<div class="ng-ok">Pago recibido. Los créditos o el plan aparecen aquí en unos segundos (recarga si no los ves).</div>' : '') + '<div id="crCuerpo"><p class="pa-muted">Cargando…</p></div></div>';
     function ir(accion, extra) {
       return function (e) {
         e.target.disabled = true;
@@ -855,26 +855,27 @@
     }
     api(ctx, { action: 'creditos' }).then(function (d) {
       var c = d.credito, s = d.suscripcion, vigente = s && ['active', 'trialing', 'past_due'].indexOf(s.estado) >= 0;
-      var pct = c && c.usd > 0 ? Math.min(100, Math.round(100 * c.gastado / c.usd)) : 0;
+      var pct = c && c.mes > 0 ? Math.min(100, Math.round(100 * c.gastados / c.mes)) : 0;
       var html = '<div class="ng-dos">';
-      html += '<div class="ng-card"><h2>Tu crédito IA</h2>' + (c
-        ? '<p class="cr-grande">' + usd(c.restante) + ' <small>de ' + usd(c.usd) + ' este mes</small></p><div class="cr-barra"><span style="width:' + pct + '%"></span></div>' +
-          '<p class="pa-muted" style="font-size:12.5px">Se renueva el día 1 de cada mes.</p>'
-        : '<p class="pa-muted">Sin crédito mensual.</p>') +
-        '<p class="cr-saldo">Saldo de packs: <b>' + usd(d.saldo) + '</b> <small>· no caduca; se usa cuando se acaba el del mes</small></p>' +
+      html += '<div class="ng-card"><h2>Tus créditos</h2>' + (c
+        ? '<p class="cr-grande">' + cr(c.restantes) + ' <small>de ' + cr(c.mes) + ' créditos este mes</small></p><div class="cr-barra"><span style="width:' + pct + '%"></span></div>' +
+          '<p class="pa-muted" style="font-size:12.5px">Se renuevan el día 1 de cada mes.</p>'
+        : '<p class="pa-muted">Sin créditos mensuales.</p>') +
+        '<p class="cr-saldo">Créditos de packs: <b>' + cr(d.saldo) + '</b> <small>· no caducan; se usan cuando se acaban los del mes</small></p>' +
+        '<p class="cr-ref">Referencia: ≈ 5–10 créditos por proyecto completo (plano, cambios y textos del presupuesto).</p>' +
         (d.acceso && d.acceso.hasta ? '<p class="pa-muted" style="font-size:12.5px;margin:6px 0 0">Acceso al Estudio ' + (d.acceso.activo ? 'hasta el ' : 'terminó el ') + dia(d.acceso.hasta) + '</p>' : '') + '</div>';
-      html += '<div class="ng-card cr-plan"><h2>Plan mensual</h2><p class="cr-grande">' + eur(d.plan.eur) + ' <small>/ mes</small></p>' +
-        '<ul class="cr-inc"><li>Acceso al Estudio cuando termine el incluido en tu curso</li><li>' + usd(d.plan.usd) + ' de crédito IA cada mes</li><li>Cancela cuando quieras</li></ul>' +
+      html += '<div class="ng-card cr-plan"><h2>Plan mensual</h2><p class="cr-grande">' + eur(d.plan.eur) + ' <small>/ mes, IVA incluido</small></p>' +
+        '<ul class="cr-inc"><li>Acceso al Estudio cuando termine el incluido en tu curso</li><li>' + cr(d.plan.creditos) + ' créditos cada mes (no se acumulan)</li><li>Cancela cuando quieras</li></ul>' +
         (vigente
           ? '<p class="ng-ok" style="margin:8px 0">' + (s.cancel_at_period_end ? 'Se cancela el ' + dia(s.current_period_end) : 'Activo · se renueva el ' + dia(s.current_period_end)) + (s.estado === 'past_due' ? ' · <b>pago pendiente</b>' : '') + '</p><button class="pa-btn" id="crPortal">Gestionar mi suscripción</button>'
           : '<button class="pa-btn primary cr-btn" id="crPlan">Suscribirme</button>') + '</div></div>';
       if (d.packs.length && (!d.acceso || d.acceso.activo)) {
-        html += '<div class="ng-card"><h2>Packs de crédito IA</h2><p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Pago único. Se suman a tu saldo y no caducan.</p><div class="cr-packs">' +
-          d.packs.map(function (p) { return '<div class="cr-pack"><b>' + eur(p.eur) + '</b><span>+' + usd(p.usd) + ' de crédito IA</span><button class="pa-btn primary" data-pack="' + esc(p.id) + '">Comprar</button></div>'; }).join('') + '</div></div>';
+        html += '<div class="ng-card"><h2>Packs de créditos</h2><p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Pago único, IVA incluido. Se suman a tus créditos y no caducan.</p><div class="cr-packs">' +
+          d.packs.map(function (p) { return '<div class="cr-pack"><b>' + eur(p.eur) + '</b><span>' + cr(p.creditos) + ' créditos</span><button class="pa-btn primary" data-pack="' + esc(p.id) + '">Comprar</button></div>'; }).join('') + '</div></div>';
       }
       if (d.compras.length) {
-        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Mis compras</h2>' + (s || d.compras.length ? '<button class="pa-btn" id="crPortal2">Facturas y tarjeta</button>' : '') + '</div><ul class="ng-lista">' + d.compras.map(function (x) {
-          return '<li><div><strong>' + (x.tipo === 'pack' ? 'Pack de crédito (+' + usd(x.usd) + ')' : 'Plan mensual') + '</strong><small>' + dia(x.created_at) + (x.invoice_number ? ' · factura ' + esc(x.invoice_number) : '') + '</small></div><span class="ng-imp">' + eur(x.importe_cents / 100) + '</span>' + (x.estado === 'reembolsada' ? '<span class="ng-tag ng-e-rechazado">reembolsada</span>' : '') + '</li>';
+        html += '<div class="ng-card"><div class="ng-card-cab"><h2>Mis compras</h2><button class="pa-btn" id="crPortal2">Facturas y tarjeta</button></div><ul class="ng-lista">' + d.compras.map(function (x) {
+          return '<li><div><strong>' + (x.tipo === 'pack' ? 'Pack de ' + cr(x.creditos) + ' créditos' : 'Plan mensual') + '</strong><small>' + dia(x.created_at) + (x.invoice_number ? ' · factura ' + esc(x.invoice_number) : '') + '</small></div><span class="ng-imp">' + eur(x.importe_cents / 100) + '</span>' + (x.estado === 'reembolsada' ? '<span class="ng-tag ng-e-rechazado">reembolsada</span>' : '') + '</li>';
         }).join('') + '</ul></div>';
       }
       html += '<p class="pa-muted" style="font-size:12px">Precios con IVA incluido. Pago seguro con Stripe; la factura te llega por email. Al comprar aceptas las <a href="/partners/condiciones/#estudio" target="_blank">condiciones del Estudio</a>.</p>';

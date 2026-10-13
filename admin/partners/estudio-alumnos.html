@@ -41,7 +41,7 @@
     <h2>Configuración</h2>
     <div class="ea-cfg" style="margin-top:8px">
       <div><label>Modelo</label><input id="cfModelo"></div>
-      <div><label>Crédito mensual por alumno ($)</label><input id="cfCredito" inputmode="decimal"></div>
+      <div><label>Créditos al mes por alumno (curso + meses)</label><input id="cfCredito" inputmode="numeric"></div>
       <div><label>Meses de acceso tras el curso</label><input id="cfMeses" inputmode="numeric"></div>
       <div><label>Peticiones por hora (por alumno)</label><input id="cfHora" inputmode="numeric"></div>
       <div><label>Entrada ($/millón de tokens)</label><input id="cfPe" inputmode="decimal"></div>
@@ -59,9 +59,11 @@
 
   <section class="tf-card" style="margin-bottom:14px">
     <h2>Packs de crédito y plan mensual</h2>
-    <p class="pa-muted" style="font-size:12.5px;margin:2px 0 8px">Precios con IVA incluido (cobro con Stripe en la cuenta de SISTEMA &amp; CURINO; facturas EST-AAAA-NNNNNN). El crédito de los packs no caduca; el del plan es mensual.</p>
+    <p class="pa-muted" style="font-size:12.5px;margin:2px 0 8px">1 crédito = 0,01 $ de coste real de IA. Precios con IVA incluido (Stripe, cuenta SISTEMA &amp; CURINO; facturas EST-AAAA-NNNNNN). Los créditos de los packs no caducan; los del plan son mensuales.</p>
     <div class="ea-cfg" id="pkPacks"></div>
-    <div class="ea-cfg" style="margin-top:8px"><div><label>Plan mensual (€/mes)</label><input id="pkPlanEur" inputmode="decimal"></div><div><label>Crédito IA incluido en el plan ($/mes)</label><input id="pkPlanUsd" inputmode="decimal"></div></div>
+    <div class="ea-cfg" style="margin-top:8px"><div><label>Plan mensual (€/mes, IVA incl.)</label><input id="pkPlanEur" inputmode="decimal"></div><div><label>Créditos al mes del plan</label><input id="pkPlanCr" inputmode="numeric"></div>
+      <div><label>Multiplicador (sugerencias y margen)</label><input id="pkMult" inputmode="decimal"></div><div><label>Cambio 1 € = … $</label><input id="pkCambio" inputmode="decimal"></div></div>
+    <div id="pkMargen" style="margin-top:10px"></div>
     <div class="tf-pie"><button class="pa-btn primary" id="pkGuardar">Guardar precios</button><span id="pkMsg"></span></div>
     <h3 style="font-size:13px;margin:16px 0 6px">Stripe</h3>
     <div id="pkStripe" class="pa-muted" style="font-size:13px">Comprobando…</div>
@@ -77,7 +79,7 @@
 
   <div class="pa-wrap">
     <table class="pa-table">
-      <thead><tr><th>Alumno</th><th>Producto</th><th>Fin del curso</th><th>Acceso hasta</th><th>Estado</th><th>Crédito del mes</th><th>Proyectos</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>Alumno</th><th>Producto</th><th>Fin del curso</th><th>Acceso hasta</th><th>Estado</th><th>Créditos del mes</th><th>Proyectos</th><th>Acciones</th></tr></thead>
       <tbody id="eaFilas"><tr><td colspan="8" class="pa-empty">Cargando…</td></tr></tbody>
     </table>
   </div>
@@ -108,19 +110,43 @@
     .catch(function () {});
 
   // ── Packs, plan, Stripe y compras ──
+  var cfgActual = {};
+  var crd = function (usd) { return Math.round((Number(usd) || 0) * 100); };
   function pintarPacks(c) {
+    cfgActual = c;
     var packs = (c.packs || []).slice(0, 3);
     while (packs.length < 3) packs.push({ id: 'p' + (packs.length + 1), eur: '', usd: '' });
     $('#pkPacks').innerHTML = packs.map(function (p, i) {
-      return '<div><label>Pack ' + (i + 1) + ' · precio (€)</label><input class="pkE" data-id="' + esc(p.id) + '" inputmode="decimal" value="' + num(p.eur) + '"></div>' +
-        '<div><label>Pack ' + (i + 1) + ' · crédito IA ($)</label><input class="pkU" inputmode="decimal" value="' + num(p.usd) + '"></div>';
+      return '<div><label>Pack ' + (i + 1) + ' · precio (€, IVA incl.)</label><input class="pkE" data-id="' + esc(p.id) + '" inputmode="decimal" value="' + num(p.eur) + '"></div>' +
+        '<div><label>Pack ' + (i + 1) + ' · créditos</label><input class="pkC" inputmode="numeric" value="' + (p.usd === '' ? '' : crd(p.usd)) + '"></div>';
     }).join('');
-    $('#pkPlanEur').value = num(c.plan_eur); $('#pkPlanUsd').value = num(c.plan_usd);
+    $('#pkPlanEur').value = num(c.plan_eur); $('#pkPlanCr').value = crd(c.plan_usd);
+    $('#pkMult').value = num(c.multiplicador); $('#pkCambio').value = num(c.eur_usd);
+    margen();
   }
+  // Sugerencia = precio sin IVA × cambio ÷ (0,01 × multiplicador); margen = 1 − coste real / ingreso en $
+  function margen() {
+    var mult = parseFloat(($('#pkMult').value || '10').replace(',', '.')) || 10, cambio = parseFloat(($('#pkCambio').value || '1.08').replace(',', '.')) || 1.08;
+    var filas = [];
+    document.querySelectorAll('.pkE').forEach(function (e, i) {
+      var eurV = parseFloat(e.value.replace(',', '.')), crV = parseInt(document.querySelectorAll('.pkC')[i].value, 10);
+      if (eurV > 0) filas.push(['Pack ' + (i + 1), eurV, crV]);
+    });
+    var pe = parseFloat($('#pkPlanEur').value.replace(',', '.')), pc = parseInt($('#pkPlanCr').value, 10);
+    if (pe > 0) filas.push(['Plan mensual', pe, pc]);
+    var pct = function (x) { return isFinite(x) ? Math.round(x * 1000) / 10 + ' %' : '—'; };
+    $('#pkMargen').innerHTML = '<table class="ng-tabla"><thead><tr><th></th><th>Precio</th><th>Sin IVA</th><th>En $</th><th>Créditos sugeridos</th><th>Créditos</th><th>Coste real IA</th><th>Margen bruto</th></tr></thead><tbody>' +
+      filas.map(function (f) {
+        var sinIva = f[1] / 1.21, enUsd = sinIva * cambio, sug = enUsd / (0.01 * mult), coste = (f[2] || 0) * 0.01;
+        return '<tr><td>' + f[0] + '</td><td>' + num(f[1]) + ' €</td><td>' + sinIva.toFixed(2).replace('.', ',') + ' €</td><td>' + enUsd.toFixed(2).replace('.', ',') + ' $</td><td>' + Math.round(sug) + '</td><td><b>' + (f[2] || '—') + '</b></td><td>' + coste.toFixed(2).replace('.', ',') + ' $</td><td>' + pct(1 - coste / enUsd) + '</td></tr>';
+      }).join('') + '</tbody></table><p class="pa-muted" style="font-size:12px;margin:6px 0 0">Coste real en el peor caso (si se gastan todos los créditos). Crédito incluido de alumnos: ' + ($('#cfCredito').value || '—') + ' créditos/mes ≈ ' + ((parseInt($('#cfCredito').value, 10) || 0) / 100).toFixed(2).replace('.', ',') + ' $ de coste real.</p>';
+  }
+  document.addEventListener('input', function (e) { if (e.target.closest('#pkPacks') || ['pkPlanEur', 'pkPlanCr', 'pkMult', 'pkCambio', 'cfCredito'].indexOf(e.target.id) >= 0) margen(); });
   $('#pkGuardar').addEventListener('click', function () {
-    var es = document.querySelectorAll('.pkE'), us = document.querySelectorAll('.pkU'), packs = [];
-    es.forEach(function (e, i) { if (e.value.trim() && us[i].value.trim()) packs.push({ id: e.dataset.id, eur: e.value.replace(',', '.'), usd: us[i].value.replace(',', '.') }); });
-    api({ action: 'admin_config', packs: packs, plan_eur: $('#pkPlanEur').value.replace(',', '.'), plan_usd: $('#pkPlanUsd').value.replace(',', '.') })
+    var es = document.querySelectorAll('.pkE'), cs = document.querySelectorAll('.pkC'), packs = [];
+    es.forEach(function (e, i) { if (e.value.trim() && cs[i].value.trim()) packs.push({ id: e.dataset.id, eur: e.value.replace(',', '.'), usd: (parseInt(cs[i].value, 10) || 0) / 100 }); });
+    api({ action: 'admin_config', packs: packs, plan_eur: $('#pkPlanEur').value.replace(',', '.'), plan_usd: (parseInt($('#pkPlanCr').value, 10) || 0) / 100,
+      multiplicador: $('#pkMult').value.replace(',', '.'), eur_usd: $('#pkCambio').value.replace(',', '.') })
       .then(function () { msg('#pkMsg', 'Guardado', true); return cargar(); }).catch(function (e) { msg('#pkMsg', e.message); });
   });
   function cargarStripe() {
@@ -135,7 +161,7 @@
     ctx.supa.from('estudio_compras').select('email, tipo, usd, importe_cents, estado, invoice_number, created_at').order('created_at', { ascending: false }).limit(20).then(function (r) {
       var l = r.data || [];
       $('#pkCompras').innerHTML = l.length ? '<table class="ng-tabla"><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Importe</th><th>Factura</th><th>Estado</th></tr></thead><tbody>' + l.map(function (x) {
-        return '<tr><td>' + dia(x.created_at) + '</td><td>' + esc(x.email) + '</td><td>' + (x.tipo === 'pack' ? 'Pack +' + usd(x.usd) : 'Plan mensual') + '</td><td>' + (x.importe_cents / 100).toFixed(2).replace('.', ',') + ' €</td><td>' + esc(x.invoice_number || '—') + '</td><td>' + esc(x.estado) + '</td></tr>';
+        return '<tr><td>' + dia(x.created_at) + '</td><td>' + esc(x.email) + '</td><td>' + (x.tipo === 'pack' ? 'Pack ' + crd(x.usd) + ' créditos' : 'Plan mensual') + '</td><td>' + (x.importe_cents / 100).toFixed(2).replace('.', ',') + ' €</td><td>' + esc(x.invoice_number || '—') + '</td><td>' + esc(x.estado) + '</td></tr>';
       }).join('') + '</tbody></table>' : 'Aún no hay compras.';
     });
   }
@@ -146,7 +172,7 @@
     return api({ action: 'admin_alumnos' }).then(function (d) {
       datos = d;
       var c = d.config || {};
-      $('#cfModelo').value = c.modelo || ''; $('#cfCredito').value = num(c.credito_mensual_usd); $('#cfMeses').value = c.meses_tras_fin;
+      $('#cfModelo').value = c.modelo || ''; $('#cfCredito').value = crd(c.credito_mensual_usd); $('#cfMeses').value = c.meses_tras_fin;
       $('#cfHora').value = c.max_llamadas_hora; $('#cfPe').value = num(c.precio_entrada); $('#cfPs').value = num(c.precio_salida);
       $('#cfPw').value = num(c.precio_cache_escritura); $('#cfPr').value = num(c.precio_cache_lectura); $('#cfMb').value = c.max_mb; $('#cfPag').value = c.max_paginas;
       $('#cfAbierto').checked = !!c.abierto_alumnos;
@@ -155,7 +181,7 @@
       var gastoAlumnos = d.alumnos.reduce(function (s, a) { return s + Number(a.gastado_usd || 0); }, 0);
       $('#eaKpis').innerHTML = [
         ['Coste de IA este mes', usd(d.mes.coste) + ' · ' + d.mes.llamadas + ' llamadas'],
-        ['De alumnos', usd(gastoAlumnos)],
+        ['De alumnos', usd(gastoAlumnos) + ' · ' + crd(gastoAlumnos) + ' créditos'],
         ['Alumnos con acceso', activos + ' de ' + d.alumnos.length],
         ['Estudio', c.abierto_alumnos ? 'Abierto a alumnos' : 'Cerrado (solo admin y concedidos)']
       ].map(function (k) { return '<div class="pa-kpi"><span>' + k[0] + '</span><b>' + esc(k[1]) + '</b></div>'; }).join('');
@@ -170,13 +196,13 @@
       '<td>' + esc(a.productos || '—') + '</td><td>' + dia(a.fin_curso) + '</td>' +
       '<td>' + (a.acceso_hasta ? dia(a.acceso_hasta) : 'Sin fecha') + (a.ampliado ? ' <span class="pa-muted" style="font-size:11px">(manual)</span>' : '') + '</td>' +
       '<td>' + est + '</td>' +
-      '<td style="min-width:120px">' + usd(a.gastado_usd) + ' de ' + usd(a.credito_usd) + '<div class="ea-bar"><span class="' + (pct >= 100 ? 'lleno' : '') + '" style="width:' + pct + '%"></span></div>' + (Number(a.saldo_usd) > 0 ? '<span class="pa-muted" style="font-size:11.5px">+ ' + usd(a.saldo_usd) + ' de packs</span>' : '') + (a.suscripcion ? '<br><span class="pa-muted" style="font-size:11.5px">Plan: ' + esc(a.suscripcion) + '</span>' : '') + '</td>' +
+      '<td style="min-width:140px">' + crd(a.gastado_usd) + ' de ' + crd(a.credito_usd) + ' créditos<br><span class="pa-muted" style="font-size:11.5px">coste real ' + usd(a.gastado_usd) + '</span><div class="ea-bar"><span class="' + (pct >= 100 ? 'lleno' : '') + '" style="width:' + pct + '%"></span></div>' + (Number(a.saldo_usd) > 0 ? '<span class="pa-muted" style="font-size:11.5px">+ ' + crd(a.saldo_usd) + ' créditos de packs</span>' : '') + (a.suscripcion ? '<br><span class="pa-muted" style="font-size:11.5px">Plan: ' + esc(a.suscripcion) + '</span>' : '') + '</td>' +
       '<td>' + (a.proyectos || 0) + '</td>' +
       '<td><div class="ea-acc">' +
       '<button class="pa-btn" data-a="ampliar">Acceso hasta…</button>' +
       '<button class="pa-btn" data-a="' + (a.cortado ? 'restaurar' : 'cortar') + '">' + (a.cortado ? 'Restaurar' : 'Cortar') + '</button>' +
-      '<button class="pa-btn" data-a="credito">+ Crédito este mes</button>' +
-      '<button class="pa-btn" data-a="mensual">Crédito mensual…</button>' +
+      '<button class="pa-btn" data-a="credito">+ Créditos este mes</button>' +
+      '<button class="pa-btn" data-a="mensual">Créditos al mes…</button>' +
       '</div></td></tr>';
   }
 
@@ -188,13 +214,14 @@
     if (a === 'cortar' || a === 'restaurar') return hacer(api({ action: 'admin_acceso', email: email, cortado: a === 'cortar' }));
     var actual = tr.querySelector('.ea-form'); if (actual) actual.remove();
     var campo = a === 'ampliar' ? '<input type="date" class="ea-v"> <span class="pa-muted" style="font-size:11.5px">vacío = el calculado por la compra</span>'
-      : '<input class="ea-v" inputmode="decimal" placeholder="$" style="width:80px"> ' + (a === 'mensual' ? '<span class="pa-muted" style="font-size:11.5px">vacío = el de la configuración</span>' : '<input class="ea-n" placeholder="Nota">');
+      : '<input class="ea-v" inputmode="numeric" placeholder="créditos" style="width:90px"> ' + (a === 'mensual' ? '<span class="pa-muted" style="font-size:11.5px">vacío = el de la configuración</span>' : '<input class="ea-n" placeholder="Nota">');
     b.parentNode.insertAdjacentHTML('afterend', '<div class="ea-form" style="margin-top:6px">' + campo + ' <button class="pa-btn primary ea-ok">Guardar</button></div>');
     tr.querySelector('.ea-ok').addEventListener('click', function () {
       var v = tr.querySelector('.ea-v').value;
       if (a === 'ampliar') return hacer(api({ action: 'admin_acceso', email: email, acceso_hasta: v || null }));
-      if (a === 'mensual') return hacer(api({ action: 'admin_acceso', email: email, credito_mensual_usd: v || null }));
-      return hacer(api({ action: 'admin_credito', email: email, usd: v, nota: (tr.querySelector('.ea-n') || {}).value }));
+      // En créditos; se guardan en $ de coste real (÷ 100)
+      if (a === 'mensual') return hacer(api({ action: 'admin_acceso', email: email, credito_mensual_usd: v ? (parseInt(v, 10) || 0) / 100 : null }));
+      return hacer(api({ action: 'admin_credito', email: email, usd: (parseInt(v, 10) || 0) / 100, nota: (tr.querySelector('.ea-n') || {}).value }));
     });
   });
 
@@ -206,7 +233,7 @@
 
   $('#cfGuardar').addEventListener('click', function () {
     var v = function (id) { return $(id).value.trim().replace(',', '.'); };
-    api({ action: 'admin_config', modelo: v('#cfModelo'), credito_mensual_usd: v('#cfCredito'), meses_tras_fin: v('#cfMeses'), max_llamadas_hora: v('#cfHora'),
+    api({ action: 'admin_config', modelo: v('#cfModelo'), credito_mensual_usd: (parseInt(v('#cfCredito'), 10) || 0) / 100, meses_tras_fin: v('#cfMeses'), max_llamadas_hora: v('#cfHora'),
       precio_entrada: v('#cfPe'), precio_salida: v('#cfPs'), precio_cache_escritura: v('#cfPw'), precio_cache_lectura: v('#cfPr'),
       max_mb: v('#cfMb'), max_paginas: v('#cfPag'), abierto_alumnos: $('#cfAbierto').checked })
       .then(function () { msg('#cfMsg', 'Guardado', true); return cargar(); }).catch(function (e) { msg('#cfMsg', e.message); });

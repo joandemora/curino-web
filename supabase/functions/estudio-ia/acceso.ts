@@ -44,10 +44,13 @@ export function puedeEntrar(e: EstadoAlumno | null, cfg: Any): { ok: boolean; mo
   return { ok: true };
 }
 
+/** 1 crédito = 0,01 $ de coste real de IA (la contabilidad interna va en $). */
+export const creditos = (usd: number) => Math.round((Number(usd) || 0) * 100);
+
 export function sinCredito(e: EstadoAlumno | null): string | null {
   if (!e) return null;
   if (e.gastado_usd >= e.credito_usd && e.saldo_usd <= 0) {
-    return `Has agotado el crédito de IA de este mes (${e.credito_usd.toFixed(2).replace('.', ',')} $). Se renueva el día 1; si lo necesitas antes, compra un pack en «Créditos y plan».`;
+    return `Has gastado los ${creditos(e.credito_usd)} créditos de este mes. Se renuevan el día 1; si los necesitas antes, compra un pack en «Créditos y plan».`;
   }
   return null;
 }
@@ -123,7 +126,8 @@ export async function accionYo(supa: Any, email: string, userId: string, esAdmin
     // Antiguo alumno sin acceso: puede entrar a «Créditos y plan» para suscribirse
     puede_suscribirse: !!e?.puede_suscribirse && (!!cfg?.abierto_alumnos || !!e?.concedido),
     alumno: e ? { nombre: e.nombre, productos: e.productos, acceso_hasta: e.acceso_hasta, suscripcion: e.suscripcion } : null,
-    credito: e ? { usd: e.credito_usd, gastado: Math.round(e.gastado_usd * 100) / 100, restante: Math.max(0, Math.round((e.credito_usd - e.gastado_usd) * 100) / 100), saldo: Math.round(e.saldo_usd * 100) / 100 } : null,
+    // En créditos (1 crédito = 0,01 $ de coste real)
+    credito: e ? { mes: creditos(e.credito_usd), gastados: creditos(e.gastado_usd), restantes: Math.max(0, creditos(e.credito_usd) - creditos(e.gastado_usd)), saldo: creditos(e.saldo_usd) } : null,
     faltan: esAdmin ? [] : faltanPlantilla(plantilla)
   });
 }
@@ -183,8 +187,10 @@ export async function accionAdminAcceso(action: string, supa: Any, userId: strin
     }
     if (typeof c.abierto_alumnos === 'boolean') fila.abierto_alumnos = c.abierto_alumnos;
     for (const [k, max] of [['plan_eur', 1000], ['plan_usd', 1000]] as const) { const v = num(c[k], 0, max); if (v !== null) fila[k] = v; }
+    const mult = num(c.multiplicador, 1, 100); if (mult !== null) fila.multiplicador = mult;
+    const cambio = num(c.eur_usd, 0.5, 2); if (cambio !== null) fila.eur_usd = cambio;
     if (Array.isArray(c.packs)) {
-      const packs = c.packs.slice(0, 6).map((p: Any, i: number) => ({ id: String(p?.id || `p${i + 1}`).replace(/[^\w-]/g, '').slice(0, 20) || `p${i + 1}`, eur: num(p?.eur, 1, 1000), usd: num(p?.usd, 0.5, 1000) }))
+      const packs = c.packs.slice(0, 6).map((p: Any, i: number) => ({ id: String(p?.id || `p${i + 1}`).replace(/[^\w-]/g, '').slice(0, 20) || `p${i + 1}`, eur: num(p?.eur, 1, 1000), usd: num(p?.usd, 0.01, 1000) }))
         .filter((p: Any) => p.eur !== null && p.usd !== null);
       fila.packs = packs;
     }
