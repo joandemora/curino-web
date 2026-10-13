@@ -447,14 +447,14 @@
     });
 
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
-    var estadoP = 'borrador', estadoAt = null;
+    var estadoP = 'borrador', estadoAt = null, estadoNota = null;
     var importado = null;
-    function cargar(d) { doc = d.presupuesto; importado = d.importado || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador'; estadoAt = d.estado_at; pintar(); }
+    function cargar(d) { doc = d.presupuesto; importado = d.importado || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador'; estadoAt = d.estado_at; estadoNota = d.estado_nota || null; pintar(); }
 
     function pintar() {
       if (!doc) {
         $('#prSub').textContent = importado ? 'Presupuesto importado del histórico' : versionActual ? 'Aún no hay presupuesto para este proyecto.' : 'El proyecto aún no tiene alzados.';
-        $('#prZona').innerHTML = '<div class="pr-card">' + (importado ? '<p>Presupuesto <b>' + esc(importado.numero || '') + '</b>' + (importado.importe != null ? ' · ' + esc(String(importado.importe).replace('.', ',')) + ' € sin IVA' : '') + '. El original está en «Documentos».</p>' : '') + (versionActual
+        $('#prZona').innerHTML = '<div class="pr-card">' + (importado ? '<p>Presupuesto <b>' + esc(importado.numero || '') + '</b>' + (importado.importe != null ? ' · ' + esc(String(importado.importe).replace('.', ',')) + ' € sin IVA' : '') + '. El original está en «Documentos».</p>' + '<p>Estado ' + selectEstado(pid, estadoP) + (estadoNota ? ' <small class="pr-nota">' + esc(estadoNota) + '</small>' : '') + '</p>' : '') + (versionActual
           ? '<p>Se crea una partida por armario de la versión v' + versionActual + ', con el precio de tu tarifa (o PENDIENTE) y los textos técnicos.</p><button class="pa-btn primary" id="prGenerar">Generar presupuesto desde v' + versionActual + '</button> <span id="prMsg" class="pr-msg"></span>'
           : '<p>Crea primero una versión de los alzados.</p>') + '</div>';
         return;
@@ -465,7 +465,7 @@
       var html = '<div class="pr-barra"><button class="pa-btn primary" id="prGuardar">Guardar</button><button class="pa-btn" id="prTextos">Redactar textos con IA</button>' +
         '<button class="pa-btn" id="prPdf">Descargar PDF</button><button class="pa-btn" id="prExcel">Descargar Excel</button>' +
         (doc.version !== versionActual ? '<button class="pa-btn" id="prGenerar">Actualizar a v' + versionActual + '</button>' : '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>') +
-        '<span class="pr-estado">Estado ' + selectEstado(pid, estadoP) + (estadoAt ? ' <small class="pa-muted">desde el ' + new Date(estadoAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '</small>' : '') + '</span>' +
+        '<span class="pr-estado">Estado ' + selectEstado(pid, estadoP) + (estadoAt ? ' <small class="pa-muted">desde el ' + new Date(estadoAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '</small>' : '') + (estadoNota ? ' <small class="pr-nota">' + esc(estadoNota) + '</small>' : '') + '</span>' +
         '<span id="prMsg" class="pr-msg"></span></div>';
       html += '<div class="pr-card pr-f"><div class="pr-cab">' + cab.map(function (c) {
         return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]]) + '"></div>';
@@ -528,7 +528,7 @@
     el.addEventListener('input', function () { if (doc) recalcular(); });
     el.addEventListener('change', function (e) {
       if (e.target.dataset && e.target.dataset.p === 'precio_manual') recalcular();
-      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { estadoP = e.target.value; estadoAt = new Date().toISOString(); aviso('Estado: ' + e.target.options[e.target.selectedIndex].text, 'ok'); });
+      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { estadoP = e.target.value; estadoAt = new Date().toISOString(); estadoNota = null; aviso('Estado: ' + e.target.options[e.target.selectedIndex].text, 'ok'); });
     });
 
     function guardar() { return api(ctx, { action: 'presupuesto_guardar', proyecto_id: pid, datos: leer() }).then(cargar); }
@@ -1047,6 +1047,13 @@
               '<span class="ng-imp">' + eur0(f.importe) + '</span>' + (admin ? '<span class="ng-tag ng-e-' + f.estado + '">' + f.estado + '</span>' : selectEstado(f.proyecto_id, f.estado)) + '</li>';
           }).join('') + '</ul>' : '<p class="pa-muted" style="margin:6px 0 0">' + (conDias ? 'Nada pendiente de respuesta.' : 'Aún no hay presupuestos.') + '</p>') + '</div>';
         };
+        // Seguimiento: enviados que pasarán solos a «rechazado» en los próximos 15 días
+        if (m.caducan && m.caducan.length) {
+          html += '<div class="ng-card ng-aviso"><h2>Caducan en los próximos 15 días</h2><p class="pa-muted" style="margin:2px 0 8px;font-size:12.5px">Un presupuesto enviado pasa a «rechazado» a los ' + (m.dias_caducidad || 90) + ' días sin respuesta. Haz seguimiento antes de perderlos.</p><ul class="ng-lista">' + m.caducan.map(function (f) {
+            return '<li><div><strong>' + esc(f.cliente || '—') + '</strong><small>' + (f.numero ? esc(f.numero) + ' · ' : '') + (f.quedan === 0 ? 'caduca hoy' : 'caduca en ' + f.quedan + (f.quedan === 1 ? ' día' : ' días')) + '</small></div>' +
+              '<span class="ng-imp">' + eur0(f.importe) + '</span>' + (admin ? '<span class="ng-tag ng-e-enviado">enviado</span>' : selectEstado(f.proyecto_id, f.estado)) + '</li>';
+          }).join('') + '</ul></div>';
+        }
         html += '<div class="ng-dos">' + lista('Pendientes de respuesta', m.pendientes, true) + lista('Últimos presupuestos', m.ultimos, false) + '</div>';
         if (admin && m.alumnos) {
           html += '<div class="ng-card"><h2>Por alumno</h2>' + (m.alumnos.length ? '<div style="overflow-x:auto"><table class="ng-tabla"><thead><tr><th>Alumno</th><th>Proyectos</th><th>Enviados</th><th>Presupuestado</th><th>Aceptados</th><th>Ventas</th><th>Cierre</th><th>Pendientes</th></tr></thead><tbody>' +
