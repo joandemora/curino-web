@@ -381,7 +381,7 @@
         var html = '';
         if (m.avisos.length) html += m.avisos.map(function (a) { return '<div class="eu-faltan">' + esc(a) + '</div>'; }).join('');
         html += '<div class="ng-kpis">' +
-          '<div class="ng-kpi fuerte"><span>Facturación</span><b>' + eurN(m.facturacion) + '</b><small>' + (m.origen_facturacion === 'facturas' ? 'facturas a cliente' : m.origen_facturacion === 'presupuesto' ? 'presupuesto aceptado' : 'sin IVA') + '</small></div>' +
+          '<div class="ng-kpi fuerte"><span>Facturación</span><b>' + eurN(m.facturacion) + '</b><small>' + (m.origen_facturacion === 'facturas' ? 'facturas a cliente (superan el presupuesto)' : m.origen_facturacion === 'presupuesto' ? 'presupuesto aceptado' : 'sin IVA') + '</small></div>' +
           '<div class="ng-kpi"><span>Costes</span><b>' + eurN(m.costes) + '</b><small>sin IVA</small></div>' +
           '<div class="ng-kpi"><span>Margen bruto</span><b class="' + (m.margen_pct !== null && m.margen_pct < 30 ? 'mt-rojo' : '') + '">' + eurN(m.margen) + '</b><small>' + pctTxt(m.margen_pct) + '</small></div>' +
           '<div class="ng-kpi"><span>Cobrado</span><b>' + eurN(m.cobros.cobrado) + '</b><small>de ' + eurN(m.cobros.total) + ' con IVA</small></div>' +
