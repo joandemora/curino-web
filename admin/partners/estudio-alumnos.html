@@ -134,7 +134,7 @@
     });
     var pe = parseFloat($('#pkPlanEur').value.replace(',', '.')), pc = parseInt($('#pkPlanCr').value, 10);
     if (pe > 0) filas.push(['Plan mensual', pe, pc]);
-    var pct = function (x) { return isFinite(x) ? Math.round(x * 1000) / 10 + ' %' : '—'; };
+    var pct = function (x) { return isFinite(x) ? String(Math.round(x * 1000) / 10).replace('.', ',') + ' %' : '—'; };
     $('#pkMargen').innerHTML = '<table class="ng-tabla"><thead><tr><th></th><th>Precio</th><th>Sin IVA</th><th>En $</th><th>Créditos sugeridos</th><th>Créditos</th><th>Coste real IA</th><th>Margen bruto</th></tr></thead><tbody>' +
       filas.map(function (f) {
         var sinIva = f[1] / 1.21, enUsd = sinIva * cambio, sug = enUsd / (0.01 * mult), coste = (f[2] || 0) * 0.01;
