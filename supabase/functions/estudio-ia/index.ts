@@ -35,6 +35,7 @@ import { accionPresupuesto, esAccionPresupuesto } from './presupuesto.ts'
 import { accionAdminAcceso, accionEnlace, accionYo, descontarSaldo, esAccionAdminAcceso, estadoAlumno, puedeEntrar, sinCredito } from './acceso.ts'
 import { accionTienda, accionSinAcceso, esAccionTienda } from './tienda.ts'
 import { accionNegocio, esAccionNegocio } from './negocio.ts'
+import { accionProyecto, esAccionProyecto, guardarDocumento, miniaturaSvg } from './proyecto.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -91,6 +92,7 @@ Deno.serve(async (req) => {
     }
     if (esAccionTienda(action)) return await accionTienda(action, { supa, userId, email, esAdmin, cfg, alumno, body, json });
     if (esAccionNegocio(action)) return await accionNegocio(action, { supa, userId, esAdmin, body, json });
+    if (esAccionProyecto(action)) return await accionProyecto(action, { supa, userId, esAdmin, cfg, clave, modelo, body, alumno, json });
     if (esAccionAdminAcceso(action)) {
       if (!esAdmin) return json({ error: 'forbidden' }, 403);
       return await accionAdminAcceso(action, supa, userId, body, json);
@@ -151,7 +153,7 @@ Deno.serve(async (req) => {
       const numero = proyecto.version_actual + 1;
       const { error } = await supa.from('estudio_versiones').insert({ proyecto_id: proyectoId, numero, datos, origen, nota });
       if (error) throw error;
-      await supa.from('estudio_proyectos').update({ version_actual: numero, updated_at: new Date().toISOString() }).eq('id', proyectoId);
+      await supa.from('estudio_proyectos').update({ version_actual: numero, updated_at: new Date().toISOString(), miniatura: miniaturaSvg(datos) }).eq('id', proyectoId);
       proyecto.version_actual = numero;
       return numero;
     };
@@ -275,6 +277,7 @@ Deno.serve(async (req) => {
       const titulo = `Alzados ${proyecto.nombre}${proyecto.referencia ? ' ' + proyecto.referencia : ''} v${v.numero}`;
       const pdf = await pdfProyecto(v.datos, titulo);
       const nombre = `Alzados_${(proyecto.referencia || proyecto.nombre).replace(/[^\w-]+/g, '_')}_v${v.numero}.pdf`;
+      await guardarDocumento(supa, { proyecto_id: proyectoId, user_id: proyecto.user_id, tipo: 'alzados_pdf', version: v.numero, nombre, bytes: pdf });
       return json({ version: v.numero, nombre, base64: base64(pdf) });
     }
 

@@ -13,6 +13,7 @@
 
 import { totales, type DocPresupuesto } from '../_shared/estudio/presupuesto.ts'
 import { madridAUtc } from '../_shared/crm-envio.ts'
+import { metricasProyecto } from '../_shared/estudio/metricas.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -75,6 +76,42 @@ export function metricas(proyectos: Any[], presupuestos: Any[], periodo: string,
   };
 }
 
+/**
+ * Facturación, coste y margen REALES de los proyectos del periodo (aceptados
+ * en el periodo o con facturas a cliente fechadas en él) + ranking por margen.
+ */
+async function reales(supa: Any, proyectos: Any[], presupuestos: Any[], periodo: string) {
+  const ids = proyectos.map((p) => p.id);
+  if (!ids.length) return { facturacion: 0, costes: 0, margen: null, margen_pct: null, ranking: [] };
+  const [f, c] = await Promise.all([
+    supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, proveedor').in('proyecto_id', ids).eq('subido', true),
+    supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
+  ]);
+  const desde = inicioPeriodo(periodo);
+  const en = (iso: string | null) => !!iso && (!desde || new Date(iso) >= desde);
+  const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  let fact = 0, cost = 0, conCostes = false;
+  const ranking: Any[] = [];
+  for (const p of proyectos) {
+    const pr = presupuestos.find((x) => x.proyecto_id === p.id) ?? null;
+    const fich = (f.data ?? []).filter((x: Any) => x.proyecto_id === p.id);
+    const cos = (c.data ?? []).filter((x: Any) => x.proyecto_id === p.id);
+    const facturasEnPeriodo = fich.some((x: Any) => x.tipo === 'factura_cliente' && en(x.fecha));
+    if (!(pr?.estado === 'aceptado' && en(pr.aceptado_at)) && !facturasEnPeriodo) continue;
+    const m = metricasProyecto({ presupuesto: pr, ficheros: fich, costes: cos, cobros: [], hoy });
+    if (!m.facturacion) continue;
+    fact += m.facturacion; cost += m.costes;
+    if (m.margen !== null) conCostes = true;
+    ranking.push({ proyecto_id: p.id, cliente: p.nombre, facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct });
+  }
+  ranking.sort((a, b) => (b.margen_pct ?? -1e9) - (a.margen_pct ?? -1e9));
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return {
+    facturacion: r2(fact), costes: r2(cost), margen: conCostes ? r2(fact - cost) : null,
+    margen_pct: conCostes && fact > 0 ? Math.round((1000 * (fact - cost)) / fact) / 10 : null, ranking
+  };
+}
+
 export async function accionNegocio(action: string, o: {
   supa: Any; userId: string; esAdmin: boolean; body: Any; json: (b: unknown, s?: number) => Response;
 }): Promise<Response> {
@@ -104,10 +141,10 @@ export async function accionNegocio(action: string, o: {
   }
 
   if (action === 'negocio') {
-    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, nombre, created_at').eq('user_id', userId);
+    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, nombre, created_at, user_id').eq('user_id', userId);
     const ids = (proyectos ?? []).map((p: Any) => p.id);
     const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
-    return json(metricas(proyectos ?? [], pres ?? [], periodo));
+    return json({ ...metricas(proyectos ?? [], pres ?? [], periodo), real: await reales(supa, proyectos ?? [], pres ?? [], periodo) });
   }
 
   if (action === 'admin_negocio') {
@@ -128,7 +165,9 @@ export async function accionNegocio(action: string, o: {
       return { email: email.get(uid) ?? uid, proyectos: m.proyectos, enviados: m.enviados, presupuestado: m.presupuestado, aceptados: m.aceptados, ventas: m.ventas, tasa_cierre: m.tasa_cierre, pendientes: m.pendientes.length };
     }).sort((a, b) => b.ventas - a.ventas || b.presupuestado - a.presupuestado);
     const total = metricas(proyectos, pres ?? [], periodo);
-    return json({ ...total, alumnos: filas, alumnos_con_actividad: filas.length });
+    const real = await reales(supa, proyectos, pres ?? [], periodo);
+    real.ranking = real.ranking.map((r: Any) => ({ ...r, alumno: email.get(proyectos.find((p: Any) => p.id === r.proyecto_id)?.user_id) ?? '' }));
+    return json({ ...total, real, alumnos: filas, alumnos_con_actividad: filas.length });
   }
   return json({ error: 'accion_desconocida' }, 400);
 }

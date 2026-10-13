@@ -32,6 +32,7 @@ import {
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos } from '../_shared/estudio/ia.ts'
 import { descontarSaldo, type EstadoAlumno } from './acceso.ts'
+import { guardarDocumento } from './proyecto.ts'
 import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/inter.ts'
 import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensans.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
@@ -308,7 +309,9 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     pdf.setTitle(`Presupuesto ${doc.numero || proyecto.nombre}`);
     pdf.setCreator('Estudio Curino');
     const nombre = `Presupuesto_${(doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_')}.pdf`;
-    return json({ nombre, base64: ctx.base64(await pdf.save()) });
+    const bytes = await pdf.save();
+    await guardarDocumento(supa, { proyecto_id: proyectoId, user_id: proyecto.user_id, tipo: 'presupuesto_pdf', version: doc.version, numero: doc.numero || null, nombre, bytes });
+    return json({ nombre, base64: ctx.base64(bytes) });
   }
 
   return json({ error: 'accion_desconocida' }, 400);

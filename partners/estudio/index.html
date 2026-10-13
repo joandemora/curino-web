@@ -75,7 +75,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   var main = $('#euMain');
 
   var rutas = {
-    estudio: function (pid) { return '#proyectos' + (pid ? '/' + pid : ''); },
+    estudio: function (pid, tab) { return '#proyectos' + (pid ? '/' + pid + (tab && tab !== 'diseno' ? '/' + tab : '') : ''); },
     creditos: function () { return '#creditos'; },
     presupuesto: function (pid) { return '#presupuesto/' + pid; },
     datos: function () { return '#datos'; },
@@ -84,7 +84,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   var ctx = function () {
     return {
       supa: supa, modo: 'alumno', rutas: rutas,
-      alAbrir: function (pid) { history.replaceState(null, '', rutas.estudio(pid)); },
+      alAbrir: function () {},
       alCambiar: refrescarYo
     };
   };
@@ -166,7 +166,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
     main.innerHTML = aviso + '<div id="euVista"></div>';
     var v = $('#euVista');
     if (t === 'presupuesto' && id) {
-      v.insertAdjacentHTML('beforebegin', '<p><a href="' + rutas.estudio(id) + '">← Volver al proyecto</a></p>');
+      v.insertAdjacentHTML('beforebegin', '<p><a href="' + rutas.estudio(id) + '">← Volver al proyecto</a> · <a href="' + rutas.estudio(id, 'documentos') + '">Documentos</a></p>');
       EstudioUI.presupuesto(v, ctx(), id);
     } else if (t === 'datos') {
       v.className = 'tf-grid'; EstudioUI.plantilla(v, ctx());
@@ -176,7 +176,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
       if (soloPlan) v.insertAdjacentHTML('beforebegin', '<div class="eu-aviso">Tu acceso incluido en el curso ha terminado. Con el plan mensual sigues usando el Estudio con tus proyectos y datos.</div>');
       EstudioUI.creditos(v, ctx(), { ok: id === 'ok' });
     } else if (t === 'proyectos') {
-      EstudioUI.proyectos(v, ctx(), id);
+      EstudioUI.proyectos(v, ctx(), id, partes[2]);
     } else {
       EstudioUI.negocio(v, ctx());
     }
