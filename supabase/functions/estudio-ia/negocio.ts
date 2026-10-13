@@ -39,7 +39,7 @@ function importeDe(p: Any, iva: number): number | null {
   return t.pendientes ? null : t.importe;
 }
 
-export function metricas(proyectos: Any[], presupuestos: Any[], periodo: string, iva = 21) {
+export function metricas(proyectos: Any[], presupuestos: Any[], periodo: string, iva = 21, diasCaducidad = 90) {
   const desde = inicioPeriodo(periodo);
   const en = (iso: string | null) => !!iso && (!desde || new Date(iso) >= desde);
   const nombre = new Map(proyectos.map((p) => [p.id, p.nombre]));
@@ -59,7 +59,7 @@ export function metricas(proyectos: Any[], presupuestos: Any[], periodo: string,
   }));
   const fila = (p: Any) => ({
     proyecto_id: p.proyecto_id, cliente: nombre.get(p.proyecto_id) ?? '', numero: p.datos?.numero || '',
-    estado: p.estado, importe: importeDe(p, iva), fecha: p.estado_at || p.updated_at || p.created_at, enviado_at: p.enviado_at
+    estado: p.estado, estado_nota: p.estado_nota ?? null, importe: importeDe(p, iva), fecha: p.estado_at || p.updated_at || p.created_at, enviado_at: p.enviado_at
   });
   return {
     periodo,
@@ -70,6 +70,12 @@ export function metricas(proyectos: Any[], presupuestos: Any[], periodo: string,
     ventas,
     tasa_cierre: enviados.length ? Math.round((1000 * aceptados.length) / enviados.length) / 10 : null,
     ticket_medio: aceptados.length ? Math.round((100 * ventas) / aceptados.length) / 100 : null,
+    // Enviados que pasarán a «rechazado» en los próximos 15 días (seguimiento)
+    caducan: presupuestos.filter((p) => p.estado === 'enviado').map((p) => {
+      const ref = new Date(p.estado_at || p.enviado_at).getTime();
+      return { ...fila(p), quedan: diasCaducidad - Math.floor((hoy - ref) / 86_400_000) };
+    }).filter((x) => x.quedan >= 0 && x.quedan <= 15).sort((a, b) => a.quedan - b.quedan),
+    dias_caducidad: diasCaducidad,
     pendientes: presupuestos.filter((p) => p.estado === 'enviado').map((p) => ({ ...fila(p), dias: Math.floor((hoy - new Date(p.enviado_at).getTime()) / 86_400_000) }))
       .sort((a, b) => b.dias - a.dias),
     serie,
@@ -118,7 +124,9 @@ export async function accionNegocio(action: string, o: {
 }): Promise<Response> {
   const { supa, userId, esAdmin, body, json } = o;
   const periodo = ['mes', 'trimestre', 'anio', 'todo'].includes(body?.periodo) ? body.periodo : 'mes';
-  const campos = 'proyecto_id, estado, estado_at, enviado_at, aceptado_at, rechazado_at, importe, pvp, created_at, updated_at, datos';
+  const campos = 'proyecto_id, estado, estado_nota, estado_at, enviado_at, aceptado_at, rechazado_at, importe, pvp, created_at, updated_at, datos';
+  const { data: cfgC } = await supa.from('estudio_config').select('dias_caducidad').eq('id', 1).maybeSingle();
+  const dias = Number(cfgC?.dias_caducidad ?? 90);
 
   if (action === 'presupuesto_estado') {
     const pid = String(body?.proyecto_id || '');
@@ -129,7 +137,8 @@ export async function accionNegocio(action: string, o: {
     const { data: p } = await supa.from('estudio_presupuestos').select('enviado_at').eq('proyecto_id', pid).maybeSingle();
     if (!p) return json({ error: 'Genera primero el presupuesto.' }, 400);
     const ahora = new Date().toISOString();
-    const fila: Any = { estado, estado_at: ahora };
+    // Cambio manual: se borra la nota automática; si vuelve a «enviado», los días cuentan desde ahora
+    const fila: Any = { estado, estado_at: ahora, estado_nota: null };
     if (estado === 'borrador') Object.assign(fila, { enviado_at: null, aceptado_at: null, rechazado_at: null });
     else {
       fila.enviado_at = p.enviado_at || ahora;
@@ -145,7 +154,7 @@ export async function accionNegocio(action: string, o: {
     const { data: proyectos } = await supa.from('estudio_proyectos').select('id, nombre, created_at, user_id').eq('user_id', userId);
     const ids = (proyectos ?? []).map((p: Any) => p.id);
     const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
-    return json({ ...metricas(proyectos ?? [], pres ?? [], periodo), real: await reales(supa, proyectos ?? [], pres ?? [], periodo) });
+    return json({ ...metricas(proyectos ?? [], pres ?? [], periodo, 21, dias), real: await reales(supa, proyectos ?? [], pres ?? [], periodo) });
   }
 
   if (action === 'admin_negocio') {
@@ -168,7 +177,7 @@ export async function accionNegocio(action: string, o: {
       const m = metricas(ps, (pres ?? []).filter((x: Any) => pids.has(x.proyecto_id)), periodo);
       return { email: email.get(uid) ?? uid, proyectos: m.proyectos, enviados: m.enviados, presupuestado: m.presupuestado, aceptados: m.aceptados, ventas: m.ventas, tasa_cierre: m.tasa_cierre, pendientes: m.pendientes.length };
     }).sort((a, b) => b.ventas - a.ventas || b.presupuestado - a.presupuestado);
-    const total = metricas(proyectos, pres ?? [], periodo);
+    const total = metricas(proyectos, pres ?? [], periodo, 21, dias);
     const real = await reales(supa, proyectos, pres ?? [], periodo);
     real.ranking = real.ranking.map((r: Any) => ({ ...r, alumno: email.get(proyectos.find((p: Any) => p.id === r.proyecto_id)?.user_id) ?? '' }));
     return json({ ...total, real, alumnos: filas, alumnos_con_actividad: filas.length });

@@ -204,7 +204,7 @@ export async function accionAdminAcceso(action: string, supa: Any, userId: strin
     for (const [k, max] of [['precio_entrada', 1000], ['precio_salida', 1000], ['precio_cache_escritura', 1000], ['precio_cache_lectura', 1000], ['credito_mensual_usd', 1000]] as const) {
       const v = num(c[k], 0, max); if (v !== null) fila[k] = v;
     }
-    for (const [k, min, max] of [['meses_tras_fin', 0, 60], ['max_llamadas_hora', 1, 500], ['max_mb', 1, 50], ['max_paginas', 1, 50], ['almacenamiento_mb', 10, 102400]] as const) {
+    for (const [k, min, max] of [['meses_tras_fin', 0, 60], ['max_llamadas_hora', 1, 500], ['max_mb', 1, 50], ['max_paginas', 1, 50], ['almacenamiento_mb', 10, 102400], ['dias_caducidad', 7, 365]] as const) {
       const v = num(c[k], min, max); if (v !== null) fila[k] = Math.round(v);
     }
     if (typeof c.abierto_alumnos === 'boolean') fila.abierto_alumnos = c.abierto_alumnos;
