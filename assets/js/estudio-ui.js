@@ -56,23 +56,28 @@
 
   function proyectos(el, ctx, pid, tab) {
     if (pid) return fichaProyecto(el, ctx, pid, tab || 'diseno');
-    var lista = [], q = '', estado = '', orden = 'fecha';
+    var lista = [], q = '', estado = '', orden = 'num';
     el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>Proyectos</h1><div class="pj-filtros">' +
       '<input type="search" id="pjBuscar" placeholder="Buscar cliente o referencia">' +
       '<select id="pjEstado"><option value="">Todos los estados</option><option value="sin">Sin presupuesto</option>' + Object.keys(EST_NOMBRE).map(function (k) { return '<option value="' + k + '">' + EST_NOMBRE[k] + '</option>'; }).join('') + '</select>' +
-      '<select id="pjOrden"><option value="fecha">Más recientes</option><option value="importe">Mayor importe</option><option value="margen">Mayor margen</option></select></div></div>' +
+      '<select id="pjOrden"><option value="num">N.º (más reciente arriba)</option><option value="num_asc">N.º (del 01 en adelante)</option><option value="fecha">Últimos modificados</option><option value="importe">Mayor importe</option><option value="margen">Mayor margen</option></select></div></div>' +
       '<div class="pj-grid" id="pjGrid"><p class="pa-muted">Cargando…</p></div></div>';
     function pintar() {
       var f = lista.filter(function (p) {
         var txt = (p.nombre + ' ' + (p.referencia || '') + ' ' + (p.numero || '')).toLowerCase();
         return (!q || txt.indexOf(q) >= 0) && (!estado || (estado === 'sin' ? !p.estado : p.estado === estado));
       }).sort(function (a, b) {
+        // Sin n.º (OLD, Proveedores…) siempre al final
+        if (orden === 'num' || orden === 'num_asc') {
+          if (a.num == null || b.num == null) return (a.num == null) - (b.num == null) || a.nombre.localeCompare(b.nombre);
+          return orden === 'num' ? b.num - a.num : a.num - b.num;
+        }
         if (orden === 'importe') return (b.importe || 0) - (a.importe || 0);
         if (orden === 'margen') return (b.margen_pct === null ? -1e9 : b.margen_pct) - (a.margen_pct === null ? -1e9 : a.margen_pct);
         return String(b.actualizado).localeCompare(String(a.actualizado));
       });
       var nueva = '<form class="pj-card pj-nueva" id="pjNueva" autocomplete="off"><div class="pj-mas">+</div><strong>Nuevo proyecto</strong>' +
-        '<input id="pjNombre" placeholder="Cliente o proyecto" maxlength="80" required><input id="pjRef" placeholder="Referencia (opcional)" maxlength="40"><button class="pa-btn primary" type="submit">Crear</button></form>';
+        '<input id="pjNombre" placeholder="Nombre del proyecto (el n.º se pone solo)" maxlength="80" required><input id="pjRef" placeholder="Referencia (opcional)" maxlength="40"><button class="pa-btn primary" type="submit">Crear</button></form>';
       document.getElementById('pjGrid').innerHTML = nueva + f.map(function (p) {
         var m = p.margen_pct;
         return '<a class="pj-card" href="' + ctx.rutas.estudio(p.id) + '" data-id="' + p.id + '">' +
