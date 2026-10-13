@@ -297,12 +297,15 @@ const HERRAMIENTA_FACTURA = {
   }
 };
 
-export async function leerFactura(o: { clave: string; modelo: string; adjunto: Adjunto; fetch?: typeof fetch }):
+export async function leerFactura(o: { clave: string; modelo: string; adjunto: Adjunto; paginas?: Adjunto[]; fetch?: typeof fetch }):
   Promise<{ datos: Record<string, unknown> | null; llamadas: Llamada[]; error?: string }> {
   const f = o.fetch ?? fetch;
-  const bloque = o.adjunto.tipo === 'application/pdf'
-    ? { type: 'document', source: { type: 'base64', media_type: o.adjunto.tipo, data: o.adjunto.base64 } }
-    : { type: 'image', source: { type: 'base64', media_type: o.adjunto.tipo, data: o.adjunto.base64 } };
+  const aBloque = (a: Adjunto) => a.tipo === 'application/pdf'
+    ? { type: 'document', source: { type: 'base64', media_type: a.tipo, data: a.base64 } }
+    : { type: 'image', source: { type: 'base64', media_type: a.tipo, data: a.base64 } };
+  // Varias páginas (imágenes) de un mismo documento: todas en un único mensaje
+  const bloques = (o.paginas?.length ? o.paginas : [o.adjunto]).map(aBloque);
+  const pista = o.paginas?.length ? ` Son las ${o.paginas.length} páginas de un mismo documento. Si es una hoja de costes de un proveedor, el importe es el total del coste (base sin IVA).` : '';
   const r = await f('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': o.clave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
@@ -310,7 +313,7 @@ export async function leerFactura(o: { clave: string; modelo: string; adjunto: A
       model: o.modelo, max_tokens: 600,
       system: 'Lees facturas, presupuestos y tickets de un taller de carpintería en España. Extrae emisor, fecha e importes en euros. Responde siempre con la herramienta datos_factura.',
       tools: [HERRAMIENTA_FACTURA],
-      messages: [{ role: 'user', content: [bloque, { type: 'text', text: `Archivo: ${o.adjunto.nombre}. Extrae los datos.` }] }]
+      messages: [{ role: 'user', content: [...bloques, { type: 'text', text: `Archivo: ${o.adjunto.nombre}. Extrae los datos.${pista}` }] }]
     })
   });
   const d = await r.json().catch(() => ({}));
