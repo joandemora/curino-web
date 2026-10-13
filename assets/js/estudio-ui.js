@@ -270,7 +270,7 @@
   }
 
   // ── Archivos propios ──
-  var TIPO_F = { factura_proveedor: 'Factura de proveedor', presupuesto_proveedor: 'Presupuesto de proveedor', factura_cliente: 'Factura a cliente', foto_obra: 'Foto de obra', otro: 'Otro' };
+  var TIPO_F = { factura_proveedor: 'Factura de proveedor', presupuesto_proveedor: 'Presupuesto de proveedor', factura_cliente: 'Factura a cliente', foto_obra: 'Foto de obra', plano: 'Plano o medidas', otro: 'Otro' };
   function archivosProyecto(el, ctx, pid) {
     var supa = ctx.supa;
     el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Archivos</h2><span class="pa-muted" id="arUso" style="font-size:12px"></span></div>' +
@@ -440,12 +440,13 @@
 
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
     var estadoP = 'borrador', estadoAt = null;
-    function cargar(d) { doc = d.presupuesto; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador'; estadoAt = d.estado_at; pintar(); }
+    var importado = null;
+    function cargar(d) { doc = d.presupuesto; importado = d.importado || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador'; estadoAt = d.estado_at; pintar(); }
 
     function pintar() {
       if (!doc) {
-        $('#prSub').textContent = versionActual ? 'Aún no hay presupuesto para este proyecto.' : 'El proyecto aún no tiene alzados.';
-        $('#prZona').innerHTML = '<div class="pr-card">' + (versionActual
+        $('#prSub').textContent = importado ? 'Presupuesto importado del histórico' : versionActual ? 'Aún no hay presupuesto para este proyecto.' : 'El proyecto aún no tiene alzados.';
+        $('#prZona').innerHTML = '<div class="pr-card">' + (importado ? '<p>Presupuesto <b>' + esc(importado.numero || '') + '</b>' + (importado.importe != null ? ' · ' + esc(String(importado.importe).replace('.', ',')) + ' € sin IVA' : '') + '. El original está en «Documentos».</p>' : '') + (versionActual
           ? '<p>Se crea una partida por armario de la versión v' + versionActual + ', con el precio de tu tarifa (o PENDIENTE) y los textos técnicos.</p><button class="pa-btn primary" id="prGenerar">Generar presupuesto desde v' + versionActual + '</button> <span id="prMsg" class="pr-msg"></span>'
           : '<p>Crea primero una versión de los alzados.</p>') + '</div>';
         return;
