@@ -20,8 +20,24 @@ export const CATEGORIAS: Record<string, string> = {
   transporte: 'Transporte', montaje: 'Montaje', otros: 'Otros', comision: 'Comisión interiorista'
 };
 export const MARGEN_MINIMO = 30;
+/** Tipos de coste iniciales (cada usuario edita su lista en Tarifa). */
+export const TIPOS_COSTE_DEF = ['Tablero/material', 'Herrajes', 'Fabricación/taller', 'Lacado/barniz', 'Montaje', 'Transporte', 'Subcontrata', 'Otros'];
+export const COMISION_TIPO = 'Comisión interiorista';
 
-export interface Fichero { tipo: string; base: number | null; total: number | null; fecha: string | null; proveedor?: string | null }
+export interface Fichero {
+  id?: string; tipo: string; base: number | null; total: number | null; fecha: string | null; proveedor?: string | null;
+  tipo_coste?: string | null; sustituido_por?: string | null; concepto?: string | null; nombre?: string | null;
+}
+
+/**
+ * Documentos que cuentan como coste (reglas nuevas, costes_v2): facturas de
+ * proveedor y presupuestos de proveedor que ninguna factura sustituye. Los
+ * presupuestos de proveedor solo cuentan si el proyecto tiene algún
+ * presupuesto aceptado; si no, su suma es «coste previsto» (no cuenta).
+ */
+export const documentosCoste = (fs: Fichero[], aceptado = true) => fs.filter((f) => f.tipo === 'factura_proveedor' || (aceptado && f.tipo === 'presupuesto_proveedor' && !f.sustituido_por));
+/** Sin importe: vacío o 0 € (reglas nuevas); vacío (reglas de antes). */
+const sinImporte = (f: Fichero, v2: boolean) => f.base === null || f.base === undefined || (v2 && Number(f.base) === 0);
 export interface Coste { categoria: string; importe: number; fecha: string | null; concepto?: string | null }
 export interface Cobro { id?: string; concepto: string; pct: number | null; importe: number; fecha_prevista: string | null; cobrado: boolean; fecha_cobro: string | null }
 
@@ -40,12 +56,23 @@ export function cobrosPorDefecto(formaPago: { concepto: string; pct: number }[],
   });
 }
 
+/**
+ * v2 (costes desde documentos): costes = documentos de coste con importe, por
+ * tipo de coste; los costes manuales ya no cuentan (se migraron a documentos).
+ * Sin v2: reglas de antes (facturas de proveedor + costes manuales).
+ */
 export function metricasProyecto(o: {
   presupuesto: { estado: string; importe: number | null; aceptado_at: string | null; comision_importe?: number | null } | null;
-  ficheros: Fichero[]; costes: Coste[]; cobros: Cobro[]; hoy: string;
+  ficheros: Fichero[]; costes: Coste[]; cobros: Cobro[]; hoy: string; v2?: boolean;
 }) {
+  const v2 = !!o.v2;
   const facturasCliente = o.ficheros.filter((f) => f.tipo === 'factura_cliente');
   const facturasProv = o.ficheros.filter((f) => f.tipo === 'factura_proveedor');
+  const esAceptado = o.presupuesto?.estado === 'aceptado';
+  const docsCoste = v2 ? documentosCoste(o.ficheros, esAceptado) : facturasProv;
+  // Proyecto sin aceptar: presupuestos de proveedor no sustituidos = coste previsto (aparte, no cuenta)
+  const costePrevisto = v2 && !esAceptado ? suma(o.ficheros.filter((f) => f.tipo === 'presupuesto_proveedor' && !f.sustituido_por && !sinImporte(f, true)).map((f) => Number(f.base))) : 0;
+  const costesManuales = v2 ? [] : o.costes;
   const aceptado = o.presupuesto?.estado === 'aceptado' ? Number(o.presupuesto.importe ?? 0) : 0;
   const baseFacturas = suma(facturasCliente.map((f) => Number(f.base ?? 0)));
   const porFacturas = baseFacturas > aceptado;
@@ -54,13 +81,18 @@ export function metricasProyecto(o: {
 
   const porCategoria: Record<string, number> = {};
   const add = (k: string, v: number) => { porCategoria[k] = r2((porCategoria[k] ?? 0) + (Number(v) || 0)); };
-  facturasProv.forEach((f) => add('proveedores', Number(f.base ?? 0)));
-  o.costes.forEach((c) => add(CATEGORIAS[c.categoria] ? c.categoria : 'otros', c.importe));
+  const porTipo: Record<string, number> = {};
+  const addTipo = (k: string, v: number) => { porTipo[k] = r2((porTipo[k] ?? 0) + (Number(v) || 0)); };
+  docsCoste.forEach((f) => { if (!sinImporte(f, v2)) { add('proveedores', Number(f.base)); addTipo(f.tipo_coste || 'Otros', Number(f.base)); } });
+  costesManuales.forEach((c) => { add(CATEGORIAS[c.categoria] ? c.categoria : 'otros', c.importe); addTipo(CATEGORIAS[c.categoria] ?? 'Otros', c.importe); });
   // Comisión del interiorista (cliente paga el PVP): coste automático del presupuesto aceptado
   const comision = o.presupuesto?.estado === 'aceptado' ? Number(o.presupuesto.comision_importe ?? 0) : 0;
-  if (comision > 0) add('comision', comision);
+  if (comision > 0) { add('comision', comision); addTipo(COMISION_TIPO, comision); }
   const costes = suma(Object.values(porCategoria));
-  const hayCostes = facturasProv.length + o.costes.length > 0 || comision > 0;
+  // v2: el margen solo se calcula si algún coste tiene importe (si todos están sin importe, «—», como sin costes)
+  const hayCostes = v2 ? docsCoste.some((f) => !sinImporte(f, true)) || comision > 0 : docsCoste.length + costesManuales.length > 0 || comision > 0;
+  // Margen fiable: con facturación, algún coste y ningún coste sin importe
+  const nSinImporte = docsCoste.filter((f) => sinImporte(f, v2)).length;
   const margen = hayCostes ? r2(facturacion - costes) : null;
   const margenPct = hayCostes && facturacion > 0 ? Math.round((1000 * (facturacion - costes)) / facturacion) / 10 : null;
 
@@ -85,8 +117,13 @@ export function metricasProyecto(o: {
   if (vencidos.length) avisos.push(`${vencidos.length === 1 ? 'Hay 1 cobro vencido' : `Hay ${vencidos.length} cobros vencidos`} (${vencidos.map((v) => `${v.concepto}, hace ${v.dias} días`).join('; ')}).`);
   if (!facturacion && o.presupuesto?.estado !== 'aceptado') avisos.push('Aún no hay facturación: marca el presupuesto como aceptado o sube la factura al cliente.');
 
+  // (como el ranking de «Mi negocio»: la comisión sola no hace fiable un margen)
+  const hayCostesDocs = docsCoste.length + costesManuales.length > 0;
+  const motivo = !facturacion ? 'sin facturación' : !hayCostesDocs ? 'sin costes' : nSinImporte ? (nSinImporte === 1 ? '1 coste sin importe' : `${nSinImporte} costes sin importe`) : null;
   return {
     facturacion, origen_facturacion: origen, costes, costes_por_categoria: Object.entries(porCategoria).map(([k, v]) => ({ categoria: k, nombre: CATEGORIAS[k], importe: v })),
+    costes_por_tipo: Object.entries(porTipo).map(([tipo, importe]) => ({ tipo, importe })).sort((a, b) => b.importe - a.importe),
+    costes_sin_importe: nSinImporte, hay_costes: hayCostes, fiable: motivo === null, motivo, coste_previsto: costePrevisto,
     margen, margen_pct: margenPct,
     cobros: { total: totalCobros, cobrado, pendiente: Math.max(0, r2(totalCobros - cobrado)), facturado_cliente: totalFacturas, vencidos },
     eventos, avisos
