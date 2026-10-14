@@ -409,10 +409,11 @@ Deno.serve(async (req) => {
     if (action === 'diseno_borrar') {
       if (!diseno) return json({ error: 'Falta el diseño' }, 400);
       const [{ data: docs }, { data: arch }] = await Promise.all([
-        supa.from('estudio_documentos').select('path').eq('diseno_id', diseno.id),
+        supa.from('estudio_documentos').select('path, miniatura_path').eq('diseno_id', diseno.id),
         supa.from('estudio_archivos').select('path').eq('diseno_id', diseno.id)
       ]);
-      const paths = [...(docs ?? []), ...(arch ?? [])].map((x) => x.path);
+      // deno-lint-ignore no-explicit-any
+      const paths = [...(docs ?? []).flatMap((x: any) => [x.path, x.miniatura_path]), ...(arch ?? []).map((x) => x.path)].filter(Boolean);
       if (paths.length) await supa.storage.from('estudio').remove(paths);
       await supa.from('estudio_archivos').delete().eq('diseno_id', diseno.id);
       await supa.from('estudio_disenos').delete().eq('id', diseno.id);
