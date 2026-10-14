@@ -1,8 +1,10 @@
 // supabase/functions/estudio-ia/negocio.ts
 //
 // Estudio Curino · «Mi negocio» (F5).
-//   'presupuesto_estado' { proyecto_id, estado } → borrador / enviado / aceptado / rechazado
-//                         (con su fecha; volver a borrador las borra).
+//   'presupuesto_estado' { proyecto_id, presupuesto_id?, estado, montaje_previsto? } → borrador /
+//                         enviado / aceptado / rechazado (con su fecha; volver a borrador las borra).
+//                         Varios aceptados por proyecto: aceptar uno no rechaza los demás; cada
+//                         aceptado pide su fecha prevista de montaje.
 //   'negocio'       { periodo: 'mes'|'trimestre'|'anio'|'todo' } → métricas del usuario.
 //   'admin_negocio' { periodo } (admin) → las mismas, agregadas, + una fila por alumno.
 // Métricas: proyectos creados, presupuestos enviados e importe presupuestado
@@ -14,6 +16,7 @@
 import { totales, type DocPresupuesto } from '../_shared/estudio/presupuesto.ts'
 import { madridAUtc } from '../_shared/crm-envio.ts'
 import { metricasProyecto } from '../_shared/estudio/metricas.ts'
+import { relevantes, agregadosPorProyecto } from '../_shared/estudio/aceptados.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -104,12 +107,15 @@ async function reales(supa: Any, proyectos: Any[], presupuestos: Any[], periodo:
   const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
   let fact = 0, cost = 0, nAceptados = 0;
   const ranking: Any[] = [], incompletos: Any[] = [];
+  // Varios aceptados por proyecto: se suman (agregado); un aceptado entra si alguno es del periodo
+  const agg = agregadosPorProyecto(presupuestos);
+  const aceptadoEnPeriodo = (pid: string) => presupuestos.some((x) => x.proyecto_id === pid && x.estado === 'aceptado' && en(x.aceptado_at));
   for (const p of proyectos) {
-    const pr = presupuestos.find((x) => x.proyecto_id === p.id) ?? null;
+    const pr = agg.get(p.id) ?? null;
     const fich = (f.data ?? []).filter((x: Any) => x.proyecto_id === p.id);
     const cos = (c.data ?? []).filter((x: Any) => x.proyecto_id === p.id);
     const facturasEnPeriodo = fich.some((x: Any) => x.tipo === 'factura_cliente' && en(x.fecha));
-    if (!(pr?.estado === 'aceptado' && en(pr.aceptado_at)) && !facturasEnPeriodo) continue;
+    if (!(pr?.estado === 'aceptado' && aceptadoEnPeriodo(p.id)) && !facturasEnPeriodo) continue;
     nAceptados++;
     const m = metricasProyecto({ presupuesto: pr, ficheros: fich, costes: cos, cobros: [], hoy });
     // Margen fiable: con facturación, algún coste y ningún coste sin importe
@@ -147,9 +153,15 @@ async function extras(supa: Any, proyectos: Any[], presupuestos: Any[], serie: A
   const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
   const porMes = new Map<string, { f: number; c: number }>();
   const calendario: Any[] = [];
+  const agg = agregadosPorProyecto(presupuestos);
   for (const p of proyectos) {
-    const pr = presupuestos.find((x) => x.proyecto_id === p.id);
-    if (pr?.estado !== 'aceptado') continue;
+    const pr = agg.get(p.id);
+    if (pr?.estado !== 'aceptado') {
+      // Sin aceptado pero con montaje en el proyecto (datos de antes): sigue en el calendario
+      if (p.montaje_previsto || p.montado) calendario.push({ id: p.id, presupuesto_id: null, numero: p.numero ?? null, presupuesto: null, nombre: p.nombre, importe: null,
+        montaje_previsto: p.montaje_previsto ?? null, montado: !!p.montado, montado_at: p.montado_at ?? null, montaje_nota: p.montaje_nota ?? null, cobro: 'pendiente', pendiente: null });
+      continue;
+    }
     const m = metricasProyecto({
       presupuesto: pr, hoy,
       ficheros: (f.data ?? []).filter((x: Any) => x.proyecto_id === p.id),
@@ -162,11 +174,15 @@ async function extras(supa: Any, proyectos: Any[], presupuestos: Any[], serie: A
       const k = mesClave(pr.aceptado_at), a = porMes.get(k) ?? { f: 0, c: 0 };
       a.f += m.facturacion; a.c += m.costes; porMes.set(k, a);
     }
-    calendario.push({
-      id: p.id, numero: p.numero ?? null, nombre: p.nombre, importe: m.facturacion,
-      montaje_previsto: p.montaje_previsto ?? null, montado: !!p.montado, montado_at: p.montado_at ?? null, montaje_nota: p.montaje_nota ?? null,
-      cobro: m.cobros.total > 0 && m.cobros.pendiente <= 0.5 ? 'cobrado' : 'pendiente', pendiente: m.cobros.pendiente
-    });
+    // Una entrada por presupuesto aceptado, con su montaje
+    const cobro = m.cobros.total > 0 && m.cobros.pendiente <= 0.5 ? 'cobrado' : 'pendiente';
+    for (const x of presupuestos.filter((q) => q.proyecto_id === p.id && q.estado === 'aceptado')) {
+      calendario.push({
+        id: p.id, presupuesto_id: x.id, numero: p.numero ?? null, presupuesto: x.numero || x.datos?.numero || null, nombre: p.nombre, importe: x.importe ?? null,
+        montaje_previsto: x.montaje_previsto ?? null, montado: !!x.montado, montado_at: x.montado_at ?? null, montaje_nota: x.montaje_nota ?? null,
+        cobro, pendiente: m.cobros.pendiente
+      });
+    }
   }
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return {
@@ -180,7 +196,7 @@ export async function accionNegocio(action: string, o: {
 }): Promise<Response> {
   const { supa, userId, esAdmin, body, json } = o;
   const periodo = ['mes', 'trimestre', 'anio', 'todo'].includes(body?.periodo) ? body.periodo : 'mes';
-  const campos = 'proyecto_id, estado, estado_nota, estado_at, enviado_at, aceptado_at, rechazado_at, importe, pvp, comision_importe, created_at, updated_at, datos';
+  const campos = 'id, numero, proyecto_id, estado, estado_nota, estado_at, enviado_at, aceptado_at, rechazado_at, importe, pvp, comision_importe, created_at, updated_at, datos, montaje_previsto, montado, montado_at, montaje_nota';
   const { data: cfgC } = await supa.from('estudio_config').select('dias_caducidad').eq('id', 1).maybeSingle();
   const dias = Number(cfgC?.dias_caducidad ?? 90);
 
@@ -188,35 +204,24 @@ export async function accionNegocio(action: string, o: {
     const pid = String(body?.proyecto_id || '');
     const estado = String(body?.estado || '');
     if (!UUID.test(pid) || !ESTADOS.includes(estado as typeof ESTADOS[number])) return json({ error: 'Estado no válido' }, 400);
-    const { data: pr } = await supa.from('estudio_proyectos').select('user_id, montaje_previsto, montado').eq('id', pid).maybeSingle();
+    const { data: pr } = await supa.from('estudio_proyectos').select('user_id').eq('id', pid).maybeSingle();
     if (!pr || (pr.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
-    // Al aceptar, la fecha prevista de montaje es obligatoria (si el proyecto no la tiene ya)
-    if (estado === 'aceptado' && !pr.montaje_previsto && !pr.montado) {
-      const fm = String(body?.montaje_previsto || '');
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(fm) || isNaN(Date.parse(fm))) return json({ error: 'Indica la fecha prevista de montaje para aceptar el presupuesto.', falta_montaje: true }, 400);
-      const u = await supa.from('estudio_proyectos').update({ montaje_previsto: fm }).eq('id', pid);
-      if (u.error) throw u.error;
-    }
     // Varios presupuestos por proyecto: el indicado o, si no, el principal
     const prid = String(body?.presupuesto_id || '');
+    const sel = 'id, proyecto_id, enviado_at, numero, estado, montaje_previsto, montado';
     const { data: p } = UUID.test(prid)
-      ? await supa.from('estudio_presupuestos').select('id, proyecto_id, enviado_at, numero, estado').eq('id', prid).eq('proyecto_id', pid).maybeSingle()
-      : await supa.from('estudio_presupuesto_principal').select('id, proyecto_id, enviado_at, numero, estado').eq('proyecto_id', pid).maybeSingle();
+      ? await supa.from('estudio_presupuestos').select(sel).eq('id', prid).eq('proyecto_id', pid).maybeSingle()
+      : await supa.from('estudio_presupuesto_principal').select(sel).eq('proyecto_id', pid).maybeSingle();
     if (!p) return json({ error: 'Genera primero el presupuesto.' }, 400);
-    // Solo uno aceptado: el que lo estaba pasa a «rechazado» (sustituido); sin cobros cobrados, los plazos se rehacen
-    if (estado === 'aceptado' && p.estado !== 'aceptado') {
-      const { data: otro } = await supa.from('estudio_presupuestos').select('id').eq('proyecto_id', pid).eq('estado', 'aceptado').neq('id', p.id).maybeSingle();
-      if (otro) {
-        const ah = new Date().toISOString();
-        const u = await supa.from('estudio_presupuestos').update({ estado: 'rechazado', estado_at: ah, rechazado_at: ah, aceptado_at: null, estado_nota: `Sustituido por ${p.numero || 'otro presupuesto'}` }).eq('id', otro.id);
-        if (u.error) throw u.error;
-        const { count } = await supa.from('estudio_cobros').select('id', { count: 'exact', head: true }).eq('proyecto_id', pid).eq('cobrado', true);
-        if (!count) await supa.from('estudio_cobros').delete().eq('proyecto_id', pid);
-      }
-    }
     const ahora = new Date().toISOString();
     // Cambio manual: se borra la nota automática; si vuelve a «enviado», los días cuentan desde ahora
     const fila: Any = { estado, estado_at: ahora, estado_nota: null };
+    // Cada aceptado lleva su fecha prevista de montaje (obligatoria si no la tiene). Aceptar uno no rechaza los demás.
+    if (estado === 'aceptado' && !p.montaje_previsto && !p.montado) {
+      const fm = String(body?.montaje_previsto || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fm) || isNaN(Date.parse(fm))) return json({ error: `Indica la fecha prevista de montaje de ${p.numero || 'este presupuesto'} para aceptarlo.`, falta_montaje: true }, 400);
+      fila.montaje_previsto = fm;
+    }
     if (estado === 'borrador') Object.assign(fila, { enviado_at: null, aceptado_at: null, rechazado_at: null });
     else {
       fila.enviado_at = p.enviado_at || ahora;
@@ -231,8 +236,9 @@ export async function accionNegocio(action: string, o: {
   if (action === 'negocio') {
     const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, created_at, user_id, montaje_previsto, montado, montado_at, montaje_nota').eq('user_id', userId);
     const ids = (proyectos ?? []).map((p: Any) => p.id);
-    const { data: pres } = ids.length ? await supa.from('estudio_presupuesto_principal').select(campos).in('proyecto_id', ids) : { data: [] };
-    const base = metricas(proyectos ?? [], pres ?? [], periodo, 21, dias);
+    // Todos los presupuestos: métricas de envío con los «relevantes» (aceptados o, si no hay, el último), margen y calendario con todos los aceptados
+    const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
+    const base = metricas(proyectos ?? [], relevantes(pres ?? []), periodo, 21, dias);
     const ex = await extras(supa, proyectos ?? [], pres ?? [], base.serie);
     return json({ ...base, serie: ex.serie, calendario: ex.calendario, real: await reales(supa, proyectos ?? [], pres ?? [], periodo) });
   }
@@ -247,7 +253,8 @@ export async function accionNegocio(action: string, o: {
     const { data: todos } = await supa.from('estudio_proyectos').select('id, user_id, nombre, created_at');
     const proyectos = (todos ?? []).filter((p: Any) => !fuera.has(p.user_id));   // sin los proyectos de admin
     const ids = proyectos.map((p: Any) => p.id);
-    const { data: pres } = ids.length ? await supa.from('estudio_presupuesto_principal').select(campos).in('proyecto_id', ids) : { data: [] };
+    const { data: pres0 } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
+    const pres = relevantes(pres0 ?? []);
     const { data: alumnos } = await supa.rpc('estudio_alumnos', { p_email: null });
     const email = new Map((alumnos ?? []).filter((a: Any) => a.user_id).map((a: Any) => [a.user_id, a.email]));
     const porUsuario = new Map<string, Any[]>();
@@ -257,8 +264,8 @@ export async function accionNegocio(action: string, o: {
       const m = metricas(ps, (pres ?? []).filter((x: Any) => pids.has(x.proyecto_id)), periodo);
       return { email: email.get(uid) ?? uid, proyectos: m.proyectos, enviados: m.enviados, presupuestado: m.presupuestado, aceptados: m.aceptados, ventas: m.ventas, tasa_cierre: m.tasa_cierre, pendientes: m.pendientes.length };
     }).sort((a, b) => b.ventas - a.ventas || b.presupuestado - a.presupuestado);
-    const total = metricas(proyectos, pres ?? [], periodo, 21, dias);
-    const real = await reales(supa, proyectos, pres ?? [], periodo);
+    const total = metricas(proyectos, pres, periodo, 21, dias);
+    const real = await reales(supa, proyectos, pres, periodo);
     real.ranking = real.ranking.map((r: Any) => ({ ...r, alumno: email.get(proyectos.find((p: Any) => p.id === r.proyecto_id)?.user_id) ?? '' }));
     real.incompletos = real.incompletos.map((r: Any) => ({ ...r, alumno: email.get(proyectos.find((p: Any) => p.id === r.proyecto_id)?.user_id) ?? '' }));
     return json({ ...total, real, alumnos: filas, alumnos_con_actividad: filas.length });

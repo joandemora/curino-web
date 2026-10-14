@@ -14,7 +14,8 @@
 //   'presupuestos'         { proyecto_id } → lista + siguiente n.º Z + versiones y documentos para la base.
 //   'presupuesto_nuevo'    { proyecto_id, numero?, base: { tipo: 'versiones', versiones: [{ numero, armarios }] }
 //                          | { tipo: 'documentos', documentos: [{ tabla: 'doc'|'fichero', id }] } | { tipo: 'blanco' } }
-//   'presupuesto_duplicar' { presupuesto_id } → copia con Z…-B, -C…
+//   'presupuesto_duplicar' { presupuesto_id } → copia con la siguiente letra del proyecto (Z…-B, -C…, -AA…)
+//   'presupuesto_fusionar' { proyecto_id, ids[] } → nuevo con todas las partidas de 2+ presupuestos (los originales no se tocan)
 //   'presupuesto'          { presupuesto_id } → el presupuesto (o null si es del histórico).
 //   'presupuesto_generar'  { presupuesto_id } → recalcula con la tarifa desde cada versión.
 //   'presupuesto_guardar'  { presupuesto_id, datos } → cabecera, comisión y partidas (también libres).
@@ -41,6 +42,7 @@ import { guardarDocumento } from './proyecto.ts'
 import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/inter.ts'
 import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensans.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
+import { numeroEnProyecto, partirNumero, incrementarSerie } from '../_shared/estudio/aceptados.ts'
 import { ENTRADAS_MODULO, puntosBaseCocina, revisarCocina, claveEncimera, claveTablero } from '../_shared/estudio/cocina-puntos.ts'
 import { PROVEEDOR_COCINA, FECHA_TARIFA_COCINA, FECHAS_HOJAS, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA, SERVICIO_COCINA, ALTOS_PUERTA, ANCHOS_PUERTA, GRUPOS_PUERTA, REVISAR_COCINA } from '../_shared/estudio/cocina-tarifa.ts'
 
@@ -53,7 +55,7 @@ export interface Ctx {
 }
 
 const ACCIONES = new Set(['tarifa', 'tarifa_guardar', 'tarifa_cocina', 'tarifa_cocina_guardar', 'plantilla', 'plantilla_guardar', 'plantilla_subida',
-  'presupuesto_borrar', 'presupuesto_asistente', 'presupuesto_vista', 'presupuestos', 'presupuesto_nuevo', 'presupuesto_duplicar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
+  'presupuesto_borrar', 'presupuesto_asistente', 'presupuesto_vista', 'presupuestos', 'presupuesto_nuevo', 'presupuesto_duplicar', 'presupuesto_fusionar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
 export const esAccionPresupuesto = (a: string) => ACCIONES.has(a);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,6 +65,19 @@ const numOrNull = (v: unknown, min: number, max: number): number | null => {
   const n = Number(String(v).replace(',', '.'));
   return Number.isFinite(n) && n >= min && n <= max ? Math.round(n * 100) / 100 : null;
 };
+
+/** Siguiente n.º Z de un usuario (el mayor + 1 entre todos sus presupuestos); vacío si no usa ese formato. */
+async function siguienteZUsuario(supa: Any, userId: string): Promise<string> {
+  const { data: ps } = await supa.from('estudio_proyectos').select('id').eq('user_id', userId);
+  const ids = (ps ?? []).map((x: Any) => x.id);
+  const { data: ns } = ids.length ? await supa.from('estudio_presupuestos').select('numero').in('proyecto_id', ids) : { data: [] };
+  let max = 0, ancho = 0;
+  for (const x of ns ?? []) {
+    const m = String(x.numero || '').match(/^z(\d{3,})/i);
+    if (m && Number(m[1]) > max) { max = Number(m[1]); ancho = m[1].length; }
+  }
+  return max ? 'Z' + String(max + 1).padStart(ancho, '0') : '';
+}
 
 async function cargarTarifa(supa: Any, userId: string | null): Promise<Tarifa & { id?: string; propia: boolean }> {
   const curino = (await supa.from('estudio_tarifas').select('*').is('user_id', null).maybeSingle()).data;
@@ -154,6 +169,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json({
       de: deCurino ? 'curino' : 'mia', propia: t.propia, conceptos: CONCEPTOS,
       tarifa: { valores: t.valores, descuento_pct: t.descuento_pct, iva_pct: t.iva_pct, precio_punto: t.precio_punto, puntos: t.puntos },
+      // Serie de n.º de presupuesto (solo en «Mi tarifa»): la guardada o, si no, la que se usaría (siguiente Z)
+      serie: deCurino ? null : { guardada: (await supa.from('estudio_tarifas').select('serie_presupuesto').eq('user_id', userId).maybeSingle()).data?.serie_presupuesto ?? null, auto: await siguienteZUsuario(supa, userId) },
       puntos: { version: VERSION_PUNTOS, base: puntosBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES, puertas: PUERTAS, herrajes: HERRAJES }
     });
   }
@@ -170,6 +187,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     }
     const fila = { valores, descuento_pct: numOrNull(body?.descuento_pct, 0, 100) ?? 0, iva_pct: numOrNull(body?.iva_pct, 0, 100) ?? 21,
       precio_punto: numOrNull(body?.precio_punto, 0, 10000), puntos: cambiados, updated_at: new Date().toISOString() };
+    if (!deCurino && body?.serie_presupuesto !== undefined) {
+      const serie = txt(body.serie_presupuesto, 20).toUpperCase();
+      if (serie && !/^[A-Z]{0,4}\d{1,12}$/.test(serie)) return json({ error: 'La serie de presupuestos es un prefijo de letras y un número, p. ej. Z2606964.' }, 400);
+      (fila as Any).serie_presupuesto = serie || null;
+    }
     let r;
     if (deCurino) r = await supa.from('estudio_tarifas').update(fila).is('user_id', null);
     else {
@@ -285,7 +307,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', proyectoId).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
   // Sin id: el principal del proyecto (el aceptado o el último modificado)
-  if (!fila && !['presupuestos', 'presupuesto_nuevo', 'presupuesto_asistente', 'presupuesto_borrar'].includes(action)) {
+  if (!fila && !['presupuestos', 'presupuesto_nuevo', 'presupuesto_asistente', 'presupuesto_borrar', 'presupuesto_fusionar'].includes(action)) {
     fila = (await supa.from('estudio_presupuesto_principal').select('*').eq('proyecto_id', proyectoId).maybeSingle()).data;
   }
   const duenoAdmin = await emisorCurinoDe(supa, proyecto.user_id);
@@ -311,6 +333,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const r = await supa.from('estudio_presupuestos').insert({ proyecto_id: proyectoId, datos: d, estado: 'borrador', estado_at: new Date().toISOString(), ...camposImporte(d) }).select('*').single();
     if (r.error) throw r.error;
     fila = r.data;
+    // Si el n.º usa la serie de la tarifa del usuario, la serie avanza (el siguiente proyecto toma el siguiente)
+    const { data: t } = await supa.from('estudio_tarifas').select('id, serie_presupuesto').eq('user_id', proyecto.user_id).maybeSingle();
+    if (t?.serie_presupuesto && d.numero && partirNumero(d.numero).base.toUpperCase() === String(t.serie_presupuesto).toUpperCase()) {
+      await supa.from('estudio_tarifas').update({ serie_presupuesto: incrementarSerie(t.serie_presupuesto) }).eq('id', t.id);
+    }
   };
   const versionDatos = async (n: number) => (await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).eq('numero', n).maybeSingle()).data as { numero: number; datos: Proyecto } | null;
   const respuesta = (d: DocPresupuesto | null) => ({
@@ -326,18 +353,25 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     cliente_nif: proyecto.cliente_nif || '', direccion_facturacion: proyecto.cliente_direccion || '',
     proyecto: 'MOBILIARIO A MEDIDA', proyecto_2: proyecto.obra_direccion || '', validez: '30 DÍAS', seccion: ''
   });
-  /** Siguiente n.º Z del usuario (el mayor + 1); vacío si no usa ese formato. */
-  const siguienteZ = async () => {
-    const { data: ps } = await supa.from('estudio_proyectos').select('id').eq('user_id', proyecto.user_id);
-    const ids = (ps ?? []).map((x: Any) => x.id);
-    const { data: ns } = ids.length ? await supa.from('estudio_presupuestos').select('numero').in('proyecto_id', ids) : { data: [] };
-    let max = 0, ancho = 0;
-    for (const x of ns ?? []) {
-      const m = String(x.numero || '').match(/^z(\d{3,})/i);
-      if (m && Number(m[1]) > max) { max = Number(m[1]); ancho = m[1].length; }
+  /**
+   * N.º para un presupuesto nuevo del proyecto: la base de los suyos y la
+   * siguiente letra (Z…-B, -C…); en un proyecto sin presupuestos, la serie de la
+   * tarifa del usuario (o el siguiente Z) con «-A».
+   */
+  const numeroSugerido = async () => {
+    const { data: ns } = await supa.from('estudio_presupuestos').select('numero, dn:datos->>numero').eq('proyecto_id', proyectoId).order('created_at');
+    const numeros = (ns ?? []).map((x: Any) => x.numero || x.dn || '').filter(Boolean);
+    let base = '';
+    if (!numeros.length) {
+      const { data: t } = await supa.from('estudio_tarifas').select('serie_presupuesto').eq('user_id', proyecto.user_id).maybeSingle();
+      base = t?.serie_presupuesto || await siguienteZ();
+      if (!base) return '';
     }
-    return max ? 'Z' + String(max + 1).padStart(ancho, '0') : '';
+    return numeroEnProyecto(numeros, base).numero;
   };
+  /** Siguiente n.º Z del usuario (el mayor + 1); vacío si no usa ese formato. */
+  const siguienteZ = () => siguienteZUsuario(supa, proyecto.user_id);
+
 
   if (action === 'presupuesto_borrar') {
     if (!fila) return json({ error: 'Presupuesto no encontrado' }, 404);
@@ -361,7 +395,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       supa.from('estudio_disenos').select('id, nombre, guardado, version_actual, miniatura').eq('proyecto_id', proyectoId).gt('version_actual', 0).order('updated_at', { ascending: false }),
       supa.from('estudio_documentos').select('id, tipo, nombre').eq('proyecto_id', proyectoId).in('tipo', ['alzados_pdf', 'presupuesto_pdf']).is('diseno_id', null).order('created_at', { ascending: false }),
       supa.from('estudio_ficheros').select('id, tipo, nombre, mime').eq('proyecto_id', proyectoId).eq('subido', true).order('created_at', { ascending: false }),
-      siguienteZ()
+      numeroSugerido()
     ]);
     const nums = (dis ?? []).map((d: Any) => d.version_actual);
     const { data: vers } = nums.length ? await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).in('numero', nums) : { data: [] };
@@ -393,7 +427,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         importe: x.importe, pvp: x.pvp, estado: x.estado, estado_nota: x.estado_nota, importado: !!x.datos?.importado,
         comision: x.datos?.comision?.activa ? x.datos.comision : null, partidas: x.datos?.partidas?.length ?? 0, actualizado: x.updated_at
       })),
-      siguiente: await siguienteZ(),
+      siguiente: await numeroSugerido(),
       versiones: (vers ?? []).map((v: Any) => ({ numero: v.numero, armarios: [...(v.datos?.armarios ?? []), ...(v.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) })),
       // Diseños (los documentos de tipo «Diseño»): partidas con su dibujo desde su versión actual
       disenos: (dis ?? []).map((d: Any) => {
@@ -479,15 +513,41 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
 
   if (action === 'presupuesto_duplicar') {
     if (!doc) return json({ error: 'Los presupuestos importados no se pueden duplicar: crea uno nuevo.' }, 400);
-    const base = String(fila.numero || doc.numero || 'PRESUPUESTO').replace(/-[A-Z]$/i, '');
-    const { data: ns } = await supa.from('estudio_presupuestos').select('numero').eq('proyecto_id', proyectoId);
-    const usados = new Set((ns ?? []).map((x: Any) => String(x.numero || '').toUpperCase()));
-    let numero = base;
-    for (const l of 'BCDEFGHIJKLMNOPQRSTUVWXYZ') { if (!usados.has(`${base}-${l}`.toUpperCase())) { numero = `${base}-${l}`; break; } }
+    const numero = (await numeroSugerido()) || `${fila.numero || doc.numero || 'PRESUPUESTO'}-B`;
     const copia: DocPresupuesto = JSON.parse(JSON.stringify(doc));
     copia.numero = numero; copia.fecha = hoy;
     await crear(copia);
     return json(respuesta(copia));
+  }
+
+  if (action === 'presupuesto_fusionar') {
+    // Dos o más presupuestos del proyecto → uno nuevo (borrador) con todas sus partidas, en orden. Los originales no se tocan.
+    const ids = Array.isArray(body?.ids) ? [...new Set(body.ids.map(String))].filter((x) => UUID.test(x as string)).slice(0, 10) : [];
+    if (ids.length < 2) return json({ error: 'Elige al menos dos presupuestos para fusionar.' }, 400);
+    const { data: filas } = await supa.from('estudio_presupuestos').select('id, numero, datos, created_at').eq('proyecto_id', proyectoId).in('id', ids);
+    const orden = ids.map((id) => (filas ?? []).find((f: Any) => f.id === id)).filter(Boolean);
+    if (orden.length !== ids.length) return json({ error: 'Algún presupuesto no es de este proyecto.' }, 400);
+    const historicos = orden.filter((f: Any) => !f.datos || f.datos.importado).map((f: Any) => f.numero || '—');
+    if (historicos.length) return json({ error: `Los presupuestos del histórico (solo n.º e importe) no se pueden fusionar: ${historicos.join(', ')}.` }, 400);
+    const primero: DocPresupuesto = JSON.parse(JSON.stringify(orden[0].datos));
+    const claves = new Set<string>(), versiones = new Set<number>();
+    const partidas: Partida[] = [];
+    for (const f of orden) {
+      const d = f.datos as DocPresupuesto;
+      for (const v of d.versiones ?? [d.version]) if (v) versiones.add(v);
+      for (const p0 of d.partidas) {
+        const p: Partida = JSON.parse(JSON.stringify(p0));
+        // La misma partida en dos presupuestos: se mantiene, con clave propia
+        let k = claveDe(p), n = 2;
+        while (claves.has(k)) k = `${claveDe(p0)}#${n++}`;
+        if (k !== claveDe(p0)) p.clave = k;
+        claves.add(k); partidas.push(p);
+      }
+    }
+    const numero = (await numeroSugerido()) || `${orden[0].numero || 'PRESUPUESTO'}-F`;
+    const nuevo: DocPresupuesto = { ...primero, numero, fecha: hoy, versiones: [...versiones], partidas };
+    await crear(nuevo);
+    return json({ ...respuesta(nuevo), fusionados: orden.map((f: Any) => f.numero || '') });
   }
 
   if (!doc) return json({ error: 'Este presupuesto es del histórico (solo n.º e importe): crea uno nuevo para editarlo.' }, 400);

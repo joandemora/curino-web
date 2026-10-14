@@ -25,6 +25,7 @@ import { costeUsd, leerFactura } from '../_shared/estudio/ia.ts'
 import { PLANTILLA_ADMIN, PLANTILLA_ALUMNO, type Plantilla } from '../_shared/estudio/presupuesto.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
 import { descontarSaldo, sinCredito, type EstadoAlumno } from './acceso.ts'
+import { agregado, agregadosPorProyecto } from '../_shared/estudio/aceptados.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -79,12 +80,13 @@ async function usoAlmacenamiento(supa: Any, userId: string): Promise<number> {
 
 async function datosProyecto(supa: Any, pid: string) {
   const [pres, fich, cost, cob] = await Promise.all([
-    supa.from('estudio_presupuesto_principal').select('estado, importe, aceptado_at, datos, comision_importe').eq('proyecto_id', pid).maybeSingle(),
+    supa.from('estudio_presupuestos').select('id, numero, estado, importe, pvp, aceptado_at, updated_at, datos, comision_importe, montaje_previsto, montado, montado_at').eq('proyecto_id', pid),
     supa.from('estudio_ficheros').select('id, tipo, base, iva, total, fecha, proveedor').eq('proyecto_id', pid),
     supa.from('estudio_costes').select('id, categoria, concepto, fecha, importe, created_at').eq('proyecto_id', pid).order('fecha', { nullsFirst: false }),
     supa.from('estudio_cobros').select('*').eq('proyecto_id', pid).order('orden')
   ]);
-  return { pres: pres.data, ficheros: fich.data ?? [], costes: cost.data ?? [], cobros: cob.data ?? [] };
+  // Varios aceptados: se suman (facturación, comisión); sin aceptados, el último
+  return { pres: agregado(pres.data ?? []), todos: pres.data ?? [], ficheros: fich.data ?? [], costes: cost.data ?? [], cobros: cob.data ?? [] };
 }
 
 async function plantillaDe(supa: Any, userId: string): Promise<Plantilla> {
@@ -130,12 +132,13 @@ export async function accionProyecto(action: string, ctx: {
     const ids = lista.map((p: Any) => p.id);
     const vacio = { data: [] };
     const [pres, fich, cost] = ids.length ? await Promise.all([
-      supa.from('estudio_presupuesto_principal').select('proyecto_id, estado, importe, aceptado_at, updated_at, datos, comision_importe').in('proyecto_id', ids),
+      supa.from('estudio_presupuestos').select('proyecto_id, numero, estado, importe, pvp, aceptado_at, updated_at, datos, comision_importe').in('proyecto_id', ids),
       supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha').in('proyecto_id', ids),
       supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
     ]) : [vacio, vacio, vacio];
     const hoy = hoyMadrid();
     const out = [];
+    const agg = agregadosPorProyecto(pres.data ?? []);
     for (const p of lista) {
       // Miniatura perezosa: si falta y hay versión, se genera y se guarda
       if (!p.miniatura && p.version_actual) {
@@ -143,7 +146,7 @@ export async function accionProyecto(action: string, ctx: {
         const svg = v ? miniaturaSvg(v.datos) : null;
         if (svg) { p.miniatura = svg; await supa.from('estudio_proyectos').update({ miniatura: svg }).eq('id', p.id); }
       }
-      const pr = (pres.data ?? []).find((x: Any) => x.proyecto_id === p.id) ?? null;
+      const pr = agg.get(p.id) ?? null;
       const m = metricasProyecto({
         presupuesto: pr, hoy, cobros: [],
         ficheros: (fich.data ?? []).filter((x: Any) => x.proyecto_id === p.id), costes: (cost.data ?? []).filter((x: Any) => x.proyecto_id === p.id)
@@ -151,7 +154,7 @@ export async function accionProyecto(action: string, ctx: {
       const ultima = [p.updated_at, pr?.updated_at].filter(Boolean).sort().pop();
       out.push({
         id: p.id, num: p.numero ?? null, nombre: p.nombre, referencia: p.referencia, version: p.version_actual, miniatura: p.miniatura || null,
-        estado: pr?.estado ?? null, numero: pr?.datos?.numero || null, importe: pr?.importe ?? null,
+        estado: pr?.estado ?? null, numero: pr?.numero || pr?.datos?.numero || null, importe: pr?.importe ?? null, aceptados: pr?.aceptados ?? (pr?.estado === 'aceptado' ? 1 : 0),
         facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct, actualizado: ultima
       });
     }
@@ -343,15 +346,25 @@ export async function accionProyecto(action: string, ctx: {
     return json({ ok: true });
   }
   if (action === 'proyecto_montaje') {
-    // Fecha prevista de montaje y montado (sí/no + fecha real)
+    // Fecha prevista de montaje y montado (sí/no + fecha real): de un presupuesto aceptado (presupuesto_id) o, sin él, del proyecto
+    const prid = String(body?.presupuesto_id || '');
+    let pre: Any = null;
+    if (prid) {
+      if (!UUID.test(prid)) return json({ error: 'Presupuesto no válido' }, 400);
+      pre = (await supa.from('estudio_presupuestos').select('id, montaje_nota').eq('id', prid).eq('proyecto_id', pid).maybeSingle()).data;
+      if (!pre) return json({ error: 'Presupuesto no encontrado' }, 404);
+    }
     const fila: Any = {};
     if (body?.montaje_previsto !== undefined) fila.montaje_previsto = fecha(body.montaje_previsto);
     if (body?.montado !== undefined) {
       fila.montado = body.montado === true;
       fila.montado_at = fila.montado ? (fecha(body.montado_at) || null) : null;
-      fila.montaje_nota = fila.montado ? (proyecto.montaje_nota && !body.montado_at ? proyecto.montaje_nota : null) : null;
+      const nota = (pre ?? proyecto).montaje_nota;
+      fila.montaje_nota = fila.montado ? (nota && !body.montado_at ? nota : null) : null;
     } else if (body?.montado_at !== undefined) { fila.montado_at = fecha(body.montado_at); if (fila.montado_at) fila.montaje_nota = null; }
-    const r = await supa.from('estudio_proyectos').update(fila).eq('id', pid).select('montaje_previsto, montado, montado_at, montaje_nota').single();
+    const r = pre
+      ? await supa.from('estudio_presupuestos').update(fila).eq('id', pre.id).select('id, numero, montaje_previsto, montado, montado_at, montaje_nota').single()
+      : await supa.from('estudio_proyectos').update(fila).eq('id', pid).select('montaje_previsto, montado, montado_at, montaje_nota').single();
     if (r.error) throw r.error;
     return json({ ok: true, ...r.data });
   }
