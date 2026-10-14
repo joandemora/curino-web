@@ -15,7 +15,7 @@
 import { LOGO_ALTO, LOGO_ANCHO } from './logo.ts';
 import {
   type Armario, type Cuerpo, type Frente, type PiezaFrente, type Proyecto, type Zona, type Formato,
-  repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta
+  repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, fmtMm
 } from './esquema.ts';
 
 // ── Primitivas ──────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ export interface Lamina {
   alto: number;    // pt
   prims: Prim[];
   inicioDibujo: number;  // prims[0..inicioDibujo) = cabecera y pie; el resto, el dibujo
+  pagina?: number;       // 2 = página extra del armario (sección / planta que no caben en la primera)
 }
 
 /** Caja (pt) que ocupa una lista de primitivas. */
@@ -133,7 +134,14 @@ export const ESTILO = {
   cruz_alto: 1.2,
   zocalo_frente_margen: 1.8,
   suelo_texto_dx: 4,
-  suelo_texto_dy: 6
+  suelo_texto_dy: 6,
+  // sección y planta (cm de dibujo)
+  trasera: 1,
+  zocalo_retranqueo: 4,
+  corredera_holgura: 0.5,   // entre los dos planos de puertas correderas
+  planta_cota: 12.5,        // cotas de la planta, separadas del mueble
+  planta_simbolo: 8,        // flechas de coplanar / corredera delante de la puerta
+  vistas_minimo: 0.85       // sección / planta en la misma página si la escala no baja de esto
 } as const;
 
 const PAGINA: Record<Formato, {
@@ -219,25 +227,127 @@ export function ladosTirador(piezas: PiezaFrente[]): (('izq' | 'der') | null)[] 
   return out;
 }
 
-// ── Lámina ──────────────────────────────────────────────────────────
-export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
-  return p.armarios.map((a) => laminaArmario(a, p, medir));
+// ── Sección y planta: geometría ─────────────────────────────────────
+/** Fondo del cuerpo sin puertas (D) y grosor de puerta (gp). Correderas: dos planos de puertas. */
+export function fondosCuerpo(c: Cuerpo): { D: number; gp: number } {
+  const gp = c.grosor ?? GROSOR_DEF;
+  const D = c.frente.apertura === 'corredera' ? c.fondo - 2 * gp - ESTILO.corredera_holgura : c.fondo - gp;
+  return { D, gp };
 }
 
-export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox): Lamina {
+/** Módulos con el mismo interior comparten sección: [[0, 2], [1]]. */
+export function gruposSeccion(c: Cuerpo): number[][] {
+  const grupos = new Map<string, number[]>();
+  c.modulos.forEach((m, i) => {
+    const k = JSON.stringify(m.interior);
+    grupos.set(k, [...(grupos.get(k) ?? []), i]);
+  });
+  return [...grupos.values()];
+}
+
+type V2 = [number, number];
+export interface CuerpoPlanta { c: Cuerpo; o: V2; u: V2; v: V2; D: number; gp: number; lado: 'izq' | 'der' }
+/**
+ * Colocación en planta (cm; y hacia la habitación). El primer cuerpo va con la
+ * trasera en y = 0; «linea» sigue al anterior alineado por detrás; las esquinas
+ * se apoyan en los extremos de la fila principal (cuerpo 0 + los que van en
+ * línea tras él): giradas 90°, arrancando en su frente y enrasadas por fuera.
+ * `lado`: dónde va la cota de fondo (el extremo libre del cuerpo).
+ */
+export function geometriaPlanta(a: Armario): { cuerpos: CuerpoPlanta[]; caja: { x0: number; y0: number; x1: number; y1: number } } {
+  const out: CuerpoPlanta[] = [];
+  const mas = (p: V2, k: number, d: V2): V2 => [p[0] + k * d[0], p[1] + k * d[1]];
+  const neg = (d: V2): V2 => [-d[0] || 0, -d[1] || 0];
+  let finFila = 0;
+  a.cuerpos.forEach((c, i) => {
+    const col = i === 0 ? 'linea' : c.colocacion ?? 'linea';
+    const { D, gp } = fondosCuerpo(c);
+    if (i === 0) { out.push({ c, o: [0, 0], u: [1, 0], v: [0, 1], D, gp, lado: 'izq' }); return; }
+    if (col === 'linea') {
+      const prev = out[i - 1];
+      if (finFila === i - 1) finFila = i;
+      out.push({ c, o: mas(prev.o, prev.c.ancho, prev.u), u: prev.u, v: prev.v, D, gp, lado: 'der' });
+    } else if (col === 'esquina_der') {
+      const ref = out[finFila];
+      out.push({ c, o: mas(mas(ref.o, ref.c.ancho, ref.u), ref.c.fondo, ref.v), u: ref.v, v: neg(ref.u), D, gp, lado: 'der' });
+    } else {
+      const ref = out[0];
+      out.push({ c, o: mas(ref.o, ref.c.fondo + c.ancho, ref.v), u: neg(ref.v), v: ref.u, D, gp, lado: 'izq' });
+    }
+  });
+  // Caja: cuerpos, barrido de puertas y cotas
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const pt = (q: CuerpoPlanta, uu: number, vv: number) => {
+    const p = mas(mas(q.o, uu, q.u), vv, q.v);
+    x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+  };
+  const E = ESTILO;
+  for (const q of out) {
+    const { c } = q;
+    pt(q, 0, -E.planta_cota - 6); pt(q, c.ancho, -E.planta_cota - 6);
+    pt(q, q.lado === 'izq' ? -E.planta_cota - 6 : c.ancho + E.planta_cota + 6, 0);
+    const giro = c.frente.apertura === 'abatible' || c.frente.apertura === 'escamoteable';
+    const maxPuerta = Math.max(0, ...c.frente.piezas.filter((p) => p.tipo === 'puerta').map((p) => p.ancho));
+    pt(q, 0, c.fondo + (giro ? maxPuerta : E.planta_simbolo + 2)); pt(q, c.ancho, c.fondo + (giro ? maxPuerta : E.planta_simbolo + 2));
+  }
+  return { cuerpos: out, caja: { x0, y0, x1, y1 } };
+}
+
+/** Qué entra en una página: interior + cerrado, secciones y/o planta. */
+interface Composicion { principal: boolean; lateral: boolean; planta: boolean }
+const SOLO_PRINCIPAL: Composicion = { principal: true, lateral: false, planta: false };
+
+function anchoFila(a: Armario, o: Composicion): number {
+  let w = 0, primero = true;
+  const gap = (g: number) => { if (!primero) w += g; primero = false; };
+  for (const c of a.cuerpos) {
+    if (o.principal) { gap(ESTILO.hueco_cuerpos); w += c.ancho * 2 + ESTILO.hueco_vistas; }
+    if (o.lateral) gruposSeccion(c).forEach((_, j) => { gap(j === 0 ? ESTILO.hueco_cuerpos : ESTILO.hueco_vistas); w += c.fondo; });
+  }
+  if (o.planta) { const k = geometriaPlanta(a).caja; gap(ESTILO.hueco_cuerpos); w += k.x1 - k.x0; }
+  return w;
+}
+
+function escala(a: Armario, o: Composicion, formato: Formato): number {
+  const pg = PAGINA[formato], E = ESTILO;
+  const altoMax = Math.max(...a.cuerpos.map((c) => c.alto));
+  const k = o.planta ? geometriaPlanta(a).caja : null;
+  const alto = Math.max(o.principal || o.lateral ? altoMax : 0, k ? k.y1 - k.y0 : 0);
+  return Math.min((pg.mr - pg.ml) / (anchoFila(a, o) + E.margen_izq_cm + E.margen_der_cm), (pg.h * ALTO_UTIL) / alto);
+}
+
+// ── Lámina ──────────────────────────────────────────────────────────
+export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
+  return p.armarios.flatMap((a) => laminasArmario(a, p, medir));
+}
+
+/** Láminas de un armario: una, o dos si la sección / planta no caben con el alzado. */
+export function laminasArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox): Lamina[] {
+  const lateral = !!a.vistas?.includes('lateral'), planta = !!a.vistas?.includes('planta');
+  if (!lateral && !planta) return [laminaArmario(a, p, medir)];
+  const formato = formatoArmario(a);
+  const todo: Composicion = { principal: true, lateral, planta };
+  if (escala(a, todo, formato) >= ESTILO.vistas_minimo * escala(a, SOLO_PRINCIPAL, formato)) return [laminaArmario(a, p, medir, todo)];
+  return [laminaArmario(a, p, medir), laminaArmario(a, p, medir, { principal: false, lateral, planta })];
+}
+
+export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, comp: Composicion = SOLO_PRINCIPAL): Lamina {
   const formato = formatoArmario(a);
   const pg = PAGINA[formato];
   const prims: Prim[] = [];
   const E = ESTILO;
 
-  // Escala: el conjunto cabe en el ancho útil y el cuerpo más alto en ALTO_UTIL.
-  const anchoCm = anchoVistas(a);
+  // Escala: el conjunto cabe en el ancho útil y el cuerpo más alto en ALTO_UTIL
+  // (la página extra no amplía más que la principal).
+  const anchoCm = anchoFila(a, comp);
   const altoMax = Math.max(...a.cuerpos.map((c) => c.alto));
-  const s = Math.min((pg.mr - pg.ml) / (anchoCm + E.margen_izq_cm + E.margen_der_cm), (pg.h * ALTO_UTIL) / altoMax);
+  const s = comp.principal ? escala(a, comp, formato) : Math.min(escala(a, comp, formato), escala(a, SOLO_PRINCIPAL, formato));
   const cm = (v: number) => v * s;
   const centro = (pg.ml + pg.mr) / 2;
   let x = centro - cm(anchoCm) / 2 + cm(E.margen_izq_cm - E.margen_der_cm) / 2;
   const suelo = pg.h * CENTRO_VERTICAL + cm(altoMax) / 2;
+  let primero = true;
+  const separar = (g: number) => { if (!primero) x += cm(g); primero = false; };
 
   // ── helpers de dibujo ──
   const rect = (x0: number, y0: number, w: number, h: number, o: Partial<Extract<Prim, { k: 'rect' }>> = {}) =>
@@ -284,7 +394,8 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
   prims.push({ k: 'logo', x: pg.logo[0], y: pg.logo[1] + LOGO_CAJA_ALTO - logoAlto, h: logoAlto, color: E.tinta });
   text(pg.ml, pg.titulo, `${a.codigo}  ${a.titulo}`, 11, E.tinta, 'start', true);
   text(pg.ml, pg.subtitulo, a.subtitulo ?? subtituloAuto(a), 9, E.subtitulo);
-  text(pg.mr, pg.der1, 'ALZADO INTERIOR + FRENTE CERRADO', 8, E.cota, 'end');
+  const cabecera = [comp.principal ? 'ALZADO INTERIOR + FRENTE CERRADO' : '', comp.lateral ? 'SECCIÓN LATERAL' : '', comp.planta ? 'PLANTA' : ''].filter(Boolean).join(' + ');
+  text(pg.mr, pg.der1, cabecera, 8, E.cota, 'end');
   text(pg.mr, pg.der2, `${descripcionFrente(a.cuerpos[0].frente)} · cotas en cm`, 8, E.cota, 'end');
   const pie = [p.referencia ? `Presupuesto ${p.referencia}` : '', p.cliente ?? ''].filter(Boolean).join(' · ');
   if (pie) text(pg.mr, pg.pie, pie, 7.5, E.suave, 'end');
@@ -292,14 +403,23 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
   const inicioDibujo = prims.length;
 
   // ── Vistas ──
-  a.cuerpos.forEach((c, ic) => {
-    if (ic) x += cm(E.hueco_cuerpos);
+  a.cuerpos.forEach((c) => {
+    const prefijo = c.nombre ? `${c.nombre} · ` : '';
+    if (comp.principal) vistasPrincipales(c, prefijo);
+    if (comp.lateral) gruposSeccion(c).forEach((mods, j) => {
+      separar(j === 0 ? E.hueco_cuerpos : E.hueco_vistas);
+      seccion(c, mods, j === 0, prefijo);
+    });
+  });
+  if (comp.planta) { separar(E.hueco_cuerpos); vistaPlanta(); }
+
+  function vistasPrincipales(c: Cuerpo, prefijo: string) {
+    separar(E.hueco_cuerpos);
     const z = c.zocalo ?? ZOCALO_DEF;
     const g = c.grosor ?? GROSOR_DEF;
     const W = cm(c.ancho);
     const arriba = suelo - cm(c.alto);
     const baseCuerpo = suelo - cm(z);
-    const prefijo = c.nombre ? `${c.nombre} · ` : '';
 
     // ── Interior ──
     const x0 = x;
@@ -319,8 +439,8 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
         tablero(mx0 + mw - cm(g), arriba, cm(g), baseCuerpo - arriba);
         tablero(ix0, arriba, iw, cm(g));
         tablero(ix0, baseCuerpo - cm(g), iw, cm(g));
-        reparto.zonas.forEach((zm, i) => {
-          if (i < reparto.zonas.length - 1) tablero(ix0, arriba + cm(zm.arriba + zm.libre), iw, cm(g));
+        reparto.zonas.forEach((zm) => {
+          if (zm.balda_encima) tablero(ix0, arriba + cm(zm.arriba - zm.balda_encima), iw, cm(zm.balda_encima));
         });
       });
       const percheros = m.interior.filter((zz) => zz.tipo === 'perchero').length;
@@ -376,21 +496,19 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
                 line(cx - tl / 2, dy + cm(E.cajon_tirador_baja), cx + tl / 2, dy + cm(E.cajon_tirador_baja), E.tinta, 1.2);
               }
               const t = zona.etiqueta ?? `Cajonera ${plural(n, 'cajón', 'cajones')}`;
-              const tieneBaldaEncima = zm.arriba > g + 0.01;
-              const cy = tieneBaldaEncima ? zt - cm(g) - (7 * 1.53) / 2 : zt + 7;
+              const cy = zm.balda_encima ? zt - cm(zm.balda_encima) - (7 * 1.53) / 2 : zt + 7;
               etiqueta(cx, cy, t, 7);
             });
             break;
           }
           case 'estantes': {
-            const n = zona.estantes;
-            const hueco = (zm.libre - n * g) / (n + 1);
+            const n = zona.estantes, ge = zm.grosor_estantes ?? g, hueco = zm.hueco_estantes ?? (zm.libre - n * g) / (n + 1);
             capas.tableros.push(() => {
-              for (let i = 1; i <= n; i++) tablero(ix0, zt + cm(i * hueco + (i - 1) * g), iw, cm(g));
+              for (let i = 1; i <= n; i++) tablero(ix0, zt + cm(i * hueco + (i - 1) * ge), iw, cm(ge));
             });
             const medio = Math.floor(n / 2);
-            const cy = zt + cm(medio * (hueco + g) + hueco / 2);
-            capas.dentro.push(() => etiqueta(cx, cy, zona.etiqueta ?? 'Estantes'));
+            const cy = zt + cm(medio * (hueco + ge) + hueco / 2);
+            capas.dentro.push(() => etiqueta(cx, cy, zona.etiqueta ?? etiquetaEstantes(ge, g)));
             break;
           }
           case 'balda_inferior':
@@ -508,7 +626,197 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
     const pieCerrado = `${prefijo}CERRADO · ${plural(nPuertas, 'puerta', 'puertas')}${ap}${nFijos ? ` + ${plural(nFijos, 'frente fijo', 'frentes fijos')}` : ''}`;
     text(f0 + W / 2, suelo + cm(E.pie_vista), pieCerrado, 8.5, E.tinta, 'middle', true);
     x += W;
-  });
+  }
 
-  return { codigo: a.codigo, formato, ancho: pg.w, alto: pg.h, prims, inicioDibujo };
+  // ── Sección lateral de un grupo de módulos (trasera a la izquierda, puertas a la derecha) ──
+  function seccion(c: Cuerpo, mods: number[], conCotaAlto: boolean, prefijo: string) {
+    const z = c.zocalo ?? ZOCALO_DEF, g = c.grosor ?? GROSOR_DEF;
+    const { D, gp } = fondosCuerpo(c);
+    const f = c.frente, sep = f.separacion_suelo ?? SEPARACION_SUELO_DEF;
+    const m = c.modulos[mods[0]];
+    const xb = x, xD = x + cm(D), xF = x + cm(c.fondo);
+    const arriba = suelo - cm(c.alto), baseCuerpo = suelo - cm(z), bajo = suelo - cm(sep);
+    // Costado (fondo), zócalo retranqueado, suelo
+    rect(xb, arriba, xD - xb, baseCuerpo - arriba, { fill: E.fondoInterior, stroke: E.tinta, sw: 0.8 });
+    if (z > 0) {
+      rect(xb + cm(E.trasera), baseCuerpo, xD - cm(E.zocalo_retranqueo) - xb - cm(E.trasera), cm(z), { fill: E.zocalo, stroke: E.tinta, sw: 0.6 });
+      if (cm(z) > 8) text((xb + xD - cm(E.zocalo_retranqueo)) / 2, baseCuerpo + cm(z) / 2 + 2.2, `zócalo ${fmtCm(z)}`, 6, E.cota, 'middle');
+    }
+    line(xb - cm(E.suelo_extra), suelo, xF + cm(E.suelo_extra), suelo, E.tinta, 1.2);
+    // Trasera, techo y base
+    tablero(xb, arriba, cm(E.trasera), baseCuerpo - arriba);
+    tablero(xb, arriba, xD - xb, cm(g));
+    tablero(xb, baseCuerpo - cm(g), xD - xb, cm(g));
+    const ix0 = xb + cm(E.trasera), ix1 = xD, iw = ix1 - ix0, cx = (ix0 + ix1) / 2;
+    const reparto = repartoZonas(m.interior, { alto: c.alto, zocalo: z, grosor: g });
+    const dentro: (() => void)[] = [];
+    reparto.zonas.forEach((zm) => {
+      const zt = arriba + cm(zm.arriba), zb = zt + cm(zm.libre);
+      if (zm.balda_encima) tablero(ix0, zt - cm(zm.balda_encima), iw, cm(zm.balda_encima));
+      const zona = zm.zona;
+      switch (zona.tipo) {
+        case 'altillo': dentro.push(() => etiqueta(cx, (zt + zb) / 2, 'ALTILLO', 6.5)); break;
+        case 'perchero':
+        case 'perchero_extraible': {
+          const largas = zona.tipo === 'perchero_extraible' || zona.prendas === 'largas';
+          const by = zt + cm(E.barra_bajo_balda), py = by + cm(E.prenda_arriba);
+          const largo = Math.min(0.95 * (zb - py), cm(largas ? E.prenda_larga_max : E.prenda_corta_max));
+          // Prenda de perfil (los hombros van en el sentido del fondo)
+          const ta = iw * 0.36, tb = iw * 0.42;
+          prims.push({ k: 'poly', pts: [[cx - ta, py], [cx + ta, py], [cx + tb, py + largo], [cx - tb, py + largo]], fill: E.prenda, stroke: E.prendaBorde, sw: 0.4, opacity: 0.35 });
+          line(cx, by - cm(E.gancho_arriba), cx, py, E.gancho, 0.6);
+          if (zona.tipo === 'perchero_extraible') {
+            line(ix0 + cm(3), by, ix1 - cm(3), by, E.barra, 2.2);
+            dentro.push(() => etiqueta(cx, py + largo * E.prenda_etiqueta, 'Perchero\nextraíble', 6.5));
+          } else {
+            circulo(cx, by, Math.max(1.6, cm(1.5)), E.barra);
+          }
+          break;
+        }
+        case 'cajonera': {
+          const n = zona.cajones;
+          const h = (zm.libre - E.cajon_holgura * 2 - (n - 1) * E.cajon_separacion) / n;
+          for (let i = 0; i < n; i++) {
+            const dy = zt + cm(E.cajon_holgura + i * (h + E.cajon_separacion));
+            rect(ix0 + cm(2), dy + cm(h * 0.3), ix1 - cm(g) - ix0 - cm(2), cm(h * 0.7), { fill: E.cajon, stroke: E.tinta, sw: 0.6 });
+            rect(ix1 - cm(g), dy, cm(g), cm(h), { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+          }
+          break;
+        }
+        case 'estantes': {
+          const n = zona.estantes, ge = zm.grosor_estantes ?? g, hueco = zm.hueco_estantes ?? 0;
+          for (let i = 1; i <= n; i++) tablero(ix0, zt + cm(i * hueco + (i - 1) * ge), iw, cm(ge));
+          if (Math.abs(ge - g) > 0.05) dentro.push(() => etiqueta(cx, zt + cm(hueco / 2), `${fmtMm(ge)} mm`, 6.5));
+          break;
+        }
+        default: break;
+      }
+    });
+    dentro.forEach((d) => d());
+    // Puertas (de canto)
+    const fondoPuerta = materialPieza(f, f.piezas[0]) === 'ratan' ? E.ratan : materialPieza(f, f.piezas[0]) === 'textil' ? E.textil : E.puerta;
+    rect(xD, arriba, cm(gp), bajo - arriba, { fill: fondoPuerta, stroke: E.tinta, sw: 0.8 });
+    if (f.apertura === 'corredera') {
+      const x2 = xD + cm(gp + E.corredera_holgura);
+      rect(x2, arriba, cm(gp), bajo - arriba, { fill: fondoPuerta, stroke: E.tinta, sw: 0.8 });
+      rect(xD, arriba - 2.2, xF - xD, 2.2, { fill: E.acero, stroke: E.aceroBorde, sw: 0.5 });
+    }
+    text(xF + 8, (arriba + bajo) / 2, `puerta ${fmtMm(gp)} mm · ${fmtCm(sep)} cm a suelo`, 6, E.cota, 'middle', false, true);
+    // Cotas
+    cotaH(xb, xF, arriba - cm(E.cota_arriba), `${fmtCm(c.fondo)} cm`);
+    cotaH(xb, xD, suelo + cm(E.cota_abajo), fmtCm(D));
+    if (conCotaAlto) {
+      cotaV(xb - cm(E.cota_alto), arriba, suelo, `${fmtCm(c.alto)} cm`);
+      const alt = m.interior[0];
+      if (alt?.tipo === 'altillo') cotaV(xb - cm(E.cota_altillo), arriba, arriba + cm(alt.alto), `altillo ${fmtCm(alt.alto)}`);
+    }
+    const nombres = mods.map((i) => i + 1);
+    const cual = c.modulos.length === 1 ? '' : nombres.length === 1 ? `módulo ${nombres[0]}` : `módulos ${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
+    text((xb + xF) / 2, suelo + cm(E.pie_vista), `${prefijo}SECCIÓN`, 8.5, E.tinta, 'middle', true);
+    if (cual) text((xb + xF) / 2, suelo + cm(E.pie_vista) + 10, cual, 7.5, E.cota, 'middle');
+    x = xF;
+  }
+
+  // ── Planta (desde arriba; trasera arriba, puertas abajo) ──
+  function vistaPlanta() {
+    const geo = geometriaPlanta(a);
+    const k = geo.caja;
+    const hPlanta = cm(k.y1 - k.y0);
+    const top = pg.h * CENTRO_VERTICAL - hPlanta / 2;
+    const X = (px: number) => x + cm(px - k.x0), Y = (py: number) => top + cm(py - k.y0);
+    for (const q of geo.cuerpos) {
+      const { c, D, gp } = q;
+      const f = c.frente, g = c.grosor ?? GROSOR_DEF;
+      const P = (uu: number, vv: number): V2 => [X(q.o[0] + uu * q.u[0] + vv * q.v[0]), Y(q.o[1] + uu * q.u[1] + vv * q.v[1])];
+      const rectL = (u0: number, v0: number, u1: number, v1: number, o: Partial<Extract<Prim, { k: 'rect' }>>) => {
+        const [ax, ay] = P(u0, v0), [bx, by] = P(u1, v1);
+        rect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay), o);
+      };
+      const lineL = (u0: number, v0: number, u1: number, v1: number, color: string, sw: number) => { const [ax, ay] = P(u0, v0), [bx, by] = P(u1, v1); line(ax, ay, bx, by, color, sw); };
+      const flechaL = (u0: number, v0: number, u1: number, v1: number) => { const a0 = P(u0, v0), a1 = P(u1, v1); flecha(a0[0], a0[1], a1[0], a1[1]); };
+      // Cuerpo y costados de cada módulo
+      rectL(0, 0, c.ancho, D, { fill: E.fondoInterior, stroke: E.tinta, sw: 0.8 });
+      rectL(0, 0, c.ancho, E.trasera, { fill: E.tablero, stroke: E.tinta, sw: 0.5 });
+      let mu = 0;
+      for (const m of c.modulos) {
+        rectL(mu, 0, mu + g, D, { fill: E.tablero, stroke: E.tinta, sw: 0.6 });
+        rectL(mu + m.ancho - g, 0, mu + m.ancho, D, { fill: E.tablero, stroke: E.tinta, sw: 0.6 });
+        mu += m.ancho;
+      }
+      // Puertas y apertura
+      const lados = ladosTirador(f.piezas);
+      let pu = 0, nPuerta = 0;
+      f.piezas.forEach((pz, i) => {
+        const w = pz.ancho, mat = materialPieza(f, pz);
+        const fondo = mat === 'textil' ? E.textil : mat === 'ratan' ? E.ratan : mat === 'chapa_madera' ? E.chapa : E.puerta;
+        let v0 = D;
+        if (f.apertura === 'corredera' && pz.tipo === 'puerta' && nPuerta++ % 2 === 1) v0 = D + gp + E.corredera_holgura;
+        rectL(pu, v0, pu + w, v0 + gp, { fill: fondo, stroke: E.tinta, sw: 0.8 });
+        const lado = lados[i];
+        if (pz.tipo === 'puerta' && lado) {
+          const bis = lado === 'der' ? pu : pu + w;          // bisagra en el lado contrario al agarre
+          const dir = lado === 'der' ? 1 : -1;                // hacia el canto de apertura
+          const vF = D + gp;
+          if (f.apertura === 'abatible' || f.apertura === 'escamoteable') {
+            lineL(bis, vF, bis, vF + w, E.tinta, 0.9);
+            const pasos = 14;
+            for (let t = 0; t < pasos; t++) {
+              const a0 = (t / pasos) * Math.PI / 2, a1 = ((t + 1) / pasos) * Math.PI / 2;
+              lineL(bis + dir * w * Math.cos(a0), vF + w * Math.sin(a0), bis + dir * w * Math.cos(a1), vF + w * Math.sin(a1), E.cota, 0.45);
+            }
+            if (f.apertura === 'escamoteable') {
+              // La puerta abierta se esconde en el costado: bolsillo y flecha hacia dentro
+              const fondoBolsillo = Math.min(w, D - 3);
+              rectL(bis + dir * 0.4, D - fondoBolsillo, bis + dir * (gp + 1.2), D, { stroke: E.suave, sw: 0.5 });
+              flechaL(bis + dir * (gp + 3.5), vF + w * 0.55, bis + dir * (gp + 3.5), D - fondoBolsillo * 0.55);
+            }
+          } else if (f.apertura === 'coplanar') {
+            // Sale hacia fuera y desliza hacia su pareja
+            const uc = pu + w / 2, sv = vF + E.planta_simbolo * 0.6;
+            lineL(uc, vF + 1, uc, sv, E.tinta, 0.6);
+            flechaL(uc, sv, uc + dir * w * 0.35, sv);
+          } else {
+            const sv = vF + E.planta_simbolo * 0.6;
+            flechaL(pu + w / 2, sv, pu + w * 0.2, sv);
+            flechaL(pu + w / 2, sv, pu + w * 0.8, sv);
+          }
+        }
+        pu += w;
+      });
+      // Cotas: ancho por detrás, fondo en el extremo libre
+      const cota = (u0: number, v0: number, u1: number, v1: number, t: string) => {
+        const [ax, ay] = P(u0, v0), [bx, by] = P(u1, v1);
+        if (Math.abs(ay - by) < 0.01) cotaH(Math.min(ax, bx), Math.max(ax, bx), ay, t);
+        else cotaV(ax, Math.min(ay, by), Math.max(ay, by), t);
+      };
+      cota(0, -E.planta_cota, c.ancho, -E.planta_cota, `${fmtCm(c.ancho)} cm`);
+      const uf = q.lado === 'izq' ? -E.planta_cota : c.ancho + E.planta_cota;
+      cota(uf, 0, uf, c.fondo, `fondo ${fmtCm(c.fondo)}`);
+      if (a.cuerpos.length > 1 && c.nombre) { const [cxp, cyp] = P(c.ancho / 2, D / 2); etiqueta(cxp, cyp, c.nombre, 6.5); }
+    }
+    const pie = Math.max(suelo, top + hPlanta) + cm(E.pie_vista);
+    const ap = new Set(geo.cuerpos.map((q) => q.c.frente.apertura));
+    const AP: Record<string, string> = { abatible: 'abatibles', corredera: 'correderas', coplanar: 'coplanares', escamoteable: 'escamoteables' };
+    text(x + cm(k.x1 - k.x0) / 2, pie, 'PLANTA', 8.5, E.tinta, 'middle', true);
+    text(x + cm(k.x1 - k.x0) / 2, pie + 10, `puertas ${[...ap].map((t) => AP[t] ?? t).join(' y ')}`, 7.5, E.cota, 'middle');
+    x += cm(k.x1 - k.x0);
+  }
+
+  function circulo(cx: number, cy: number, r: number, color: string) {
+    const pts: [number, number][] = [];
+    for (let i = 0; i < 12; i++) pts.push([cx + r * Math.cos((i / 12) * 2 * Math.PI), cy + r * Math.sin((i / 12) * 2 * Math.PI)]);
+    prims.push({ k: 'poly', pts, fill: color, stroke: color, sw: 0.3 });
+  }
+  function flecha(x1: number, y1: number, x2: number, y2: number) {
+    line(x1, y1, x2, y2, E.tinta, 0.6);
+    const ang = Math.atan2(y2 - y1, x2 - x1), l = 3.6;
+    for (const d of [0.45, -0.45]) line(x2, y2, x2 - l * Math.cos(ang + d), y2 - l * Math.sin(ang + d), E.tinta, 0.6);
+  }
+
+  return { codigo: a.codigo, formato, ancho: pg.w, alto: pg.h, prims, inicioDibujo, pagina: comp.principal ? 1 : 2 };
+}
+
+/** «Estantes» o «Estantes 30 mm» si no son del grosor del tablero. */
+function etiquetaEstantes(ge: number, g: number): string {
+  return Math.abs(ge - g) > 0.05 ? `Estantes ${fmtMm(ge)} mm` : 'Estantes';
 }

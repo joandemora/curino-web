@@ -143,14 +143,16 @@ export function pintarPresupuesto(
     if (conDto) txt(pg, 470, ym, `${Math.round(pt.dto_pct * 100) / 100}%`, s, NEGRO, false, 'middle');
     txt(pg, 545, ym, precioTxt(linea.importe), s, NEGRO, true, 'end');
 
-    // Dibujo debajo de la partida
-    const d = pt.libre ? undefined : o.dibujos.find((x) => x.codigo === claveDe(pt));
-    if (d) {
-      const y0 = top + alto + 4, limite = MARCO.bottom - 12;
-      const hMax = Math.max(120, Math.min(260, limite - y0));
+    // Dibujo(s) debajo de la partida: alzado y, si el armario tiene hoja extra (sección / planta), debajo
+    const ds = pt.libre ? [] : o.dibujos.filter((x) => x.codigo === claveDe(pt));
+    let y0 = top + alto + 4;
+    const limite = MARCO.bottom - 12;
+    for (const d of ds) {
+      const hMax = Math.max(ds.length > 1 ? 90 : 120, Math.min(260, (limite - y0) / (ds.length > 1 ? ds.length - ds.indexOf(d) : 1) - 4));
       const k = Math.min(461 / d.caja.w, hMax / d.caja.h);
       const dx = 85 + (461 - d.caja.w * k) / 2 - d.caja.x * k;
       pintarPrims(pg, d.prims, H, f.inter, lib, { s: k, dx, dy: y0 - d.caja.y * k });
+      y0 += d.caja.h * k + 8;
     }
   });
 

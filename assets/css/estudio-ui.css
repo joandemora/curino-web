@@ -25,6 +25,12 @@
 .es-hoja{background:#fff;border:1px solid #e5e2da;border-radius:6px;overflow:hidden}
 .es-hoja{cursor:zoom-in}
 .es-hoja svg{display:block;width:100%;height:auto}
+.es-vistas{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;color:#555;margin-bottom:-6px}
+.es-vistas .pr-tag{background:#f4f1ea;color:#555;border-color:#e5e2da}
+.es-vista{font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px dashed #c9c1b2;background:#fff;color:#444;cursor:pointer}
+.es-vista:hover{border-style:solid}
+.es-vista.on{border:1px solid #1d1d1b;background:#1d1d1b;color:#fff}
+.es-vista:disabled{opacity:.6;cursor:wait}
 .es-vacio{padding:50px 20px;text-align:center;color:#8a867c;font-size:14px}
 .es-chat[hidden]{display:none}
 .es-chat{display:flex;flex-direction:column;height:calc(100vh - 170px);min-height:420px;padding:0}
