@@ -317,8 +317,9 @@ Deno.serve(async (req) => {
       const nombres: Record<string, string> = { lateral: 'sección lateral', planta: 'planta' };
       const nota = `${arm.codigo}: ${vistas.length ? vistas.map((x) => nombres[x]).join(' + ') : 'solo interior y cerrado'}`;
       const numero = await nuevaVersion(val.proyecto, 'manual', `Vistas ${nota}`);
-      await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, diseno_id: diseno?.id ?? null, rol: 'asistente', texto: `Vistas de ${nota}. Guardado como versión nueva.`, version: numero });
-      return json({ version: numero, nota: `Vistas ${nota}`, svgs: await svgsProyecto(val.proyecto) });
+      const mensaje = `Vistas de ${nota}. Guardado como versión nueva.`;
+      await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, diseno_id: diseno?.id ?? null, rol: 'asistente', texto: mensaje, version: numero });
+      return json({ version: numero, nota: `Vistas ${nota}`, mensaje, svgs: await svgsProyecto(val.proyecto) });
     }
 
     if (action === 'restaurar') {
