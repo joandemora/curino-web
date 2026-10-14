@@ -155,7 +155,7 @@
     function alertaError(t) { var e = $('#esError'); e.textContent = t; e.hidden = !t; }
     function pintarZona(svgs) {
       var guardado = diseno && diseno.guardado;
-      var titulo = diseno ? esc(diseno.nombre) + (guardado ? '' : ' <span class="pr-tag">sin guardar</span>') : 'Diseño nuevo';
+      var titulo = diseno && guardado ? esc(diseno.nombre) : 'Diseño nuevo' + (diseno ? ' <span class="pr-tag">sin guardar</span>' : '');
       var chips = versiones.map(function (v, i) {
         return '<button type="button" class="es-v' + (v.numero === viendo ? ' on' : '') + (diseno && v.numero === diseno.version_actual ? ' actual' : '') +
           '" data-v="' + v.numero + '" title="' + esc((v.origen === 'ia' ? 'IA · ' : '') + (v.nota || '') + ' · ' + fecha(v.created_at)) + '">v' + (i + 1) + '</button>';
@@ -216,7 +216,7 @@
         api(ctx, { action: 'diseno_guardar', proyecto_id: pid, diseno_id: diseno.id, nombre: nombre, modo: b.dataset.dg, version_inicio: versionInicio }).then(function (d) {
           m.remove(); diseno = d.diseno; versionInicio = diseno.version_actual;
           if (b.dataset.dg === 'nuevo') return abrirDiseno(diseno.id).then(function () { avisoZona('Guardado como nuevo diseño en Documentos'); });
-          pintarZona(); cargarVersion(viendo); avisoZona('Guardado en Documentos');
+          pintarZona(); cargarVersion(viendo).then(function () { avisoZona('Guardado en Documentos'); });
         }).catch(function (err) { m.remove(); alertaError(err.message); });
       });
     }
@@ -318,7 +318,13 @@
     if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
     if (!pdfjsCarga) pdfjsCarga = new Promise(function (ok, ko) {
       var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-      sc.onload = function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); };
+      sc.onload = function () {
+        // Worker de pdf.js desde el CDN: un Worker de otro dominio no se puede crear directamente → blob que lo importa
+        var w = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        try { window.pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(URL.createObjectURL(new Blob(["importScripts('" + w + "');"], { type: 'application/javascript' }))); }
+        catch (e) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = w; }
+        ok(window.pdfjsLib);
+      };
       sc.onerror = ko; document.head.appendChild(sc);
     });
     return pdfjsCarga;
@@ -377,7 +383,7 @@
         ((x.kind === 'diseno' && x.guardado) || esPdf || esImg ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
         (x.kind === 'fich' ? '<button class="dc-a" data-a="datos" data-i="' + i + '">Datos</button>' : '') +
         '<button class="dc-a dc-borrar" data-a="borrar" data-i="' + i + '">Borrar</button>';
-      var sub = x.kind === 'diseno' ? (x.guardado ? 'v' + versionesTxt(x) : 'Diseño sin guardar · se borra a los 30 días')
+      var sub = x.kind === 'diseno' ? (x.guardado ? '' : 'sin guardar · se borra a los 30 días')
         : x.kind === 'doc' ? [x.numero ? 'n.º ' + x.numero : '', x.variante || '', x.version ? 'v' + x.version : ''].filter(Boolean).join(' · ')
         : [x.proveedor, x.base != null ? eur(Number(x.base)) : '', x.notas && /Pendiente/.test(x.notas) ? 'pendiente de revisar' : ''].filter(Boolean).join(' · ');
       return '<div class="dc-card' + (x.kind === 'diseno' && !x.guardado ? ' dc-borrador' : '') + '" data-i="' + i + '"><div class="dc-mini">' + mini + '</div>' +
