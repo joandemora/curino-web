@@ -207,7 +207,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         ],
         tableros: TABLEROS_COCINA.map((t) => ({ clave: claveTablero(t), grupo: t.grupo, descripcion: t.descripcion, calidad: t.calidad, grueso: t.grueso, eur: t.eur_m2 })),
         servicio: SERVICIO_COCINA,
-        extras: [{ clave: 'tirador', nombre: 'Tirador (no está en la tarifa del proveedor)' }, { clave: 'zocalo_ml', nombre: 'Zócalo por metro (no está en la tarifa del proveedor)' }]
+        extras: [{ clave: 'tirador', nombre: 'Tirador estándar (por tirador)' }, { clave: 'tirador_premium', nombre: 'Tirador premium (por tirador)' }, { clave: 'zocalo_ml', nombre: 'Zócalo (por metro lineal)' }]
       }
     });
   }
