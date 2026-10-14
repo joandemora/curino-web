@@ -88,7 +88,7 @@ export const ESTILO = {
   ratan: '#f3e9d4',
   rejilla: '#b89a66',
   chapa: '#f1e6d3',
-  uneroDm: '#d3cdc1',
+  uneroDm: '#b9b1a3',
   uneroMadera: '#b98d58',
   // separaciones entre vistas (cm)
   hueco_vistas: 45,
@@ -483,8 +483,11 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
         const ag = agarrePuerta(f, pz);
         if (lado && (ag === 'unero_dm' || ag === 'unero_madera')) {
           // Uñero: ranura en el canto de apertura, sin tirador
-          const ux = lado === 'der' ? d1 - cm(1.4) : d0;
-          rect(ux, arriba + cm(1), cm(1.4), bajo - arriba - cm(2), { fill: ag === 'unero_madera' ? E.uneroMadera : E.uneroDm, stroke: E.tinta, sw: 0.4 });
+          // (dibujado a 3 cm para que se lea a escala; la ranura es la línea interior)
+          const uw = cm(3), ux = lado === 'der' ? d1 - uw : d0;
+          rect(ux, arriba, uw, bajo - arriba, { fill: ag === 'unero_madera' ? E.uneroMadera : E.uneroDm, stroke: E.tinta, sw: 0.5 });
+          const rx = lado === 'der' ? ux + uw * 0.35 : ux + uw * 0.65;
+          line(rx, arriba + cm(2), rx, bajo - cm(2), E.tinta, 0.6);
         } else if (lado && (ag === 'tirador' || ag === 'tirador_premium')) {
           const tx = lado === 'der' ? px + pw - cm(E.tirador_borde) : px + cm(E.tirador_borde);
           const [fc, bc] = ag === 'tirador_premium' ? [E.laton, E.latonBorde] : [E.acero, E.aceroBorde];
