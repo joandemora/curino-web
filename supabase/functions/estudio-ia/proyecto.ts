@@ -169,7 +169,8 @@ export async function accionProyecto(action: string, ctx: {
     const tabla = action === 'doc_borrar' ? 'estudio_documentos' : 'estudio_ficheros';
     const fila = await dueno(tabla, String(body?.id || ''));
     if (!fila) return json({ error: 'No encontrado' }, 404);
-    await supa.storage.from('estudio').remove([fila.path]);
+    // Con su miniatura (los documentos la tienen aparte)
+    await supa.storage.from('estudio').remove([fila.path, fila.miniatura_path].filter(Boolean));
     await supa.from(tabla).delete().eq('id', fila.id);
     return json({ ok: true });
   }
