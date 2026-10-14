@@ -33,7 +33,7 @@ export type Electro = 'placa' | 'horno' | 'microondas' | 'fregadero' | 'campana'
 export const ELECTROS: Electro[] = ['placa', 'horno', 'microondas', 'fregadero', 'campana', 'nevera', 'lavavajillas', 'lavadora'];
 export type GrupoPuerta = 1 | 3 | 6 | 7 | 13 | 10 | 12 | 14;
 export const GRUPOS: GrupoPuerta[] = [1, 3, 6, 7, 13, 10, 12, 14];
-export type AgarreCocina = 'tirador' | 'unero';
+export type AgarreCocina = 'tirador' | 'tirador_premium' | 'unero';
 export type SistemaCajon = 'advanced' | 'legrabox';
 export type TipoFrente = 'puertas' | 'cajones' | 'aventos_hf' | 'aventos_hk' | 'abierto';
 
@@ -115,8 +115,9 @@ export function completarCocina(entrada: Cocina): Cocina {
     c.encimera = c.encimera ?? {};
     if (!c.encimera.nucleo) { c.encimera.nucleo = COCINA_DEF.nucleo; sup.add('encimera compacto núcleo negro'); }
     if (!c.encimera.ref || !ENCIMERAS_COCINA.some((e) => e.ref === c.encimera!.ref)) {
-      const ref = ENCIMERAS_COCINA.find((e) => e.nucleo === c.encimera!.nucleo)!.ref;
-      if (c.encimera.ref) sup.add(`encimera «${c.encimera.ref}» no está en la tarifa: ${ref}`); else sup.add(`encimera ${ref} (primera de la tarifa con ese núcleo)`);
+      // La más barata de su núcleo
+      const ref = ENCIMERAS_COCINA.filter((e) => e.nucleo === c.encimera!.nucleo).sort((a, b) => a.eur - b.eur)[0].ref;
+      if (c.encimera.ref) sup.add(`encimera «${c.encimera.ref}» no está en la tarifa: ${ref}`); else sup.add(`encimera ${ref} (la más barata de su núcleo)`);
       c.encimera.ref = ref;
     }
   }
@@ -197,7 +198,7 @@ const modulo = {
       }
     },
     grupo: { enum: [1, 3, 6, 7, 13, 10, 12, 14], description: 'Grupo de puerta solo si es distinto del de la cocina.' },
-    agarre: { enum: ['tirador', 'unero'] },
+    agarre: { enum: ['tirador', 'tirador_premium', 'unero'], description: 'tirador estándar, tirador_premium (latón u otro premium) o unero (uñero / fingerpull, sin tirador).' },
     electro: { type: 'array', uniqueItems: true, items: { enum: ['placa', 'horno', 'microondas', 'fregadero', 'campana', 'nevera', 'lavavajillas', 'lavadora'] } },
     etiqueta: { type: 'string', maxLength: 40 },
     herrajes
@@ -214,7 +215,7 @@ export const ESQUEMA_COCINA_JSON = {
       vistas: { type: 'array', uniqueItems: true, items: { enum: ['lateral', 'planta'] } },
       acabado: { enum: ['blanco16', 'gris_plomo16', 'blanco_plus18'], description: 'Cuerpo: Blanco 16, Gris plomo 16 o Blanco Plus 18 hidrófugo.' },
       grupo: { enum: [1, 3, 6, 7, 13, 10, 12, 14], description: 'Grupo de puerta de la tarifa (12 y 14 = uñero).' },
-      agarre: { enum: ['tirador', 'unero'] },
+      agarre: { enum: ['tirador', 'tirador_premium', 'unero'], description: 'tirador estándar, tirador_premium (latón u otro premium) o unero (uñero / fingerpull, sin tirador).' },
       zocalo: num(0, 20, 'Alto del zócalo en cm.'),
       encimera: { type: 'object', additionalProperties: false, properties: { nucleo: { enum: ['negro', 'al_tono', 'blanco'] }, ref: { type: 'string', maxLength: 60, description: 'Referencia exacta de la tarifa si la dicen.' } } },
       tramos: {
@@ -270,7 +271,7 @@ export function validarCocinas(lista: unknown, err: (ruta: string, mensaje: stri
     else if (codigos.has(c.codigo)) err(`${rc}.codigo`, `código repetido ${c.codigo}`); else codigos.add(c.codigo);
     if (typeof c.titulo !== 'string' || !c.titulo.trim()) err(`${rc}.titulo`, 'falta el texto');
     if (c.vistas !== undefined && (!Array.isArray(c.vistas) || c.vistas.some((v) => v !== 'lateral' && v !== 'planta'))) err(`${rc}.vistas`, 'lista de lateral / planta');
-    opcion(c, 'acabado', rc, ACABADOS_CUERPO); opcion(c, 'grupo', rc, GRUPOS); opcion(c, 'agarre', rc, ['tirador', 'unero']);
+    opcion(c, 'acabado', rc, ACABADOS_CUERPO); opcion(c, 'grupo', rc, GRUPOS); opcion(c, 'agarre', rc, ['tirador', 'tirador_premium', 'unero']);
     numero(c, 'zocalo', rc, 0, 20);
     if (c.encimera !== undefined) {
       if (!esObj(c.encimera)) err(`${rc}.encimera`, 'debe ser un objeto');
@@ -298,7 +299,7 @@ export function validarCocinas(lista: unknown, err: (ruta: string, mensaje: stri
           const permitidos = fila === 'bajos' ? TIPOS_BAJOS : TIPOS_ALTOS;
           if (!permitidos.includes(m.tipo as TipoModuloCocina)) err(`${rm}.tipo`, `en ${fila}: ${permitidos.join(' / ')}`);
           numero(m, 'ancho', rm, 10, 200, true); numero(m, 'alto', rm, 10, 280);
-          opcion(m, 'acabado', rm, ACABADOS_CUERPO); opcion(m, 'grupo', rm, GRUPOS); opcion(m, 'agarre', rm, ['tirador', 'unero']);
+          opcion(m, 'acabado', rm, ACABADOS_CUERPO); opcion(m, 'grupo', rm, GRUPOS); opcion(m, 'agarre', rm, ['tirador', 'tirador_premium', 'unero']);
           if (m.electro !== undefined && (!Array.isArray(m.electro) || m.electro.some((e) => !ELECTROS.includes(e as Electro)))) err(`${rm}.electro`, `lista de ${ELECTROS.join(' / ')}`);
           herr(m, rm);
           if (m.frente !== undefined) {

@@ -170,8 +170,8 @@
         '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) {
           // Vistas extra por armario (sobre su primera hoja): un clic = versión nueva
           var vistas = s.vistas || [], barra = '';
-          if ((s.pagina || 1) === 1 && viendo && /^A\./.test(s.codigo)) {   // cocinas: vistas en la fase 3
-            barra = '<div class="es-vistas" data-cod="' + esc(s.codigo) + '"><span>' + esc(s.codigo) + ' · vistas:</span><span class="pr-tag">Interior + Cerrado</span>' +
+          if ((s.pagina || 1) === 1 && viendo) {
+            barra = '<div class="es-vistas" data-cod="' + esc(s.codigo) + '"><span>' + esc(s.codigo) + ' · vistas:</span><span class="pr-tag">' + (/^C\./.test(s.codigo) ? 'Alzado' : 'Interior + Cerrado') + '</span>' +
               [['lateral', 'Lateral'], ['planta', 'Planta']].map(function (x) {
                 var on = vistas.indexOf(x[0]) >= 0;
                 return '<button type="button" class="es-vista' + (on ? ' on' : '') + '" data-vista="' + x[0] + '" title="' + (on ? 'Quitar' : 'Añadir') + ' vista ' + (x[0] === 'lateral' ? 'lateral (sección)' : 'en planta') + '">' + (on ? '✓ ' : '+ ') + x[1] + '</button>';
@@ -1422,7 +1422,7 @@
           T.herrajes.map(function (x) { return x.eur === null ? '<tr><td>' + esc(x.codigo + ' · ' + x.articulo) + '<br><span class="pa-muted" style="font-size:11px">sin precio en la tarifa – revisar</span></td><td class="tf-pt tc-sin">—</td></tr>' : fila1(esc(x.codigo + ' · ' + x.articulo), x.clave, eur(x.eur) + ' €'); }).join('') + '</tbody></table></details>';
         h += '<details class="tc-sec"><summary>6 · Tableros por grupo (puntos por m²) · p3</summary><table class="tf-tabla tf-pts"><tbody>' +
           T.tableros.map(function (t) { var info = (t.grupo ? 'Grupo ' + t.grupo : 'Sin grupo') + ' · ' + t.calidad + (t.grueso ? ' · ' + String(t.grueso).replace('.', ',') + ' mm' : ''); return t.eur === null ? '<tr><td>' + esc(t.descripcion) + '<br><span class="pa-muted" style="font-size:11px">' + esc(info) + ' · sin precio – revisar</span></td><td class="tf-pt tc-sin">—</td></tr>' : fila1(esc(t.descripcion), t.clave, esc(info) + ' · ' + eur(t.eur) + ' €/m²'); }).join('') + '</tbody></table></details>';
-        h += '<h4>No están en la tarifa del proveedor</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">Con 0 puntos salen en el presupuesto como «sin precio en la tarifa – revisar».</p><table class="tf-tabla tf-pts"><tbody>' +
+        h += '<h4>Del Estudio (no están en la tarifa del proveedor)</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">Tiradores como en armarios (no se cobran con uñero) y zócalo por metro lineal de bajos y columnas.</p><table class="tf-tabla tf-pts"><tbody>' +
           T.extras.map(function (x) { return fila1(esc(x.nombre), x.clave); }).join('') + '</tbody></table>';
         h += '<details class="tc-sec"><summary>Dudas del PDF pendientes del proveedor (' + T.dudas.length + ')</summary><ul class="tc-dudas">' + T.dudas.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
         h += '<div class="tf-pie"><button class="pa-btn primary" id="tcGuardar">Guardar tarifa de cocinas</button><span id="tcMsg"></span></div>';

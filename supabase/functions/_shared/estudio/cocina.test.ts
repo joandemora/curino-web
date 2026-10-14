@@ -83,11 +83,35 @@ test('cálculo: uñero sin tirador, cajones con kit + base + montaje, encimera e
   const fuera = L.find((l) => l.nombre.startsWith('Cuerpo Bajo 70 × 300'))!;
   assert.equal(fuera.puntos, 0);
   assert.match(fuera.aviso!, /fuera de tarifa/);
-  // Con tirador: una línea «Tiradores» sin precio (no está en la tarifa del proveedor)
+  // Con tirador: 15 pt el estándar, 45 el premium (como en armarios)
   const t = puntosCocina(cocina({ grupo: 6 }), P).tramos[0].lineas.find((l) => l.clave === 'tirador')!;
-  assert.equal(t.cantidad, 6);
-  assert.match(t.aviso!, /sin precio/);
-  assert.equal(puntosCocina(cocina({ grupo: 6 }), { ...P, tirador: 3 }).tramos[0].lineas.find((l) => l.clave === 'tirador')!.aviso, undefined);
+  assert.deepEqual([t.cantidad, t.puntos, t.aviso], [6, 15, undefined]);
+  const tp = puntosCocina(cocina({ grupo: 6, agarre: 'tirador_premium' }), P).tramos[0].lineas.find((l) => l.clave === 'tirador_premium')!;
+  assert.deepEqual([tp.cantidad, tp.puntos], [6, 45]);
+  // Zócalo 15 pt/m
+  const z = puntosCocina(cocina(), P).tramos[0].lineas.find((l) => l.clave === 'zocalo_ml')!;
+  assert.deepEqual([z.cantidad, z.puntos], [1.5, 15]);
+});
+
+test('acabado sin precio: el más caro con precio, con aviso; nada a 0', () => {
+  // Columna H+M: solo Blanco Plus → se usa con aviso
+  const hm = buscarModulo(P, 'columna_hm', 220, 60, 'blanco16');
+  assert.ok(hm.clave === 'mod_columna_hm_blanco_plus18' && hm.puntos === 141);
+  assert.match(hm.aviso!, /sin precio en Blanco 16: se usa Blanco Plus 18 hidrófugo/);
+  // Bajo 80 × 45 en Gris plomo («*»): el más caro de esa medida (Blanco 16 37,73 / Plus 37,71 → 38 / 38)
+  const g = buscarModulo(P, 'bajo', 80, 45, 'gris_plomo16');
+  assert.ok(g.clave !== null && /revisar/.test(g.aviso!) && g.medida === '80 × 45');
+  // Alto 70 en Gris plomo: en 70 de alto solo hay Blanco 16
+  assert.ok(buscarModulo(P, 'alto', 70, 60, 'gris_plomo16').clave === 'mod_alto_70x60_blanco16');
+  // Nada a 0 en una cocina normal
+  const r = puntosCocina(cocina({ tramos: [{ bajos: [{ tipo: 'columna_hm', ancho: 60 }, { tipo: 'bajo', ancho: 60 }] }] }), P);
+  assert.ok(r.tramos[0].lineas.every((l) => l.puntos > 0));
+});
+
+test('encimera por defecto: la más barata del núcleo, como supuesto', () => {
+  const c = completarCocina(cocina());
+  assert.equal(c.encimera!.ref, 'MARQUINA 0599 FH');
+  assert.ok(c.supuestos!.includes('encimera MARQUINA 0599 FH (la más barata de su núcleo)'));
 });
 
 test('precio: puntos × precio del punto cocina; PENDIENTE sin precio', () => {
@@ -95,9 +119,21 @@ test('precio: puntos × precio del punto cocina; PENDIENTE sin precio', () => {
   assert.equal(precioCocina(1000, 2), 2000);
 });
 
-test('ficha de cocina en las láminas del proyecto', () => {
+test('dibujo: alzado por tramo; sección y planta en hoja 2 si no caben', () => {
+  const textos = (l: { prims: { k: string }[] }) => l.prims.filter((x) => x.k === 'text').map((x) => (x as unknown as { t: string }).t);
   const ls = laminasProyecto({ version: 1, armarios: [], cocinas: [cocina()] });
   assert.equal(ls.length, 1);
   assert.equal(ls[0].codigo, 'C.01');
-  assert.ok(ls[0].prims.some((x) => x.k === 'text' && /Supuestos/.test(x.t)));
+  const t = textos(ls[0]);
+  assert.ok(t.includes('ALZADO DE COCINA') && t.some((x) => /· ALZADO$/.test(x)) && t.some((x) => /^Supuestos:/.test(x)));
+  assert.ok(t.includes('PLACA') === false && t.includes('VENTANA') === false);
+  // Cocina en L con sección y planta: hoja 2
+  const l: Cocina = cocina({ vistas: ['lateral', 'planta'], tramos: [
+    { nombre: 'PARED 1', bajos: [{ tipo: 'columna_hm', ancho: 60 }, { tipo: 'bajo', ancho: 80, electro: ['placa'] }, { tipo: 'fregadero', ancho: 90 }, { tipo: 'esquinero', ancho: 93 }], altos: [{ tipo: 'hueco', ancho: 60 }, { tipo: 'hueco', ancho: 80, electro: ['campana'] }, { tipo: 'hueco', ancho: 90, etiqueta: 'VENTANA' }, { tipo: 'esquinero_alto', ancho: 63 }] },
+    { nombre: 'PARED 2', colocacion: 'esquina_der', bajos: [{ tipo: 'bajo', ancho: 90 }, { tipo: 'bajo', ancho: 60 }] }] });
+  const ls2 = laminasProyecto({ version: 1, armarios: [], cocinas: [l] });
+  assert.deepEqual(ls2.map((x) => x.pagina), [1, 2]);
+  const t1 = textos(ls2[0]), t2 = textos(ls2[1]);
+  for (const k of ['PLACA', 'CAMPANA', 'VENTANA', 'HORNO', 'MICRO', 'RINCÓN']) assert.ok(t1.includes(k), k);
+  for (const k of ['SECCIÓN TIPO', 'PLANTA', 'cocina en L', 'SECCIÓN + PLANTA']) assert.ok(t2.includes(k), k);
 });

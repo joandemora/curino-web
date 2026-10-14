@@ -15,8 +15,9 @@
 // Una lista de líneas por tramo: cuerpos, puertas por grupo y medida, cajones
 // (kit + base y trasera + montaje), Aventos, herrajes, encimera (placas sin
 // decimales), laterales y tiradores (salvo uñero: grupos 12 / 14 o agarre
-// «unero»). Tirador y zócalo no están en la tarifa del proveedor: puntos 0 →
-// «sin precio – revisar» hasta que el usuario les dé valor.
+// «unero»). Tirador (15 / premium 45) y zócalo (15 pt/m) no están en la
+// tarifa del proveedor: valores propios del Estudio, editables. Si un acabado
+// no tiene precio en una medida, se usa el más caro que sí lo tenga («revisar»).
 
 import {
   MODULOS_COCINA, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA,
@@ -102,8 +103,10 @@ export function puntosBaseCocina(): Record<string, number> {
   b.legrabox_base_antracita = puntosDeEur(CAJON_LEGRABOX.base_trasera.antracita);
   b.legrabox_montaje = puntosDeEur(CAJON_LEGRABOX.montaje);
   for (const t of TABLEROS_COCINA) if (t.eur_m2 !== null) b[claveTablero(t)] = puntosDeEur(t.eur_m2);
-  b.tirador = 0;
-  b.zocalo_ml = 0;
+  // No están en el PDF: mismos puntos que en armarios (tirador) y zócalo por metro lineal
+  b.tirador = 15;
+  b.tirador_premium = 45;
+  b.zocalo_ml = 15;
   return b;
 }
 /** Avisos fijos por clave (dudas del PDF). */
@@ -118,17 +121,29 @@ const REVISAR = revisarCocina();
 type Hallado = { clave: string; puntos: number; aviso?: string; medida: string } | { clave: null; aviso: string };
 const FUERA = 'fuera de tarifa – revisar';
 
-/** Cuerpo: alto → escalón superior; ancho → siguiente con precio. */
+/**
+ * Cuerpo: alto → escalón superior; ancho → siguiente escalón (de cualquier
+ * acabado). En esa medida, el acabado pedido; si no tiene precio, el más caro
+ * de los que sí lo tienen, con aviso «revisar». Nada a 0 salvo fuera de tarifa.
+ */
 export function buscarModulo(p: Record<string, number>, tipo: string, alto: number | null, ancho: number | null, acabado: AcabadoCuerpo): Hallado {
-  const deTipo = ENTRADAS_MODULO.filter((e) => e.tipo === tipo && e.acabado === acabado && p[e.clave] !== undefined);
-  if (!deTipo.length) return { clave: null, aviso: `sin precio en ${ACABADO_TXT[acabado]} – revisar` };
-  if (deTipo[0].alto === null) { const e = deTipo[0]; return { clave: e.clave, puntos: p[e.clave], aviso: REVISAR[e.clave], medida: '' }; }
-  const altos = [...new Set(deTipo.map((e) => e.alto!))].sort((a, b) => a - b);
-  const aAlto = alto === null ? altos[0] : altos.find((a) => a >= alto - 0.01);
-  if (aAlto === undefined) return { clave: null, aviso: FUERA };
-  const e = deTipo.filter((x) => x.alto === aAlto).sort((x, y) => x.ancho! - y.ancho!).find((x) => ancho === null || x.ancho! >= ancho - 0.01);
-  if (!e) return { clave: null, aviso: FUERA };
-  return { clave: e.clave, puntos: p[e.clave], aviso: REVISAR[e.clave], medida: `${fmt(e.alto!)} × ${fmt(e.ancho!)}` };
+  const deTipo = ENTRADAS_MODULO.filter((e) => e.tipo === tipo && p[e.clave] !== undefined);
+  if (!deTipo.length) return { clave: null, aviso: FUERA };
+  let enMedida: EntradaModulo[];
+  if (deTipo[0].alto === null) enMedida = deTipo;
+  else {
+    const altos = [...new Set(deTipo.map((e) => e.alto!))].sort((a, b) => a - b);
+    const aAlto = alto === null ? altos[0] : altos.find((a) => a >= alto - 0.01);
+    if (aAlto === undefined) return { clave: null, aviso: FUERA };
+    const anchos = [...new Set(deTipo.filter((e) => e.alto === aAlto).map((e) => e.ancho!))].sort((a, b) => a - b);
+    const aAncho = ancho === null ? anchos[0] : anchos.find((a) => a >= ancho - 0.01);
+    if (aAncho === undefined) return { clave: null, aviso: FUERA };
+    enMedida = deTipo.filter((e) => e.alto === aAlto && e.ancho === aAncho);
+  }
+  const pedido = enMedida.find((e) => e.acabado === acabado);
+  const e = pedido ?? [...enMedida].sort((a, b) => p[b.clave] - p[a.clave])[0];
+  const aviso = [pedido ? '' : `sin precio en ${ACABADO_TXT[acabado]}: se usa ${ACABADO_TXT[e.acabado]} (el más caro con precio) – revisar`, REVISAR[e.clave] ?? ''].filter(Boolean).join(' · ') || undefined;
+  return { clave: e.clave, puntos: p[e.clave], aviso, medida: e.alto === null ? '' : `${fmt(e.alto)} × ${fmt(e.ancho!)}` };
 }
 /** Puerta: alto → escalón superior; ancho → siguiente con precio a ese alto. */
 export function buscarPuerta(p: Record<string, number>, grupo: number, alto: number, ancho: number): Hallado {
@@ -180,7 +195,7 @@ function calcularTramo(c: Cocina, t: TramoCocina, it: number, p: Record<string, 
     grupos.set(clave, l); L.push(l);
   };
   const sinPrecio = (clave: string, nombre: string, aviso: string, n = 1) => sumar(`x_${clave}`, nombre, 0, n, aviso);
-  let tiradores = 0;
+  let tiradores = 0, premium = 0;
 
   const puerta = (m: ModuloCocina, alto: number, ancho: number, n: number) => {
     const g = m.grupo ?? c.grupo!;
@@ -188,7 +203,8 @@ function calcularTramo(c: Cocina, t: TramoCocina, it: number, p: Record<string, 
     const txt = `Puerta grupo ${g} · ${fmt(alto)} × ${fmt(ancho)}`;
     if (h.clave === null) sinPrecio(`puerta_g${g}_${alto}x${ancho}`, txt, h.aviso, n);
     else sumar(`${h.clave}`, `${txt}${h.medida !== `${fmt(alto)} × ${fmt(ancho)}` ? ` (tarifa ${h.medida})` : ''}`, h.puntos, n, h.aviso);
-    if (!esUnero(g, m.agarre ?? c.agarre)) tiradores += n;
+    const ag = m.agarre ?? c.agarre;
+    if (!esUnero(g, ag)) { if (ag === 'tirador_premium') premium += n; else tiradores += n; }
   };
 
   for (const [fila, mods] of [['bajos', t.bajos], ['altos', t.altos ?? []]] as const) {
@@ -240,7 +256,8 @@ function calcularTramo(c: Cocina, t: TramoCocina, it: number, p: Record<string, 
     sumar(`herraje_${codigo}`, `${h.articulo} (${codigo})`, p[`herraje_${codigo}`], n);
   }
   // Tiradores (no están en la tarifa del proveedor)
-  if (tiradores) sumar('tirador', 'Tiradores', p.tirador ?? 0, tiradores, p.tirador ? undefined : 'sin precio en la tarifa – revisar');
+  if (tiradores) sumar('tirador', 'Tirador estándar', p.tirador ?? 0, tiradores, p.tirador ? undefined : 'sin precio – revisar');
+  if (premium) sumar('tirador_premium', 'Tirador premium', p.tirador_premium ?? 0, premium, p.tirador_premium ? undefined : 'sin precio – revisar');
   // Encimera: placas enteras
   const cmE = cmEncimera(t);
   if (cmE > 0 && c.encimera?.ref) {
@@ -261,7 +278,7 @@ function calcularTramo(c: Cocina, t: TramoCocina, it: number, p: Record<string, 
   const mlZocalo = t.bajos.filter((m) => m.tipo !== 'hueco').reduce((s, m) => s + m.ancho, 0) / 100;
   if ((c.zocalo ?? 0) > 0 && mlZocalo > 0) {
     const ml = Math.ceil(mlZocalo * 10) / 10;
-    sumar('zocalo_ml', `Zócalo ${fmt(c.zocalo!)} cm · ${fmt(ml)} m`, p.zocalo_ml ?? 0, ml, p.zocalo_ml ? undefined : 'sin precio en la tarifa – revisar');
+    sumar('zocalo_ml', `Zócalo ${fmt(c.zocalo!)} cm · ${fmt(ml)} m`, p.zocalo_ml ?? 0, ml, p.zocalo_ml ? undefined : 'sin precio – revisar');
   }
   const total = Math.round(L.reduce((s, l) => s + l.puntos * l.cantidad, 0) * 100) / 100;
   return { tramo: it, nombre, lineas: L, puntos: total, revisar: L.filter((l) => l.aviso).length };
