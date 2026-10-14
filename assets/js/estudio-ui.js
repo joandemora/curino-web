@@ -614,7 +614,7 @@
       return d;
     }
     function recalcular() {
-      var d = leer(), pvp = 0, imp = 0, pend = 0, cm = d.comision && d.comision.activa ? d.comision : null;
+      var d = leer(), pvp = 0, imp = 0, netoInt = 0, pend = 0, cm = d.comision && d.comision.activa ? d.comision : null;
       if ($('#prComDet')) $('#prComDet').hidden = !cm;
       document.querySelectorAll('#prZona .pr-dto').forEach(function (x) { x.hidden = !!cm; });
       d.partidas.forEach(function (x, i) {
@@ -627,11 +627,12 @@
         var dto = cm ? 0 : (x.dto_pct || 0);
         var l = r2(precio * x.cantidad), m = r2(l * (1 - dto / 100));
         pvp += l; imp += m;
+        if (cm) netoInt += r2(l * (1 - cm.pct / 100));   // neto por línea, como el PDF «interiorista»
         res.innerHTML = 'PVP <span class="pr-pvp">' + eur(l) + '</span><br>Importe <b>' + eur(m) + '</b>';
       });
       if (pend) { $('#prTot').innerHTML = '<span>PVP sin IVA: PENDIENTE</span><span>Importe total: <b>PENDIENTE</b></span><span class="pr-tag">' + pend + (pend === 1 ? ' partida' : ' partidas') + ' sin precio</span>'; return; }
       if (cm) {
-        var com = r2(pvp * cm.pct / 100), neto = r2(pvp - com), fact = cm.paga === 'interiorista' ? neto : r2(pvp);
+        var neto = r2(netoInt), com = r2(pvp - neto), fact = cm.paga === 'interiorista' ? neto : r2(pvp);
         $('#prTot').innerHTML = '<span>PVP cliente: <b>' + eur(r2(pvp)) + '</b></span><span>Comisión interiorista (' + numOut(cm.pct) + ' %): ' + eur(com) + '</span><span>Neto interiorista: ' + eur(neto) + '</span>' +
           '<span class="pa-muted">Facturación en métricas: ' + eur(fact) + (cm.paga === 'interiorista' ? ' (el interiorista paga el neto)' : ' · la comisión cuenta como coste') + '</span>';
         return;
