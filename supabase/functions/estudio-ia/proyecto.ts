@@ -37,7 +37,7 @@ const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente'
 const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
-const ACCIONES = new Set(['proyecto_montaje', 'proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
+const ACCIONES = new Set(['miniatura_subida', 'miniatura_guardar', 'proyecto_montaje', 'proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
   'fichero_borrar', 'fichero_leer_ia', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
 export const esAccionProyecto = (a: string) => ACCIONES.has(a);
 
@@ -59,12 +59,12 @@ export function miniaturaSvg(datos: Proyecto): string | null {
 }
 
 /** Guarda en Documentos un PDF generado en el servidor. */
-export async function guardarDocumento(supa: Any, o: { proyecto_id: string; user_id: string; tipo: string; version?: number | null; numero?: string | null; nombre: string; bytes: Uint8Array; presupuesto_id?: string | null; variante?: string | null }) {
+export async function guardarDocumento(supa: Any, o: { proyecto_id: string; user_id: string; tipo: string; version?: number | null; numero?: string | null; nombre: string; bytes: Uint8Array; presupuesto_id?: string | null; variante?: string | null; diseno_id?: string | null }) {
   try {
     const path = `${o.user_id}/${o.proyecto_id}/documentos/${crypto.randomUUID()}.pdf`;
     const up = await supa.storage.from('estudio').upload(path, o.bytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
-    await supa.from('estudio_documentos').insert({ proyecto_id: o.proyecto_id, user_id: o.user_id, tipo: o.tipo, version: o.version ?? null, numero: o.numero ?? null, nombre: o.nombre, path, bytes: o.bytes.length, presupuesto_id: o.presupuesto_id ?? null, variante: o.variante ?? null });
+    await supa.from('estudio_documentos').insert({ proyecto_id: o.proyecto_id, user_id: o.user_id, tipo: o.tipo, version: o.version ?? null, numero: o.numero ?? null, nombre: o.nombre, path, bytes: o.bytes.length, presupuesto_id: o.presupuesto_id ?? null, variante: o.variante ?? null, diseno_id: o.diseno_id ?? null });
   } catch (e) { console.error('estudio: guardar documento', e); }
 }
 
@@ -113,6 +113,16 @@ export async function accionProyecto(action: string, ctx: {
 }): Promise<Response> {
   const { supa, userId, esAdmin, cfg, body, json } = ctx;
   const firmar = async (path: string) => (await supa.storage.from('estudio').createSignedUrl(path, 3600)).data?.signedUrl ?? null;
+  /** Firma muchas rutas en una sola llamada (listados de Documentos). */
+  const firmarVarias = async (paths: string[]) => {
+    const unicas = [...new Set(paths.filter(Boolean))];
+    const m = new Map<string, string>();
+    for (let i = 0; i < unicas.length; i += 500) {
+      const { data } = await supa.storage.from('estudio').createSignedUrls(unicas.slice(i, i + 500), 3600);
+      for (const f of data ?? []) if (f.path && f.signedUrl) m.set(f.path, f.signedUrl);
+    }
+    return m;
+  };
 
   if (action === 'proyectos_lista') {
     const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, referencia, version_actual, updated_at, created_at, miniatura').eq('user_id', userId).order('updated_at', { ascending: false });
@@ -261,9 +271,8 @@ export async function accionProyecto(action: string, ctx: {
 
   if (action === 'documentos') {
     const { data } = await supa.from('estudio_documentos').select('*').eq('proyecto_id', pid).order('created_at', { ascending: false });
-    const docs = [];
-    for (const d of data ?? []) docs.push({ ...d, url: await firmar(d.path) });
-    return json({ documentos: docs });
+    const u = await firmarVarias((data ?? []).flatMap((d: Any) => [d.path, d.miniatura_path]));
+    return json({ documentos: (data ?? []).map((d: Any) => ({ ...d, url: u.get(d.path) ?? null, miniatura_url: d.miniatura_path ? u.get(d.miniatura_path) ?? null : null })) });
   }
   if (action === 'doc_subida') {
     const tipo = String(body?.tipo || '');
@@ -279,8 +288,8 @@ export async function accionProyecto(action: string, ctx: {
   }
   if (action === 'ficheros') {
     const { data } = await supa.from('estudio_ficheros').select('*').eq('proyecto_id', pid).eq('subido', true).order('created_at', { ascending: false });
-    const lista = [];
-    for (const f of data ?? []) lista.push({ ...f, url: await firmar(f.path) });
+    const u = await firmarVarias((data ?? []).flatMap((f: Any) => [f.path, f.miniatura_path]));
+    const lista = (data ?? []).map((f: Any) => ({ ...f, url: u.get(f.path) ?? null, miniatura_url: f.miniatura_path ? u.get(f.miniatura_path) ?? null : null }));
     const usado = await usoAlmacenamiento(supa, proyecto.user_id);
     return json({ ficheros: lista, almacenamiento: { usado, limite: cuotaMb * 1024 * 1024 } });
   }
@@ -315,6 +324,22 @@ export async function accionProyecto(action: string, ctx: {
     const { pres, cobros } = await datosProyecto(supa, pid);
     if (pres?.estado !== 'aceptado') return json({ error: 'Los cobros se calculan cuando el presupuesto está aceptado.' }, 400);
     return json({ cobros: await asegurarCobros(supa, proyecto, pres, cobros, true) });
+  }
+  if (action === 'miniatura_subida' || action === 'miniatura_guardar') {
+    // Miniatura (JPEG pequeño) que genera el navegador la primera vez que ve la tarjeta
+    const tabla = body?.tabla === 'doc' ? 'estudio_documentos' : 'estudio_ficheros';
+    const id = String(body?.id || '');
+    const { data: x } = await supa.from(tabla).select('id, proyecto_id').eq('id', id).eq('proyecto_id', pid).maybeSingle();
+    if (!x) return json({ error: 'No encontrado' }, 404);
+    const path = `${proyecto.user_id}/${pid}/miniaturas/${id}.jpg`;
+    if (action === 'miniatura_subida') {
+      await supa.storage.from('estudio').remove([path]);
+      const { data: s2, error } = await supa.storage.from('estudio').createSignedUploadUrl(path);
+      if (error) throw error;
+      return json({ path, token: s2.token });
+    }
+    await supa.from(tabla).update({ miniatura_path: path }).eq('id', id);
+    return json({ ok: true });
   }
   if (action === 'proyecto_montaje') {
     // Fecha prevista de montaje y montado (sí/no + fecha real)

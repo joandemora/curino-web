@@ -250,6 +250,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (action === 'presupuestos') {
     const { data: lista } = await supa.from('estudio_presupuestos').select('id, numero, datos, estado, estado_nota, importe, pvp, comision_importe, created_at, updated_at').eq('proyecto_id', proyectoId).order('created_at');
     const { data: vers } = await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).order('numero');
+    const { data: dis } = await supa.from('estudio_disenos').select('id, nombre, guardado, version_actual, miniatura').eq('proyecto_id', proyectoId).gt('version_actual', 0).order('updated_at', { ascending: false });
     const [docs, fichs] = await Promise.all([
       supa.from('estudio_documentos').select('id, tipo, nombre, numero, version').eq('proyecto_id', proyectoId).in('tipo', ['alzados_pdf', 'presupuesto_pdf']).order('created_at', { ascending: false }),
       supa.from('estudio_ficheros').select('id, tipo, nombre, mime').eq('proyecto_id', proyectoId).eq('subido', true).order('created_at', { ascending: false })
@@ -262,6 +263,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       })),
       siguiente: await siguienteZ(),
       versiones: (vers ?? []).map((v: Any) => ({ numero: v.numero, armarios: (v.datos?.armarios ?? []).map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) })),
+      // Diseños (los documentos de tipo «Diseño»): partidas con su dibujo desde su versión actual
+      disenos: (dis ?? []).map((d: Any) => {
+        const v = (vers ?? []).find((x: Any) => x.numero === d.version_actual);
+        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: (v?.datos?.armarios ?? []).map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
+      }),
       documentos: [
         ...(docs.data ?? []).map((x: Any) => ({ tabla: 'doc', id: x.id, nombre: x.nombre, tipo: x.tipo })),
         ...(fichs.data ?? []).filter((x: Any) => /^(application\/pdf|image\/(jpeg|png|webp))$/.test(x.mime)).map((x: Any) => ({ tabla: 'fichero', id: x.id, nombre: x.nombre, tipo: x.tipo }))
@@ -287,10 +293,27 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       if (!partidas.length) return json({ error: 'Elige al menos un armario.' }, 400);
       d = { ...cabecera(numero), version: usadas[0], versiones: usadas, partidas };
     } else if (b.tipo === 'documentos') {
+      const todos = Array.isArray(b.documentos) ? b.documentos : [];
+      if (!todos.length) return json({ error: 'Elige al menos un documento.' }, 400);
+      // Diseños → partidas con dibujo (sin IA)
+      const partidas: Partida[] = []; const usadas: number[] = [];
+      for (const r of todos.filter((x: Any) => x?.tabla === 'diseno').slice(0, 10)) {
+        const { data: dd } = await supa.from('estudio_disenos').select('id, version_actual').eq('id', String(r?.id || '')).eq('proyecto_id', proyectoId).maybeSingle();
+        const v = dd?.version_actual ? await versionDatos(dd.version_actual) : null;
+        if (!v) continue;
+        const armarios = Array.isArray(r?.armarios) ? r.armarios.map(String) : [];
+        const g = generarPresupuesto({ proyecto: v.datos, version: v.numero, tarifa, plantilla, nombre: proyecto.nombre, referencia: numero, hoy, armarios });
+        partidas.push(...g.partidas); usadas.push(v.numero);
+      }
+      const refs = todos.filter((x: Any) => x?.tabla !== 'diseno').slice(0, 4);
+      if (!refs.length) {
+        if (!partidas.length) return json({ error: 'Elige al menos un armario del diseño.' }, 400);
+        d = { ...cabecera(numero), version: usadas[0], versiones: usadas, partidas };
+        await crear(d);
+        return json(respuesta(d));
+      }
       if (!ctx.clave) return json({ error: 'La IA no está configurada.' }, 500);
       if (!esAdmin) { const sin = sinCredito(ctx.alumno ?? null); if (sin) return json({ error: sin, sin_credito: true }, 402); }
-      const refs = (Array.isArray(b.documentos) ? b.documentos : []).slice(0, 4);
-      if (!refs.length) return json({ error: 'Elige al menos un documento.' }, 400);
       const adjuntos: Adjunto[] = []; let total = 0;
       for (const r of refs) {
         const tabla = r?.tabla === 'doc' ? 'estudio_documentos' : 'estudio_ficheros';
@@ -307,8 +330,10 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       if (!adjuntos.length) return json({ error: 'Ninguno de los documentos se puede leer (PDF o foto).' }, 400);
       const r = await proponerPartidas({ clave: ctx.clave, modelo: ctx.modelo, adjuntos });
       await usar(ctx, proyectoId, r.llamadas, 'partidas');
-      if (!r.partidas?.length) return json({ error: 'Claude no ha podido proponer partidas con esos documentos. Prueba con otros o empieza en blanco.' }, 502);
-      d = { ...cabecera(numero), version: proyecto.version_actual || 0, partidas: r.partidas.map((x, i) => partidaLibre({ n: i + 1, titulo: x.titulo, descripcion: x.descripcion, cantidad: x.cantidad, precio: x.precio_unitario, dto: tarifa.descuento_pct ?? 0 })) };
+      if (!r.partidas?.length && !partidas.length) return json({ error: 'Claude no ha podido proponer partidas con esos documentos. Prueba con otros o empieza en blanco.' }, 502);
+      r.partidas = r.partidas ?? [];
+      const libres = r.partidas.map((x, i) => partidaLibre({ n: i + 1, titulo: x.titulo, descripcion: x.descripcion, cantidad: x.cantidad, precio: x.precio_unitario, dto: tarifa.descuento_pct ?? 0 }));
+      d = { ...cabecera(numero), version: usadas[0] ?? (proyecto.version_actual || 0), versiones: usadas.length ? usadas : undefined, partidas: [...partidas, ...libres] };
     } else {
       d = { ...cabecera(numero), version: proyecto.version_actual || 0, partidas: [partidaLibre({ n: 1, dto: tarifa.descuento_pct ?? 0 })] };
     }
