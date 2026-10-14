@@ -337,7 +337,9 @@
         var v = pg.getViewport({ scale: 1 }), k = 320 / v.width, vp = pg.getViewport({ scale: k });
         var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
         var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-        return pg.render({ canvasContext: g, viewport: vp }).promise.then(function () { return c; });
+        // intent 'print': sin requestAnimationFrame (que Chrome pausa con la pestaña en segundo plano)
+        var tarea = pg.render({ canvasContext: g, viewport: vp, intent: 'print' });
+        return Promise.race([tarea.promise, new Promise(function (_, ko) { setTimeout(function () { try { tarea.cancel(); } catch (e) { /* */ } ko(new Error('tiempo')); }, 20000); })]).then(function () { return c; });
       });
       return new Promise(function (ok, ko) {
         var im = new Image(); im.crossOrigin = 'anonymous';
