@@ -189,7 +189,8 @@ export async function accionProyecto(action: string, ctx: {
     if (body?.subido === true) fila.subido = true;
     if (body?.tipo_coste !== undefined) fila.tipo_coste = String(body.tipo_coste || '').trim().slice(0, 60) || null;
     if (body?.concepto !== undefined) fila.concepto = String(body.concepto || '').trim().slice(0, 200) || null;
-    const r = await supa.from('estudio_ficheros').update(fila).eq('id', f.id).select('*').single();
+    // Solo «Sustituye a…» (sin otros campos): no hay nada que actualizar en la factura
+    const r = Object.keys(fila).length ? await supa.from('estudio_ficheros').update(fila).eq('id', f.id).select('*').single() : { data: f, error: null };
     if (r.error) throw r.error;
     // «Sustituye a…»: presupuestos de proveedor del proyecto que esta factura sustituye (dejan de contar como coste)
     if (Array.isArray(body?.sustituye) && r.data.tipo === 'factura_proveedor') {
