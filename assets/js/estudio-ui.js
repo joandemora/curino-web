@@ -246,6 +246,11 @@
           viendo = d.version;
           versiones.push({ numero: d.version, origen: 'manual', nota: d.nota, created_at: new Date().toISOString() });
           pintarZona(d.svgs);
+          // Aviso en el chat al momento (el mismo que se guarda en el servidor)
+          var msgs = $('#esMsgs');
+          if (msgs.querySelector('.es-vacio')) msgs.innerHTML = '';
+          msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'asistente', texto: d.mensaje || (d.nota + '. Guardado como versión nueva.'), version: d.version, created_at: new Date().toISOString() }));
+          msgs.scrollTop = 1e9;
           if (ctx.alCambiar) ctx.alCambiar();
         }).catch(function (err) { alertaError(err.message); pintarZona(); cargarVersion(viendo); })
           .then(function () { ocupado = false; });
