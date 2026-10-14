@@ -18,6 +18,12 @@
 
 import type { Armario, Cuerpo } from './esquema.ts';
 import { repartoZonas, ZOCALO_DEF, GROSOR_DEF } from './esquema.ts';
+import { puntosArmario, puntosBase, type ModuloAsignado, type OpcionesPuntos } from './puntos.ts';
+
+// 2026-10: el cuerpo y el interior (altillo, estantes, barras, cajones) se
+// calculan por PUNTOS con la tabla OTG 2026 (puntos.ts). Aquí quedan en € los
+// conceptos que la tabla no cubre (puertas, frentes, tiradores, perchero
+// extraíble); se pasarán a puntos con sus hojas.
 
 export type Unidad = 'ml' | 'ud' | '%';
 export interface Concepto { clave: string; grupo: string; nombre: string; unidad: Unidad; ayuda?: string }
@@ -26,9 +32,6 @@ export const FONDOS = [{ hasta: 45, nombre: 'fondo hasta 45' }, { hasta: 65, nom
 export const ALTOS = [{ hasta: 240, nombre: 'alto hasta 240' }, { hasta: 270, nombre: 'alto 241–270' }, { hasta: Infinity, nombre: 'alto más de 270' }];
 
 export const CONCEPTOS: Concepto[] = [
-  ...FONDOS.flatMap((f, i) => ALTOS.map((a, j) => ({
-    clave: `cuerpo_f${i}_a${j}`, grupo: 'Cuerpo (por metro lineal)', nombre: `Cuerpo · ${f.nombre} · ${a.nombre}`, unidad: 'ml' as Unidad
-  }))),
   { clave: 'puerta_lisa', grupo: 'Frente', nombre: 'Puerta lisa', unidad: 'ud' },
   { clave: 'puerta_moldurada', grupo: 'Frente', nombre: 'Puerta moldurada', unidad: 'ud' },
   { clave: 'puerta_corredera', grupo: 'Frente', nombre: 'Extra por puerta corredera', unidad: 'ud' },
@@ -36,23 +39,26 @@ export const CONCEPTOS: Concepto[] = [
   { clave: 'acabado_madera', grupo: 'Frente', nombre: 'Recargo acabado madera natural', unidad: '%', ayuda: 'Roble, nogal, chapa natural…' },
   { clave: 'frente_fijo', grupo: 'Frente', nombre: 'Frente fijo', unidad: 'ml' },
   { clave: 'tirador', grupo: 'Frente', nombre: 'Tirador', unidad: 'ud' },
-  { clave: 'altillo', grupo: 'Interior', nombre: 'Altillo (por módulo)', unidad: 'ud' },
-  { clave: 'estante', grupo: 'Interior', nombre: 'Estante / balda', unidad: 'ud' },
-  { clave: 'barra', grupo: 'Interior', nombre: 'Barra de colgar', unidad: 'ud' },
-  { clave: 'perchero_extraible', grupo: 'Interior', nombre: 'Perchero extraíble', unidad: 'ud' },
-  { clave: 'cajon', grupo: 'Interior', nombre: 'Cajón', unidad: 'ud' }
+  { clave: 'perchero_extraible', grupo: 'Interior', nombre: 'Perchero extraíble', unidad: 'ud', ayuda: 'No está en la tabla de puntos' }
 ];
 
 export interface Tarifa {
   valores: Record<string, number | null>;  // por clave; null o ausente = PENDIENTE
   descuento_pct: number | null;            // descuento profesional por defecto
   iva_pct: number | null;
+  precio_punto?: number | null;            // € por punto (null = PENDIENTE)
+  puntos?: Record<string, number>;         // solo los puntos cambiados sobre la tabla OTG 2026
 }
+
+/** Puntos que usa la tarifa: la tabla original + lo que el usuario haya cambiado. */
+export const puntosDe = (t: Tarifa): Record<string, number> => ({ ...puntosBase(), ...(t.puntos ?? {}) });
 
 export const TARIFA_PENDIENTE: Tarifa = {
   valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, null])),
   descuento_pct: 30,
-  iva_pct: 21
+  iva_pct: 21,
+  precio_punto: null,
+  puntos: {}
 };
 
 export interface LineaDesglose {
@@ -62,11 +68,16 @@ export interface LineaDesglose {
   unidad: Unidad;
   precio: number | null;   // por unidad (o % si unidad '%')
   importe: number | null;
+  puntos?: number;         // por unidad, si va por puntos
+  aviso?: string;          // «fuera de tabla», «revisar»…
 }
 export interface PrecioArmario {
   pvp: number | null;            // null si hay conceptos PENDIENTE
   desglose: LineaDesglose[];
   pendientes: string[];          // nombres de conceptos sin precio
+  puntos_total: number;          // suma de puntos del armario
+  modulos: ModuloAsignado[];     // modelo de interior asignado a cada módulo
+  avisos: string[];
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -90,7 +101,6 @@ export function contarArmario(a: Armario): Record<string, number> {
   const n: Record<string, number> = {};
   const sumar = (k: string, v: number) => { if (v) n[k] = r2((n[k] ?? 0) + v); };
   for (const c of a.cuerpos) {
-    sumar(claveCuerpo(c), c.ancho / 100);
     const f = c.frente;
     for (const p of f.piezas) {
       if (p.tipo === 'fijo') { sumar('frente_fijo', p.ancho / 100); continue; }
@@ -98,28 +108,32 @@ export function contarArmario(a: Armario): Record<string, number> {
       if (f.apertura === 'corredera') sumar('puerta_corredera', 1);
       if (f.tirador !== 'ninguno') sumar('tirador', 1);
     }
+    // El interior va por puntos (modelo por módulo); en € solo el perchero extraíble
     const g = c.grosor ?? GROSOR_DEF;
     for (const m of c.modulos) {
       const zonas = repartoZonas(m.interior, { alto: c.alto, zocalo: c.zocalo ?? ZOCALO_DEF, grosor: g }).zonas.map((z) => z.zona);
-      const lista = zonas.length ? zonas : m.interior;
-      // Baldas entre zonas; la que cierra el altillo va con el altillo.
-      sumar('estante', Math.max(0, lista.length - 1 - (lista[0]?.tipo === 'altillo' ? 1 : 0)));
-      for (const z of lista) {
-        if (z.tipo === 'altillo') sumar('altillo', 1);
-        else if (z.tipo === 'perchero') sumar('barra', 1);
-        else if (z.tipo === 'perchero_extraible') sumar('perchero_extraible', 1);
-        else if (z.tipo === 'cajonera') sumar('cajon', z.cajones);
-        else if (z.tipo === 'estantes') sumar('estante', z.estantes);
-      }
+      for (const z of zonas.length ? zonas : m.interior) if (z.tipo === 'perchero_extraible') sumar('perchero_extraible', 1);
     }
   }
   return n;
 }
 
-export function precioArmario(a: Armario, t: Tarifa): PrecioArmario {
+export function precioArmario(a: Armario, t: Tarifa, op: OpcionesPuntos = {}): PrecioArmario {
   const cantidades = contarArmario(a);
   const desglose: LineaDesglose[] = [];
   const pendientes: string[] = [];
+  // Cuerpo e interior por puntos (tabla OTG 2026 + cambios del usuario)
+  const pp = typeof t.precio_punto === 'number' && Number.isFinite(t.precio_punto) && t.precio_punto > 0 ? t.precio_punto : null;
+  const pt = puntosArmario(a, puntosDe(t), op);
+  let puntosTotal = 0, totalPuntos = 0;
+  for (const l of pt.lineas) {
+    const pts = Math.round(l.puntos * l.cantidad * 100) / 100;
+    puntosTotal += pts;
+    const precio = pp === null ? null : r2(l.puntos * pp);
+    desglose.push({ clave: l.clave, nombre: l.nombre, cantidad: l.cantidad, unidad: 'ud', precio, importe: pp === null ? null : r2(pts * pp), puntos: l.puntos, aviso: l.aviso });
+    if (pp !== null) totalPuntos += r2(pts * pp);
+  }
+  if (pt.lineas.length && pp === null) pendientes.push('Precio del punto');
   const valor = (k: string) => {
     const v = t.valores[k];
     return typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -148,7 +162,8 @@ export function precioArmario(a: Armario, t: Tarifa): PrecioArmario {
     if (importe === null) pendientes.push(nombre(k));
     else total += importe;
   }
-  return { pvp: pendientes.length ? null : r2(total), desglose, pendientes };
+  total += totalPuntos;
+  return { pvp: pendientes.length ? null : r2(total), desglose, pendientes, puntos_total: Math.round(puntosTotal * 100) / 100, modulos: pt.modulos, avisos: pt.avisos };
 }
 
 /** Importe de una línea del presupuesto. */

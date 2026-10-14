@@ -21,6 +21,7 @@ import type { Armario, Cuerpo, Frente, Proyecto, Zona } from './esquema.ts';
 import { modelosPuertas } from './alzado.ts';
 import { eur, importeLinea, precioArmario } from './tarifa.ts';
 import type { LineaDesglose, Tarifa } from './tarifa.ts';
+import type { ModuloAsignado, OpcionesPuntos } from './puntos.ts';
 
 // ── Tipos ───────────────────────────────────────────────────────────
 export interface Partida {
@@ -39,6 +40,10 @@ export interface Partida {
   version?: number;        // versión del diseño de la que sale (varias versiones en un presupuesto)
   clave?: string;          // identificador único en el presupuesto («v2:A.01» o «libre:…»)
   libre?: boolean;         // partida a mano o propuesta por Claude: sin dibujo ni tarifa
+  opciones?: OpcionesPuntos;   // tarifa por puntos: modelo por módulo, costados vistos, remate, recargos…
+  puntos?: number;             // total de puntos del armario
+  modulos?: ModuloAsignado[];  // modelo de interior asignado a cada módulo
+  avisos?: string[];           // altura/remate fuera de tabla…
 }
 
 /** Comisión del interiorista: dos versiones del PDF/Excel (cliente PVP / interiorista con DTO). */
@@ -342,9 +347,9 @@ export function generarPresupuesto(o: {
   const elegidos = o.armarios?.length ? o.proyecto.armarios.filter((a) => o.armarios!.includes(a.codigo)) : o.proyecto.armarios;
   const partidas = elegidos.map((a): Partida => {
     const t = textosArmario(a, o.plantilla.materiales);
-    const precio = precioArmario(a, o.tarifa);
     const clave = `v${o.version}:${a.codigo}`;
     const ant = prev?.partidas.find((x) => x.clave === clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === a.codigo);
+    const precio = precioArmario(a, o.tarifa, ant?.opciones ?? {});
     return {
       codigo: a.codigo, version: o.version, clave,
       cantidad: ant?.cantidad ?? 1,
@@ -357,7 +362,8 @@ export function generarPresupuesto(o: {
       precio_manual: !!ant?.precio_manual,
       dto_pct: ant?.dto_pct ?? (o.tarifa.descuento_pct ?? 0),
       desglose: precio.desglose,
-      pendientes: precio.pendientes
+      pendientes: precio.pendientes,
+      opciones: ant?.opciones ?? {}, puntos: precio.puntos_total, modulos: precio.modulos, avisos: precio.avisos
     };
   });
   return {

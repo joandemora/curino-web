@@ -636,6 +636,47 @@
   // ════════════════════════════════════════════════════════════════
   // Presupuesto
   // ════════════════════════════════════════════════════════════════
+  // ── Desglose de una partida: puntos de cada concepto, total de puntos y precio; opciones de la tarifa por puntos ──
+  var NOM_MOD = { m1: 'Modelo 1 · altillo + estantes + 3 cajones', m2: 'Modelo 2 · altillo + estante + barra', m3: 'Modelo 3 · altillo + estantes', m4: 'Modelo 4 · altillo + doble barra', m5: 'Modelo 5 · altillo + barra largo', m6: 'Modelo 6 · altillo + hueco libre' };
+  var NOM_COSTADO = { melamina: 'Melamina', madera_barnizada: 'Madera barnizada', dm_lacado: 'DM lacado', espejo: 'Con espejo' };
+  function desglosePuntos(p, i) {
+    var op = p.opciones || {}, cost = (op.costados && op.costados[0]) || { tipo: 'melamina', n: 0 };
+    var hayPuntos = p.desglose.some(function (d) { return d.puntos != null; });
+    var filas = p.desglose.map(function (d) {
+      var pts = d.puntos != null ? Math.round(d.puntos * d.cantidad * 100) / 100 : null;
+      return '<tr' + (d.aviso ? ' class="pr-aviso"' : '') + '><td>' + esc(d.nombre) + (d.aviso ? '<br><small>⚠ ' + esc(d.aviso) + '</small>' : '') + '</td><td>' + (d.unidad === '%' ? '' : numOut(d.cantidad)) + '</td>' +
+        '<td>' + (d.puntos != null ? numOut(d.puntos) + ' pt' : '') + '</td><td>' + (pts != null ? '<b>' + numOut(pts) + '</b>' : '') + '</td>' +
+        '<td>' + (d.precio === null ? 'PENDIENTE' : d.unidad === '%' ? numOut(d.precio) + '%' : eur(d.precio)) + '</td><td>' + (d.importe == null ? '—' : eur(d.importe)) + '</td></tr>';
+    }).join('');
+    var tot = '<tr class="pr-des-tot"><td>Total</td><td></td><td></td><td><b>' + numOut(p.puntos || 0) + ' pt</b></td><td></td><td><b>' + (p.precio == null ? 'PENDIENTE' : eur(p.precio)) + '</b></td></tr>';
+    var avisos = (p.avisos || []).map(function (a) { return '<li>⚠ ' + esc(a) + '</li>'; }).join('');
+    var mods = (p.modulos || []).map(function (m) {
+      var cur = (op.modelos && op.modelos[m.clave]) || m.modelo;
+      return '<label class="pr-op-mod">Módulo ' + (m.modulo + 1) + (p.modulos.some(function (x) { return x.cuerpo > 0; }) ? ' (cuerpo ' + (m.cuerpo + 1) + ')' : '') + ' · ' + m.ancho_mm + ' mm' +
+        '<select data-opm="' + m.clave + '" data-auto="' + m.automatico + '">' + Object.keys(NOM_MOD).map(function (k) { return '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + NOM_MOD[k] + (k === m.automatico ? ' (asignado)' : '') + '</option>'; }).join('') + '</select>' +
+        (m.nota ? '<small class="pr-nota">' + esc(m.nota) + '</small>' : '') + '</label>';
+    }).join('');
+    return '<details class="pr-des"' + (hayPuntos ? ' open' : '') + '><summary>Desglose' + (hayPuntos ? ' · ' + numOut(p.puntos || 0) + ' puntos' : '') + '</summary>' +
+      '<table class="pr-des-t"><thead><tr><th>Concepto</th><th>Ud.</th><th>Pt/ud.</th><th>Puntos</th><th>Precio/ud.</th><th>Importe</th></tr></thead><tbody>' + filas + tot + '</tbody></table>' +
+      (avisos ? '<ul class="pr-avisos">' + avisos + '</ul>' : '') +
+      (hayPuntos ? '<div class="pr-op" data-op="' + i + '"><b>Opciones de la tarifa por puntos</b>' + mods +
+        '<div class="pr-op-fila"><label>Costados vistos <input data-o="costado_n" inputmode="numeric" value="' + (cost.n || 0) + '" style="width:44px"></label>' +
+        '<select data-o="costado_tipo">' + Object.keys(NOM_COSTADO).map(function (k) { return '<option value="' + k + '"' + (k === cost.tipo ? ' selected' : '') + '>' + NOM_COSTADO[k] + '</option>'; }).join('') + '</select>' +
+        '<label>Remate <select data-o="remate"><option value="">Sin remate</option><option value="barniz"' + (op.remate === 'barniz' ? ' selected' : '') + '>Barniz</option><option value="lacado"' + (op.remate === 'lacado' ? ' selected' : '') + '>Lacado</option></select></label></div>' +
+        '<div class="pr-op-fila"><label><input type="checkbox" data-o="cajeado"' + (op.cajeado ? ' checked' : '') + '> Cajeados (+10 %)</label><label><input type="checkbox" data-o="inclinacion"' + (op.inclinacion ? ' checked' : '') + '> Inclinación (+25 %)</label>' +
+        '<label>Divisiones verticales <input data-o="divisiones" inputmode="numeric" value="' + (op.divisiones || 0) + '" style="width:44px"></label><label>Rinconeros <input data-o="rinconeros" inputmode="numeric" value="' + (op.rinconeros || 0) + '" style="width:44px"></label></div></div>' : '') +
+      '</details>';
+  }
+  function leerOpciones(card) {
+    var z = card.querySelector('.pr-op'); if (!z) return undefined;
+    var v = function (k) { var e = z.querySelector('[data-o="' + k + '"]'); return e ? (e.type === 'checkbox' ? e.checked : e.value) : null; };
+    var modelos = {};
+    z.querySelectorAll('[data-opm]').forEach(function (s) { if (s.value !== s.dataset.auto) modelos[s.dataset.opm] = s.value; });
+    var n = parseInt(v('costado_n'), 10) || 0;
+    return { modelos: modelos, costados: n > 0 ? [{ tipo: v('costado_tipo'), n: n }] : [], remate: v('remate') || null, cajeado: !!v('cajeado'), inclinacion: !!v('inclinacion'),
+      divisiones: parseInt(v('divisiones'), 10) || 0, rinconeros: parseInt(v('rinconeros'), 10) || 0 };
+  }
+
   function presupuesto(el, ctx, pid, opts) {
     opts = opts || {};
     var supa = ctx.supa, proyecto, doc = null, iva = 21, versionActual = 0, ocupado = false;
@@ -799,10 +840,8 @@
           (p.libre ? '' : '<label style="margin-top:8px"><input type="checkbox" data-p="precio_manual"' + (p.precio_manual ? ' checked' : '') + ' style="width:auto"> Precio a mano</label>') +
           '<div class="' + (p.precio === null ? 'pr-pend' : '') + '"><label>Precio unitario (PVP sin IVA)</label><input data-p="precio" inputmode="decimal" placeholder="PENDIENTE" value="' + numOut(p.precio) + '"' + (p.libre || p.precio_manual ? '' : ' readonly') + '></div>' +
           '<div class="pr-res" data-res></div>' +
-          (p.libre ? '' : '<details class="pr-des"><summary>Desglose de tarifa</summary><table>' + p.desglose.map(function (d) {
-            return '<tr><td>' + esc(d.nombre) + '</td><td>' + (d.unidad === '%' ? '' : numOut(d.cantidad) + ' ' + d.unidad) + '</td><td>' + (d.precio === null ? 'PENDIENTE' : d.unidad === '%' ? numOut(d.precio) + '%' : eur(d.precio)) + '</td><td>' + eur(d.importe) + '</td></tr>';
-          }).join('') + '</table></details>') +
-          '<button class="pa-btn pr-quitar" data-quitar="' + i + '">Quitar partida</button></div></div></div>';
+          '<button class="pa-btn pr-quitar" data-quitar="' + i + '">Quitar partida</button></div></div>' +
+          (p.libre ? '' : desglosePuntos(p, i)) + '</div>';
       }).join('');
       html += '<div class="pr-barra"><button class="pa-btn" id="prAnadir">+ Añadir partida</button></div><div class="pr-card"><div class="pr-tot" id="prTot"></div></div>';
       var vistaCab = '<div class="pr-vista-cab"><b>Vista previa</b>' + (cm.activa ? '<select id="prVistaVar"><option value="cliente">Cliente</option><option value="interiorista">Interiorista</option></select>' : '') + '<span id="prVistaEst" class="pa-muted"></span></div>';
@@ -842,7 +881,8 @@
       var on = $('#prComOn');
       if (on) d.comision = { activa: on.checked, pct: numIn($('#prComPct').value) || 0, paga: $('#prComPaga').value };
       document.querySelectorAll('#prZona [data-i]').forEach(function (card) {
-        var p = doc.partidas[Number(card.dataset.i)], x = { codigo: p.codigo, clave: p.clave };
+        var p = doc.partidas[Number(card.dataset.i)], x = { codigo: p.codigo, clave: p.clave }, op = leerOpciones(card);
+        if (op) x.opciones = op;
         card.querySelectorAll('[data-p]').forEach(function (i) {
           var k = i.dataset.p;
           if (k === 'precio_manual') x[k] = i.checked;
@@ -883,6 +923,7 @@
     el.addEventListener('input', function (e) { if (doc && e.target.closest('.pr-ed')) { recalcular(); vistaPrevia(); } });
     el.addEventListener('change', function (e) {
       if (doc && (e.target.id === 'prComOn' || (e.target.dataset && e.target.dataset.p === 'precio_manual'))) recalcular();
+      if (doc && e.target.closest('.pr-op')) { bloquear(function () { return guardar().then(function () { refrescarLista(); return 'Recalculado por puntos'; }); }, 'Recalculando…'); return; }
       if (doc && e.target.closest('.pr-ed')) vistaPrevia();
       if (e.target.id === 'prVistaVar') { varVista = e.target.value; vistaPrevia(0); }
       if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { refrescarLista(); });
@@ -1225,16 +1266,31 @@
     function cargar() {
       return api(ctx, { action: 'tarifa', de: mia ? 'mia' : 'curino' }).then(function (d) {
         if (mia) $('#tfNota').textContent = d.propia ? 'Tu tarifa: con estos precios se calculan tus presupuestos.' : 'Ahora ves la tarifa Curino por defecto. Cambia lo que quieras y guarda: se convierte en tu tarifa.';
-        var v = d.tarifa.valores, html = '';
-        var altos = ['alto hasta 240', 'alto 241–270', 'alto más de 270'], fondos = ['fondo hasta 45', 'fondo 46–65', 'fondo más de 65'];
-        html += '<h3>Cuerpo · €/metro lineal</h3><table class="tf-tabla"><thead><tr><th></th>' + altos.map(function (a) { return '<th>' + a + '</th>'; }).join('') + '</tr></thead><tbody>';
-        fondos.forEach(function (f, i) {
-          html += '<tr><td>' + f + '</td>' + altos.map(function (_, j) {
-            var k = 'cuerpo_f' + i + '_a' + j;
-            return '<td><input class="tf-in" data-k="' + k + '" inputmode="decimal" placeholder="PENDIENTE" value="' + esc(numOut(v[k])) + '"></td>';
-          }).join('') + '</tr>';
-        });
-        html += '</tbody></table>';
+        var v = d.tarifa.valores, html = '', P = d.puntos, base = P.base, mios = d.tarifa.puntos || {};
+        tfBase = base;
+        // ── Armarios por puntos (tabla OTG 2026) ──
+        var celda = function (k) {
+          var val = mios[k] !== undefined ? mios[k] : base[k], mod = mios[k] !== undefined && mios[k] !== base[k];
+          return '<td class="tf-pt' + (mod ? ' mod' : '') + '"><input class="tf-in" data-pk="' + k + '" inputmode="decimal" value="' + esc(numOut(val)) + '"><button type="button" class="tf-reset" data-reset="' + k + '" title="Restablecer al original (' + numOut(base[k]) + ')">↺</button></td>';
+        };
+        html += '<div class="tf-puntos"><div class="tf-puntos-cab"><h3 style="margin:0">Armarios por puntos <span class="pr-tag">' + esc(P.version) + '</span></h3>' +
+          '<label class="tf-punto">Precio del punto <input class="tf-in" id="tfPunto" inputmode="decimal" placeholder="PENDIENTE" value="' + esc(numOut(d.tarifa.precio_punto)) + '"><span class="tf-u">€/punto</span></label>' +
+          '<button type="button" class="pa-btn" id="tfResetTodo">Restablecer todo</button></div>' +
+          '<p class="pa-muted" style="font-size:12.5px;margin:4px 0 10px">Precio = puntos × precio del punto. Si cambias un punto queda marcado como <b>modificado</b> y puedes volver al original con ↺. Tabla para altura 2600 mm y fondo 550 mm (650 con puertas), haya/maple 19/25 mm, trasera 10 mm. Ancho entre tramos → tramo superior; más de 1000 mm → se extrapola y se marca para revisar.</p>';
+        var cabAnchos = '<thead><tr><th></th>' + P.anchos.map(function (a) { return '<th>' + a + '</th>'; }).join('') + '</tr></thead>';
+        html += '<h4>1 · Interiores por modelo (puntos por ancho de módulo, mm)</h4><div class="tf-scroll"><table class="tf-tabla tf-pts">' + cabAnchos + '<tbody>' +
+          Object.keys(P.modelos).map(function (m) { return '<tr><td><b>' + esc(P.modelos[m].nombre) + '</b><br><span class="pa-muted" style="font-size:11px">' + esc(P.modelos[m].incluye) + '</span></td>' + P.anchos.map(function (a) { return celda(m + '_' + a); }).join('') + '</tr>'; }).join('') +
+          '<tr><td>' + esc(P.sueltos.rinconero.nombre) + '</td>' + celda('rinconero') + '</tr></tbody></table></div>';
+        html += '<h4>2 · Extras de interior</h4><div class="tf-scroll"><table class="tf-tabla tf-pts">' + cabAnchos + '<tbody>' +
+          Object.keys(P.extras).map(function (k) { return '<tr><td>' + esc(P.extras[k].nombre) + '</td>' + P.anchos.map(function (a) { return celda(k + '_' + a); }).join('') + '</tr>'; }).join('') +
+          '<tr><td>' + esc(P.sueltos.division.nombre) + '</td>' + celda('division') + '</tr></tbody></table></div>';
+        html += '<div class="tf-dos-col"><div><h4>3 · Costados vistos (2800 × 650 × 16)</h4><table class="tf-tabla tf-pts"><tbody>' +
+          Object.keys(P.costados).map(function (k) { return '<tr><td>' + esc(P.costados[k].nombre.replace('Costado visto ', '')) + '</td>' + celda('costado_' + k) + '</tr>'; }).join('') + '</tbody></table>' +
+          '<h4>4 · Recargos (% sobre el interior)</h4><table class="tf-tabla tf-pts"><tbody>' +
+          Object.keys(P.recargos).map(function (k) { return '<tr><td>' + esc(P.recargos[k].nombre) + '</td>' + celda('recargo_' + k) + '</tr>'; }).join('') + '</tbody></table></div>' +
+          '<div><h4>5 · Remate armario (conjunto)</h4><table class="tf-tabla tf-pts"><thead><tr><th></th><th>Barniz</th><th>Lacado</th></tr></thead><tbody>' +
+          P.remates.map(function (r) { return '<tr><td>Hasta ' + r.hasta + ' cm</td>' + celda('remate_' + r.hasta + '_barniz') + celda('remate_' + r.hasta + '_lacado') + '</tr>'; }).join('') + '</tbody></table></div></div></div>';
+        html += '<h3 style="margin-top:18px">En euros (aún no están en la tabla de puntos)</h3>';
         var grupos = {};
         d.conceptos.filter(function (c) { return c.clave.indexOf('cuerpo_') !== 0; }).forEach(function (c) { (grupos[c.grupo] = grupos[c.grupo] || []).push(c); });
         Object.keys(grupos).forEach(function (g) {
@@ -1248,11 +1304,24 @@
         $('#tfIva').value = numOut(d.tarifa.iva_pct);
       });
     }
+    var tfBase = {};
+    // Marca «modificado» al teclear y ↺ / «Restablecer todo» vuelven al original (se aplica al guardar)
+    el.addEventListener('input', function (e) {
+      var k = e.target.dataset && e.target.dataset.pk; if (!k) return;
+      e.target.closest('td').classList.toggle('mod', numIn(e.target.value) !== tfBase[k]);
+    });
+    el.addEventListener('click', function (e) {
+      var r = e.target.closest('[data-reset]');
+      if (r) { var i = el.querySelector('[data-pk="' + r.dataset.reset + '"]'); i.value = numOut(tfBase[r.dataset.reset]); i.closest('td').classList.remove('mod'); msg('Restablecido · pulsa «Guardar tarifa» para aplicarlo', true); return; }
+      if (e.target.id === 'tfResetTodo') { el.querySelectorAll('[data-pk]').forEach(function (i) { i.value = numOut(tfBase[i.dataset.pk]); i.closest('td').classList.remove('mod'); }); msg('Tabla original restablecida · pulsa «Guardar tarifa» para aplicarlo', true); }
+    });
     $('#tfGuardar').addEventListener('click', function () {
       var valores = {};
       document.querySelectorAll('#tfConceptos [data-k]').forEach(function (i) { valores[i.dataset.k] = i.value.trim() === '' ? null : i.value.trim(); });
-      api(ctx, { action: 'tarifa_guardar', de: mia ? 'mia' : 'curino', valores: valores, descuento_pct: $('#tfDto').value, iva_pct: $('#tfIva').value })
-        .then(function (d) { msg('Guardada' + (d.pendientes ? ' · ' + d.pendientes + ' conceptos PENDIENTE' : ''), true); return cargar(); })
+      var puntos = {};
+      document.querySelectorAll('#tfConceptos [data-pk]').forEach(function (i) { var n = numIn(i.value); if (n !== null) puntos[i.dataset.pk] = n; });
+      api(ctx, { action: 'tarifa_guardar', de: mia ? 'mia' : 'curino', valores: valores, descuento_pct: $('#tfDto').value, iva_pct: $('#tfIva').value, precio_punto: $('#tfPunto') ? $('#tfPunto').value : null, puntos: puntos })
+        .then(function (d) { msg('Guardada' + (d.cambiados ? ' · ' + d.cambiados + ' puntos modificados' : '') + (d.pendientes ? ' · ' + d.pendientes + ' conceptos PENDIENTE' : ''), true); return cargar(); })
         .catch(function (e) { msg(e.message); });
     });
     cargar();

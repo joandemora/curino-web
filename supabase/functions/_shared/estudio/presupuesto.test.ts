@@ -7,24 +7,21 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Proyecto } from './esquema.ts';
-import { contarArmario, precioArmario, claveCuerpo, TARIFA_PENDIENTE, CONCEPTOS, eur, type Tarifa } from './tarifa.ts';
+import { contarArmario, precioArmario, TARIFA_PENDIENTE, CONCEPTOS, eur, type Tarifa } from './tarifa.ts';
+import { porAncho, asignarModelo, puntosBase, MODELOS } from './puntos.ts';
 import { generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO, textoModulo, docVariante, importesNegocio, partidaLibre, type DocPresupuesto } from './presupuesto.ts';
 
 const ejemplo = (): Proyecto => JSON.parse(readFileSync(new URL('./ejemplos/a01-a03.json', import.meta.url), 'utf8'));
-const tarifaPrueba = (): Tarifa => ({ valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, c.unidad === '%' ? 10 : 100])), descuento_pct: 30, iva_pct: 21 });
+const tarifaPrueba = (): Tarifa => ({ valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, c.unidad === '%' ? 10 : 100])), descuento_pct: 30, iva_pct: 21, precio_punto: 1, puntos: {} });
 
 test('cantidades de A.02 (200 × 274 × 60, 4 puertas molduradas lacadas)', () => {
   const n = contarArmario(ejemplo().armarios[1]);
-  assert.deepEqual(n, {
-    [claveCuerpo({ fondo: 60, alto: 274 })]: 2, puerta_moldurada: 4, tirador: 4,
-    altillo: 2, estante: 2, barra: 3, cajon: 4
-  });
+  // Cuerpo e interior van por puntos: en € quedan puertas y tiradores
+  assert.deepEqual(n, { puerta_moldurada: 4, tirador: 4 });
 });
 
-test('A.03: estantes y balda inferior cuentan como estantes; frente fijo por metro en A.01', () => {
+test('A.01: frente fijo por metro y perchero extraíble (siguen en €)', () => {
   const p = ejemplo();
-  const n3 = contarArmario(p.armarios[2]);
-  assert.equal(n3.estante, 2 + 1 + 0 + 5);   // módulo 1: 2 baldas; módulo 2: 1; módulo 3: 0 + 5 estantes
   const n1 = contarArmario(p.armarios[0]);
   assert.equal(n1.frente_fijo, 0.48);       // 47,5 cm → 0,48 ml (redondeo a 2 decimales)
   assert.equal(n1.perchero_extraible, 1);
@@ -35,12 +32,15 @@ test('tarifa PENDIENTE → sin precio y con la lista de pendientes', () => {
   assert.equal(r.pvp, null);
   assert.ok(r.pendientes.includes('Puerta moldurada'));
   assert.ok(r.pendientes.includes('Recargo acabado lacado'));
+  assert.ok(r.pendientes.includes('Precio del punto'));
+  assert.ok(r.puntos_total > 0);
 });
 
 test('precio con tarifa completa: suma + recargo de acabado sobre puertas', () => {
   const r = precioArmario(ejemplo().armarios[1], tarifaPrueba());
-  // 2 ml + 4 puertas + 4 tiradores + 2 altillos + 2 estantes + 3 barras + 4 cajones = 21 × 100; lacado 10% de 400
-  assert.equal(r.pvp, 2100 + 40);
+  // € : 4 puertas + 4 tiradores = 800; lacado 10 % de 400; + puntos × 1 €/punto
+  assert.equal(r.pvp, Math.round((800 + 40 + r.puntos_total) * 100) / 100);
+  assert.equal(r.modulos.length, 2);
 });
 
 test('presupuesto: importe = PVP × (1 − dto) y totales', () => {
@@ -139,4 +139,43 @@ test('comisión: mismo redondeo que el PDF (neto por línea; comisión = PVP −
   assert.equal(r.pvp, 17787.52);
   assert.equal(neto, 15119.4);
   assert.equal(r.comision, 2668.12);
+});
+
+// ── Tarifa por puntos (OTG 2026) ──
+test('puntos: tramo inmediatamente superior y extrapolación por encima de 1000 mm', () => {
+  const m3 = MODELOS.m3.puntos;
+  assert.deepEqual(porAncho(m3, 400), { puntos: 259, tramo: 400, fuera: false });
+  assert.deepEqual(porAncho(m3, 450), { puntos: 275, tramo: 500, fuera: false });   // 450 → tramo 500
+  assert.deepEqual(porAncho(m3, 350), { puntos: 259, tramo: 400, fuera: false });
+  // 1150 mm: 395 + 2 × (395 − 370) = 445, fuera de tabla
+  assert.deepEqual(porAncho(m3, 1150), { puntos: 445, tramo: 1200, fuera: true });
+});
+
+test('puntos: modelo de interior por las zonas del módulo y extras', () => {
+  const alt = { tipo: 'altillo', alto: 40 } as const;
+  assert.deepEqual(asignarModelo([alt, { tipo: 'cajonera', cajones: 4 }, { tipo: 'perchero' }] as never).extras, { cajon: 1, barra: 1 });
+  assert.equal(asignarModelo([alt, { tipo: 'cajonera', cajones: 3 }] as never).modelo, 'm1');
+  assert.equal(asignarModelo([alt, { tipo: 'perchero' }, { tipo: 'perchero' }] as never).modelo, 'm4');
+  assert.equal(asignarModelo([alt, { tipo: 'perchero', prendas: 'largas' }] as never).modelo, 'm5');
+  assert.equal(asignarModelo([alt, { tipo: 'perchero' }] as never).modelo, 'm2');
+  assert.equal(asignarModelo([alt, { tipo: 'estantes', estantes: 4 }] as never).modelo, 'm3');
+  assert.equal(asignarModelo([alt] as never).modelo, 'm6');
+  assert.equal(asignarModelo([{ tipo: 'perchero' }] as never).altillo, false);
+});
+
+test('puntos: los cambios del usuario sustituyen a la tabla; sin ellos, la tabla original', () => {
+  const base = puntosBase();
+  assert.equal(base.m1_600, 381); assert.equal(base.rinconero, 830); assert.equal(base.costado_espejo, 292); assert.equal(base.remate_260_lacado, 178);
+  const a = ejemplo().armarios[1];
+  const original = precioArmario(a, tarifaPrueba()).puntos_total;
+  const cambiada = precioArmario(a, { ...tarifaPrueba(), puntos: { m1_1000: base.m1_1000 + 100 } }).puntos_total;
+  assert.ok(cambiada > original || cambiada === original);
+});
+
+test('puntos: opciones de la partida (costados, remate, cajeado) suman puntos', () => {
+  const a = ejemplo().armarios[1];
+  const sin = precioArmario(a, tarifaPrueba()).puntos_total;
+  const con = precioArmario(a, tarifaPrueba(), { costados: [{ tipo: 'melamina', n: 2 }], remate: 'lacado', cajeado: true }).puntos_total;
+  // 2 costados de melamina (2 × 89) + remate hasta 260 cm lacado (178) + 10 % del interior
+  assert.ok(con > sin + 2 * 89 + 178);
 });
