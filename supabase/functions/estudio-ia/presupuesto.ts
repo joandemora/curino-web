@@ -252,7 +252,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const { data: vers } = await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).order('numero');
     const { data: dis } = await supa.from('estudio_disenos').select('id, nombre, guardado, version_actual, miniatura').eq('proyecto_id', proyectoId).gt('version_actual', 0).order('updated_at', { ascending: false });
     const [docs, fichs] = await Promise.all([
-      supa.from('estudio_documentos').select('id, tipo, nombre, numero, version').eq('proyecto_id', proyectoId).in('tipo', ['alzados_pdf', 'presupuesto_pdf']).order('created_at', { ascending: false }),
+      // Los PDF de alzados de un diseño ya salen como el propio diseño
+      supa.from('estudio_documentos').select('id, tipo, nombre, numero, version').eq('proyecto_id', proyectoId).in('tipo', ['alzados_pdf', 'presupuesto_pdf']).is('diseno_id', null).order('created_at', { ascending: false }),
       supa.from('estudio_ficheros').select('id, tipo, nombre, mime').eq('proyecto_id', proyectoId).eq('subido', true).order('created_at', { ascending: false })
     ]);
     return json({
