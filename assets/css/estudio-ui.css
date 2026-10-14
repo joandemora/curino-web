@@ -369,3 +369,31 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
   .pr-dos[data-modo=vista] .pr-ed{display:none}
   .pr-vista{position:static;max-height:none}
 }
+
+/* Tarifa por puntos */
+.tf-puntos{border:1px solid #ece9e2;border-radius:12px;padding:12px 14px;background:#fbfaf7;margin:6px 0 10px}
+.tf-puntos-cab{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.tf-punto{display:flex;align-items:center;gap:6px;font-size:13px;margin-left:auto}
+.tf-puntos h4{margin:14px 0 6px;font-size:13px}
+.tf-scroll{overflow-x:auto}
+.tf-pts th{font-size:11.5px;color:#8a867c;font-weight:600;text-align:center}
+.tf-pt{white-space:nowrap;position:relative}
+.tf-pt .tf-in{width:62px;text-align:right}
+.tf-pt.mod .tf-in{background:#fff7e6;border-color:#f5c26b;font-weight:700}
+.tf-reset{display:none;border:0;background:none;color:#b54708;cursor:pointer;font-size:13px;padding:0 2px}
+.tf-pt.mod .tf-reset{display:inline}
+.tf-dos-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.tf-dos-col{grid-template-columns:1fr}.tf-punto{margin-left:0}}
+
+/* Desglose por puntos en la partida */
+.pr-des-t{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
+.pr-des-t th{text-align:left;color:#8a867c;font-weight:600;border-bottom:1px solid #ece9e2;padding:3px 4px}
+.pr-des-t td{padding:3px 4px;border-bottom:1px solid #f4f2ec;vertical-align:top}
+.pr-des-t td:nth-child(n+2){text-align:right;white-space:nowrap}
+.pr-des-t tr.pr-aviso td{background:#fffaf0}.pr-des-t tr.pr-aviso small{color:#b54708}
+.pr-des-tot td{border-top:1px solid #161616}
+.pr-avisos{margin:6px 0;padding-left:16px;color:#b54708;font-size:12px}
+.pr-op{margin-top:8px;padding:8px 10px;background:#fbfaf7;border:1px solid #ece9e2;border-radius:8px;font-size:12px;display:flex;flex-direction:column;gap:6px}
+.pr-op-mod{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.pr-op select,.pr-op input{padding:3px 5px;border:1px solid #d9d3c8;border-radius:6px;font-size:12px}
+.pr-op-fila{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}

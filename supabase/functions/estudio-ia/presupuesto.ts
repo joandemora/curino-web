@@ -29,6 +29,7 @@ import { medirConFuentes } from '../_shared/estudio/pdf.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from '../_shared/estudio/logo.ts'
 import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tarifa.ts'
+import { ANCHOS, COSTADOS, EXTRAS, MODELOS, RECARGOS, REMATES, SUELTOS, VERSION_PUNTOS, puntosBase, type OpcionesPuntos } from '../_shared/estudio/puntos.ts'
 import {
   generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
   claveDe, docVariante, importesNegocio, partidaLibre, type DocPresupuesto, type Partida, type Plantilla
@@ -69,7 +70,24 @@ async function cargarTarifa(supa: Any, userId: string | null): Promise<Tarifa & 
     id: fila?.id, propia: !!propia,
     valores: { ...TARIFA_PENDIENTE.valores, ...(fila?.valores ?? {}) },
     descuento_pct: fila?.descuento_pct === null || fila?.descuento_pct === undefined ? TARIFA_PENDIENTE.descuento_pct : Number(fila.descuento_pct),
-    iva_pct: fila?.iva_pct === null || fila?.iva_pct === undefined ? TARIFA_PENDIENTE.iva_pct : Number(fila.iva_pct)
+    iva_pct: fila?.iva_pct === null || fila?.iva_pct === undefined ? TARIFA_PENDIENTE.iva_pct : Number(fila.iva_pct),
+    precio_punto: fila?.precio_punto === null || fila?.precio_punto === undefined ? null : Number(fila.precio_punto),
+    puntos: fila?.puntos && typeof fila.puntos === 'object' ? fila.puntos : {}
+  };
+}
+
+/** Opciones de puntos de una partida, saneadas. */
+function limpiarOpciones(o: Any): OpcionesPuntos {
+  if (!o || typeof o !== 'object') return {};
+  const ent = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+  const modelos: Record<string, string> = {};
+  for (const [k, v] of Object.entries(o.modelos ?? {})) if (/^c\d+m\d+$/.test(k) && MODELOS[String(v)]) modelos[k] = String(v);
+  return {
+    modelos,
+    costados: (Array.isArray(o.costados) ? o.costados : []).slice(0, 4).filter((c: Any) => COSTADOS[c?.tipo] && ent(c?.n, 10) > 0).map((c: Any) => ({ tipo: c.tipo, n: ent(c.n, 10) })),
+    remate: o.remate === 'barniz' || o.remate === 'lacado' ? o.remate : null,
+    cajeado: o.cajeado === true, inclinacion: o.inclinacion === true,
+    divisiones: ent(o.divisiones, 20), rinconeros: ent(o.rinconeros, 10)
   };
 }
 
@@ -128,14 +146,26 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (action === 'tarifa') {
     const deCurino = body?.de === 'curino' || (esAdmin && body?.de !== 'mia');
     const t = await cargarTarifa(supa, deCurino ? null : userId);
-    return json({ de: deCurino ? 'curino' : 'mia', propia: t.propia, conceptos: CONCEPTOS, tarifa: { valores: t.valores, descuento_pct: t.descuento_pct, iva_pct: t.iva_pct } });
+    // Sin tarifa propia, el alumno parte de la de Curino (precio del punto incluido)
+    return json({
+      de: deCurino ? 'curino' : 'mia', propia: t.propia, conceptos: CONCEPTOS,
+      tarifa: { valores: t.valores, descuento_pct: t.descuento_pct, iva_pct: t.iva_pct, precio_punto: t.precio_punto, puntos: t.puntos },
+      puntos: { version: VERSION_PUNTOS, base: puntosBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES }
+    });
   }
   if (action === 'tarifa_guardar') {
     const deCurino = body?.de === 'curino';
     if (deCurino && !esAdmin) return json({ error: 'Solo admin edita la tarifa Curino.' }, 403);
     const valores: Record<string, number | null> = {};
     for (const c of CONCEPTOS) valores[c.clave] = numOrNull(body?.valores?.[c.clave], 0, c.unidad === '%' ? 500 : 1_000_000);
-    const fila = { valores, descuento_pct: numOrNull(body?.descuento_pct, 0, 100) ?? 0, iva_pct: numOrNull(body?.iva_pct, 0, 100) ?? 21, updated_at: new Date().toISOString() };
+    // Puntos: solo se guardan los que difieren de la tabla original (restablecer = quitar)
+    const base = puntosBase(), cambiados: Record<string, number> = {};
+    for (const [k, v] of Object.entries(body?.puntos ?? {})) {
+      const n = numOrNull(v, 0, 100000);
+      if (k in base && n !== null && n !== base[k]) cambiados[k] = n;
+    }
+    const fila = { valores, descuento_pct: numOrNull(body?.descuento_pct, 0, 100) ?? 0, iva_pct: numOrNull(body?.iva_pct, 0, 100) ?? 21,
+      precio_punto: numOrNull(body?.precio_punto, 0, 10000), puntos: cambiados, updated_at: new Date().toISOString() };
     let r;
     if (deCurino) r = await supa.from('estudio_tarifas').update(fila).is('user_id', null);
     else {
@@ -143,7 +173,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       r = ya ? await supa.from('estudio_tarifas').update(fila).eq('id', ya.id) : await supa.from('estudio_tarifas').insert({ user_id: userId, ...fila });
     }
     if (r.error) throw r.error;
-    return json({ ok: true, pendientes: Object.values(valores).filter((v) => v === null).length });
+    return json({ ok: true, pendientes: Object.values(valores).filter((v) => v === null).length + (fila.precio_punto === null ? 1 : 0), cambiados: Object.keys(cambiados).length });
   }
 
   // ── Plantilla ──
@@ -402,7 +432,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (!doc) return json({ error: 'Este presupuesto es del histórico (solo n.º e importe): crea uno nuevo para editarlo.' }, 400);
 
   /** Recalcula desde su versión las partidas de diseño (las libres se quedan igual). */
-  const recalcularDesdeVersiones = async (d: DocPresupuesto, soloSinPrecio = false) => {
+  const recalcularDesdeVersiones = async (d: DocPresupuesto, soloSinPrecio: boolean | 'precio' = false) => {
     const porVersion = new Map<number, string[]>();
     for (const p of d.partidas) if (!p.libre) { const n = p.version ?? d.version; porVersion.set(n, [...(porVersion.get(n) ?? []), p.codigo]); }
     const frescas = new Map<string, Partida>();
@@ -416,7 +446,9 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       if (p.libre) return p;
       const f = frescas.get(claveDe(p)) ?? frescas.get(`v${p.version ?? d.version}:${p.codigo}`);
       if (!f) return p;
-      return soloSinPrecio ? (p.precio_manual ? p : { ...p, precio: f.precio, desglose: f.desglose, pendientes: f.pendientes }) : f;
+      // 'precio': precio, desglose y puntos al día sin tocar los textos (opciones de puntos, cambios de tarifa)
+      if (soloSinPrecio === 'precio') return { ...p, precio: p.precio_manual ? p.precio : f.precio, desglose: f.desglose, pendientes: f.pendientes, puntos: f.puntos, modulos: f.modulos, avisos: f.avisos };
+      return soloSinPrecio ? (p.precio_manual ? p : { ...p, precio: f.precio, desglose: f.desglose, pendientes: f.pendientes, puntos: f.puntos, modulos: f.modulos, avisos: f.avisos }) : f;
     });
   };
 
@@ -453,7 +485,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
           };
           if (p && !p.libre) {
             const precioManual = x?.precio_manual === true;
-            return { ...p, ...comunes, precio_manual: precioManual, precio: precioManual ? numOrNull(x?.precio, 0, 10_000_000) : p.precio_manual ? null : p.precio };
+            return { ...p, ...comunes, precio_manual: precioManual, precio: precioManual ? numOrNull(x?.precio, 0, 10_000_000) : p.precio_manual ? null : p.precio,
+            opciones: x?.opciones !== undefined ? limpiarOpciones(x.opciones) : p.opciones };
           }
           // Partida libre (nueva o existente): todo a mano
           return {
@@ -463,8 +496,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
             precio: numOrNull(x?.precio, 0, 10_000_000), precio_manual: true, libre: true
           };
         });
-        // Al quitar el precio manual vuelve el de la tarifa
-        if (d.partidas.some((p) => !p.libre && !p.precio_manual && p.precio === null)) await recalcularDesdeVersiones(d, true);
+        // Precio, desglose y puntos al día (opciones de puntos, precio manual quitado, tarifa cambiada)
+        if (d.partidas.some((p) => !p.libre)) await recalcularDesdeVersiones(d, 'precio');
       }
       return d;
 

@@ -1,0 +1,162 @@
+// supabase/functions/_shared/estudio/puntos.ts
+//
+// Estudio Curino · tarifa de armarios por PUNTOS (sistema de los carpinteros).
+// Fuente: tarifa OTG Armaris / Rialvi, versión «OTG 2026» (solo lectura: es la
+// base a la que vuelve «Restablecer»). Cada usuario guarda su precio del punto y
+// solo los puntos que cambie (overrides). Precio = puntos × precio del punto.
+//
+// Reglas de medida:
+//   - ancho del módulo en mm → tramo inmediatamente superior (400…1000);
+//   - más de 1000 mm: «fuera de tabla», se extrapola con el último incremento
+//     (1000 − 900) por cada 100 mm y la línea queda marcada para revisar;
+//   - la tabla es para 2600 mm de alto y fondo 550 (650 con puertas): más alto
+//     → aviso «altura fuera de tabla» (sin recargo inventado).
+// Cada módulo recibe el modelo de interior que más se parece (1–6) y los
+// extras (cajones, estantes, barras) suman o restan sobre ese modelo.
+
+import type { Armario, Zona } from './esquema.ts';
+import { repartoZonas, ZOCALO_DEF, GROSOR_DEF } from './esquema.ts';
+
+export const VERSION_PUNTOS = 'OTG 2026';
+export const ANCHOS = [400, 500, 600, 700, 800, 900, 1000];
+export const ALTO_TABLA = 2600;
+
+export const MODELOS: Record<string, { nombre: string; incluye: string; puntos: number[] }> = {
+  m1: { nombre: 'Modelo 1', incluye: 'altillo + estantes + cajonera de 3 cajones', puntos: [326, 351, 381, 413, 445, 477, 512] },
+  m2: { nombre: 'Modelo 2', incluye: 'altillo + estante + barra de colgar', puntos: [217, 235, 253, 275, 297, 317, 335] },
+  m3: { nombre: 'Modelo 3', incluye: 'altillo + estantes', puntos: [259, 275, 297, 319, 343, 370, 395] },
+  m4: { nombre: 'Modelo 4', incluye: 'altillo + doble barra / doble perchero', puntos: [204, 222, 239, 257, 277, 297, 321] },
+  m5: { nombre: 'Modelo 5', incluye: 'altillo + barra de colgar largo', puntos: [201, 217, 235, 252, 269, 286, 308] },
+  m6: { nombre: 'Modelo 6', incluye: 'altillo + hueco libre', puntos: [161, 177, 194, 211, 228, 245, 267] }
+};
+export const EXTRAS: Record<string, { nombre: string; puntos: number[] }> = {
+  cajon: { nombre: 'Cajón', puntos: [34, 35, 37, 38, 39, 41, 42] },
+  estante: { nombre: 'Estante', puntos: [11, 14, 17, 20, 22, 25, 27] },
+  barra: { nombre: 'Barra', puntos: [13, 13, 13, 13, 13, 14, 14] }
+};
+export const SUELTOS: Record<string, { nombre: string; puntos: number }> = {
+  rinconero: { nombre: 'Módulo rinconero 1100 × 1100 mm', puntos: 830 },
+  division: { nombre: 'División vertical interior (1500 a 2000 × 19)', puntos: 59 }
+};
+export const COSTADOS: Record<string, { nombre: string; puntos: number }> = {
+  madera_barnizada: { nombre: 'Costado visto madera barnizada', puntos: 263 },
+  melamina: { nombre: 'Costado visto melamina', puntos: 89 },
+  dm_lacado: { nombre: 'Costado visto DM lacado', puntos: 284 },
+  espejo: { nombre: 'Costado visto con espejo', puntos: 292 }
+};
+export const RECARGOS: Record<string, { nombre: string; pct: number }> = {
+  cajeado: { nombre: 'Cajeados (vertical u horizontal)', pct: 10 },
+  inclinacion: { nombre: 'Recargo por inclinación', pct: 25 }
+};
+export const REMATES = [
+  { hasta: 125, barniz: 151, lacado: 159 },
+  { hasta: 260, barniz: 168, lacado: 178 },
+  { hasta: 380, barniz: 202, lacado: 214 },
+  { hasta: 520, barniz: 236, lacado: 250 }
+];
+
+/** Todos los puntos de la tabla original, por clave (para editar y restablecer). */
+export function puntosBase(): Record<string, number> {
+  const b: Record<string, number> = {};
+  for (const [k, m] of Object.entries(MODELOS)) ANCHOS.forEach((a, i) => { b[`${k}_${a}`] = m.puntos[i]; });
+  for (const [k, e] of Object.entries(EXTRAS)) ANCHOS.forEach((a, i) => { b[`${k}_${a}`] = e.puntos[i]; });
+  for (const [k, s] of Object.entries(SUELTOS)) b[k] = s.puntos;
+  for (const [k, c] of Object.entries(COSTADOS)) b[`costado_${k}`] = c.puntos;
+  for (const [k, r] of Object.entries(RECARGOS)) b[`recargo_${k}`] = r.pct;
+  for (const r of REMATES) { b[`remate_${r.hasta}_barniz`] = r.barniz; b[`remate_${r.hasta}_lacado`] = r.lacado; }
+  return b;
+}
+
+/** Opciones de cada partida que el diseño no indica (las elige el usuario). */
+export interface OpcionesPuntos {
+  modelos?: Record<string, string>;            // «c0m1» → 'm3' (cambia el modelo asignado)
+  costados?: { tipo: string; n: number }[];    // costados vistos
+  remate?: 'barniz' | 'lacado' | null;
+  cajeado?: boolean;
+  inclinacion?: boolean;
+  divisiones?: number;
+  rinconeros?: number;
+}
+
+export interface LineaPuntos {
+  clave: string; nombre: string; cantidad: number; puntos: number;   // puntos por unidad
+  aviso?: string;                                                   // «fuera de tabla», «revisar»…
+}
+export interface ModuloAsignado { clave: string; cuerpo: number; modulo: number; ancho_mm: number; modelo: string; automatico: string; nota?: string }
+
+/** Puntos por tramo de ancho: tramo superior; > 1000 mm extrapola con el último incremento por 100 mm. */
+export function porAncho(serie: number[], mm: number): { puntos: number; tramo: number; fuera: boolean } {
+  const i = ANCHOS.findIndex((a) => mm <= a);
+  if (i >= 0) return { puntos: serie[i], tramo: ANCHOS[i], fuera: false };
+  const n = ANCHOS.length - 1, inc = serie[n] - serie[n - 1], pasos = Math.ceil((mm - ANCHOS[n]) / 100);
+  return { puntos: serie[n] + inc * pasos, tramo: ANCHOS[n] + 100 * pasos, fuera: true };
+}
+
+const serieDe = (p: Record<string, number>, k: string) => ANCHOS.map((a) => p[`${k}_${a}`]);
+
+/** Modelo de interior que más se parece a las zonas del módulo, y extras sobre ese modelo. */
+export function asignarModelo(zonas: Zona[]): { modelo: string; extras: Record<string, number>; altillo: boolean } {
+  let cajones = 0, barras = 0, largas = 0, estantes = 0, altillo = false;
+  for (const z of zonas) {
+    if (z.tipo === 'altillo') altillo = true;
+    else if (z.tipo === 'cajonera') cajones += z.cajones;
+    else if (z.tipo === 'perchero') { barras++; if (z.prendas === 'largas') largas++; }
+    else if (z.tipo === 'estantes') estantes += z.estantes;
+  }
+  if (cajones > 0) return { modelo: 'm1', extras: { cajon: cajones - 3, barra: barras }, altillo };
+  if (barras >= 2) return { modelo: 'm4', extras: { barra: barras - 2, estante: estantes }, altillo };
+  if (largas >= 1) return { modelo: 'm5', extras: { barra: barras - 1, estante: estantes }, altillo };
+  if (barras === 1) return { modelo: 'm2', extras: { estante: Math.max(0, estantes - 1) }, altillo };
+  if (estantes > 0) return { modelo: 'm3', extras: {}, altillo };
+  return { modelo: 'm6', extras: {}, altillo };
+}
+
+/** Líneas en puntos de un armario: interiores por modelo, extras, recargos y opciones de la partida. */
+export function puntosArmario(a: Armario, puntos: Record<string, number>, op: OpcionesPuntos = {}): { lineas: LineaPuntos[]; modulos: ModuloAsignado[]; avisos: string[] } {
+  const lineas: LineaPuntos[] = [], modulos: ModuloAsignado[] = [], avisos: string[] = [];
+  let interior = 0;
+  a.cuerpos.forEach((c, ci) => {
+    if (c.alto * 10 > ALTO_TABLA) avisos.push(`Altura fuera de tabla: ${Math.round(c.alto * 10)} mm (tabla para ${ALTO_TABLA} mm)`);
+    const g = c.grosor ?? GROSOR_DEF;
+    c.modulos.forEach((m, mi) => {
+      const mm = Math.round(m.ancho * 10), clave = `c${ci}m${mi}`;
+      const zonas = repartoZonas(m.interior, { alto: c.alto, zocalo: c.zocalo ?? ZOCALO_DEF, grosor: g }).zonas.map((z) => z.zona);
+      const auto = asignarModelo(zonas.length ? zonas : m.interior);
+      const modelo = op.modelos?.[clave] && MODELOS[op.modelos[clave]] ? op.modelos[clave] : auto.modelo;
+      const base = porAncho(serieDe(puntos, modelo), mm);
+      const fuera = base.fuera ? `fuera de tabla (${mm} mm): extrapolado, revisar` : undefined;
+      const nota = auto.altillo ? undefined : 'sin altillo (la tabla incluye altillo): revisar';
+      modulos.push({ clave, cuerpo: ci, modulo: mi, ancho_mm: mm, modelo, automatico: auto.modelo, nota });
+      lineas.push({ clave: `int_${clave}`, nombre: `Interior módulo ${mi + 1}${a.cuerpos.length > 1 ? ` (cuerpo ${ci + 1})` : ''} · ${MODELOS[modelo].nombre} · ${base.tramo} mm`, cantidad: 1, puntos: base.puntos, aviso: [fuera, nota].filter(Boolean).join(' · ') || undefined });
+      interior += base.puntos;
+      // Extras solo con el modelo asignado automáticamente (si el usuario cambia el modelo, no se recalculan)
+      if (modelo === auto.modelo) {
+        for (const [k, n] of Object.entries(auto.extras)) {
+          if (!n) continue;
+          const e = porAncho(serieDe(puntos, k), mm);
+          lineas.push({ clave: `ext_${k}_${clave}`, nombre: `${EXTRAS[k].nombre} ${n > 0 ? 'extra' : 'de menos'} · módulo ${mi + 1} · ${e.tramo} mm`, cantidad: n, puntos: e.puntos, aviso: e.fuera ? 'fuera de tabla: revisar' : undefined });
+          interior += e.puntos * n;
+        }
+      }
+    });
+  });
+  if (op.rinconeros) { lineas.push({ clave: 'rinconero', nombre: SUELTOS.rinconero.nombre, cantidad: op.rinconeros, puntos: puntos.rinconero }); interior += puntos.rinconero * op.rinconeros; }
+  if (op.divisiones) { lineas.push({ clave: 'division', nombre: SUELTOS.division.nombre, cantidad: op.divisiones, puntos: puntos.division }); interior += puntos.division * op.divisiones; }
+  // Recargos sobre el interior
+  for (const k of ['cajeado', 'inclinacion'] as const) {
+    if (!op[k]) continue;
+    const pct = puntos[`recargo_${k}`];
+    lineas.push({ clave: `recargo_${k}`, nombre: `${RECARGOS[k].nombre} (+${pct} % sobre el interior)`, cantidad: 1, puntos: Math.round(interior * pct) / 100 });
+  }
+  for (const c of op.costados ?? []) {
+    if (!c?.n || !COSTADOS[c.tipo]) continue;
+    lineas.push({ clave: `costado_${c.tipo}`, nombre: COSTADOS[c.tipo].nombre, cantidad: c.n, puntos: puntos[`costado_${c.tipo}`] });
+  }
+  if (op.remate) {
+    const ancho = a.cuerpos.reduce((s, c) => s + c.ancho, 0);
+    const t = REMATES.find((r) => ancho <= r.hasta);
+    if (t) lineas.push({ clave: `remate_${t.hasta}_${op.remate}`, nombre: `Remate armario · ${op.remate} · hasta ${t.hasta} cm`, cantidad: 1, puntos: puntos[`remate_${t.hasta}_${op.remate}`] });
+    else avisos.push(`Remate fuera de tabla: ${ancho} cm (tabla hasta 520 cm)`);
+  }
+  return { lineas, modulos, avisos };
+}
