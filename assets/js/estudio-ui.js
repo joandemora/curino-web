@@ -43,6 +43,11 @@
     if (e.datos && e.datos.faltan && e.datos.faltan.length && ctx.rutas && ctx.rutas.datos) {
       return esc('Antes de descargar completa tus datos: falta ' + e.datos.faltan.join(', ') + '.') + ' <a href="' + ctx.rutas.datos() + '">Completar mis datos</a>';
     }
+    if (e.datos && e.datos.bloqueantes && e.datos.bloqueantes.length) {
+      // PDF / Excel del cliente bloqueados: qué líneas lo impiden (la vista previa sí se puede ver)
+      return esc(e.message) + '<ul class="pr-bloq">' + e.datos.bloqueantes.slice(0, 15).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') +
+        (e.datos.bloqueantes.length > 15 ? '<li>… y ' + (e.datos.bloqueantes.length - 15) + ' más</li>' : '') + '</ul>';
+    }
     return esc(e.message);
   }
 
@@ -693,7 +698,8 @@
     return '<details class="pr-des"' + (hayPuntos ? ' open' : '') + '><summary>Desglose' + (hayPuntos ? ' · ' + numOut(p.puntos || 0) + ' puntos' : '') + '</summary>' +
       '<table class="pr-des-t"><thead><tr><th>Concepto</th><th>Ud.</th><th>Pt/ud.</th><th>Puntos</th><th>Precio/ud.</th><th>Importe</th></tr></thead><tbody>' + filas + tot + '</tbody></table>' +
       (avisos ? '<ul class="pr-avisos">' + avisos + '</ul>' : '') +
-      (hayPuntos ? '<div class="pr-op" data-op="' + i + '"><b>Opciones de la tarifa por puntos</b>' + mods +
+      (p.tipo === 'cocina' ? '<p class="pa-muted" style="font-size:12px;margin:6px 0 0">Tarifa de cocinas · precio = puntos × precio del punto cocina' + (p.precio == null && !p.precio_manual ? ' (PENDIENTE: ponlo en la tarifa)' : '') + '.</p>' : '') +
+      (hayPuntos && p.tipo !== 'cocina' ? '<div class="pr-op" data-op="' + i + '"><b>Opciones de la tarifa por puntos</b>' + mods +
         '<div class="pr-op-fila"><label>Costados vistos <input data-o="costado_n" inputmode="numeric" value="' + (cost.n || 0) + '" style="width:44px"></label>' +
         '<select data-o="costado_tipo">' + Object.keys(NOM_COSTADO).map(function (k) { return '<option value="' + k + '"' + (k === cost.tipo ? ' selected' : '') + '>' + NOM_COSTADO[k] + '</option>'; }).join('') + '</select>' +
         '<label>Remate <select data-o="remate"><option value="">Sin remate</option><option value="barniz"' + (op.remate === 'barniz' ? ' selected' : '') + '>Barniz</option><option value="lacado"' + (op.remate === 'lacado' ? ' selected' : '') + '>Lacado</option></select></label></div>' +

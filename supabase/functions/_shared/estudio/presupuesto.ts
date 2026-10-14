@@ -23,6 +23,7 @@ import { modelosPuertas } from './alzado.ts';
 import { eur, importeLinea, precioArmario } from './tarifa.ts';
 import type { LineaDesglose, Tarifa } from './tarifa.ts';
 import type { ModuloAsignado, OpcionesPuntos } from './puntos.ts';
+import { cocinasDe, preciosCocina, puntosCocinaDe, textosTramo } from './cocina-presupuesto.ts';
 
 // ── Tipos ───────────────────────────────────────────────────────────
 export interface Partida {
@@ -45,6 +46,8 @@ export interface Partida {
   puntos?: number;             // total de puntos del armario
   modulos?: ModuloAsignado[];  // modelo de interior asignado a cada módulo
   avisos?: string[];           // altura/remate fuera de tabla…
+  tipo?: 'cocina';             // partida de un tramo de cocina (tarifa de cocinas)
+  dibujo?: string;             // código de la lámina que va debajo (cocina: solo en el primer tramo)
 }
 
 /** Comisión del interiorista: dos versiones del PDF/Excel (cliente PVP / interiorista con DTO). */
@@ -67,6 +70,24 @@ export interface DocPresupuesto {
 }
 
 export const claveDe = (p: Partida) => p.clave || p.codigo;
+
+/**
+ * Líneas que impiden dar el presupuesto al cliente (PDF / Excel): a 0 puntos
+ * o fuera de tarifa / de tabla, en partidas con precio de tarifa (un precio
+ * puesto a mano manda). La vista interna sí se puede ver.
+ */
+export function lineasBloqueantes(d: DocPresupuesto): string[] {
+  const out: string[] = [];
+  for (const p of d.partidas) {
+    if (p.libre || p.precio_manual) continue;
+    for (const l of p.desglose ?? []) {
+      const cero = l.puntos !== undefined && l.puntos === 0;
+      const fuera = /fuera de (tarifa|tabla)/.test(l.aviso ?? '');
+      if (cero || fuera) out.push(`${p.titulo} · ${l.nombre}: ${fuera ? 'fuera de tarifa' : '0 puntos'}`);
+    }
+  }
+  return out;
+}
 
 /**
  * Variante para descargar: sin comisión, el documento tal cual. Con comisión,
@@ -360,10 +381,12 @@ export const precioTxt = (n: number | null) => (n === null ? 'PENDIENTE' : eur(n
 export function generarPresupuesto(o: {
   proyecto: Proyecto; version: number; tarifa: Tarifa; plantilla: Plantilla;
   nombre: string; referencia?: string | null; hoy: string; previo?: DocPresupuesto | null;
-  armarios?: string[];     // códigos que entran (por defecto, todos)
+  armarios?: string[];     // códigos que entran, armarios y cocinas (por defecto, todos)
 }): DocPresupuesto {
   const prev = o.previo;
   const elegidos = o.armarios?.length ? o.proyecto.armarios.filter((a) => o.armarios!.includes(a.codigo)) : o.proyecto.armarios;
+  // Cocinas: «C.01» o un tramo «C.01.2» las incluye
+  const cocinas = cocinasDe(o.proyecto).filter((c) => !o.armarios?.length || o.armarios.some((k) => k === c.codigo || k.startsWith(c.codigo + '.')));
   const partidas = elegidos.map((a): Partida => {
     const t = textosArmario(a, o.plantilla.materiales);
     const clave = `v${o.version}:${a.codigo}`;
@@ -385,6 +408,28 @@ export function generarPresupuesto(o: {
       opciones: ant?.opciones ?? {}, puntos: precio.puntos_total, modulos: precio.modulos, avisos: precio.avisos
     };
   });
+  for (const c0 of cocinas) {
+    const pc = preciosCocina(c0, puntosCocinaDe(o.tarifa.puntos_cocina), o.tarifa.precio_punto_cocina ?? null);
+    const c = pc.cocina;
+    c.tramos.forEach((t, i) => {
+      const codigo = `${c.codigo}.${i + 1}`, clave = `v${o.version}:${codigo}`;
+      const ant = prev?.partidas.find((x) => x.clave === clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === codigo);
+      const tx = textosTramo(c, t, i), pr = pc.tramos[i];
+      partidas.push({
+        codigo, version: o.version, clave, tipo: 'cocina', dibujo: i === 0 ? c.codigo : undefined,
+        cantidad: ant?.cantidad ?? 1,
+        titulo: tx.titulo,
+        subtitulo: ant?.subtitulo || tx.subtitulo,
+        intro: ant?.intro ?? '',
+        tecnico: tx.tecnico,
+        materiales: ant?.materiales || tx.materiales,
+        precio: ant?.precio_manual ? ant.precio : pr.pvp,
+        precio_manual: !!ant?.precio_manual,
+        dto_pct: ant?.dto_pct ?? (o.tarifa.descuento_pct ?? 0),
+        desglose: pr.desglose, pendientes: pr.pendientes, puntos: pr.puntos_total, avisos: pr.avisos
+      });
+    });
+  }
   return {
     numero: prev?.numero || (o.referencia ?? ''),
     fecha: prev?.fecha || o.hoy,

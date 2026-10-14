@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
       if (resultado.tipo === 'proyecto') {
         const numero = await nuevaVersion(resultado.proyecto, 'ia', texto.slice(0, 200) || null);
         await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, diseno_id: diseno.id, rol: 'asistente', texto: resultado.mensaje, version: numero });
-        return json({ tipo: 'proyecto', mensaje: resultado.mensaje, version: numero, diseno_id: diseno.id, svgs: await svgsProyecto(resultado.proyecto), uso });
+        return json({ tipo: 'proyecto', mensaje: resultado.mensaje, version: numero, diseno_id: diseno.id, svgs: await svgsProyecto(resultado.proyecto), uso, revision: resultado.revision ?? null });
       }
       if (resultado.tipo === 'pregunta') {
         const t = [resultado.mensaje, ...resultado.preguntas.map((p) => `• ${p}`)].filter(Boolean).join('\n');

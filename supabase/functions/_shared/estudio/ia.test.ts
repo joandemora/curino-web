@@ -112,3 +112,33 @@ test('herramientas: el esquema del proyecto va en guardar_proyecto', () => {
   assert.equal(HERRAMIENTAS[0].name, 'guardar_proyecto');
   assert.ok((HERRAMIENTAS[0].input_schema.properties.proyecto as any).properties.armarios);
 });
+
+// ── Cocinas: revisión del resultado (una sola corrección) ──
+const cocinaL = (bajo2: number) => ({ version: 1, armarios: [], cocinas: [{ codigo: 'C.01', titulo: 'COCINA', tramos: [
+  { nombre: 'PARED 1', largo: 230, bajos: [{ tipo: 'bajo', ancho: 60 }, { tipo: 'bajo', ancho: bajo2 }, { tipo: 'fregadero', ancho: 90 }] },
+  { nombre: 'PARED 2', colocacion: 'esquina_der', largo: 210, bajos: [{ tipo: 'bajo', ancho: 90 }, { tipo: 'bajo', ancho: 60 }] }] }] });
+
+test('cocina: Claude revisa su resultado y confirma', async () => {
+  const { f, cuerpos } = apiFalsa([herramienta('guardar_proyecto', { mensaje: 'Hecha', proyecto: cocinaL(80) }), herramienta('confirmar', {})]);
+  const r = await pedirAClaude({ clave: 'k', modelo: 'm', mensajes: [{ role: 'user', content: 'x' }], fetch: f });
+  assert.equal(r.resultado.tipo, 'proyecto');
+  assert.equal((r.resultado as any).revision, 'confirmado');
+  assert.equal(r.llamadas.length, 2);
+  const tr = cuerpos[1].messages.at(-1).content[0];
+  assert.match(tr.content, /Guardado provisional/);
+  assert.match(tr.content, /pared 210 → bajos deben sumar 150/);
+});
+
+test('cocina: corrige una vez y se queda con la corrección', async () => {
+  const { f } = apiFalsa([herramienta('guardar_proyecto', { mensaje: 'v1', proyecto: cocinaL(80) }), herramienta('guardar_proyecto', { mensaje: 'Corregida', proyecto: cocinaL(80) })]);
+  const r = await pedirAClaude({ clave: 'k', modelo: 'm', mensajes: [{ role: 'user', content: 'x' }], fetch: f });
+  assert.equal((r.resultado as any).revision, 'corregido');
+  assert.equal((r.resultado as any).mensaje, 'Corregida');
+  assert.equal(r.llamadas.length, 2);
+});
+
+test('cocina: pared que no llega (más de 10 cm) → aviso en el mensaje', async () => {
+  const { f } = apiFalsa([herramienta('guardar_proyecto', { mensaje: 'Hecha', proyecto: cocinaL(60) }), herramienta('confirmar', {})]);
+  const r = await pedirAClaude({ clave: 'k', modelo: 'm', mensajes: [{ role: 'user', content: 'x' }], fetch: f });
+  assert.match((r.resultado as any).mensaje, /⚠ C\.01 · PARED 1: los bajos suman 210 cm y la pared mide 230: faltan 20 cm/);
+});
