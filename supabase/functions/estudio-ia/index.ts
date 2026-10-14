@@ -313,7 +313,14 @@ Deno.serve(async (req) => {
     }
 
     // ── Diseños (varios por proyecto) ──
-    if (action === 'disenos') {
+    if (action === 'documentos_ficha') {
+      // Documentos de la ficha en una sola llamada: diseños + documentos + archivos
+      const sub = (a: string) => accionProyecto(a, { supa, userId, esAdmin, cfg, clave, modelo, body: { ...body, action: a }, alumno, json }).then((r) => r.json());
+      const [docs, fichs] = await Promise.all([sub('documentos'), sub('ficheros')]);
+      return json({ disenos: await listaDisenos(), documentos: docs.documentos ?? [], ficheros: fichs.ficheros ?? [], almacenamiento: fichs.almacenamiento });
+    }
+    if (action === 'disenos') return json({ disenos: await listaDisenos() });
+    async function listaDisenos() {
       const [ds, pdfs] = await Promise.all([
         supa.from('estudio_disenos').select('id, nombre, guardado, version_actual, miniatura, created_at, updated_at').eq('proyecto_id', proyectoId).order('updated_at', { ascending: false }),
         supa.from('estudio_documentos').select('id, diseno_id, version, nombre, path, created_at').eq('proyecto_id', proyectoId).eq('tipo', 'alzados_pdf').not('diseno_id', 'is', null).order('created_at', { ascending: false })
@@ -323,10 +330,10 @@ Deno.serve(async (req) => {
       const paths = [...ultimo.values()].map((d) => d.path);
       const firmadas = paths.length ? (await supa.storage.from('estudio').createSignedUrls(paths, 3600)).data ?? [] : [];
       const url = new Map(firmadas.map((f: { path: string | null; signedUrl: string }) => [f.path, f.signedUrl]));
-      return json({ disenos: (ds.data ?? []).filter((d) => d.version_actual > 0 || d.guardado).map((d) => {
+      return (ds.data ?? []).filter((d) => d.version_actual > 0 || d.guardado).map((d) => {
         const pdf = ultimo.get(d.id);
         return { ...d, pdf: pdf ? { id: pdf.id, nombre: pdf.nombre, url: url.get(pdf.path) ?? null } : null };
-      }) });
+      });
     }
     if (action === 'diseno_nuevo') return json({ diseno: await nuevoDiseno() });
     if (action === 'diseno' || action === 'diseno_json') {
