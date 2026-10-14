@@ -403,3 +403,16 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .pr-op-mod{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .pr-op select,.pr-op input{padding:3px 5px;border:1px solid #d9d3c8;border-radius:6px;font-size:12px}
 .pr-op-fila{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+
+/* Tarifa de cocinas */
+#tfCocina{margin-top:18px}
+.tc-sec{margin:10px 0;border:1px solid #e5e2da;border-radius:8px;padding:6px 10px;background:#fff}
+.tc-sec>summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}
+.tc-sub{margin:6px 0 6px 8px}
+.tc-sub>summary{cursor:pointer;font-size:13px;font-weight:600;padding:3px 0}
+.tf-pt.tc-rev{background:#fff4d6}
+.tf-pt.tc-rev.mod{background:#ffe9b0}
+.tc-rev-leyenda{background:#fff4d6;padding:0 4px;border-radius:3px}
+.tf-pt.tc-sin{color:#aaa;text-align:center}
+.tc-dudas{font-size:12.5px;margin:6px 0 4px 18px;padding:0}
+.tc-dudas li{margin:3px 0}

@@ -35,6 +35,8 @@
 // las zonas caben en el alto). Devuelve errores legibles con su ruta para
 // que Claude pregunte en vez de suponer.
 
+import { ESQUEMA_COCINA_JSON, validarCocinas, type Cocina } from './cocina.ts';
+
 export type Formato = 'A3' | 'A4';
 export type LadoTirador = 'izq' | 'der';
 export type ModeloPuerta = 'moldurada' | 'lisa';
@@ -132,6 +134,7 @@ export interface Proyecto {
   referencia?: string;         // nº de presupuesto
   cliente?: string;
   armarios: Armario[];
+  cocinas?: Cocina[];          // cocinas (cocina.ts): tramos de bajos, altos y columnas
 }
 
 // ── Constantes de construcción (cm) ──────────────────────────────────
@@ -159,8 +162,9 @@ export const ESQUEMA_JSON = {
     version: { const: 1 },
     referencia: { type: 'string', maxLength: 40 },
     cliente: { type: 'string', maxLength: 80 },
+    cocinas: ESQUEMA_COCINA_JSON,
     armarios: {
-      type: 'array', minItems: 1, maxItems: 30,
+      type: 'array', minItems: 0, maxItems: 30, description: 'Armarios (lista vacía si el proyecto solo es una cocina).',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -298,13 +302,16 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
   }
 
   if (!esObj(entrada)) return { ok: false, errores: [{ ruta: '', mensaje: 'el proyecto debe ser un objeto JSON' }] };
-  campos(entrada, 'proyecto', ['version', 'referencia', 'cliente', 'armarios']);
+  campos(entrada, 'proyecto', ['version', 'referencia', 'cliente', 'armarios', 'cocinas']);
   if (entrada.version !== 1) err('version', 'versión de esquema no soportada (debe ser 1)');
   texto(entrada, 'referencia', 'proyecto', 40);
   texto(entrada, 'cliente', 'proyecto', 80);
 
   const codigos = new Set<string>();
-  lista(entrada, 'armarios', 'proyecto', 1, 30).forEach((a, ia) => {
+  validarCocinas(entrada.cocinas, err);
+  const nCocinas = Array.isArray(entrada.cocinas) ? entrada.cocinas.length : 0;
+  if (Array.isArray(entrada.armarios) && entrada.armarios.length === 0 && nCocinas === 0) err('proyecto.armarios', 'el proyecto necesita al menos un armario o una cocina');
+  lista(entrada, 'armarios', 'proyecto', 0, 30).forEach((a, ia) => {
     const ra = `armarios[${ia}]`;
     if (!esObj(a)) { err(ra, 'debe ser un objeto'); return; }
     campos(a, ra, ['codigo', 'titulo', 'subtitulo', 'formato', 'notas', 'vistas', 'cuerpos']);
