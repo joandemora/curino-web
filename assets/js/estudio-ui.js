@@ -437,7 +437,7 @@
         .catch(function () { /* se queda el icono */ }).then(function () { enCurso--; siguiente(); });
     }
     function cargar() {
-      return Promise.all([api(ctx, { action: 'disenos', proyecto_id: pid }), api(ctx, { action: 'documentos', proyecto_id: pid }), api(ctx, { action: 'ficheros', proyecto_id: pid })]).then(function (rs) {
+      return api(ctx, { action: 'documentos_ficha', proyecto_id: pid }).then(function (d) { return [{ disenos: d.disenos }, { documentos: d.documentos }, { ficheros: d.ficheros, almacenamiento: d.almacenamiento }]; }).then(function (rs) {
         var a = rs[2].almacenamiento;
         el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
         items = rs[0].disenos.map(function (x) { return Object.assign({ kind: 'diseno' }, x); })
