@@ -375,7 +375,7 @@
       var g = grupo(x), esImg = /^image\//.test(x.mime || ''), esPdf = /pdf$/i.test(x.mime || '') || /\.pdf$/i.test(x.nombre || ''), esXls = /\.xlsx?$/i.test(x.nombre || '');
       var mini = x.kind === 'diseno' ? '<div class="dc-svg">' + (x.miniatura || '') + '</div>'
         : x.miniatura_url ? '<img src="' + esc(x.miniatura_url) + '" alt="" loading="lazy">'
-        : (esPdf || esImg) && x.url ? '<span class="dc-ico" data-mini="' + i + '">' + (esPdf ? 'PDF' : 'IMG') + '</span>'
+        : (esPdf || esImg) && x.url && !(Number(x.bytes) > 15 * 1048576) ? '<span class="dc-ico" data-mini="' + i + '">' + (esPdf ? 'PDF' : 'IMG') + '</span>'
         : '<span class="dc-ico">' + (esXls ? 'XLS' : (String(x.nombre || '').split('.').pop() || '').toUpperCase().slice(0, 4)) + '</span>';
       var ver = x.kind === 'diseno' ? (x.pdf && x.pdf.url) : x.url;
       var acciones = (ver ? '<a class="dc-a" href="' + esc(ver) + '" target="_blank" rel="noopener">Ver</a><a class="dc-a" href="' + esc(ver) + '&download=' + encodeURIComponent(x.kind === 'diseno' ? x.pdf.nombre : x.nombre) + '">Descargar</a>' : '') +
@@ -407,14 +407,25 @@
       miniaturasPendientes();
     }
     // Miniaturas que faltan: se generan al verse la tarjeta, de 2 en 2
-    var obs = null, enCurso = 0, pendientes = [];
+    var obs = null, enCurso = 0, pendientes = [], vigilando = false;
+    function encolar(n) { if (n.dataset.enCola) return; n.dataset.enCola = '1'; if (obs) obs.unobserve(n); pendientes.push(n); siguiente(); }
+    /** Además del observador (que no salta con la pestaña en segundo plano), se miran las tarjetas dentro de la pantalla. */
+    function revisarVisibles() {
+      var alto = window.innerHeight || 800;
+      el.querySelectorAll('[data-mini]').forEach(function (n) { var r = n.getBoundingClientRect(); if (r.bottom > -200 && r.top < alto + 200) encolar(n); });
+    }
     function miniaturasPendientes() {
       if (obs) obs.disconnect();
-      if (!('IntersectionObserver' in window)) return;
-      obs = new IntersectionObserver(function (ents) {
-        ents.forEach(function (en) { if (en.isIntersecting) { obs.unobserve(en.target); pendientes.push(en.target); siguiente(); } });
-      }, { rootMargin: '200px' });
-      el.querySelectorAll('[data-mini]').forEach(function (n) { obs.observe(n); });
+      if ('IntersectionObserver' in window) {
+        obs = new IntersectionObserver(function (ents) { ents.forEach(function (en) { if (en.isIntersecting) encolar(en.target); }); }, { rootMargin: '200px' });
+        el.querySelectorAll('[data-mini]').forEach(function (n) { obs.observe(n); });
+      }
+      setTimeout(revisarVisibles, 300);
+      if (!vigilando) {
+        vigilando = true;
+        var t = null;
+        window.addEventListener('scroll', function () { clearTimeout(t); t = setTimeout(function () { if (el.isConnected) revisarVisibles(); }, 200); }, { passive: true });
+      }
     }
     function siguiente() {
       if (enCurso >= 2 || !pendientes.length) return;
