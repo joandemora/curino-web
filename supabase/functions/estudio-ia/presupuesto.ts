@@ -29,7 +29,7 @@ import { medirConFuentes } from '../_shared/estudio/pdf.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from '../_shared/estudio/logo.ts'
 import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tarifa.ts'
-import { ANCHOS, COSTADOS, EXTRAS, MODELOS, RECARGOS, REMATES, SUELTOS, VERSION_PUNTOS, puntosBase, type OpcionesPuntos } from '../_shared/estudio/puntos.ts'
+import { ANCHOS, COSTADOS, EXTRAS, HERRAJES, MODELOS, PUERTAS, RECARGOS, REMATES, SUELTOS, VERSION_PUNTOS, puntosBase, type OpcionesPuntos } from '../_shared/estudio/puntos.ts'
 import {
   generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
   claveDe, docVariante, importesNegocio, partidaLibre, type DocPresupuesto, type Partida, type Plantilla
@@ -150,7 +150,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json({
       de: deCurino ? 'curino' : 'mia', propia: t.propia, conceptos: CONCEPTOS,
       tarifa: { valores: t.valores, descuento_pct: t.descuento_pct, iva_pct: t.iva_pct, precio_punto: t.precio_punto, puntos: t.puntos },
-      puntos: { version: VERSION_PUNTOS, base: puntosBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES }
+      puntos: { version: VERSION_PUNTOS, base: puntosBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES, puertas: PUERTAS, herrajes: HERRAJES }
     });
   }
   if (action === 'tarifa_guardar') {

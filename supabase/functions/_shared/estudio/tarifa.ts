@@ -31,16 +31,10 @@ export interface Concepto { clave: string; grupo: string; nombre: string; unidad
 export const FONDOS = [{ hasta: 45, nombre: 'fondo hasta 45' }, { hasta: 65, nombre: 'fondo 46–65' }, { hasta: Infinity, nombre: 'fondo más de 65' }];
 export const ALTOS = [{ hasta: 240, nombre: 'alto hasta 240' }, { hasta: 270, nombre: 'alto 241–270' }, { hasta: Infinity, nombre: 'alto más de 270' }];
 
-export const CONCEPTOS: Concepto[] = [
-  { clave: 'puerta_lisa', grupo: 'Frente', nombre: 'Puerta lisa', unidad: 'ud' },
-  { clave: 'puerta_moldurada', grupo: 'Frente', nombre: 'Puerta moldurada', unidad: 'ud' },
-  { clave: 'puerta_corredera', grupo: 'Frente', nombre: 'Extra por puerta corredera', unidad: 'ud' },
-  { clave: 'acabado_lacado', grupo: 'Frente', nombre: 'Recargo acabado lacado', unidad: '%', ayuda: 'Sobre el total de puertas' },
-  { clave: 'acabado_madera', grupo: 'Frente', nombre: 'Recargo acabado madera natural', unidad: '%', ayuda: 'Roble, nogal, chapa natural…' },
-  { clave: 'frente_fijo', grupo: 'Frente', nombre: 'Frente fijo', unidad: 'ml' },
-  { clave: 'tirador', grupo: 'Frente', nombre: 'Tirador', unidad: 'ud' },
-  { clave: 'perchero_extraible', grupo: 'Interior', nombre: 'Perchero extraíble', unidad: 'ud', ayuda: 'No está en la tabla de puntos' }
-];
+// 2026-10: todo el armario va por puntos (puertas y herrajes incluidos); ya no
+// quedan conceptos en € (los recargos de lacado y madera natural desaparecen:
+// el material va en cada tipo de puerta).
+export const CONCEPTOS: Concepto[] = [];
 
 export interface Tarifa {
   valores: Record<string, number | null>;  // por clave; null o ausente = PENDIENTE
@@ -96,26 +90,9 @@ export function tipoAcabado(acabado?: string): 'lacado' | 'madera' | null {
   return null;
 }
 
-/** Cantidades de cada concepto en un armario (sin precios). */
-export function contarArmario(a: Armario): Record<string, number> {
-  const n: Record<string, number> = {};
-  const sumar = (k: string, v: number) => { if (v) n[k] = r2((n[k] ?? 0) + v); };
-  for (const c of a.cuerpos) {
-    const f = c.frente;
-    for (const p of f.piezas) {
-      if (p.tipo === 'fijo') { sumar('frente_fijo', p.ancho / 100); continue; }
-      sumar((p.modelo ?? f.modelo) === 'moldurada' ? 'puerta_moldurada' : 'puerta_lisa', 1);
-      if (f.apertura === 'corredera') sumar('puerta_corredera', 1);
-      if (f.tirador !== 'ninguno') sumar('tirador', 1);
-    }
-    // El interior va por puntos (modelo por módulo); en € solo el perchero extraíble
-    const g = c.grosor ?? GROSOR_DEF;
-    for (const m of c.modulos) {
-      const zonas = repartoZonas(m.interior, { alto: c.alto, zocalo: c.zocalo ?? ZOCALO_DEF, grosor: g }).zonas.map((z) => z.zona);
-      for (const z of zonas.length ? zonas : m.interior) if (z.tipo === 'perchero_extraible') sumar('perchero_extraible', 1);
-    }
-  }
-  return n;
+/** Cantidades en € de un armario: ya no hay conceptos en € (todo va por puntos). */
+export function contarArmario(_a: Armario): Record<string, number> {
+  return {};
 }
 
 export function precioArmario(a: Armario, t: Tarifa, op: OpcionesPuntos = {}): PrecioArmario {
@@ -151,16 +128,6 @@ export function precioArmario(a: Armario, t: Tarifa, op: OpcionesPuntos = {}): P
       total += importe;
       if (k.startsWith('puerta_')) puertas += importe;
     }
-  }
-  // Recargo por acabado sobre las puertas
-  const acabados = new Set(a.cuerpos.map((c) => tipoAcabado(c.frente.acabado)).filter(Boolean) as string[]);
-  for (const ac of acabados) {
-    const k = `acabado_${ac}`;
-    const pct = valor(k);
-    const importe = pct === null ? null : r2((puertas * pct) / 100);
-    desglose.push({ clave: k, nombre: nombre(k), cantidad: 1, unidad: '%', precio: pct, importe });
-    if (importe === null) pendientes.push(nombre(k));
-    else total += importe;
   }
   total += totalPuntos;
   return { pvp: pendientes.length ? null : r2(total), desglose, pendientes, puntos_total: Math.round(puntosTotal * 100) / 100, modulos: pt.modulos, avisos: pt.avisos };

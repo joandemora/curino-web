@@ -43,17 +43,47 @@ export interface Modulo {
   interior: Zona[];
 }
 
+/** Material de la puerta (tarifa por puntos y dibujo). */
+export type MaterialPuerta = 'lisa_melamina' | 'lisa_lacada' | 'moldurada_lacada' | 'chapa_madera' | 'textil' | 'ratan';
+/** Agarre de cada puerta: el uñero sustituye al tirador. */
+export type Agarre = 'tirador' | 'tirador_premium' | 'unero_dm' | 'unero_madera' | 'ninguno';
+export const MATERIALES_PUERTA: MaterialPuerta[] = ['lisa_melamina', 'lisa_lacada', 'moldurada_lacada', 'chapa_madera', 'textil', 'ratan'];
+export const AGARRES: Agarre[] = ['tirador', 'tirador_premium', 'unero_dm', 'unero_madera', 'ninguno'];
+export const APERTURAS = ['abatible', 'corredera', 'coplanar', 'escamoteable'] as const;
+
 export type PiezaFrente =
-  | { tipo: 'puerta'; ancho: number; tirador?: LadoTirador; modelo?: ModeloPuerta }
-  | { tipo: 'fijo'; ancho: number; etiqueta?: string };
+  | { tipo: 'puerta'; ancho: number; tirador?: LadoTirador; modelo?: ModeloPuerta; material?: MaterialPuerta; agarre?: Agarre }
+  | { tipo: 'fijo'; ancho: number; etiqueta?: string; material?: MaterialPuerta };
 
 export interface Frente {
-  apertura: 'abatible' | 'corredera';
+  apertura: typeof APERTURAS[number];
   modelo: ModeloPuerta;        // por defecto de todas las puertas del frente
+  material?: MaterialPuerta;   // por defecto de todas las puertas del frente (si falta, se deduce de modelo + acabado)
+  agarre?: Agarre;             // por defecto de todas las puertas del frente (si falta, del campo tirador)
   acabado?: string;            // «lacada», «roble natural»…
   tirador?: 'laton' | 'ninguno';
   separacion_suelo?: number;   // cm entre puertas y suelo (def. 2)
   piezas: PiezaFrente[];       // de izquierda a derecha
+}
+
+/** Material de una pieza: el suyo, el del frente o el deducido del modelo y el acabado (diseños anteriores). */
+export function materialPieza(f: Frente, p: PiezaFrente): MaterialPuerta {
+  if (p.material) return p.material;
+  if (f.material) return f.material;
+  const modelo = p.tipo === 'puerta' ? (p.modelo ?? f.modelo) : 'lisa';
+  const a = (f.acabado || '').toLowerCase();
+  if (/rat[aá]n|rejilla/.test(a)) return 'ratan';
+  if (/textil|tapiz|tela/.test(a)) return 'textil';
+  if (modelo === 'moldurada') return 'moldurada_lacada';
+  if (/laca/.test(a)) return 'lisa_lacada';
+  if (/roble|nogal|madera|chapa|fresno|haya|cerezo/.test(a)) return 'chapa_madera';
+  return 'lisa_melamina';
+}
+/** Agarre de una puerta: el suyo, el del frente o el del campo «tirador» (latón = premium; ninguno). */
+export function agarrePuerta(f: Frente, p: PiezaFrente): Agarre {
+  if (p.tipo === 'puerta' && p.agarre) return p.agarre;
+  if (f.agarre) return f.agarre;
+  return f.tirador === 'laton' ? 'tirador_premium' : f.tirador === 'ninguno' ? 'ninguno' : 'tirador';
 }
 
 export interface Cuerpo {
@@ -161,8 +191,10 @@ export const ESQUEMA_JSON = {
                   additionalProperties: false,
                   required: ['apertura', 'modelo', 'piezas'],
                   properties: {
-                    apertura: { enum: ['abatible', 'corredera'] },
+                    apertura: { enum: ['abatible', 'corredera', 'coplanar', 'escamoteable'] },
                     modelo: { enum: ['moldurada', 'lisa'] },
+                    material: { enum: ['lisa_melamina', 'lisa_lacada', 'moldurada_lacada', 'chapa_madera', 'textil', 'ratan'], description: 'Material de las puertas: lisa_melamina, lisa_lacada, moldurada_lacada, chapa_madera (madera natural barnizada), textil (bastidor tapizado), ratan (bastidor de madera + rejilla).' },
+                    agarre: { enum: ['tirador', 'tirador_premium', 'unero_dm', 'unero_madera', 'ninguno'], description: 'tirador estándar, tirador_premium (latón), unero_dm (uñero fresado en DM lacado), unero_madera (uñero en madera maciza) o ninguno. El uñero sustituye al tirador.' },
                     acabado: { type: 'string', maxLength: 40 },
                     tirador: { enum: ['laton', 'ninguno'] },
                     separacion_suelo: num(0, 20, 'Hueco entre puertas y suelo en cm (def. 2).'),
@@ -170,8 +202,8 @@ export const ESQUEMA_JSON = {
                       type: 'array', minItems: 1, maxItems: 16,
                       items: {
                         oneOf: [
-                          { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'puerta' }, ancho: num(20, 120, 'Ancho de la puerta en cm.'), tirador: { enum: ['izq', 'der'] }, modelo: { enum: ['moldurada', 'lisa'], description: 'Solo si esta puerta es distinta del modelo del frente.' } } },
-                          { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'fijo' }, ancho: num(3, 200, 'Ancho del frente fijo en cm.'), etiqueta } }
+                          { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'puerta' }, ancho: num(20, 120, 'Ancho de la puerta en cm.'), tirador: { enum: ['izq', 'der'] }, modelo: { enum: ['moldurada', 'lisa'], description: 'Solo si esta puerta es distinta del modelo del frente.' }, material: { enum: ['lisa_melamina', 'lisa_lacada', 'moldurada_lacada', 'chapa_madera', 'textil', 'ratan'], description: 'Solo si esta puerta es de otro material que el frente.' }, agarre: { enum: ['tirador', 'tirador_premium', 'unero_dm', 'unero_madera', 'ninguno'], description: 'Solo si esta puerta lleva otro agarre que el frente.' } } },
+                          { type: 'object', additionalProperties: false, required: ['tipo', 'ancho'], properties: { tipo: { const: 'fijo' }, ancho: num(3, 200, 'Ancho del frente fijo en cm.'), etiqueta, material: { enum: ['lisa_melamina', 'lisa_lacada', 'moldurada_lacada', 'chapa_madera', 'textil', 'ratan'] } } }
                         ]
                       }
                     }
@@ -316,9 +348,11 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
       const f = c.frente;
       const rf = `${rc}.frente`;
       if (!esObj(f)) { err(rf, 'falta el frente'); return; }
-      campos(f, rf, ['apertura', 'modelo', 'acabado', 'tirador', 'separacion_suelo', 'piezas']);
-      opcion(f, 'apertura', rf, ['abatible', 'corredera'], true);
+      campos(f, rf, ['apertura', 'modelo', 'material', 'agarre', 'acabado', 'tirador', 'separacion_suelo', 'piezas']);
+      opcion(f, 'apertura', rf, [...APERTURAS], true);
       opcion(f, 'modelo', rf, ['moldurada', 'lisa'], true);
+      opcion(f, 'material', rf, MATERIALES_PUERTA);
+      opcion(f, 'agarre', rf, AGARRES);
       opcion(f, 'tirador', rf, ['laton', 'ninguno']);
       texto(f, 'acabado', rf, 40);
       numero(f, 'separacion_suelo', rf, 0, 20, false);
@@ -328,14 +362,17 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
         const rp = `${rf}.piezas[${ip}]`;
         if (!esObj(p)) { err(rp, 'debe ser un objeto'); frenteOk = false; return; }
         if (p.tipo === 'puerta') {
-          campos(p, rp, ['tipo', 'ancho', 'tirador', 'modelo']);
+          campos(p, rp, ['tipo', 'ancho', 'tirador', 'modelo', 'material', 'agarre']);
           opcion(p, 'tirador', rp, ['izq', 'der']);
           opcion(p, 'modelo', rp, ['moldurada', 'lisa']);
+          opcion(p, 'material', rp, MATERIALES_PUERTA);
+          opcion(p, 'agarre', rp, AGARRES);
           const ap = numero(p, 'ancho', rp, 20, 120, true);
           if (ap === undefined) frenteOk = false; else sumaFrente += ap;
         } else if (p.tipo === 'fijo') {
-          campos(p, rp, ['tipo', 'ancho', 'etiqueta']);
+          campos(p, rp, ['tipo', 'ancho', 'etiqueta', 'material']);
           texto(p, 'etiqueta', rp, 60);
+          opcion(p, 'material', rp, MATERIALES_PUERTA);
           const ap = numero(p, 'ancho', rp, 3, 200, true);
           if (ap === undefined) frenteOk = false; else sumaFrente += ap;
         } else { err(`${rp}.tipo`, 'usa puerta / fijo'); frenteOk = false; }

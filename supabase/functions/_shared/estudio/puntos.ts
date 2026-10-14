@@ -15,7 +15,7 @@
 // extras (cajones, estantes, barras) suman o restan sobre ese modelo.
 
 import type { Armario, Zona } from './esquema.ts';
-import { repartoZonas, ZOCALO_DEF, GROSOR_DEF } from './esquema.ts';
+import { repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta } from './esquema.ts';
 
 export const VERSION_PUNTOS = 'OTG 2026';
 export const ANCHOS = [400, 500, 600, 700, 800, 900, 1000];
@@ -38,7 +38,29 @@ export const SUELTOS: Record<string, { nombre: string; puntos: number }> = {
   rinconero: { nombre: 'Módulo rinconero 1100 × 1100 mm', puntos: 830 },
   division: { nombre: 'División vertical interior (1500 a 2000 × 19)', puntos: 59 }
 };
+// Puertas: puntos fijos por puerta hasta 2800 × 650 × 19 mm (frente fijo = su material, sin bisagras)
+export const PUERTA_MAX = { alto: 2800, ancho: 650 };
+export const PUERTAS: Record<string, { nombre: string; puntos: number }> = {
+  lisa_melamina: { nombre: 'Puerta lisa melamina', puntos: 110 },
+  lisa_lacada: { nombre: 'Puerta lisa lacada', puntos: 330 },
+  moldurada_lacada: { nombre: 'Puerta moldurada lacada', puntos: 475 },
+  chapa_madera: { nombre: 'Puerta chapa madera natural barnizada', puntos: 400 },
+  textil: { nombre: 'Puerta textil (bastidor tapizado)', puntos: 455 },
+  ratan: { nombre: 'Puerta ratán (bastidor madera + rejilla)', puntos: 580 }
+};
+export const HERRAJES: Record<string, { nombre: string; puntos: number }> = {
+  bisagras: { nombre: 'Bisagras puerta abatible (por puerta)', puntos: 25 },
+  corredera: { nombre: 'Sistema corredera (por puerta)', puntos: 180 },
+  coplanar: { nombre: 'Sistema coplanar (juego de 2 puertas)', puntos: 700 },
+  escamoteable: { nombre: 'Sistema escamoteable (por puerta)', puntos: 800 },
+  tirador: { nombre: 'Tirador estándar', puntos: 15 },
+  tirador_premium: { nombre: 'Tirador latón / premium', puntos: 45 },
+  unero_dm: { nombre: 'Uñero fresado en DM lacado (por puerta)', puntos: 35 },
+  unero_madera: { nombre: 'Uñero en madera maciza (por puerta)', puntos: 60 },
+  perchero_extraible: { nombre: 'Perchero extraíble', puntos: 45 }
+};
 export const COSTADOS: Record<string, { nombre: string; puntos: number }> = {
+  // 2800 × 650 × 19
   madera_barnizada: { nombre: 'Costado visto madera barnizada', puntos: 263 },
   melamina: { nombre: 'Costado visto melamina', puntos: 89 },
   dm_lacado: { nombre: 'Costado visto DM lacado', puntos: 284 },
@@ -62,6 +84,8 @@ export function puntosBase(): Record<string, number> {
   for (const [k, e] of Object.entries(EXTRAS)) ANCHOS.forEach((a, i) => { b[`${k}_${a}`] = e.puntos[i]; });
   for (const [k, s] of Object.entries(SUELTOS)) b[k] = s.puntos;
   for (const [k, c] of Object.entries(COSTADOS)) b[`costado_${k}`] = c.puntos;
+  for (const [k, c] of Object.entries(PUERTAS)) b[`puerta_${k}`] = c.puntos;
+  for (const [k, c] of Object.entries(HERRAJES)) b[k] = c.puntos;
   for (const [k, r] of Object.entries(RECARGOS)) b[`recargo_${k}`] = r.pct;
   for (const r of REMATES) { b[`remate_${r.hasta}_barniz`] = r.barniz; b[`remate_${r.hasta}_lacado`] = r.lacado; }
   return b;
@@ -139,6 +163,48 @@ export function puntosArmario(a: Armario, puntos: Record<string, number>, op: Op
         }
       }
     });
+  });
+  // Puertas, frentes fijos y herrajes de cada cuerpo
+  a.cuerpos.forEach((c, ci) => {
+    const f = c.frente, sep = f.separacion_suelo ?? SEPARACION_SUELO_DEF;
+    const altoMm = Math.round((c.alto - sep) * 10), suf = a.cuerpos.length > 1 ? ` (cuerpo ${ci + 1})` : '';
+    const grupos = new Map<string, LineaPuntos>();
+    let nPuertas = 0;
+    const agarres: Record<string, number> = {};
+    for (const p of f.piezas) {
+      const mat = materialPieza(f, p), anchoMm = Math.round(p.ancho * 10);
+      // Fuera de medida: proporcional al exceso de superficie
+      const fuera = altoMm > PUERTA_MAX.alto || anchoMm > PUERTA_MAX.ancho;
+      const factor = fuera ? Math.max(1, (altoMm * anchoMm) / (PUERTA_MAX.alto * PUERTA_MAX.ancho)) : 1;
+      const pts = Math.round(puntos[`puerta_${mat}`] * factor * 100) / 100;
+      const nombre = `${p.tipo === 'fijo' ? `Frente fijo · ${PUERTAS[mat].nombre.replace('Puerta ', '')}` : PUERTAS[mat].nombre}${fuera ? ` · ${altoMm} × ${anchoMm} mm` : ''}${suf}`;
+      const k = `${p.tipo}_${mat}_${pts}_${ci}`;
+      const g = grupos.get(k);
+      if (g) g.cantidad++;
+      else grupos.set(k, { clave: `puerta_${mat}_${ci}`, nombre, cantidad: 1, puntos: pts, aviso: fuera ? 'fuera de medida (más de 2800 × 650): proporcional a la superficie, revisar' : undefined });
+      if (p.tipo === 'puerta') {
+        nPuertas++;
+        const ag = agarrePuerta(f, p);
+        if (ag !== 'ninguno') agarres[ag] = (agarres[ag] ?? 0) + 1;
+      }
+    }
+    lineas.push(...grupos.values());
+    if (nPuertas) {
+      const ap = f.apertura;
+      if (ap === 'abatible') lineas.push({ clave: `bisagras_${ci}`, nombre: HERRAJES.bisagras.nombre + suf, cantidad: nPuertas, puntos: puntos.bisagras });
+      else if (ap === 'corredera') lineas.push({ clave: `corredera_${ci}`, nombre: HERRAJES.corredera.nombre + suf, cantidad: nPuertas, puntos: puntos.corredera });
+      else if (ap === 'coplanar') lineas.push({ clave: `coplanar_${ci}`, nombre: `${HERRAJES.coplanar.nombre} · ${nPuertas} ${nPuertas === 1 ? 'puerta' : 'puertas'}${suf}`, cantidad: Math.ceil(nPuertas / 2), puntos: puntos.coplanar });
+      else if (ap === 'escamoteable') lineas.push({ clave: `escamoteable_${ci}`, nombre: HERRAJES.escamoteable.nombre + suf, cantidad: nPuertas, puntos: puntos.escamoteable });
+    }
+    for (const [ag, n] of Object.entries(agarres)) lineas.push({ clave: `${ag}_${ci}`, nombre: HERRAJES[ag].nombre + suf, cantidad: n, puntos: puntos[ag] });
+    // Percheros extraíbles del interior
+    const g = c.grosor ?? GROSOR_DEF;
+    let perch = 0;
+    for (const m of c.modulos) {
+      const zonas = repartoZonas(m.interior, { alto: c.alto, zocalo: c.zocalo ?? ZOCALO_DEF, grosor: g }).zonas.map((z) => z.zona);
+      for (const z of zonas.length ? zonas : m.interior) if (z.tipo === 'perchero_extraible') perch++;
+    }
+    if (perch) lineas.push({ clave: `perchero_extraible_${ci}`, nombre: HERRAJES.perchero_extraible.nombre + suf, cantidad: perch, puntos: puntos.perchero_extraible });
   });
   if (op.rinconeros) { lineas.push({ clave: 'rinconero', nombre: SUELTOS.rinconero.nombre, cantidad: op.rinconeros, puntos: puntos.rinconero }); interior += puntos.rinconero * op.rinconeros; }
   if (op.divisiones) { lineas.push({ clave: 'division', nombre: SUELTOS.division.nombre, cantidad: op.divisiones, puntos: puntos.division }); interior += puntos.division * op.divisiones; }

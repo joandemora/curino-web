@@ -15,7 +15,7 @@
 import { LOGO_ALTO, LOGO_ANCHO } from './logo.ts';
 import {
   type Armario, type Cuerpo, type Frente, type PiezaFrente, type Proyecto, type Zona, type Formato,
-  repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF
+  repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta
 } from './esquema.ts';
 
 // ── Primitivas ──────────────────────────────────────────────────────
@@ -81,6 +81,15 @@ export const ESTILO = {
   prendaBorde: '#7a7a7a',
   laton: '#b8864b',
   latonBorde: '#8a6234',
+  acero: '#c3c7cc',
+  aceroBorde: '#7d8288',
+  textil: '#ece6da',
+  tramaTextil: '#cdbfa6',
+  ratan: '#f3e9d4',
+  rejilla: '#b89a66',
+  chapa: '#f1e6d3',
+  uneroDm: '#d3cdc1',
+  uneroMadera: '#b98d58',
   // separaciones entre vistas (cm)
   hueco_vistas: 45,
   hueco_cuerpos: 80,
@@ -189,7 +198,7 @@ export function descripcionFrente(f: Frente): string {
   const modelo = modelos.length > 1 ? 'molduradas y lisas' : (modelos[0] ?? f.modelo) === 'moldurada' ? 'molduradas' : 'lisas';
   return [
     'Puertas',
-    f.apertura === 'abatible' ? 'abatibles' : 'correderas',
+    ({ abatible: 'abatibles', corredera: 'correderas', coplanar: 'coplanares', escamoteable: 'escamoteables' } as Record<string, string>)[f.apertura] ?? 'abatibles',
     modelo,
     f.acabado ? pl(f.acabado.trim()) : ''
   ].filter(Boolean).join(' ');
@@ -421,16 +430,46 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
     line(f0 - cm(E.suelo_extra), suelo, f0 + W + cm(E.suelo_extra), suelo, E.tinta, 1.2);
     const lados = ladosTirador(f.piezas);
     let px = f0;
+    // Líneas diagonales recortadas a un rectángulo (rejilla de ratán)
+    const diagonales = (x0: number, y0: number, w: number, h: number, paso: number, color: string, sw: number) => {
+      for (const dir of [1, -1]) {
+        const c0 = dir === 1 ? x0 - (y0 + h) : x0 + y0, c1 = dir === 1 ? x0 + w - y0 : x0 + w + y0 + h;
+        for (let c = c0 + paso / 2; c < c1; c += paso) {
+          const pts: [number, number][] = [];
+          const yIzq = dir === 1 ? x0 - c : c - x0, yDer = dir === 1 ? x0 + w - c : c - x0 - w;
+          const xArr = dir === 1 ? y0 + c : c - y0, xAbj = dir === 1 ? y0 + h + c : c - y0 - h;
+          if (yIzq >= y0 && yIzq <= y0 + h) pts.push([x0, yIzq]);
+          if (yDer >= y0 && yDer <= y0 + h) pts.push([x0 + w, yDer]);
+          if (xArr > x0 && xArr < x0 + w) pts.push([xArr, y0]);
+          if (xAbj > x0 && xAbj < x0 + w) pts.push([xAbj, y0 + h]);
+          if (pts.length >= 2) line(pts[0][0], pts[0][1], pts[1][0], pts[1][1], color, sw);
+        }
+      }
+    };
     f.piezas.forEach((pz, i) => {
       const pw = cm(pz.ancho);
       const d0 = px + cm(E.puerta_holgura), d1 = px + pw - cm(E.puerta_holgura);
-      rect(d0, arriba, d1 - d0, bajo - arriba, { fill: E.puerta, stroke: E.tinta, sw: 0.9 });
+      const mat = materialPieza(f, pz);
+      const fondo = mat === 'textil' ? E.textil : mat === 'ratan' ? E.ratan : mat === 'chapa_madera' ? E.chapa : E.puerta;
+      rect(d0, arriba, d1 - d0, bajo - arriba, { fill: fondo, stroke: E.tinta, sw: 0.9 });
+      if (mat === 'textil') {
+        // Trama de tela (bastidor tapizado)
+        const ins = cm(2.5), paso = cm(2.2);
+        for (let yy = arriba + ins; yy < bajo - ins; yy += paso) line(d0 + ins, yy, d1 - ins, yy, E.tramaTextil, 0.3);
+        for (let xx = d0 + ins; xx < d1 - ins; xx += paso) line(xx, arriba + ins, xx, bajo - ins, E.tramaTextil, 0.3);
+        rect(d0 + ins, arriba + ins, d1 - d0 - 2 * ins, bajo - arriba - 2 * ins, { stroke: E.tinta, sw: 0.5 });
+      } else if (mat === 'ratan') {
+        // Bastidor de madera + rejilla
+        const ins = cm(5);
+        rect(d0 + ins, arriba + ins, d1 - d0 - 2 * ins, bajo - arriba - 2 * ins, { stroke: E.tinta, sw: 0.8 });
+        diagonales(d0 + ins, arriba + ins, d1 - d0 - 2 * ins, bajo - arriba - 2 * ins, cm(3.2), E.rejilla, 0.35);
+      }
       const altoPuerta = c.alto - sep;
       const travesano = bajo - cm(altoPuerta * E.travesano_altura);
       if (pz.tipo === 'fijo') {
         etiqueta((d0 + d1) / 2, (arriba + bajo) / 2, pz.etiqueta ?? 'FRENTE FIJO\nLISO', 6.5, false, E.suave);
       } else {
-        if ((pz.modelo ?? f.modelo) === 'moldurada') {
+        if (mat === 'moldurada_lacada' || (!pz.material && !f.material && (pz.modelo ?? f.modelo) === 'moldurada')) {
           const mg = cm(pz.ancho * E.moldura), mi = cm(pz.ancho * E.moldura_interior);
           const tr = cm(E.travesano) / 2;
           const paneles: [number, number][] = [[arriba + mg, travesano - tr], [travesano + tr, bajo - mg]];
@@ -441,10 +480,16 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
           }
         }
         const lado = lados[i];
-        if (lado && f.tirador !== 'ninguno') {
+        const ag = agarrePuerta(f, pz);
+        if (lado && (ag === 'unero_dm' || ag === 'unero_madera')) {
+          // Uñero: ranura en el canto de apertura, sin tirador
+          const ux = lado === 'der' ? d1 - cm(1.4) : d0;
+          rect(ux, arriba + cm(1), cm(1.4), bajo - arriba - cm(2), { fill: ag === 'unero_madera' ? E.uneroMadera : E.uneroDm, stroke: E.tinta, sw: 0.4 });
+        } else if (lado && (ag === 'tirador' || ag === 'tirador_premium')) {
           const tx = lado === 'der' ? px + pw - cm(E.tirador_borde) : px + cm(E.tirador_borde);
-          rect(tx - cm(E.tirador_ancho) / 2, travesano - cm(E.tirador_alto) / 2, cm(E.tirador_ancho), cm(E.tirador_alto), { fill: E.laton, stroke: E.latonBorde, sw: 0.5 });
-          rect(tx - cm(E.cruz_ancho) / 2, travesano - cm(E.cruz_alto) / 2, cm(E.cruz_ancho), cm(E.cruz_alto), { fill: E.laton, stroke: E.latonBorde, sw: 0.5 });
+          const [fc, bc] = ag === 'tirador_premium' ? [E.laton, E.latonBorde] : [E.acero, E.aceroBorde];
+          rect(tx - cm(E.tirador_ancho) / 2, travesano - cm(E.tirador_alto) / 2, cm(E.tirador_ancho), cm(E.tirador_alto), { fill: fc, stroke: bc, sw: 0.5 });
+          if (ag === 'tirador_premium') rect(tx - cm(E.cruz_ancho) / 2, travesano - cm(E.cruz_alto) / 2, cm(E.cruz_ancho), cm(E.cruz_alto), { fill: fc, stroke: bc, sw: 0.5 });
         }
       }
       px += pw;
@@ -455,7 +500,9 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
     f.piezas.forEach((pz) => { cotaH(fx, fx + cm(pz.ancho), suelo + cm(E.cota_abajo), fmtCm(pz.ancho)); fx += cm(pz.ancho); });
     const nPuertas = f.piezas.filter((pz) => pz.tipo === 'puerta').length;
     const nFijos = f.piezas.length - nPuertas;
-    const pieCerrado = `${prefijo}CERRADO · ${plural(nPuertas, 'puerta', 'puertas')}${nFijos ? ` + ${plural(nFijos, 'frente fijo', 'frentes fijos')}` : ''}`;
+    const AP: Record<string, [string, string]> = { corredera: ['corredera', 'correderas'], coplanar: ['coplanar', 'coplanares'], escamoteable: ['escamoteable', 'escamoteables'] };
+    const ap = AP[f.apertura] ? ' ' + AP[f.apertura][nPuertas === 1 ? 0 : 1] : '';
+    const pieCerrado = `${prefijo}CERRADO · ${plural(nPuertas, 'puerta', 'puertas')}${ap}${nFijos ? ` + ${plural(nFijos, 'frente fijo', 'frentes fijos')}` : ''}`;
     text(f0 + W / 2, suelo + cm(E.pie_vista), pieCerrado, 8.5, E.tinta, 'middle', true);
     x += W;
   });
