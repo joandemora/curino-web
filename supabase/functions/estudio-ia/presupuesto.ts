@@ -24,7 +24,7 @@
 
 import { PDFDocument, rgb, degrees } from 'https://esm.sh/pdf-lib@1.17.1'
 import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
-import { laminasProyecto, dibujoLamina } from '../_shared/estudio/alzado.ts'
+import { laminasPresupuesto, dibujoLamina } from '../_shared/estudio/alzado.ts'
 import { medirConFuentes } from '../_shared/estudio/pdf.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from '../_shared/estudio/logo.ts'
@@ -592,7 +592,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     for (const [n, ps] of porVersion) {
       const v = await versionDatos(n);
       if (!v) continue;
-      for (const l of laminasProyecto(v.datos, medir)) { const p = ps.find((x) => (x.dibujo ?? x.codigo) === l.codigo); if (p) dibujos.push({ ...dibujoLamina(l, medir), codigo: claveDe(p) }); }
+      for (const l of laminasPresupuesto(v.datos, medir)) { const p = ps.find((x) => (x.dibujo ?? x.codigo) === l.codigo); if (p) dibujos.push({ ...dibujoLamina(l, medir), codigo: claveDe(p) }); }
     }
     const imagen = async (path: string | null) => {
       if (!path) return undefined;
@@ -640,7 +640,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     for (const [n, ps] of porVersion) {
       const v = await versionDatos(n);
       if (!v) continue;
-      for (const l of laminasProyecto(v.datos, medir)) {
+      for (const l of laminasPresupuesto(v.datos, medir)) {
         const p = ps.find((x) => (x.dibujo ?? x.codigo) === l.codigo);
         if (p) out.push(mapa(l, claveDe(p)));
       }

@@ -416,7 +416,7 @@ export function generarPresupuesto(o: {
       const ant = prev?.partidas.find((x) => x.clave === clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === codigo);
       const tx = textosTramo(c, t, i), pr = pc.tramos[i];
       partidas.push({
-        codigo, version: o.version, clave, tipo: 'cocina', dibujo: i === 0 ? c.codigo : undefined,
+        codigo, version: o.version, clave, tipo: 'cocina',
         cantidad: ant?.cantidad ?? 1,
         titulo: tx.titulo,
         subtitulo: ant?.subtitulo || tx.subtitulo,

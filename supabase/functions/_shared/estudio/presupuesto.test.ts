@@ -210,7 +210,13 @@ test('cocina: una partida por tramo, dibujo en la primera, precio con el punto d
   const t = { ...tarifaPrueba(), precio_punto_cocina: 2 };
   const d = generarPresupuesto({ proyecto: conCocina(), version: 3, tarifa: t, plantilla: PLANTILLA_ADMIN, nombre: 'Cliente PRUEBA', hoy: '2026-10-14' });
   const cs = d.partidas.filter((p) => p.tipo === 'cocina');
-  assert.deepEqual(cs.map((p) => [p.codigo, p.clave, p.dibujo]), [['C.01.1', 'v3:C.01.1', 'C.01'], ['C.01.2', 'v3:C.01.2', undefined]]);
+  assert.deepEqual(cs.map((p) => [p.codigo, p.clave]), [['C.01.1', 'v3:C.01.1'], ['C.01.2', 'v3:C.01.2']]);
+  // Cada línea al alza y sin decimales; la partida suma sus líneas
+  assert.ok(cs.every((p) => p.desglose.every((l) => Number.isInteger(l.puntos_linea)) && p.puntos === p.desglose.reduce((s, l) => s + l.puntos_linea!, 0)));
+  const zocalo = cs[1].desglose.find((l) => l.clave === 'zocalo_ml')!;
+  assert.deepEqual([zocalo.cantidad, zocalo.puntos, zocalo.puntos_linea], [1.5, 15, 23]);
+  // Descuento por defecto 0 %
+  assert.equal(TARIFA_PENDIENTE.descuento_pct, 0);
   assert.ok(cs[0].titulo.startsWith('C.01 COCINA EN L · PARED 1'));
   assert.equal(cs[0].precio, Math.round(cs[0].puntos! * 2 * 100) / 100);
   assert.ok(cs[0].desglose.some((l) => /Legrabox/.test(l.nombre)));
@@ -239,4 +245,16 @@ test('bloqueo: líneas a 0 puntos o fuera de tarifa (también en armarios); el p
   const a = ejemplo(); a.armarios[0].cuerpos[0].modulos[0].ancho = 110;
   const da = generarPresupuesto({ proyecto: a, version: 1, tarifa: tarifaPrueba(), plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14', armarios: ['A.01'] });
   assert.ok(lineasBloqueantes(da).some((l) => /fuera de tarifa/.test(l)));
+});
+
+test('dibujos del presupuesto: un alzado por tramo y sección + planta bajo el último', async () => {
+  const { laminasPresupuesto } = await import('./alzado.ts');
+  const p = conCocina();
+  assert.deepEqual(laminasPresupuesto({ ...p, armarios: [] }).map((l) => l.codigo), ['C.01.1', 'C.01.2']);
+  p.cocinas![0].vistas = ['lateral', 'planta'];
+  const ls = laminasPresupuesto({ ...p, armarios: [] });
+  assert.deepEqual(ls.map((l) => [l.codigo, l.pagina]), [['C.01.1', 1], ['C.01.2', 1], ['C.01.2', 2]]);
+  const textos = (i: number) => ls[i].prims.filter((x) => x.k === 'text').map((x) => (x as { t: string }).t);
+  assert.ok(textos(0).includes('PARED 1 · ALZADO') && !textos(0).includes('PARED 2 · ALZADO'));
+  assert.ok(textos(2).includes('PLANTA') && textos(2).includes('SECCIÓN TIPO'));
 });
