@@ -508,18 +508,6 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json(respuesta(d));
   }
 
-  if (!fila) return json(respuesta(null));
-  if (action === 'presupuesto') return json(respuesta(doc));
-
-  if (action === 'presupuesto_duplicar') {
-    if (!doc) return json({ error: 'Los presupuestos importados no se pueden duplicar: crea uno nuevo.' }, 400);
-    const numero = (await numeroSugerido()) || `${fila.numero || doc.numero || 'PRESUPUESTO'}-B`;
-    const copia: DocPresupuesto = JSON.parse(JSON.stringify(doc));
-    copia.numero = numero; copia.fecha = hoy;
-    await crear(copia);
-    return json(respuesta(copia));
-  }
-
   if (action === 'presupuesto_fusionar') {
     // Dos o más presupuestos del proyecto → uno nuevo (borrador) con todas sus partidas, en orden. Los originales no se tocan.
     const ids = Array.isArray(body?.ids) ? [...new Set(body.ids.map(String))].filter((x) => UUID.test(x as string)).slice(0, 10) : [];
@@ -548,6 +536,18 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const nuevo: DocPresupuesto = { ...primero, numero, fecha: hoy, versiones: [...versiones], partidas };
     await crear(nuevo);
     return json({ ...respuesta(nuevo), fusionados: orden.map((f: Any) => f.numero || '') });
+  }
+
+  if (!fila) return json(respuesta(null));
+  if (action === 'presupuesto') return json(respuesta(doc));
+
+  if (action === 'presupuesto_duplicar') {
+    if (!doc) return json({ error: 'Los presupuestos importados no se pueden duplicar: crea uno nuevo.' }, 400);
+    const numero = (await numeroSugerido()) || `${fila.numero || doc.numero || 'PRESUPUESTO'}-B`;
+    const copia: DocPresupuesto = JSON.parse(JSON.stringify(doc));
+    copia.numero = numero; copia.fecha = hoy;
+    await crear(copia);
+    return json(respuesta(copia));
   }
 
   if (!doc) return json({ error: 'Este presupuesto es del histórico (solo n.º e importe): crea uno nuevo para editarlo.' }, 400);
