@@ -101,7 +101,8 @@
   }
 
   function fichaProyecto(el, ctx, pid, tab) {
-    var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['archivos', 'Archivos'], ['metricas', 'Métricas']];
+    if (tab === 'archivos') tab = 'documentos';   // pestaña antigua: ahora todo está en «Documentos»
+    var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['metricas', 'Métricas']];
     el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
       '<a href="' + ctx.rutas.presupuesto(pid) + '">Presupuesto</a></nav></div><div class="pj-montaje" id="pjMontaje"></div><div id="pjCuerpo"></div></div>';
@@ -127,7 +128,6 @@
     }
     var cuerpo = el.querySelector('#pjCuerpo');
     if (tab === 'documentos') return documentosProyecto(cuerpo, ctx, pid);
-    if (tab === 'archivos') return archivosProyecto(cuerpo, ctx, pid);
     if (tab === 'metricas') return metricasProyecto(cuerpo, ctx, pid);
     return disenoProyecto(cuerpo, ctx, pid);
   }
@@ -266,59 +266,60 @@
     abrir();
   }
 
-  // ── Documentos: todo lo generado, por versión y fecha ──
+  // ── Documentos: lo generado (alzados, presupuestos) y lo subido (facturas, planos, fotos…) juntos ──
   var TIPO_DOC = { alzados_pdf: 'Alzados (PDF)', presupuesto_pdf: 'Presupuesto (PDF)', presupuesto_xlsx: 'Presupuesto (Excel)' };
+  var TIPO_F = { factura_proveedor: 'Factura de proveedor', presupuesto_proveedor: 'Presupuesto de proveedor', factura_cliente: 'Factura a cliente', foto_obra: 'Foto de obra', plano: 'Plano o medidas', otro: 'Otro' };
+  var FILTROS_DOC = [['', 'Todo'], ['diseno', 'Diseño'], ['presupuesto', 'Presupuesto'], ['factura_cliente', 'Factura cliente'], ['factura_proveedor', 'Factura proveedor'], ['presupuesto_proveedor', 'Presupuesto proveedor'], ['plano', 'Plano'], ['foto_obra', 'Foto'], ['otro', 'Otro']];
+  var filtroDoc = { tipo: '', orden: 'reciente' };
   function documentosProyecto(el, ctx, pid) {
-    el.innerHTML = '<div class="ng-card"><h2>Documentos</h2><p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Se guardan solos cada vez que descargas alzados o el presupuesto (PDF o Excel).</p><div id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
+    var supa = ctx.supa, items = [];
+    el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Documentos</h2><span class="pa-muted" id="arUso" style="font-size:12px"></span></div>' +
+      '<p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Los alzados y presupuestos se guardan solos al descargarlos. Sube aquí facturas, presupuestos de proveedor, planos y fotos.</p>' +
+      '<form class="ar-subir" id="arForm"><select id="arTipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '">' + TIPO_F[k] + '</option>'; }).join('') + '</select>' +
+      '<input type="file" id="arFile" accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" required><button class="pa-btn primary" type="submit">Subir archivo</button><span class="pa-muted" style="font-size:12px">PDF, foto o Excel</span></form>' +
+      '<div class="dc-filtros" id="dcFiltros">' + FILTROS_DOC.map(function (f) { return '<button type="button" data-f="' + f[0] + '"' + (f[0] === filtroDoc.tipo ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') +
+      '<select id="dcOrden"><option value="reciente">Más recientes</option><option value="antiguo">Más antiguos</option></select></div>' +
+      '<div id="arMsg" class="pr-msg"></div><div id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
+    el.querySelector('#dcOrden').value = filtroDoc.orden;
+    var msg = function (t, tipo) { var m = el.querySelector('#arMsg'); m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; };
+    var grupo = function (x) { return x.kind === 'doc' ? (x.tipo === 'alzados_pdf' ? 'diseno' : 'presupuesto') : x.tipo; };
+    function filaDoc(x) {
+      return '<li><div><strong>' + esc(TIPO_DOC[x.tipo] || x.tipo) + (x.numero ? ' · n.º ' + esc(x.numero) : '') + (x.version ? ' · v' + x.version : '') + (x.variante ? ' · ' + esc(x.variante) : '') + '</strong><small>' + esc(x.nombre) + ' · ' + fecha(x.created_at) + ' · ' + Math.max(1, Math.round(x.bytes / 1024)) + ' KB</small></div>' +
+        '<a class="pa-btn" href="' + esc(x.url) + '" target="_blank" rel="noopener">Ver</a><a class="pa-btn" href="' + esc(x.url) + '&download=' + encodeURIComponent(x.nombre) + '">Descargar</a><button class="pa-btn" data-borrar="' + x.id + '">Borrar</button></li>';
+    }
+    function filaFich(f) {
+      var esImg = /^image\//.test(f.mime), leible = /^(application\/pdf|image\/)/.test(f.mime) && /factura|presupuesto_proveedor|otro/.test(f.tipo);
+      return '<div class="ar-fila" data-id="' + f.id + '"><a class="ar-ver" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + (esImg ? '<img src="' + esc(f.url) + '" alt="">' : '<span>' + esc((f.nombre.split('.').pop() || '').toUpperCase()) + '</span>') + '</a>' +
+        '<div class="ar-campos"><div class="ar-top"><strong>' + esc(f.nombre) + '</strong><small>' + esc(TIPO_F[f.tipo] || f.tipo) + ' · ' + fecha(f.created_at) + (f.leido_ia ? ' · leído con IA' : '') + (f.notas ? ' · ' + esc(f.notas) : '') + '</small></div>' +
+        '<div class="ar-g"><label>Tipo<select data-k="tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === f.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select></label>' +
+        '<label>Proveedor / cliente<input data-k="proveedor" value="' + esc(f.proveedor || '') + '"></label>' +
+        '<label>Fecha<input type="date" data-k="fecha" value="' + esc(f.fecha || '') + '"></label>' +
+        '<label>Base (€)<input data-k="base" inputmode="decimal" value="' + numOut(f.base) + '"></label>' +
+        '<label>IVA (€)<input data-k="iva" inputmode="decimal" value="' + numOut(f.iva) + '"></label>' +
+        '<label>Total (€)<input data-k="total" inputmode="decimal" value="' + numOut(f.total) + '"></label></div>' +
+        '<div class="pa-btns"><button class="pa-btn primary" data-a="guardar">Guardar</button>' + (leible ? '<button class="pa-btn" data-a="ia">Leer con IA</button>' : '') +
+        '<a class="pa-btn" href="' + esc(f.url) + '&download=' + encodeURIComponent(f.nombre) + '">Descargar</a><button class="pa-btn" data-a="borrar">Borrar</button></div></div></div>';
+    }
+    function pintar() {
+      var lista = items.filter(function (x) { return !filtroDoc.tipo || grupo(x) === filtroDoc.tipo; })
+        .sort(function (a, b) { return filtroDoc.orden === 'antiguo' ? String(a.created_at).localeCompare(String(b.created_at)) : String(b.created_at).localeCompare(String(a.created_at)); });
+      el.querySelectorAll('#dcFiltros [data-f]').forEach(function (b) {
+        var n = b.dataset.f ? items.filter(function (x) { return grupo(x) === b.dataset.f; }).length : items.length;
+        b.classList.toggle('on', b.dataset.f === filtroDoc.tipo); b.dataset.n = n; b.classList.toggle('vacio', !n);
+      });
+      el.querySelector('#dcLista').innerHTML = lista.length ? lista.map(function (x) { return x.kind === 'doc' ? '<ul class="ng-lista dc-doc">' + filaDoc(x) + '</ul>' : filaFich(x); }).join('')
+        : '<p class="pa-muted">' + (items.length ? 'Nada de este tipo.' : 'Aún no hay documentos. Descarga los alzados o el presupuesto, o sube facturas, planos y fotos.') + '</p>';
+    }
     function cargar() {
-      api(ctx, { action: 'documentos', proyecto_id: pid }).then(function (d) {
-        if (!d.documentos.length) { el.querySelector('#dcLista').innerHTML = '<p class="pa-muted">Aún no hay documentos. Descarga los alzados o el presupuesto y aparecerán aquí.</p>'; return; }
-        var grupos = {};
-        d.documentos.forEach(function (x) { var k = x.version ? 'Versión v' + x.version : 'Sin versión'; (grupos[k] = grupos[k] || []).push(x); });
-        el.querySelector('#dcLista').innerHTML = Object.keys(grupos).map(function (g) {
-          return '<h3 class="dc-grupo">' + esc(g) + '</h3><ul class="ng-lista">' + grupos[g].map(function (x) {
-            return '<li><div><strong>' + esc(TIPO_DOC[x.tipo] || x.tipo) + (x.numero ? ' · n.º ' + esc(x.numero) : '') + '</strong><small>' + esc(x.nombre) + ' · ' + fecha(x.created_at) + ' · ' + Math.max(1, Math.round(x.bytes / 1024)) + ' KB</small></div>' +
-              '<a class="pa-btn" href="' + esc(x.url) + '" target="_blank" rel="noopener">Ver</a><a class="pa-btn" href="' + esc(x.url) + '&download=' + encodeURIComponent(x.nombre) + '">Descargar</a><button class="pa-btn" data-borrar="' + x.id + '">Borrar</button></li>';
-          }).join('') + '</ul>';
-        }).join('');
+      return Promise.all([api(ctx, { action: 'documentos', proyecto_id: pid }), api(ctx, { action: 'ficheros', proyecto_id: pid })]).then(function (rs) {
+        var a = rs[1].almacenamiento;
+        el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
+        items = rs[0].documentos.map(function (x) { return Object.assign({ kind: 'doc' }, x); }).concat(rs[1].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
+        pintar();
       }).catch(function (e) { el.querySelector('#dcLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     }
-    el.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-borrar]'); if (!b) return;
-      if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('primary'); return; }
-      api(ctx, { action: 'doc_borrar', id: b.dataset.borrar }).then(cargar).catch(function (err) { alert(err.message); });
-    });
-    cargar();
-  }
-
-  // ── Archivos propios ──
-  var TIPO_F = { factura_proveedor: 'Factura de proveedor', presupuesto_proveedor: 'Presupuesto de proveedor', factura_cliente: 'Factura a cliente', foto_obra: 'Foto de obra', plano: 'Plano o medidas', otro: 'Otro' };
-  function archivosProyecto(el, ctx, pid) {
-    var supa = ctx.supa;
-    el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Archivos</h2><span class="pa-muted" id="arUso" style="font-size:12px"></span></div>' +
-      '<form class="ar-subir" id="arForm"><select id="arTipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '">' + TIPO_F[k] + '</option>'; }).join('') + '</select>' +
-      '<input type="file" id="arFile" accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" required><button class="pa-btn primary" type="submit">Subir</button><span class="pa-muted" style="font-size:12px">PDF, foto o Excel · máx. 20 MB</span></form>' +
-      '<div id="arMsg" class="pr-msg"></div><div id="arLista"><p class="pa-muted">Cargando…</p></div></div>';
-    var msg = function (t, tipo) { var m = el.querySelector('#arMsg'); m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; };
-    function cargar() {
-      api(ctx, { action: 'ficheros', proyecto_id: pid }).then(function (d) {
-        var a = d.almacenamiento;
-        el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
-        el.querySelector('#arLista').innerHTML = d.ficheros.length ? d.ficheros.map(function (f) {
-          var esImg = /^image\//.test(f.mime), leible = /^(application\/pdf|image\/)/.test(f.mime);
-          return '<div class="ar-fila" data-id="' + f.id + '"><a class="ar-ver" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + (esImg ? '<img src="' + esc(f.url) + '" alt="">' : '<span>' + esc((f.nombre.split('.').pop() || '').toUpperCase()) + '</span>') + '</a>' +
-            '<div class="ar-campos"><div class="ar-top"><strong>' + esc(f.nombre) + '</strong><small>' + fecha(f.created_at) + (f.leido_ia ? ' · leído con IA' : '') + '</small></div>' +
-            '<div class="ar-g"><label>Tipo<select data-k="tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === f.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select></label>' +
-            '<label>Proveedor / cliente<input data-k="proveedor" value="' + esc(f.proveedor || '') + '"></label>' +
-            '<label>Fecha<input type="date" data-k="fecha" value="' + esc(f.fecha || '') + '"></label>' +
-            '<label>Base (€)<input data-k="base" inputmode="decimal" value="' + numOut(f.base) + '"></label>' +
-            '<label>IVA (€)<input data-k="iva" inputmode="decimal" value="' + numOut(f.iva) + '"></label>' +
-            '<label>Total (€)<input data-k="total" inputmode="decimal" value="' + numOut(f.total) + '"></label></div>' +
-            '<div class="pa-btns"><button class="pa-btn primary" data-a="guardar">Guardar</button>' + (leible ? '<button class="pa-btn" data-a="ia">Leer con IA</button>' : '') +
-            '<a class="pa-btn" href="' + esc(f.url) + '&download=' + encodeURIComponent(f.nombre) + '">Descargar</a><button class="pa-btn" data-a="borrar">Borrar</button></div></div></div>';
-        }).join('') : '<p class="pa-muted">Sube facturas y presupuestos de proveedores, facturas al cliente o fotos de obra. Las facturas cuentan en las métricas del proyecto.</p>';
-      }).catch(function (e) { el.querySelector('#arLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
-    }
+    el.querySelector('#dcFiltros').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; filtroDoc.tipo = b.dataset.f; pintar(); });
+    el.querySelector('#dcOrden').addEventListener('change', function () { filtroDoc.orden = this.value; pintar(); });
     el.querySelector('#arForm').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = el.querySelector('#arFile').files[0]; if (!f) return;
@@ -333,12 +334,17 @@
         .catch(function (err) { msg(err.message, 'err'); });
     });
     el.addEventListener('click', function (e) {
+      var bd = e.target.closest('[data-borrar]');
+      if (bd) {
+        if (!bd.dataset.ok) { bd.dataset.ok = '1'; bd.textContent = '¿Seguro?'; bd.classList.add('primary'); return; }
+        return api(ctx, { action: 'doc_borrar', id: bd.dataset.borrar }).then(cargar).catch(function (err) { alert(err.message); });
+      }
       var b = e.target.closest('[data-a]'); if (!b) return;
       var fila = b.closest('.ar-fila'), id = fila.dataset.id;
       if (b.dataset.a === 'guardar') {
         var datos = { action: 'fichero_guardar', id: id };
         fila.querySelectorAll('[data-k]').forEach(function (i) { datos[i.dataset.k] = i.value; });
-        api(ctx, datos).then(function () { msg('Guardado', 'ok'); }).catch(function (err) { msg(err.message, 'err'); });
+        api(ctx, datos).then(function () { msg('Guardado', 'ok'); cargar(); }).catch(function (err) { msg(err.message, 'err'); });
       } else if (b.dataset.a === 'ia') {
         if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = 'Gasta ≈ 1–2 créditos · ¿leer?'; b.classList.add('primary'); return; }
         b.disabled = true; b.textContent = 'Leyendo…';
@@ -353,7 +359,7 @@
   }
 
   // ── Métricas del proyecto ──
-  var COL_CAT = { proveedores: '#161616', materiales: '#8a6234', mano_obra: '#12B76A', transporte: '#b9b6ad', montaje: '#5f5b52', otros: '#d9d3c8' };
+  var COL_CAT = { proveedores: '#161616', materiales: '#8a6234', mano_obra: '#12B76A', transporte: '#b9b6ad', montaje: '#5f5b52', otros: '#d9d3c8', comision: '#c08a2b' };
   var NOM_CAT = { materiales: 'Materiales', mano_obra: 'Mano de obra', transporte: 'Transporte', montaje: 'Montaje', otros: 'Otros' };
   function barrasFCM(m) {
     var filas = [['Facturación', m.facturacion, '#d9d3c8'], ['Costes', m.costes, '#161616'], ['Margen', m.margen === null ? 0 : m.margen, m.margen !== null && m.margen < 0 ? '#b42318' : '#12B76A']];
@@ -455,56 +461,136 @@
   // ════════════════════════════════════════════════════════════════
   function presupuesto(el, ctx, pid) {
     var supa = ctx.supa, proyecto, doc = null, iva = 21, versionActual = 0, ocupado = false;
-    el.innerHTML = '<div class="pa-hero"><div><h1 id="prTitulo">Presupuesto</h1><p id="prSub" class="pa-muted"></p></div></div><div id="prZona"><div class="pr-card pa-muted">Cargando…</div></div>';
+    var lista = [], info = { versiones: [], documentos: [], siguiente: '' }, sel = null;
+    el.innerHTML = '<div class="pa-hero"><div><h1 id="prTitulo">Presupuestos</h1><p id="prSub" class="pa-muted"></p></div></div>' +
+      '<div class="pr-card" id="prLista"><p class="pa-muted">Cargando…</p></div><div class="pr-card" id="prNuevo" hidden></div><div id="prZona"></div>';
     supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle().then(function (r) {
       proyecto = r && r.data;
-      if (!proyecto) { $('#prZona').innerHTML = '<div class="pr-card">Proyecto no encontrado.</div>'; return; }
-      $('#prTitulo').textContent = 'Presupuesto · ' + proyecto.nombre;
-      return api(ctx, { action: 'presupuesto', proyecto_id: pid }).then(cargar);
+      if (!proyecto) { $('#prLista').innerHTML = 'Proyecto no encontrado.'; return; }
+      $('#prTitulo').textContent = 'Presupuestos · ' + proyecto.nombre;
+      return cargarLista(true);
     });
 
+    // ── Lista de presupuestos del proyecto ──
+    function cargarLista(abrirPrincipal) {
+      return api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) {
+        lista = d.presupuestos; info = d;
+        if (abrirPrincipal || !sel) {
+          var acc = lista.filter(function (x) { return x.estado === 'aceptado'; })[0];
+          var ult = lista.slice().sort(function (a, b) { return String(b.actualizado).localeCompare(String(a.actualizado)); })[0];
+          sel = (acc || ult || {}).id || null;
+        }
+        pintarLista();
+        if (sel) return abrir(sel);
+        $('#prZona').innerHTML = '';
+        $('#prSub').textContent = 'Aún no hay presupuestos. Crea el primero desde el diseño, desde documentos o en blanco.';
+      });
+    }
+    function pintarLista() {
+      $('#prLista').innerHTML = '<div class="ng-card-cab"><h2>Presupuestos del proyecto</h2><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></div>' +
+        (lista.length ? '<table class="pr-tabla"><thead><tr><th>N.º</th><th>Fecha</th><th>Importe</th><th>Estado</th><th></th></tr></thead><tbody>' + lista.map(function (x) {
+          return '<tr class="' + (x.id === sel ? 'on' : '') + '"><td><b>' + esc(x.numero || '—') + '</b>' + (x.importado ? ' <span class="pr-tag">histórico</span>' : '') + (x.comision ? ' <span class="pr-tag">interiorista ' + numOut(x.comision.pct) + ' %</span>' : '') + '</td>' +
+            '<td>' + dia(x.fecha) + '</td><td>' + (x.importe == null ? '—' : eur(Number(x.importe))) + '</td>' +
+            '<td>' + selectEstado(pid, x.estado, x.id) + (x.estado_nota ? '<br><small class="pr-nota">' + esc(x.estado_nota) + '</small>' : '') + '</td>' +
+            '<td class="pr-acc"><button class="pa-btn" data-abrir="' + x.id + '">' + (x.id === sel ? 'Abierto' : 'Abrir') + '</button>' + (x.importado ? '' : '<button class="pa-btn" data-duplicar="' + x.id + '">Duplicar</button>') + '</td></tr>';
+        }).join('') + '</tbody></table><p class="pa-muted" style="font-size:12px;margin:6px 0 0">Solo uno puede estar aceptado: es el que cuenta para facturación y métricas.</p>' : '<p class="pa-muted">Aún no hay presupuestos.</p>');
+    }
+
+    // ── Nuevo presupuesto: desde el diseño, desde documentos o en blanco ──
+    function pintarNuevo() {
+      var z = $('#prNuevo'); z.hidden = false;
+      var ult = info.versiones.length ? info.versiones[info.versiones.length - 1].numero : null;
+      z.innerHTML = '<h3 style="margin-top:0">Nuevo presupuesto</h3>' +
+        '<div class="pn-fila"><label>N.º de presupuesto <input id="pnNum" value="' + esc(info.siguiente || '') + '" placeholder="Z…"></label></div>' +
+        '<div class="pn-bases">' +
+        '<label class="pn-base"><input type="radio" name="pnBase" value="versiones"' + (info.versiones.length ? ' checked' : ' disabled') + '> <b>Desde el diseño</b><small>Una o varias versiones de los alzados, eligiendo qué armarios entran.</small></label>' +
+        '<label class="pn-base"><input type="radio" name="pnBase" value="documentos"' + (!info.versiones.length && info.documentos.length ? ' checked' : '') + (info.documentos.length ? '' : ' disabled') + '> <b>Desde documentos</b><small>Claude lee planos, croquis o presupuestos (de proveedor u otros) y propone las partidas. Gasta créditos.</small></label>' +
+        '<label class="pn-base"><input type="radio" name="pnBase" value="blanco"' + (!info.versiones.length && !info.documentos.length ? ' checked' : '') + '> <b>En blanco</b><small>Partidas a mano.</small></label></div>' +
+        '<div class="pn-det" data-base="versiones">' + (info.versiones.length ? info.versiones.slice().reverse().map(function (v) {
+          var on = v.numero === ult;
+          return '<div class="pn-ver"><label><input type="checkbox" data-ver="' + v.numero + '"' + (on ? ' checked' : '') + '> <b>Versión v' + v.numero + '</b></label><div class="pn-arm">' + v.armarios.map(function (a) {
+            return '<label><input type="checkbox" data-arm="' + v.numero + '" value="' + esc(a.codigo) + '"' + (on ? ' checked' : '') + '> ' + esc(a.codigo + ' ' + (a.titulo || '')) + '</label>';
+          }).join('') + '</div></div>';
+        }).join('') : '<p class="pa-muted">El proyecto aún no tiene versiones del diseño.</p>') + '</div>' +
+        '<div class="pn-det" data-base="documentos" hidden>' + (info.documentos.length ? info.documentos.map(function (x) {
+          return '<label class="pn-doc"><input type="checkbox" data-doc="' + x.tabla + ':' + x.id + '"> ' + esc(x.nombre) + ' <small class="pa-muted">' + esc(TIPO_DOC[x.tipo] || TIPO_F[x.tipo] || x.tipo) + '</small></label>';
+        }).join('') + '<p class="pa-muted" style="font-size:12px">Hasta 4 documentos (PDF o fotos).</p>' : '<p class="pa-muted">Sube antes planos o presupuestos en «Documentos».</p>') + '</div>' +
+        '<div class="pr-barra"><button class="pa-btn primary" id="pnCrear">Crear presupuesto</button><button class="pa-btn" id="pnCancelar">Cancelar</button><span id="pnMsg" class="pr-msg"></span></div>';
+      var mostrar = function () { var v = (z.querySelector('[name=pnBase]:checked') || {}).value; z.querySelectorAll('.pn-det').forEach(function (d) { d.hidden = d.dataset.base !== v; }); };
+      z.querySelectorAll('[name=pnBase]').forEach(function (r) { r.addEventListener('change', mostrar); });
+      z.querySelectorAll('[data-ver]').forEach(function (c) { c.addEventListener('change', function () { z.querySelectorAll('[data-arm="' + c.dataset.ver + '"]').forEach(function (a) { a.checked = c.checked; }); }); });
+      mostrar();
+    }
+    function crearNuevo() {
+      var z = $('#prNuevo'), tipo = (z.querySelector('[name=pnBase]:checked') || {}).value || 'blanco', base = { tipo: tipo };
+      if (tipo === 'versiones') {
+        base.versiones = [];
+        z.querySelectorAll('[data-ver]').forEach(function (c) {
+          var arm = [].slice.call(z.querySelectorAll('[data-arm="' + c.dataset.ver + '"]:checked')).map(function (a) { return a.value; });
+          if (arm.length) base.versiones.push({ numero: Number(c.dataset.ver), armarios: arm });
+        });
+        if (!base.versiones.length) throw new Error('Elige al menos un armario.');
+        base.versiones.sort(function (a, b) { return a.numero - b.numero; });
+      } else if (tipo === 'documentos') {
+        base.documentos = [].slice.call(z.querySelectorAll('[data-doc]:checked')).map(function (c) { var p = c.dataset.doc.split(':'); return { tabla: p[0], id: p[1] }; });
+        if (!base.documentos.length) throw new Error('Elige al menos un documento.');
+        if (base.documentos.length > 4) throw new Error('Elige como mucho 4 documentos.');
+      }
+      return api(ctx, { action: 'presupuesto_nuevo', proyecto_id: pid, numero: z.querySelector('#pnNum').value, base: base });
+    }
+
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
-    var estadoP = 'borrador', estadoAt = null, estadoNota = null;
-    var importado = null;
-    function cargar(d) { doc = d.presupuesto; importado = d.importado || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador'; estadoAt = d.estado_at; estadoNota = d.estado_nota || null; pintar(); }
+    var estadoP = 'borrador', importado = null, importes = null;
+    function abrir(id) { sel = id; pintarLista(); return api(ctx, { action: 'presupuesto', presupuesto_id: id }).then(cargar); }
+    function cargar(d) {
+      doc = d.presupuesto; importado = d.importado || null; importes = d.importes || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador';
+      if (d.id && d.id !== sel) { sel = d.id; }
+      pintar();
+    }
 
     function pintar() {
       if (!doc) {
-        $('#prSub').textContent = importado ? 'Presupuesto importado del histórico' : versionActual ? 'Aún no hay presupuesto para este proyecto.' : 'El proyecto aún no tiene alzados.';
-        $('#prZona').innerHTML = '<div class="pr-card">' + (importado ? '<p>Presupuesto <b>' + esc(importado.numero || '') + '</b>' + (importado.importe != null ? ' · ' + esc(String(importado.importe).replace('.', ',')) + ' € sin IVA' : '') + '. El original está en «Documentos».</p>' + '<p>Estado ' + selectEstado(pid, estadoP) + (estadoNota ? ' <small class="pr-nota">' + esc(estadoNota) + '</small>' : '') + '</p>' : '') + (versionActual
-          ? '<p>Se crea una partida por armario de la versión v' + versionActual + ', con el precio de tu tarifa (o PENDIENTE) y los textos técnicos.</p><button class="pa-btn primary" id="prGenerar">Generar presupuesto desde v' + versionActual + '</button> <span id="prMsg" class="pr-msg"></span>'
-          : '<p>Crea primero una versión de los alzados.</p>') + '</div>';
+        $('#prSub').textContent = importado ? 'Presupuesto importado del histórico' : '';
+        $('#prZona').innerHTML = importado ? '<div class="pr-card"><p>Presupuesto <b>' + esc(importado.numero || '') + '</b>' + (importado.importe != null ? ' · ' + esc(String(importado.importe).replace('.', ',')) + ' € sin IVA' : '') + '. El original está en «Documentos». Para editarlo, crea uno nuevo.</p></div>' : '';
         return;
       }
-      $('#prSub').textContent = 'Generado desde la versión v' + doc.version + (doc.version !== versionActual ? ' · el proyecto ya va por v' + versionActual : '');
+      var vs = (doc.versiones && doc.versiones.length ? doc.versiones : [doc.version]).filter(Boolean);
+      var hayDiseno = doc.partidas.some(function (p) { return !p.libre; });
+      $('#prSub').textContent = hayDiseno ? 'Desde ' + (vs.length > 1 ? 'las versiones ' : 'la versión ') + vs.map(function (v) { return 'v' + v; }).join(', ') + (vs.indexOf(versionActual) < 0 && versionActual ? ' · el diseño ya va por v' + versionActual : '') : 'Partidas a mano';
       var cab = [['numero', 'N.º de presupuesto'], ['fecha', 'Fecha', 'date'], ['atencion', 'A la atención de'], ['validez', 'Validez oferta'],
         ['proyecto', 'Proyecto'], ['proyecto_2', 'Proyecto (2.ª línea)'], ['seccion', 'Sección']];
-      var html = '<div class="pr-barra"><button class="pa-btn primary" id="prGuardar">Guardar</button><button class="pa-btn" id="prTextos">Redactar textos con IA</button>' +
+      var cm = doc.comision || { activa: false, pct: 15, paga: 'cliente' };
+      var html = '<div class="pr-barra"><button class="pa-btn primary" id="prGuardar">Guardar</button>' + (hayDiseno ? '<button class="pa-btn" id="prTextos">Redactar textos con IA</button>' : '') +
         '<button class="pa-btn" id="prPdf">Descargar PDF</button><button class="pa-btn" id="prExcel">Descargar Excel</button>' +
-        (doc.version !== versionActual ? '<button class="pa-btn" id="prGenerar">Actualizar a v' + versionActual + '</button>' : '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>') +
-        '<span class="pr-estado">Estado ' + selectEstado(pid, estadoP) + (estadoAt ? ' <small class="pa-muted">desde el ' + new Date(estadoAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '</small>' : '') + (estadoNota ? ' <small class="pr-nota">' + esc(estadoNota) + '</small>' : '') + '</span>' +
+        (hayDiseno ? '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>' : '') +
         '<span id="prMsg" class="pr-msg"></span></div>';
       html += '<div class="pr-card pr-f"><div class="pr-cab">' + cab.map(function (c) {
         return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]]) + '"></div>';
-      }).join('') + '</div></div>';
+      }).join('') + '</div>' +
+        '<div class="pr-com"><label><input type="checkbox" id="prComOn"' + (cm.activa ? ' checked' : '') + ' style="width:auto"> <b>Comisión interiorista</b></label>' +
+        '<span' + (cm.activa ? '' : ' hidden') + ' id="prComDet"><label>% <input id="prComPct" inputmode="decimal" value="' + numOut(cm.pct) + '" style="width:64px"></label>' +
+        '<label>¿Quién paga a Curino? <select id="prComPaga"><option value="cliente"' + (cm.paga !== 'interiorista' ? ' selected' : '') + '>Cliente (PVP)</option><option value="interiorista"' + (cm.paga === 'interiorista' ? ' selected' : '') + '>Interiorista (neto)</option></select></label>' +
+        '<small class="pa-muted">Al descargar se generan dos versiones: «_cliente» (PVP, sin descuento) e «_interiorista» (con DTO. PROFESIONAL).</small></span></div></div>';
       html += doc.partidas.map(function (p, i) {
         return '<div class="pr-card pr-f" data-i="' + i + '"><div class="pr-partida"><div>' +
-          '<h3>' + esc(p.titulo) + (p.pendientes.length && !p.precio_manual ? ' <span class="pr-tag">' + p.pendientes.length + ' conceptos PENDIENTE</span>' : '') + '</h3>' +
-          '<label>Subtítulo</label><input data-p="subtitulo" value="' + esc(p.subtitulo) + '">' +
-          '<label style="margin-top:6px">Introducción</label><textarea data-p="intro" placeholder="Opcional (o «Redactar textos con IA»)">' + esc(p.intro) + '</textarea>' +
-          '<label style="margin-top:6px">Ficha técnica</label><textarea data-p="tecnico" style="min-height:96px">' + esc(p.tecnico) + '</textarea>' +
+          (p.libre ? '<label>Título de la partida</label><input data-p="titulo" value="' + esc(p.titulo) + '">' :
+            '<h3>' + esc(p.titulo) + (p.version && vs.length > 1 ? ' <span class="pr-tag">v' + p.version + '</span>' : '') + (p.pendientes.length && !p.precio_manual ? ' <span class="pr-tag">' + p.pendientes.length + ' conceptos PENDIENTE</span>' : '') + '</h3>') +
+          '<label' + (p.libre ? ' style="margin-top:6px"' : '') + '>Subtítulo</label><input data-p="subtitulo" value="' + esc(p.subtitulo) + '">' +
+          '<label style="margin-top:6px">Introducción</label><textarea data-p="intro" placeholder="Opcional' + (p.libre ? '' : ' (o «Redactar textos con IA»)') + '">' + esc(p.intro) + '</textarea>' +
+          '<label style="margin-top:6px">' + (p.libre ? 'Descripción' : 'Ficha técnica') + '</label><textarea data-p="tecnico" style="min-height:96px">' + esc(p.tecnico) + '</textarea>' +
           '<label style="margin-top:6px">Materiales</label><textarea data-p="materiales">' + esc(p.materiales) + '</textarea>' +
           '</div><div>' +
           '<div class="pr-num"><div><label>Cantidad</label><input data-p="cantidad" inputmode="numeric" value="' + p.cantidad + '"></div>' +
-          '<div><label>Dto. profesional %</label><input data-p="dto_pct" inputmode="decimal" value="' + numOut(p.dto_pct) + '"></div></div>' +
-          '<label style="margin-top:8px"><input type="checkbox" data-p="precio_manual"' + (p.precio_manual ? ' checked' : '') + ' style="width:auto"> Precio a mano</label>' +
-          '<div class="' + (p.precio === null ? 'pr-pend' : '') + '"><label>Precio unitario (PVP sin IVA)</label><input data-p="precio" inputmode="decimal" placeholder="PENDIENTE" value="' + numOut(p.precio) + '"' + (p.precio_manual ? '' : ' readonly') + '></div>' +
+          '<div' + (cm.activa ? ' hidden' : '') + ' class="pr-dto"><label>Dto. profesional %</label><input data-p="dto_pct" inputmode="decimal" value="' + numOut(p.dto_pct) + '"></div></div>' +
+          (p.libre ? '' : '<label style="margin-top:8px"><input type="checkbox" data-p="precio_manual"' + (p.precio_manual ? ' checked' : '') + ' style="width:auto"> Precio a mano</label>') +
+          '<div class="' + (p.precio === null ? 'pr-pend' : '') + '"><label>Precio unitario (PVP sin IVA)</label><input data-p="precio" inputmode="decimal" placeholder="PENDIENTE" value="' + numOut(p.precio) + '"' + (p.libre || p.precio_manual ? '' : ' readonly') + '></div>' +
           '<div class="pr-res" data-res></div>' +
-          '<details class="pr-des"><summary>Desglose de tarifa</summary><table>' + p.desglose.map(function (d) {
+          (p.libre ? '' : '<details class="pr-des"><summary>Desglose de tarifa</summary><table>' + p.desglose.map(function (d) {
             return '<tr><td>' + esc(d.nombre) + '</td><td>' + (d.unidad === '%' ? '' : numOut(d.cantidad) + ' ' + d.unidad) + '</td><td>' + (d.precio === null ? 'PENDIENTE' : d.unidad === '%' ? numOut(d.precio) + '%' : eur(d.precio)) + '</td><td>' + eur(d.importe) + '</td></tr>';
-          }).join('') + '</table></details></div></div></div>';
+          }).join('') + '</table></details>') +
+          '<button class="pa-btn pr-quitar" data-quitar="' + i + '">Quitar partida</button></div></div></div>';
       }).join('');
-      html += '<div class="pr-card"><div class="pr-tot" id="prTot"></div></div>';
+      html += '<div class="pr-barra"><button class="pa-btn" id="prAnadir">+ Añadir partida</button></div><div class="pr-card"><div class="pr-tot" id="prTot"></div></div>';
       $('#prZona').innerHTML = html;
       recalcular();
     }
@@ -512,8 +598,10 @@
     function leer() {
       var d = { partidas: [] };
       document.querySelectorAll('#prZona [data-c]').forEach(function (i) { d[i.dataset.c] = i.value; });
+      var on = $('#prComOn');
+      if (on) d.comision = { activa: on.checked, pct: numIn($('#prComPct').value) || 0, paga: $('#prComPaga').value };
       document.querySelectorAll('#prZona [data-i]').forEach(function (card) {
-        var p = doc.partidas[Number(card.dataset.i)], x = { codigo: p.codigo };
+        var p = doc.partidas[Number(card.dataset.i)], x = { codigo: p.codigo, clave: p.clave };
         card.querySelectorAll('[data-p]').forEach(function (i) {
           var k = i.dataset.p;
           if (k === 'precio_manual') x[k] = i.checked;
@@ -526,59 +614,89 @@
       return d;
     }
     function recalcular() {
-      var d = leer(), pvp = 0, imp = 0, pend = 0;
+      var d = leer(), pvp = 0, imp = 0, pend = 0, cm = d.comision && d.comision.activa ? d.comision : null;
+      if ($('#prComDet')) $('#prComDet').hidden = !cm;
+      document.querySelectorAll('#prZona .pr-dto').forEach(function (x) { x.hidden = !!cm; });
       d.partidas.forEach(function (x, i) {
         var p = doc.partidas[i];
-        var precio = x.precio_manual ? x.precio : p.precio;
+        var precio = p.libre || x.precio_manual ? x.precio : p.precio;
         var card = document.querySelector('#prZona [data-i="' + i + '"]');
-        card.querySelector('[data-p="precio"]').readOnly = !x.precio_manual;
+        if (!p.libre) card.querySelector('[data-p="precio"]').readOnly = !x.precio_manual;
         var res = card.querySelector('[data-res]');
         if (precio === null || precio === undefined) { pend++; res.innerHTML = 'PVP <span class="pr-pvp">PENDIENTE</span><br>Importe <b>PENDIENTE</b>'; return; }
-        var l = r2(precio * x.cantidad), m = r2(l * (1 - (x.dto_pct || 0) / 100));
+        var dto = cm ? 0 : (x.dto_pct || 0);
+        var l = r2(precio * x.cantidad), m = r2(l * (1 - dto / 100));
         pvp += l; imp += m;
         res.innerHTML = 'PVP <span class="pr-pvp">' + eur(l) + '</span><br>Importe <b>' + eur(m) + '</b>';
       });
-      $('#prTot').innerHTML = pend
-        ? '<span>PVP sin IVA: PENDIENTE</span><span>Importe total: <b>PENDIENTE</b></span><span class="pr-tag">' + pend + (pend === 1 ? ' partida' : ' partidas') + ' sin precio</span>'
-        : '<span>PVP sin IVA: ' + eur(r2(pvp)) + '</span><span>Dto. profesional: ' + eur(r2(imp - pvp)) + '</span><span>Importe total: <b>' + eur(r2(imp)) + '</b></span><span class="pa-muted">IVA ' + numOut(iva) + '%: ' + eur(r2(imp * iva / 100)) + '</span>';
+      if (pend) { $('#prTot').innerHTML = '<span>PVP sin IVA: PENDIENTE</span><span>Importe total: <b>PENDIENTE</b></span><span class="pr-tag">' + pend + (pend === 1 ? ' partida' : ' partidas') + ' sin precio</span>'; return; }
+      if (cm) {
+        var com = r2(pvp * cm.pct / 100), neto = r2(pvp - com), fact = cm.paga === 'interiorista' ? neto : r2(pvp);
+        $('#prTot').innerHTML = '<span>PVP cliente: <b>' + eur(r2(pvp)) + '</b></span><span>Comisión interiorista (' + numOut(cm.pct) + ' %): ' + eur(com) + '</span><span>Neto interiorista: ' + eur(neto) + '</span>' +
+          '<span class="pa-muted">Facturación en métricas: ' + eur(fact) + (cm.paga === 'interiorista' ? ' (el interiorista paga el neto)' : ' · la comisión cuenta como coste') + '</span>';
+        return;
+      }
+      $('#prTot').innerHTML = '<span>PVP sin IVA: ' + eur(r2(pvp)) + '</span>' + (imp !== pvp ? '<span>Dto. profesional: ' + eur(r2(imp - pvp)) + '</span>' : '') + '<span>Importe total: <b>' + eur(r2(imp)) + '</b></span><span class="pa-muted">IVA ' + numOut(iva) + '%: ' + eur(r2(imp * iva / 100)) + '</span>';
     }
     el.addEventListener('input', function () { if (doc) recalcular(); });
     el.addEventListener('change', function (e) {
-      if (e.target.dataset && e.target.dataset.p === 'precio_manual') recalcular();
-      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { estadoP = e.target.value; estadoAt = new Date().toISOString(); estadoNota = null; aviso('Estado: ' + e.target.options[e.target.selectedIndex].text, 'ok'); });
+      if (doc && (e.target.id === 'prComOn' || (e.target.dataset && e.target.dataset.p === 'precio_manual'))) recalcular();
+      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { cargarLista(false); });
     });
 
-    function guardar() { return api(ctx, { action: 'presupuesto_guardar', proyecto_id: pid, datos: leer() }).then(cargar); }
+    function guardar() { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: leer() }).then(function (d) { cargar(d); return d; }); }
     function bloquear(fn, t) {
       if (ocupado) return; ocupado = true;
-      var m = $('#prMsg'); if (m) { m.className = 'pr-msg pr-trab'; m.textContent = t; }
+      var m = $('#prMsg') || $('#pnMsg'); if (m) { m.className = 'pr-msg pr-trab'; m.textContent = t; }
       Promise.resolve().then(fn).then(function (msg) { aviso(msg || 'Hecho', 'ok'); })
-        .catch(function (e) { aviso(textoError(ctx, e), 'err', true); }).then(function () { ocupado = false; });
+        .catch(function (e) { var mm = $('#prMsg') || $('#pnMsg'); if (mm) { mm.className = 'pr-msg err'; mm.innerHTML = textoError(ctx, e); } else alert(e.message); }).then(function () { ocupado = false; });
     }
     el.addEventListener('click', function (e) {
-      var id = e.target.id;
+      var id = e.target.id, t = e.target;
+      if (id === 'prNuevoBtn') return pintarNuevo();
+      if (id === 'pnCancelar') { $('#prNuevo').hidden = true; return; }
+      if (id === 'pnCrear') return bloquear(function () {
+        return crearNuevo().then(function (d) { $('#prNuevo').hidden = true; sel = d.id; if (ctx.alCambiar) ctx.alCambiar(); return cargarLista(false).then(function () { return 'Presupuesto ' + (d.numero || '') + ' creado'; }); });
+      }, 'Creando…');
+      if (t.dataset.abrir) return abrir(t.dataset.abrir);
+      if (t.dataset.duplicar) return bloquear(function () {
+        return api(ctx, { action: 'presupuesto_duplicar', presupuesto_id: t.dataset.duplicar }).then(function (d) { sel = d.id; return cargarLista(false).then(function () { return 'Duplicado como ' + (d.numero || ''); }); });
+      }, 'Duplicando…');
+      if (t.dataset.quitar !== undefined && doc) { var d0 = leer(); d0.partidas.splice(Number(t.dataset.quitar), 1); return bloquear(function () { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: d0 }).then(cargar).then(function () { return 'Partida quitada'; }); }, 'Guardando…'); }
+      if (id === 'prAnadir' && doc) { var d1 = leer(); d1.partidas.push({ titulo: 'NUEVA PARTIDA', cantidad: 1, precio: null, dto_pct: 0 }); return bloquear(function () { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: d1 }).then(cargar).then(function () { return 'Partida añadida'; }); }, 'Guardando…'); }
       if (id === 'prGenerar') bloquear(function () {
-        var hay = !!doc;
-        return (hay ? guardar() : Promise.resolve()).then(function () { return api(ctx, { action: 'presupuesto_generar', proyecto_id: pid }); })
-          .then(cargar).then(function () { return hay ? 'Actualizado (se conservan precios a mano y textos editados)' : 'Presupuesto generado'; });
-      }, 'Generando…');
-      if (id === 'prGuardar') bloquear(function () { return guardar().then(function () { return 'Guardado'; }); }, 'Guardando…');
+        return guardar().then(function () { return api(ctx, { action: 'presupuesto_generar', presupuesto_id: sel }); }).then(cargar).then(function () { cargarLista(false); return 'Recalculado con la tarifa (se conservan precios a mano y textos editados)'; });
+      }, 'Recalculando…');
+      if (id === 'prGuardar') bloquear(function () { return guardar().then(function () { cargarLista(false); return 'Guardado'; }); }, 'Guardando…');
       if (id === 'prTextos') bloquear(function () {
-        return guardar().then(function () { return api(ctx, { action: 'presupuesto_textos', proyecto_id: pid }); })
+        return guardar().then(function () { return api(ctx, { action: 'presupuesto_textos', presupuesto_id: sel }); })
           .then(function (d) { cargar(d); if (ctx.alCambiar) ctx.alCambiar(); return 'Textos redactados' + (ctx.modo === 'admin' ? ' · ' + String(d.coste_usd).replace('.', ',') + ' $' : ''); });
       }, 'Claude está redactando…');
       if (id === 'prPdf') bloquear(function () {
-        return guardar().then(function () { return api(ctx, { action: 'presupuesto_pdf', proyecto_id: pid }); })
-          .then(function (d) { descargar(base64Blob(d.base64, 'application/pdf'), d.nombre); return 'PDF descargado'; });
+        return guardar().then(function () { return api(ctx, { action: 'presupuesto_pdf', presupuesto_id: sel }); })
+          .then(function (d) { (d.archivos || [d]).forEach(function (a) { descargar(base64Blob(a.base64, 'application/pdf'), a.nombre); }); return (d.archivos && d.archivos.length > 1 ? 'PDF cliente e interiorista descargados' : 'PDF descargado') + ' y guardados en Documentos'; });
       }, 'Generando PDF…');
       if (id === 'prExcel') bloquear(function () {
-        excel.guardar = function (blob, nombre, d) {
-          return api(ctx, { action: 'doc_subida', proyecto_id: pid, tipo: 'presupuesto_xlsx', version: d.version, numero: d.numero, nombre: nombre, bytes: blob.size })
-            .then(function (r) { return ctx.supa.storage.from('estudio').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type }); });
-        };
-        return guardar().then(function () { return api(ctx, { action: 'presupuesto_dibujos', proyecto_id: pid }); }).then(function (d) { return excel(d, doc, proyecto); });
+        return guardar().then(function () { return api(ctx, { action: 'presupuesto_dibujos', presupuesto_id: sel }); }).then(function (d) {
+          var vars = doc.comision && doc.comision.activa ? ['cliente', 'interiorista'] : [null];
+          return vars.reduce(function (pr, v) {
+            return pr.then(function () {
+              excel.guardar = function (blob, nombre, dd) {
+                return api(ctx, { action: 'doc_subida', proyecto_id: pid, tipo: 'presupuesto_xlsx', version: dd.version, numero: dd.numero, nombre: nombre, bytes: blob.size, presupuesto_id: sel, variante: v })
+                  .then(function (r) { return ctx.supa.storage.from('estudio').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type }); });
+              };
+              return excel(d, varianteDoc(doc, v), proyecto, v);
+            });
+          }, Promise.resolve()).then(function () { return vars.length > 1 ? 'Excel cliente e interiorista descargados y guardados en Documentos' : 'Excel descargado y guardado en Documentos'; });
+        });
       }, 'Generando Excel…');
     });
+  }
+  /** Variante del presupuesto para descargar (igual que docVariante del servidor). */
+  function varianteDoc(d, v) {
+    if (!v || !d.comision || !d.comision.activa) return d;
+    var dto = v === 'cliente' ? 0 : Number(d.comision.pct) || 0;
+    return Object.assign({}, d, { partidas: d.partidas.map(function (p) { return Object.assign({}, p, { dto_pct: dto }); }) });
   }
 
   // ── Descargas ──
@@ -644,8 +762,10 @@
     });
   }
 
-  function excel(d, doc, proyecto) {
+  function excel(d, doc, proyecto, variante) {
     if (!window.ExcelJS) throw new Error('No se ha cargado el generador de Excel.');
+    // Sin ningún descuento no se muestra la columna ni la línea «DTO. PROFESIONAL»
+    var conDto = doc.partidas.some(function (p) { return Number(p.dto_pct) > 0; });
     var pl = d.plantilla, ivaPct = d.iva_pct == null ? 21 : Number(d.iva_pct), medir = medidor();
     var curino = pl.tipo === 'curino', acento = !curino && /^#[0-9a-f]{6}$/i.test(pl.color || '') ? 'FF' + pl.color.slice(1).toUpperCase() : XL.negro;
     var wb = new ExcelJS.Workbook();
@@ -690,9 +810,9 @@
       });
       ws.mergeCells('E' + r1 + ':G' + r1);
       texto('E' + r1, 'MEDIDAS EN CM', { font: g, al: { horizontal: 'center' } });
-      texto('J' + r1, 'DTO.', { font: g, al: { horizontal: 'center' } });
+      if (conDto) texto('J' + r1, 'DTO.', { font: g, al: { horizontal: 'center' } });
       [['E', 'ANCHO'], ['F', 'ALTO'], ['G', 'FONDO']].forEach(function (x) { texto(x[0] + r2, x[1], { font: { size: 5.5, color: g.color }, al: { horizontal: 'center', vertical: 'top' } }); });
-      texto('J' + r2, 'PROFESIONAL', { font: g, al: { horizontal: 'center', vertical: 'top' } });
+      if (conDto) texto('J' + r2, 'PROFESIONAL', { font: g, al: { horizontal: 'center', vertical: 'top' } });
       var r3 = nueva(21);
       texto('B' + r3, (doc.seccion || '').toUpperCase(), { font: { bold: true }, al: { vertical: 'middle' } });
     }
@@ -749,10 +869,12 @@
         filasPartida.push(r);
       }
       ws.getCell('N' + r).value = (p.dto_pct || 0) / 100;
-      texto('J' + r, { formula: fPct('N' + r), result: String(Math.round(p.dto_pct * 100) / 100).replace('.', ',') + '%' }, { al: med });
-      ws.getCell('J' + r).alignment = { vertical: 'middle', horizontal: 'center' };
+      if (conDto) {
+        texto('J' + r, { formula: fPct('N' + r), result: String(Math.round(p.dto_pct * 100) / 100).replace('.', ',') + '%' }, { al: med });
+        ws.getCell('J' + r).alignment = { vertical: 'middle', horizontal: 'center' };
+      }
       // Dibujo (mismo tamaño que en el PDF)
-      var dib = d.dibujos.filter(function (x) { return x.codigo === p.codigo; })[0];
+      var dib = p.libre ? null : d.dibujos.filter(function (x) { return x.codigo === (p.clave || p.codigo); })[0];
       if (dib) {
         var y0 = enPagina + 4, hMax = Math.max(120, Math.min(260, XL.alto - 12 - y0));
         var kk = Math.min(461 / dib.ancho, hMax / dib.alto), w = dib.ancho * kk, h = dib.alto * kk;
@@ -786,7 +908,7 @@
     var rows = [];
     for (var j = 0; j < Math.max(3, plazos.length); j++) rows.push(nueva(j === 2 ? 16 : 12));
     plazos.forEach(function (fp, j) { ws.mergeCells('B' + rows[j] + ':C' + rows[j]); texto('B' + rows[j], (fp.concepto || '').toUpperCase()); texto('D' + rows[j], fp.pct + '%', { al: { horizontal: 'right' } }); });
-    etq(rows[1], 'DTO.  PROFESIONAL'); valor(rows[1], 'O' + rows[1], sum('P') + '-' + sum('O'), r2(tot.imp - tot.pvp), { font: { size: 8 } });
+    if (conDto) { etq(rows[1], 'DTO.  PROFESIONAL'); valor(rows[1], 'O' + rows[1], sum('P') + '-' + sum('O'), r2(tot.imp - tot.pvp), { font: { size: 8 } }); }
     etq(rows[2], 'IMPORTE TOTAL', true); valor(rows[2], 'O' + rows[2], sum('P'), tot.imp, { font: { size: 8, bold: true } });
     var rIva = nueva(14);
     if (pl.mostrar_iva) {
@@ -828,7 +950,7 @@
 
     return Promise.all(tareas).then(function () { return wb.xlsx.writeBuffer(); }).then(function (buf) {
       var tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      var nombre = 'Presupuesto_' + (doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_') + '.xlsx';
+      var nombre = 'Presupuesto_' + (doc.numero || proyecto.nombre).replace(/[^\w-]+/g, '_') + (variante ? '_' + variante : '') + '.xlsx';
       var blob = new Blob([buf], { type: tipo });
       descargar(blob, nombre);
       // Se guarda también en «Documentos» del proyecto
@@ -982,13 +1104,13 @@
   var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   // Miles con punto también en 4 cifras (toLocaleString('es-ES') no agrupa 2450)
   var eur0 = function (n) { return n === null || n === undefined ? '—' : (n < 0 ? '-' : '') + String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; };
-  function selectEstado(pid, estado) {
-    return '<select class="ng-estado ng-e-' + estado + '" data-pid="' + pid + '">' + ESTADOS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === estado ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select>';
+  function selectEstado(pid, estado, prid) {
+    return '<select class="ng-estado ng-e-' + estado + '" data-pid="' + pid + '"' + (prid ? ' data-prid="' + prid + '"' : '') + ' data-estado="' + estado + '">' + ESTADOS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === estado ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select>';
   }
   function cambiarEstado(ctx, sel, despues, extra) {
     var antes = sel.dataset.estado || (sel.className.match(/ng-e-(\w+)/) || [])[1] || 'borrador';
     sel.disabled = true;
-    api(ctx, Object.assign({ action: 'presupuesto_estado', proyecto_id: sel.dataset.pid, estado: sel.value }, extra || {}))
+    api(ctx, Object.assign({ action: 'presupuesto_estado', proyecto_id: sel.dataset.pid, presupuesto_id: sel.dataset.prid || undefined, estado: sel.value }, extra || {}))
       .then(function () { sel.className = 'ng-estado ng-e-' + sel.value; sel.dataset.estado = sel.value; sel.disabled = false; if (despues) despues(); })
       .catch(function (e) {
         sel.disabled = false;

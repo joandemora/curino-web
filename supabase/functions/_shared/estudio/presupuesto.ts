@@ -36,7 +36,13 @@ export interface Partida {
   dto_pct: number;
   desglose: LineaDesglose[];
   pendientes: string[];
+  version?: number;        // versión del diseño de la que sale (varias versiones en un presupuesto)
+  clave?: string;          // identificador único en el presupuesto («v2:A.01» o «libre:…»)
+  libre?: boolean;         // partida a mano o propuesta por Claude: sin dibujo ni tarifa
 }
+
+/** Comisión del interiorista: dos versiones del PDF/Excel (cliente PVP / interiorista con DTO). */
+export interface Comision { activa: boolean; pct: number; paga: 'cliente' | 'interiorista' }
 
 export interface DocPresupuesto {
   numero: string;
@@ -46,8 +52,52 @@ export interface DocPresupuesto {
   proyecto_2: string;      // segunda línea (ciudad…)
   validez: string;         // «30 DÍAS»
   seccion: string;         // «MOBILIARIO A MEDIDA»
-  version: number;         // versión del proyecto de la que sale
+  version: number;         // versión del proyecto de la que sale (la primera si hay varias)
+  versiones?: number[];    // versiones del diseño usadas
+  comision?: Comision;
   partidas: Partida[];
+}
+
+export const claveDe = (p: Partida) => p.clave || p.codigo;
+
+/**
+ * Variante para descargar: sin comisión, el documento tal cual. Con comisión,
+ * «cliente» = PVP sin descuento y «interiorista» = DTO. PROFESIONAL al % de la comisión.
+ */
+export function docVariante(d: DocPresupuesto, v: 'cliente' | 'interiorista' | null): DocPresupuesto {
+  if (!v || !d.comision?.activa) return d;
+  const dto = v === 'cliente' ? 0 : Number(d.comision.pct) || 0;
+  return { ...d, partidas: d.partidas.map((p) => ({ ...p, dto_pct: dto })) };
+}
+
+/**
+ * Importes para métricas: facturación (sin IVA), PVP y comisión que cuenta como
+ * coste. Comisión con «paga el cliente»: facturación = PVP y la comisión es coste;
+ * «paga el interiorista» (compra a neto): facturación = neto, sin comisión.
+ */
+export function importesNegocio(d: DocPresupuesto, ivaPct: number): { importe: number | null; pvp: number | null; comision: number | null } {
+  if (d.comision?.activa) {
+    const t = totales(docVariante(d, 'cliente'), ivaPct);
+    if (t.pendientes) return { importe: null, pvp: null, comision: null };
+    const pct = (Number(d.comision.pct) || 0) / 100, r = (n: number) => Math.round(n * 100) / 100;
+    return d.comision.paga === 'interiorista'
+      ? { importe: r(t.pvp * (1 - pct)), pvp: t.pvp, comision: 0 }
+      : { importe: t.pvp, pvp: t.pvp, comision: r(t.pvp * pct) };
+  }
+  const t = totales(d, ivaPct);
+  return t.pendientes ? { importe: null, pvp: null, comision: null } : { importe: t.importe, pvp: t.pvp, comision: 0 };
+}
+
+/** Partida libre (a mano o propuesta por Claude desde documentos). */
+export function partidaLibre(o: { n: number; titulo?: string; descripcion?: string; cantidad?: number; precio?: number | null; dto?: number }): Partida {
+  const codigo = `P.${String(o.n).padStart(2, '0')}`;
+  return {
+    codigo, clave: `libre:${crypto.randomUUID().slice(0, 8)}`, libre: true,
+    cantidad: Math.max(1, Math.round(o.cantidad ?? 1)),
+    titulo: (o.titulo || 'PARTIDA').toUpperCase().slice(0, 120), subtitulo: '', intro: '',
+    tecnico: (o.descripcion || '').slice(0, 3000), materiales: '',
+    precio: o.precio ?? null, precio_manual: true, dto_pct: o.dto ?? 0, desglose: [], pendientes: []
+  };
 }
 
 export interface FormaPago { concepto: string; pct: number }
@@ -282,14 +332,17 @@ export const precioTxt = (n: number | null) => (n === null ? 'PENDIENTE' : eur(n
 export function generarPresupuesto(o: {
   proyecto: Proyecto; version: number; tarifa: Tarifa; plantilla: Plantilla;
   nombre: string; referencia?: string | null; hoy: string; previo?: DocPresupuesto | null;
+  armarios?: string[];     // códigos que entran (por defecto, todos)
 }): DocPresupuesto {
   const prev = o.previo;
-  const partidas = o.proyecto.armarios.map((a): Partida => {
+  const elegidos = o.armarios?.length ? o.proyecto.armarios.filter((a) => o.armarios!.includes(a.codigo)) : o.proyecto.armarios;
+  const partidas = elegidos.map((a): Partida => {
     const t = textosArmario(a, o.plantilla.materiales);
     const precio = precioArmario(a, o.tarifa);
-    const ant = prev?.partidas.find((x) => x.codigo === a.codigo);
+    const clave = `v${o.version}:${a.codigo}`;
+    const ant = prev?.partidas.find((x) => x.clave === clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === a.codigo);
     return {
-      codigo: a.codigo,
+      codigo: a.codigo, version: o.version, clave,
       cantidad: ant?.cantidad ?? 1,
       titulo: t.titulo,
       subtitulo: ant?.subtitulo || t.subtitulo,

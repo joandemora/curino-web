@@ -17,7 +17,7 @@
 
 export const CATEGORIAS: Record<string, string> = {
   proveedores: 'Facturas de proveedor', materiales: 'Materiales', mano_obra: 'Mano de obra',
-  transporte: 'Transporte', montaje: 'Montaje', otros: 'Otros'
+  transporte: 'Transporte', montaje: 'Montaje', otros: 'Otros', comision: 'Comisión interiorista'
 };
 export const MARGEN_MINIMO = 30;
 
@@ -41,7 +41,7 @@ export function cobrosPorDefecto(formaPago: { concepto: string; pct: number }[],
 }
 
 export function metricasProyecto(o: {
-  presupuesto: { estado: string; importe: number | null; aceptado_at: string | null } | null;
+  presupuesto: { estado: string; importe: number | null; aceptado_at: string | null; comision_importe?: number | null } | null;
   ficheros: Fichero[]; costes: Coste[]; cobros: Cobro[]; hoy: string;
 }) {
   const facturasCliente = o.ficheros.filter((f) => f.tipo === 'factura_cliente');
@@ -56,8 +56,11 @@ export function metricasProyecto(o: {
   const add = (k: string, v: number) => { porCategoria[k] = r2((porCategoria[k] ?? 0) + (Number(v) || 0)); };
   facturasProv.forEach((f) => add('proveedores', Number(f.base ?? 0)));
   o.costes.forEach((c) => add(CATEGORIAS[c.categoria] ? c.categoria : 'otros', c.importe));
+  // Comisión del interiorista (cliente paga el PVP): coste automático del presupuesto aceptado
+  const comision = o.presupuesto?.estado === 'aceptado' ? Number(o.presupuesto.comision_importe ?? 0) : 0;
+  if (comision > 0) add('comision', comision);
   const costes = suma(Object.values(porCategoria));
-  const hayCostes = facturasProv.length + o.costes.length > 0;
+  const hayCostes = facturasProv.length + o.costes.length > 0 || comision > 0;
   const margen = hayCostes ? r2(facturacion - costes) : null;
   const margenPct = hayCostes && facturacion > 0 ? Math.round((1000 * (facturacion - costes)) / facturacion) / 10 : null;
 
