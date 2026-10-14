@@ -62,7 +62,12 @@ Deno.serve(async (req) => {
   const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const body = await req.json().catch(() => ({}));
   const action = String(body?.action || '');
-  const { data: cfg } = await supa.from('estudio_config').select('*').eq('id', 1).maybeSingle();
+  // Configuración y sesión en paralelo (cada consulta en serie sumaba ~0,1–0,2 s)
+  const jwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const [{ data: cfg }, sesion] = await Promise.all([
+    supa.from('estudio_config').select('*').eq('id', 1).maybeSingle(),
+    action === 'acceso_enlace' ? Promise.resolve({ data: { user: null } }) : supa.auth.getUser(jwt)
+  ]);
 
   // Sin sesión: pedir el enlace mágico de acceso
   if (action === 'acceso_enlace') {
@@ -70,20 +75,23 @@ Deno.serve(async (req) => {
     catch (e) { console.error('estudio-ia acceso_enlace:', e); return json({ error: 'Error interno. Inténtalo de nuevo.' }, 500); }
   }
 
-  const jwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-  const { data: u } = await supa.auth.getUser(jwt);
+  const u = sesion.data;
   if (!u?.user) return json({ error: 'unauthorized' }, 401);
   const userId = u.user.id;
   const email = String(u.user.email || '').toLowerCase();
-  const { data: rol } = await supa.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  // Rol y estado del alumno a la vez (el estado solo se usa si no es admin)
+  const [{ data: rol }, estadoPrevio] = await Promise.all([
+    supa.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
+    estadoAlumno(supa, email).catch(() => null)
+  ]);
   const esAdmin = !!rol;
   const modelo: string = cfg?.modelo || 'claude-sonnet-5-5';
   const clave = Deno.env.get('ANTHROPIC_API_KEY') || '';
 
   try {
     // Alumnos: activos (compra sin reembolso, curso + meses_tras_fin) y Estudio abierto (o acceso concedido).
-    const alumno = esAdmin ? null : await estadoAlumno(supa, email);
-    if (action === 'yo') return await accionYo(supa, email, userId, esAdmin, cfg, json);
+    const alumno = esAdmin ? null : estadoPrevio;
+    if (action === 'yo') return await accionYo(supa, email, userId, esAdmin, cfg, json, alumno);
     if (!esAdmin) {
       const p = puedeEntrar(alumno, cfg);
       // Sin acceso activo, un antiguo alumno solo puede suscribirse (Créditos y plan)

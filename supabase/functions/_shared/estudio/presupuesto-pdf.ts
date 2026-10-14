@@ -82,8 +82,7 @@ export function pintarPresupuesto(
     if (conDto) { txt(pg, 470, y0 + 6, 'DTO.', s, g, false, 'middle'); txt(pg, 470, y0 + 17, 'PROFESIONAL', s, g, false, 'middle'); }
     txt(pg, 508, y0 + 11.5, 'IMPORTE', s, g);
     barra(pg, X0, y0 + 20.4, X1, y0 + 21);
-    txt(pg, 45, y0 + 31, p.seccion.toUpperCase(), s, NEGRO, true);
-    return y0 + 41.4;
+    return y0 + 27;   // sin fila de «sección»
   };
 
   // ── Partidas ──
@@ -107,14 +106,17 @@ export function pintarPresupuesto(
       if (pl.lema) txt(pg, X1, 151, pl.lema.toUpperCase(), 9.5, acento, true, 'end');
       txt(pg, 45, 186, 'PRESUPUESTO', 13.6, NEGRO);
       txt(pg, 45, 201, fechaCorta(p.fecha), 6.8, '#1d1e1e');
-      const campos: [number, string, string, string?][] = [
-        [45, 'A LA ATENCIÓN DE', p.atencion], [169, 'PROYECTO', p.proyecto, p.proyecto_2],
-        [286, 'N.º DE PRESUPUESTO', p.numero], [445, 'VALIDEZ OFERTA', p.validez]
+      // Cliente (nombre, NIF y dirección de facturación), proyecto (y su dirección), n.º y validez
+      const campos: [number, number, string, string[]][] = [
+        [45, 115, 'CLIENTE', [p.atencion, p.cliente_nif ? `NIF/CIF ${p.cliente_nif}` : '', p.direccion_facturacion || '']],
+        [169, 110, 'PROYECTO', [p.proyecto, p.proyecto_2]],
+        [286, 150, 'N.º DE PRESUPUESTO', [p.numero]], [445, 100, 'VALIDEZ OFERTA', [p.validez]]
       ];
-      for (const [x, et, v, v2] of campos) {
+      for (const [x, ancho, et, vs] of campos) {
         txt(pg, x, 224, et, 6.8, GRIS_T);
-        txt(pg, x, 237, (v || '').toUpperCase(), 5.4, GRIS_V);
-        if (v2) txt(pg, x, 247, v2.toUpperCase(), 5.4, GRIS_V);
+        // Como mucho 4 líneas por columna (la tabla empieza en 276,8)
+        const lineas = vs.filter(Boolean).flatMap((v) => partir(String(v).toUpperCase(), f.os.regular, 5.4, ancho)).slice(0, 4);
+        lineas.forEach((l, k) => txt(pg, x, 237 + k * 9, l, 5.4, GRIS_V));
       }
       y = cabeceraTabla(pg, 276.8);
     } else {

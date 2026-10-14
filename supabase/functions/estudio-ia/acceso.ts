@@ -33,10 +33,12 @@ export interface EstadoAlumno {
 }
 
 export async function estadoAlumno(supa: Any, email: string): Promise<EstadoAlumno | null> {
-  const { data } = await supa.rpc('estudio_alumnos', { p_email: email.toLowerCase() });
+  const [{ data }, { data: a }] = await Promise.all([
+    supa.rpc('estudio_alumnos', { p_email: email.toLowerCase() }),
+    supa.from('estudio_accesos').select('ilimitado, almacenamiento_mb, max_fichero_mb, emisor_curino').eq('email', email.toLowerCase()).maybeSingle()
+  ]);
   const r = Array.isArray(data) ? data[0] : null;
   if (!r) return null;
-  const { data: a } = await supa.from('estudio_accesos').select('ilimitado, almacenamiento_mb, max_fichero_mb, emisor_curino').eq('email', email.toLowerCase()).maybeSingle();
   return {
     ...r, ilimitado: !!a?.ilimitado, almacenamiento_mb: a?.almacenamiento_mb ?? null, max_fichero_mb: a?.max_fichero_mb ?? null, emisor_curino: !!a?.emisor_curino,
     credito_usd: Number(r.credito_usd ?? 0), gastado_usd: Number(r.gastado_usd ?? 0), saldo_usd: Number(r.saldo_usd ?? 0)
@@ -134,8 +136,8 @@ export async function accionEnlace(supa: Any, cfg: Any, body: Any, json: (b: unk
   return json(generico);
 }
 
-export async function accionYo(supa: Any, email: string, userId: string, esAdmin: boolean, cfg: Any, json: (b: unknown, s?: number) => Response): Promise<Response> {
-  const e = esAdmin ? null : await estadoAlumno(supa, email);
+export async function accionYo(supa: Any, email: string, userId: string, esAdmin: boolean, cfg: Any, json: (b: unknown, s?: number) => Response, previo?: EstadoAlumno | null): Promise<Response> {
+  const e = esAdmin ? null : previo !== undefined ? previo : await estadoAlumno(supa, email);
   const { data: pl } = await supa.from('estudio_plantillas').select('datos').eq('user_id', userId).maybeSingle();
   const plantilla: Plantilla = { ...PLANTILLA_ALUMNO, ...(pl?.datos ?? {}) };
   return json({

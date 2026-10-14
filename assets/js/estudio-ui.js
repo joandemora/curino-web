@@ -652,9 +652,19 @@
     });
 
     // ── Lista de presupuestos del proyecto ──
+    /** Lista ligera leída directamente de la base de datos (sin partidas ni dibujos): < 0,3 s. */
+    function leerLista() {
+      return supa.from('estudio_presupuestos').select('id, numero, estado, estado_nota, importe, created_at, updated_at, fecha:datos->>fecha, importado:datos->importado, comision:datos->comision')
+        .eq('proyecto_id', pid).order('created_at').then(function (r) {
+          if (r.error) throw r.error;
+          lista = (r.data || []).map(function (x) {
+            return { id: x.id, numero: x.numero || '', fecha: x.fecha || String(x.created_at).slice(0, 10), importe: x.importe, estado: x.estado, estado_nota: x.estado_nota,
+              importado: !!x.importado, comision: x.comision && x.comision.activa ? x.comision : null, actualizado: x.updated_at };
+          });
+        });
+    }
     function cargarLista(reabrir) {
-      return api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) {
-        lista = d.presupuestos; info = d;
+      return leerLista().then(function () {
         pintarLista();
         if (reabrir && sel) return abrir(sel);
         if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = lista.length ? 'Abre un presupuesto de la lista o crea uno nuevo.' : 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.'; }
@@ -666,19 +676,24 @@
           return '<tr class="' + (x.id === sel ? 'on' : '') + '"><td><b>' + esc(x.numero || '—') + '</b>' + (x.importado ? ' <span class="pr-tag">histórico</span>' : '') + (x.comision ? ' <span class="pr-tag">interiorista ' + numOut(x.comision.pct) + ' %</span>' : '') + '</td>' +
             '<td>' + dia(x.fecha) + '</td><td>' + (x.importe == null ? '—' : eur(Number(x.importe))) + '</td>' +
             '<td>' + selectEstado(pid, x.estado, x.id) + (x.estado_nota ? '<br><small class="pr-nota">' + esc(x.estado_nota) + '</small>' : '') + '</td>' +
-            '<td class="pr-acc"><button class="pa-btn" data-abrir="' + x.id + '">' + (x.id === sel ? 'Abierto' : 'Abrir') + '</button>' + (x.importado ? '' : '<button class="pa-btn" data-duplicar="' + x.id + '">Duplicar</button>') + '</td></tr>';
+            '<td class="pr-acc">' + (x.id === sel ? '<button class="pa-btn" data-cerrar="1">Cerrar</button>' : '<button class="pa-btn" data-abrir="' + x.id + '">Abrir</button>') + (x.importado ? '' : '<button class="pa-btn" data-duplicar="' + x.id + '">Duplicar</button>') + '<button class="pa-btn pr-borrar" data-borrar-pr="' + x.id + '">Borrar</button></td></tr>';
         }).join('') + '</tbody></table><p class="pa-muted" style="font-size:12px;margin:6px 0 0">Solo uno puede estar aceptado: es el que cuenta para facturación y métricas.</p>' : '<p class="pa-muted">Aún no hay presupuestos.</p>');
     }
 
     // ── Nuevo presupuesto: desde el diseño, desde documentos o en blanco ──
     function pintarNuevo(preSel) {
-      // Se cierra cualquier presupuesto abierto
+      // Se cierra cualquier presupuesto abierto; lo que necesita el asistente se pide ahora (no al entrar)
       sel = null; doc = null; $('#prZona').innerHTML = ''; pintarLista();
-      var z = $('#prNuevo'); z.hidden = false;
+      var z = $('#prNuevo'); z.hidden = false; z.innerHTML = '<p class="pa-muted">Cargando…</p>';
+      return api(ctx, { action: 'presupuesto_asistente', proyecto_id: pid }).then(function (d) { info = d; pintarAsistente(preSel); })
+        .catch(function (e) { z.innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    }
+    function pintarAsistente(preSel) {
+      var z = $('#prNuevo');
       var hayDocs = info.disenos.length || info.documentos.length;
       var marcado = function (tabla, id) { return preSel && preSel.tabla === tabla && preSel.id === id; };
       z.innerHTML = '<h3 style="margin-top:0">Nuevo presupuesto</h3>' +
-        '<div class="pn-fila"><label>N.º de presupuesto <input id="pnNum" value="' + esc(info.siguiente || '') + '" placeholder="Z…"></label></div>' +
+        '<div class="pn-fila"><label>N.º de presupuesto * <input id="pnNum" value="' + esc(info.siguiente || '') + '" placeholder="Z…" required></label></div>' +
         '<div class="pn-bases pn-bases-2">' +
         '<label class="pn-base"><input type="radio" name="pnBase" value="documentos"' + (hayDocs ? ' checked' : ' disabled') + '> <b>Desde documentos</b><small>Diseños, planos, croquis o presupuestos del proyecto. De los diseños salen partidas con su dibujo; del resto, Claude propone las partidas (gasta créditos).</small></label>' +
         '<label class="pn-base"><input type="radio" name="pnBase" value="blanco"' + (hayDocs ? '' : ' checked') + '> <b>En blanco</b><small>Partidas a mano.</small></label></div>' +
@@ -702,6 +717,7 @@
     }
     function crearNuevo() {
       var z = $('#prNuevo'), tipo = (z.querySelector('[name=pnBase]:checked') || {}).value || 'blanco', base = { tipo: tipo };
+      if (!z.querySelector('#pnNum').value.trim()) { z.querySelector('#pnNum').focus(); throw new Error('Pon el n.º de presupuesto.'); }
       if (tipo === 'documentos') {
         base.documentos = [];
         z.querySelectorAll('[data-dis]').forEach(function (c) {
@@ -718,7 +734,27 @@
 
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
     var estadoP = 'borrador', importado = null, importes = null;
-    function refrescarLista() { return api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) { lista = d.presupuestos; pintarLista(); }); }
+    function refrescarLista() { return leerLista().then(pintarLista); }
+    /** Borrar con confirmación (doble si está aceptado); los PDF/Excel se quedan salvo que se marque lo contrario. */
+    function borrarPresupuesto(x) {
+      if (!x) return;
+      var acept = x.estado === 'aceptado', m = document.createElement('div'); m.className = 'eu-modal';
+      m.innerHTML = '<form class="eu-modal-caja"><h2>Borrar presupuesto ' + esc(x.numero || '') + '</h2>' +
+        (acept ? '<p class="pr-nota" style="font-size:13px">Es el presupuesto <b>aceptado</b>: al borrarlo el proyecto se queda sin facturación en métricas y se quitan los plazos pendientes de cobro.</p>' : '<p class="pa-muted" style="font-size:13px">No se puede deshacer.</p>') +
+        '<label style="font-size:13px;display:block;margin:8px 0"><input type="checkbox" id="bpDocs"> Borrar también sus documentos (PDF y Excel en «Documentos»)</label>' +
+        (acept ? '<label style="font-size:13px;display:block;margin:8px 0"><input type="checkbox" id="bpOk"> Entiendo que afecta a facturación y métricas</label>' : '') +
+        '<div class="eu-modal-bot"><button type="button" class="pa-btn" data-bp="no">Cancelar</button><button type="submit" class="pa-btn primary pr-borrar-ok">Borrar</button></div></form>';
+      document.body.appendChild(m);
+      m.querySelector('[data-bp=no]').addEventListener('click', function () { m.remove(); });
+      m.querySelector('form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (acept && !m.querySelector('#bpOk').checked) { m.querySelector('#bpOk').parentNode.style.color = '#b42318'; return; }
+        var b = m.querySelector('.pr-borrar-ok'); b.disabled = true; b.textContent = 'Borrando…';
+        api(ctx, { action: 'presupuesto_borrar', presupuesto_id: x.id, borrar_documentos: m.querySelector('#bpDocs').checked, confirmar_aceptado: acept })
+          .then(function () { m.remove(); if (sel === x.id) { sel = null; doc = null; $('#prZona').innerHTML = ''; } return refrescarLista(); })
+          .catch(function (err) { b.disabled = false; b.textContent = 'Borrar'; alert(err.message); });
+      });
+    }
     function abrir(id) { sel = id; $('#prNuevo').hidden = true; pintarLista(); $('#prZona').innerHTML = '<div class="pr-card pa-muted">Abriendo…</div>'; return api(ctx, { action: 'presupuesto', presupuesto_id: id }).then(cargar); }
     function cargar(d) {
       doc = d.presupuesto; importado = d.importado || null; importes = d.importes || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador';
@@ -735,15 +771,15 @@
       var vs = (doc.versiones && doc.versiones.length ? doc.versiones : [doc.version]).filter(Boolean);
       var hayDiseno = doc.partidas.some(function (p) { return !p.libre; });
       $('#prSub').textContent = hayDiseno ? 'Desde ' + (vs.length > 1 ? 'las versiones ' : 'la versión ') + vs.map(function (v) { return 'v' + v; }).join(', ') + (vs.indexOf(versionActual) < 0 && versionActual ? ' · el diseño ya va por v' + versionActual : '') : 'Partidas a mano';
-      var cab = [['numero', 'N.º de presupuesto'], ['fecha', 'Fecha', 'date'], ['atencion', 'A la atención de'], ['validez', 'Validez oferta'],
-        ['proyecto', 'Proyecto'], ['proyecto_2', 'Proyecto (2.ª línea)'], ['seccion', 'Sección']];
+      var cab = [['numero', 'N.º de presupuesto'], ['fecha', 'Fecha', 'date'], ['validez', 'Validez oferta'], ['atencion', 'Cliente (nombre o empresa)'],
+        ['cliente_nif', 'NIF/CIF'], ['direccion_facturacion', 'Dirección de facturación'], ['proyecto', 'Proyecto'], ['proyecto_2', 'Dirección del proyecto']];
       var cm = doc.comision || { activa: false, pct: 15, paga: 'cliente' };
       var html = '<div class="pr-barra"><button class="pa-btn primary" id="prGuardar">Guardar</button>' + (hayDiseno ? '<button class="pa-btn" id="prTextos">Redactar textos con IA</button>' : '') +
         '<button class="pa-btn" id="prPdf">Descargar PDF</button><button class="pa-btn" id="prExcel">Descargar Excel</button>' +
         (hayDiseno ? '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>' : '') +
         '<span id="prMsg" class="pr-msg"></span></div>';
       html += '<div class="pr-card pr-f"><div class="pr-cab">' + cab.map(function (c) {
-        return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]]) + '"></div>';
+        return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]] || '') + '"></div>';
       }).join('') + '</div>' +
         '<div class="pr-com"><label><input type="checkbox" id="prComOn"' + (cm.activa ? ' checked' : '') + ' style="width:auto"> <b>Comisión interiorista</b></label>' +
         '<span' + (cm.activa ? '' : ' hidden') + ' id="prComDet"><label>% <input id="prComPct" inputmode="decimal" value="' + numOut(cm.pct) + '" style="width:64px"></label>' +
@@ -769,8 +805,35 @@
           '<button class="pa-btn pr-quitar" data-quitar="' + i + '">Quitar partida</button></div></div></div>';
       }).join('');
       html += '<div class="pr-barra"><button class="pa-btn" id="prAnadir">+ Añadir partida</button></div><div class="pr-card"><div class="pr-tot" id="prTot"></div></div>';
-      $('#prZona').innerHTML = html;
+      var vistaCab = '<div class="pr-vista-cab"><b>Vista previa</b>' + (cm.activa ? '<select id="prVistaVar"><option value="cliente">Cliente</option><option value="interiorista">Interiorista</option></select>' : '') + '<span id="prVistaEst" class="pa-muted"></span></div>';
+      $('#prZona').innerHTML = '<div class="pr-alternar"><button class="pa-btn on" data-ver="editor">Editor</button><button class="pa-btn" data-ver="vista">Vista previa</button></div>' +
+        '<div class="pr-dos" data-modo="editor"><div class="pr-ed">' + html + '</div><aside class="pr-vista">' + vistaCab + '<div id="prVistaPags"><p class="pa-muted">Generando…</p></div></aside></div>';
+      if ($('#prVistaVar')) $('#prVistaVar').value = varVista;
       recalcular();
+      vistaPrevia(0);
+    }
+
+    // ── Vista previa: el PDF real (con los cambios sin guardar), regenerado 1,5 s después de editar ──
+    var tVista = null, nVista = 0, varVista = 'cliente';
+    function vistaPrevia(retardo) {
+      clearTimeout(tVista);
+      tVista = setTimeout(function () {
+        if (!doc || !sel) return;
+        var n = ++nVista, est = $('#prVistaEst'); if (est) est.textContent = ' · actualizando…';
+        api(ctx, { action: 'presupuesto_vista', presupuesto_id: sel, datos: leer(), variante: varVista }).then(function (d) {
+          if (n !== nVista) return;
+          return pdfjs().then(function (lib) { return lib.getDocument({ data: Uint8Array.from(atob(d.base64), function (c) { return c.charCodeAt(0); }) }).promise; }).then(function (pdf) {
+            var cont = $('#prVistaPags'); if (!cont || n !== nVista) return;
+            var ancho = Math.max(280, cont.clientWidth - 4), nuevo = document.createElement('div'), tareas = [];
+            for (var i = 1; i <= pdf.numPages; i++) tareas.push(pdf.getPage(i).then(function (pg) {
+              var vp1 = pg.getViewport({ scale: 1 }), k = ancho / vp1.width, ratio = Math.min(2, window.devicePixelRatio || 1), vp = pg.getViewport({ scale: k * ratio });
+              var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.style.width = ancho + 'px'; c.className = 'pr-pag';
+              return pg.render({ canvasContext: c.getContext('2d'), viewport: vp, intent: 'print' }).promise.then(function () { return c; });
+            }));
+            return Promise.all(tareas).then(function (cs) { if (n !== nVista) return; cs.forEach(function (c) { nuevo.appendChild(c); }); cont.replaceChildren.apply(cont, [].slice.call(nuevo.childNodes)); if (est) est.textContent = ''; });
+          });
+        }).catch(function (e) { if (n === nVista && est) est.textContent = ' · ' + e.message; });
+      }, retardo === undefined ? 1500 : retardo);
     }
 
     function leer() {
@@ -817,10 +880,12 @@
       }
       $('#prTot').innerHTML = '<span>PVP sin IVA: ' + eur(r2(pvp)) + '</span>' + (imp !== pvp ? '<span>Dto. profesional: ' + eur(r2(imp - pvp)) + '</span>' : '') + '<span>Importe total: <b>' + eur(r2(imp)) + '</b></span><span class="pa-muted">IVA ' + numOut(iva) + '%: ' + eur(r2(imp * iva / 100)) + '</span>';
     }
-    el.addEventListener('input', function () { if (doc) recalcular(); });
+    el.addEventListener('input', function (e) { if (doc && e.target.closest('.pr-ed')) { recalcular(); vistaPrevia(); } });
     el.addEventListener('change', function (e) {
       if (doc && (e.target.id === 'prComOn' || (e.target.dataset && e.target.dataset.p === 'precio_manual'))) recalcular();
-      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) { lista = d.presupuestos; pintarLista(); }); });
+      if (doc && e.target.closest('.pr-ed')) vistaPrevia();
+      if (e.target.id === 'prVistaVar') { varVista = e.target.value; vistaPrevia(0); }
+      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { refrescarLista(); });
     });
 
     function guardar() { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: leer() }).then(function (d) { cargar(d); return d; }); }
@@ -838,6 +903,9 @@
         return crearNuevo().then(function (d) { $('#prNuevo').hidden = true; sel = d.id; if (ctx.alCambiar) ctx.alCambiar(); return cargarLista(true).then(function () { return 'Presupuesto ' + (d.numero || '') + ' creado'; }); });
       }, 'Creando…');
       if (t.dataset.abrir) return abrir(t.dataset.abrir);
+      if (t.dataset.cerrar) { sel = null; doc = null; nVista++; $('#prZona').innerHTML = ''; pintarLista(); return; }
+      if (t.dataset.ver) { var dos = el.querySelector('.pr-dos'); if (dos) dos.dataset.modo = t.dataset.ver; el.querySelectorAll('[data-ver]').forEach(function (b) { b.classList.toggle('on', b === t); }); return; }
+      if (t.dataset.borrarPr) return borrarPresupuesto(lista.filter(function (x) { return x.id === t.dataset.borrarPr; })[0]);
       if (t.dataset.duplicar) return bloquear(function () {
         return api(ctx, { action: 'presupuesto_duplicar', presupuesto_id: t.dataset.duplicar }).then(function (d) { sel = d.id; return cargarLista(true).then(function () { return 'Duplicado como ' + (d.numero || ''); }); });
       }, 'Duplicando…');
@@ -992,8 +1060,7 @@
       if (conDto) texto('J' + r1, 'DTO.', { font: g, al: { horizontal: 'center' } });
       [['E', 'ANCHO'], ['F', 'ALTO'], ['G', 'FONDO']].forEach(function (x) { texto(x[0] + r2, x[1], { font: { size: 5.5, color: g.color }, al: { horizontal: 'center', vertical: 'top' } }); });
       if (conDto) texto('J' + r2, 'PROFESIONAL', { font: g, al: { horizontal: 'center', vertical: 'top' } });
-      var r3 = nueva(21);
-      texto('B' + r3, (doc.seccion || '').toUpperCase(), { font: { bold: true }, al: { vertical: 'middle' } });
+      nueva(6);   // sin fila de «sección»
     }
     function png64(o) { return o.data.split(',')[1]; }
 
@@ -1014,12 +1081,16 @@
     texto('B' + nueva(18), 'PRESUPUESTO', { font: { size: 13.5 } });
     var fc = doc.fecha.split('-'); texto('B' + nueva(11), Number(fc[2]) + '/' + Number(fc[1]) + '/' + fc[0], { font: { color: { argb: 'FF1D1E1E' } } });
     nueva(15);
-    var rEt = nueva(11), rVa = nueva(11), rVa2 = nueva(10);
-    [['B', 'A LA ATENCIÓN DE', doc.atencion], ['D', 'PROYECTO', doc.proyecto], ['E', 'N.º DE PRESUPUESTO', doc.numero], ['J', 'VALIDEZ OFERTA', doc.validez]].forEach(function (c) {
+    // Cliente (nombre, NIF y dirección de facturación), proyecto (y su dirección), n.º y validez
+    var rEt = nueva(11), rVa = nueva(11), rVa2 = nueva(10), rVa3 = nueva(10);
+    var gv = { size: 5.5, color: { argb: 'FF666666' } };
+    [['B', 'CLIENTE', doc.atencion], ['D', 'PROYECTO', doc.proyecto], ['E', 'N.º DE PRESUPUESTO', doc.numero], ['J', 'VALIDEZ OFERTA', doc.validez]].forEach(function (c) {
       texto(c[0] + rEt, c[1], { font: { color: { argb: 'FF434343' } } });
-      texto(c[0] + rVa, String(c[2] || '').toUpperCase(), { font: { size: 5.5, color: { argb: 'FF666666' } } });
+      texto(c[0] + rVa, String(c[2] || '').toUpperCase(), { font: gv });
     });
-    if (doc.proyecto_2) texto('D' + rVa2, doc.proyecto_2.toUpperCase(), { font: { size: 5.5, color: { argb: 'FF666666' } } });
+    if (doc.cliente_nif) texto('B' + rVa2, ('NIF/CIF ' + doc.cliente_nif).toUpperCase(), { font: gv });
+    if (doc.direccion_facturacion) texto('B' + rVa3, doc.direccion_facturacion.toUpperCase(), { font: gv });
+    if (doc.proyecto_2) texto('D' + rVa2, doc.proyecto_2.toUpperCase(), { font: gv });
     nueva(223.1 - enPagina);
 
     // ── Partidas: una por página, caja gris y dibujo debajo ──
