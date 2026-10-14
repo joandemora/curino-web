@@ -31,9 +31,19 @@ export const MODELOS: Record<string, { nombre: string; incluye: string; puntos: 
 };
 export const EXTRAS: Record<string, { nombre: string; puntos: number[] }> = {
   cajon: { nombre: 'Cajón', puntos: [34, 35, 37, 38, 39, 41, 42] },
-  estante: { nombre: 'Estante', puntos: [11, 14, 17, 20, 22, 25, 27] },
+  estante: { nombre: 'Estante 19 mm', puntos: [11, 14, 17, 20, 22, 25, 27] },
   barra: { nombre: 'Barra', puntos: [13, 13, 13, 13, 13, 14, 14] }
 };
+// Estantes gruesos (no están en la tabla OTG): estante 19 mm × 1,25 / × 1,5, redondeado
+EXTRAS.estante25 = { nombre: 'Estante 25 mm', puntos: EXTRAS.estante.puntos.map((p) => Math.round(p * 1.25)) };
+EXTRAS.estante30 = { nombre: 'Estante 30 mm', puntos: EXTRAS.estante.puntos.map((p) => Math.round(p * 1.5)) };
+
+/** Concepto de tarifa de un estante / balda por su grosor (cm): null = el de 19 mm, incluido. */
+export function conceptoGrosor(cm: number): { clave: 'estante25' | 'estante30'; aviso?: string } | null {
+  if (cm <= 2.05) return null;
+  if (cm <= 2.55) return { clave: 'estante25' };
+  return { clave: 'estante30', aviso: cm > 3.05 ? `grosor ${Math.round(cm * 10)} mm: con la tarifa de 30 mm, revisar` : undefined };
+}
 export const SUELTOS: Record<string, { nombre: string; puntos: number }> = {
   rinconero: { nombre: 'Módulo rinconero 1100 × 1100 mm', puntos: 830 },
   division: { nombre: 'División vertical interior (1500 a 2000 × 19)', puntos: 59 }
@@ -153,6 +163,25 @@ export function puntosArmario(a: Armario, puntos: Record<string, number>, op: Op
       modulos.push({ clave, cuerpo: ci, modulo: mi, ancho_mm: mm, modelo, automatico: auto.modelo, nota });
       lineas.push({ clave: `int_${clave}`, nombre: `Interior módulo ${mi + 1}${a.cuerpos.length > 1 ? ` (cuerpo ${ci + 1})` : ''} · ${MODELOS[modelo].nombre} · ${base.tramo} mm`, cantidad: 1, puntos: base.puntos, aviso: [fuera, nota].filter(Boolean).join(' · ') || undefined });
       interior += base.puntos;
+      // Estantes y baldas gruesos: diferencia sobre el de 19 mm (que ya cuentan el modelo o los extras)
+      const gruesos = new Map<string, { n: number; aviso?: string; balda: boolean }>();
+      for (const zm of repartoZonas(m.interior, { alto: c.alto, zocalo: c.zocalo ?? ZOCALO_DEF, grosor: g }).zonas) {
+        const sumar = (cmG: number, n: number, balda: boolean) => {
+          const k = conceptoGrosor(cmG);
+          if (!k) return;
+          const id = `${k.clave}${balda ? '_balda' : ''}`, e = gruesos.get(id) ?? { n: 0, balda };
+          e.n += n; e.aviso = e.aviso ?? k.aviso; gruesos.set(id, e);
+        };
+        if (zm.zona.tipo === 'estantes' && zm.grosor_estantes !== undefined) sumar(zm.grosor_estantes, zm.zona.estantes, false);
+        if (zm.zona.grosor_balda_encima !== undefined) sumar(zm.zona.grosor_balda_encima, 1, true);
+      }
+      for (const [id, e] of gruesos) {
+        const k = id.replace('_balda', '');
+        const grueso = porAncho(serieDe(puntos, k), mm), fino = porAncho(serieDe(puntos, 'estante'), mm);
+        const pts = grueso.puntos - fino.puntos;
+        lineas.push({ clave: `grueso_${id}_${clave}`, nombre: `${e.balda ? (e.n === 1 ? 'Balda' : 'Baldas') : 'Estantes'} ${k.slice(-2)} mm · módulo ${mi + 1} · ${grueso.tramo} mm (diferencia sobre 19 mm)`, cantidad: e.n, puntos: pts, aviso: [grueso.fuera ? 'fuera de tabla: revisar' : '', e.aviso ?? ''].filter(Boolean).join(' · ') || undefined });
+        interior += pts * e.n;
+      }
       // Extras solo con el modelo asignado automáticamente (si el usuario cambia el modelo, no se recalculan)
       if (modelo === auto.modelo) {
         for (const [k, n] of Object.entries(auto.extras)) {

@@ -19,9 +19,13 @@ async function documento() {
   return { doc, fuentes: { regular, bold } };
 }
 
-export async function svgsProyecto(p: Proyecto): Promise<{ codigo: string; svg: string }[]> {
+/** Una entrada por lámina; «vistas» del armario para los botones de Diseño (pagina 2 = hoja extra). */
+export async function svgsProyecto(p: Proyecto): Promise<{ codigo: string; svg: string; pagina: number; vistas: string[] }[]> {
   const { fuentes } = await documento();
-  return laminasProyecto(p, medirConFuentes(fuentes)).map((l) => ({ codigo: l.codigo, svg: laminaSvg(l) }));
+  return laminasProyecto(p, medirConFuentes(fuentes)).map((l) => ({
+    codigo: l.codigo, svg: laminaSvg(l), pagina: l.pagina ?? 1,
+    vistas: p.armarios.find((a) => a.codigo === l.codigo)?.vistas ?? []
+  }));
 }
 
 export async function pdfProyecto(p: Proyecto, titulo: string): Promise<Uint8Array> {

@@ -17,6 +17,18 @@
 //   - resto de zonas: alto libre del hueco. Una zona por módulo puede ir sin
 //     «alto» y ocupa lo que quede; si van varias sin alto, se reparten igual.
 //   - cajonera sin alto: CAJON_ALTO_DEF por cajón.
+// Grosores (cm): la balda entre dos zonas mide lo que el tablero del cuerpo
+// salvo que la zona de debajo diga «grosor_balda_encima» (p. ej. 3 para una
+// balda gruesa sobre la cajonera); los estantes de una zona «estantes» miden
+// «grosor_estantes» (def. el del tablero). Los estantes van dentro del alto
+// libre de su zona, así que su grosor cambia los huecos entre estantes.
+//
+// Vistas (F6): cada armario saca siempre «Interior» y «Cerrado»; «vistas»
+// añade «lateral» (sección de cada módulo distinto) y/o «planta». Cada cuerpo
+// tiene «colocacion»: en línea con el anterior (def., alineados por detrás) o
+// en esquina a la izquierda / derecha de la fila principal (cuerpo 0 + los que
+// le siguen en línea): girado 90°, arrancando en su frente y enrasado con su
+// lado exterior (armario en L; con las dos esquinas, en U).
 //
 // validarProyecto() hace dos comprobaciones: formato estricto (tipos, campos
 // conocidos, rangos) y coherencia (módulos y frente suman el ancho del cuerpo,
@@ -27,14 +39,16 @@ export type Formato = 'A3' | 'A4';
 export type LadoTirador = 'izq' | 'der';
 export type ModeloPuerta = 'moldurada' | 'lisa';
 
-export type Zona =
+// Todas las zonas salvo la primera admiten «grosor_balda_encima» (cm).
+type ConBalda = { grosor_balda_encima?: number };
+export type Zona = ConBalda & (
   | { tipo: 'altillo'; alto: number; etiqueta?: string }
   | { tipo: 'perchero'; alto?: number; prendas?: 'cortas' | 'largas'; etiqueta?: string }
   | { tipo: 'perchero_extraible'; alto?: number; etiqueta?: string }
   | { tipo: 'cajonera'; cajones: number; alto?: number; etiqueta?: string }
-  | { tipo: 'estantes'; estantes: number; alto?: number; etiqueta?: string }
+  | { tipo: 'estantes'; estantes: number; alto?: number; etiqueta?: string; grosor_estantes?: number }
   | { tipo: 'hueco'; alto?: number; etiqueta?: string }
-  | { tipo: 'balda_inferior'; alto?: number; etiqueta?: string };
+  | { tipo: 'balda_inferior'; alto?: number; etiqueta?: string });
 
 export type TipoZona = Zona['tipo'];
 
@@ -86,8 +100,14 @@ export function agarrePuerta(f: Frente, p: PiezaFrente): Agarre {
   return f.tirador === 'laton' ? 'tirador_premium' : f.tirador === 'ninguno' ? 'ninguno' : 'tirador';
 }
 
+export type Colocacion = 'linea' | 'esquina_izq' | 'esquina_der';
+export const COLOCACIONES: Colocacion[] = ['linea', 'esquina_izq', 'esquina_der'];
+export type Vista = 'lateral' | 'planta';
+export const VISTAS: Vista[] = ['lateral', 'planta'];
+
 export interface Cuerpo {
   nombre?: string;             // «CUERPO PRINCIPAL», «LATERAL · fondo 40»
+  colocacion?: Colocacion;     // respecto al cuerpo anterior (def. en línea)
   ancho: number;
   alto: number;                // total, con zócalo
   fondo: number;
@@ -103,6 +123,7 @@ export interface Armario {
   subtitulo?: string;          // si falta, se genera con las medidas
   formato?: Formato;           // si falta, A3 o A4 según el ancho
   notas?: string;              // pie izquierdo
+  vistas?: Vista[];            // además de interior + cerrado
   cuerpos: Cuerpo[];
 }
 
@@ -118,6 +139,7 @@ export const ZOCALO_DEF = 10;
 export const GROSOR_DEF = 1.9;
 export const SEPARACION_SUELO_DEF = 2;
 export const CAJON_ALTO_DEF = 19.5;
+export const HUECO_ESTANTE_MIN = 5;   // cm libres entre estantes
 
 const TIPOS_ZONA: TipoZona[] = ['altillo', 'perchero', 'perchero_extraible', 'cajonera', 'estantes', 'hueco', 'balda_inferior'];
 const TOLERANCIA = 0.5; // cm
@@ -126,6 +148,8 @@ const TOLERANCIA = 0.5; // cm
 const num = (min: number, max: number, description: string) => ({ type: 'number', minimum: min, maximum: max, description });
 const etiqueta = { type: 'string', maxLength: 60, description: 'Texto del alzado si no vale el de por defecto.' };
 const altoLibre = num(5, 300, 'Alto libre del hueco en cm. Omitir para que ocupe el resto del módulo.');
+const baldaEncima = num(1, 6, 'Solo si la balda ENCIMA de esta zona no es del grosor del tablero: grosor en cm (2,5 o 3 para balda gruesa). No en la primera zona.');
+const grosorEstantes = num(1, 6, 'Solo si los estantes no son del grosor del tablero: grosor en cm (1,9 por defecto; 2,5 o 3 para «estantes de 25/30», «balda gruesa de 3 cm»).');
 
 export const ESQUEMA_JSON = {
   type: 'object',
@@ -147,6 +171,7 @@ export const ESQUEMA_JSON = {
           subtitulo: { type: 'string', maxLength: 140 },
           formato: { enum: ['A3', 'A4'] },
           notas: { type: 'string', maxLength: 220 },
+          vistas: { type: 'array', uniqueItems: true, items: { enum: ['lateral', 'planta'] }, description: 'Vistas extra además de interior + cerrado: lateral (sección) y/o planta. Solo si el usuario las pide.' },
           cuerpos: {
             type: 'array', minItems: 1, maxItems: 4,
             items: {
@@ -155,6 +180,7 @@ export const ESQUEMA_JSON = {
               required: ['ancho', 'alto', 'fondo', 'modulos', 'frente'],
               properties: {
                 nombre: { type: 'string', maxLength: 40 },
+                colocacion: { enum: ['linea', 'esquina_izq', 'esquina_der'], description: 'linea (def.: al lado del cuerpo anterior, alineado por detrás) o esquina_izq / esquina_der (lateral de un armario en L/U: girado 90°, en el extremo izquierdo / derecho de la fila principal, arranca en su frente). No en el primer cuerpo.' },
                 ancho: num(20, 800, 'Ancho total del cuerpo en cm.'),
                 alto: num(40, 350, 'Alto total en cm, zócalo incluido.'),
                 fondo: num(20, 100, 'Fondo en cm.'),
@@ -174,12 +200,12 @@ export const ESQUEMA_JSON = {
                         items: {
                           oneOf: [
                             { type: 'object', additionalProperties: false, required: ['tipo', 'alto'], properties: { tipo: { const: 'altillo' }, alto: num(15, 120, 'Cota del altillo: desde arriba del cuerpo hasta debajo de su balda.'), etiqueta } },
-                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero' }, alto: altoLibre, prendas: { enum: ['cortas', 'largas'] }, etiqueta } },
-                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero_extraible' }, alto: altoLibre, etiqueta } },
-                            { type: 'object', additionalProperties: false, required: ['tipo', 'cajones'], properties: { tipo: { const: 'cajonera' }, cajones: { type: 'integer', minimum: 1, maximum: 8 }, alto: altoLibre, etiqueta } },
-                            { type: 'object', additionalProperties: false, required: ['tipo', 'estantes'], properties: { tipo: { const: 'estantes' }, estantes: { type: 'integer', minimum: 1, maximum: 12 }, alto: altoLibre, etiqueta } },
-                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'hueco' }, alto: altoLibre, etiqueta } },
-                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'balda_inferior' }, alto: altoLibre, etiqueta } }
+                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero' }, alto: altoLibre, prendas: { enum: ['cortas', 'largas'] }, etiqueta, grosor_balda_encima: baldaEncima } },
+                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero_extraible' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
+                            { type: 'object', additionalProperties: false, required: ['tipo', 'cajones'], properties: { tipo: { const: 'cajonera' }, cajones: { type: 'integer', minimum: 1, maximum: 8 }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
+                            { type: 'object', additionalProperties: false, required: ['tipo', 'estantes'], properties: { tipo: { const: 'estantes' }, estantes: { type: 'integer', minimum: 1, maximum: 12 }, alto: altoLibre, etiqueta, grosor_estantes: grosorEstantes, grosor_balda_encima: baldaEncima } },
+                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'hueco' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
+                            { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'balda_inferior' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } }
                           ]
                         }
                       }
@@ -281,7 +307,10 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
   lista(entrada, 'armarios', 'proyecto', 1, 30).forEach((a, ia) => {
     const ra = `armarios[${ia}]`;
     if (!esObj(a)) { err(ra, 'debe ser un objeto'); return; }
-    campos(a, ra, ['codigo', 'titulo', 'subtitulo', 'formato', 'notas', 'cuerpos']);
+    campos(a, ra, ['codigo', 'titulo', 'subtitulo', 'formato', 'notas', 'vistas', 'cuerpos']);
+    if (a.vistas !== undefined) {
+      if (!Array.isArray(a.vistas) || a.vistas.some((v) => !VISTAS.includes(v as Vista)) || new Set(a.vistas).size !== a.vistas.length) err(`${ra}.vistas`, `lista sin repetir de ${VISTAS.join(' / ')}`);
+    }
     if (typeof a.codigo !== 'string' || !/^A\.\d{2}$/.test(a.codigo)) err(`${ra}.codigo`, 'formato A.01, A.02…');
     else if (codigos.has(a.codigo)) err(`${ra}.codigo`, `código repetido ${a.codigo}`);
     else codigos.add(a.codigo);
@@ -293,8 +322,10 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
     lista(a, 'cuerpos', ra, 1, 4).forEach((c, ic) => {
       const rc = `${ra}.cuerpos[${ic}]`;
       if (!esObj(c)) { err(rc, 'debe ser un objeto'); return; }
-      campos(c, rc, ['nombre', 'ancho', 'alto', 'fondo', 'zocalo', 'grosor', 'modulos', 'frente']);
+      campos(c, rc, ['nombre', 'colocacion', 'ancho', 'alto', 'fondo', 'zocalo', 'grosor', 'modulos', 'frente']);
       texto(c, 'nombre', rc, 40);
+      opcion(c, 'colocacion', rc, COLOCACIONES);
+      if (ic === 0 && c.colocacion !== undefined && c.colocacion !== 'linea') err(`${rc}.colocacion`, 'el primer cuerpo va en línea (la esquina es respecto al cuerpo anterior)');
       const ancho = numero(c, 'ancho', rc, 20, 800, true);
       const alto = numero(c, 'alto', rc, 40, 350, true);
       numero(c, 'fondo', rc, 20, 100, true);
@@ -319,8 +350,12 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
           if (typeof tipo !== 'string' || !TIPOS_ZONA.includes(tipo as TipoZona)) {
             err(`${rz}.tipo`, `tipo desconocido; usa ${TIPOS_ZONA.join(' / ')}`); zonasOk = false; return;
           }
-          const base = ['tipo', 'alto', 'etiqueta'];
+          const base = ['tipo', 'alto', 'etiqueta', 'grosor_balda_encima'];
           texto(z, 'etiqueta', rz, 60);
+          if (z.grosor_balda_encima !== undefined) {
+            if (iz === 0) err(`${rz}.grosor_balda_encima`, 'la primera zona no tiene balda encima (es el techo del cuerpo)');
+            else if (numero(z, 'grosor_balda_encima', rz, 1, 6, false) === undefined) zonasOk = false;
+          }
           if (tipo === 'altillo') {
             campos(z, rz, base);
             if (iz !== 0) err(rz, 'el altillo debe ser la primera zona (arriba)');
@@ -328,7 +363,11 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
           } else {
             if (tipo === 'perchero') { campos(z, rz, [...base, 'prendas']); opcion(z, 'prendas', rz, ['cortas', 'largas']); }
             else if (tipo === 'cajonera') { campos(z, rz, [...base, 'cajones']); if (entero(z, 'cajones', rz, 1, 8) === undefined) zonasOk = false; }
-            else if (tipo === 'estantes') { campos(z, rz, [...base, 'estantes']); if (entero(z, 'estantes', rz, 1, 12) === undefined) zonasOk = false; }
+            else if (tipo === 'estantes') {
+              campos(z, rz, [...base, 'estantes', 'grosor_estantes']);
+              if (entero(z, 'estantes', rz, 1, 12) === undefined) zonasOk = false;
+              if (z.grosor_estantes !== undefined && numero(z, 'grosor_estantes', rz, 1, 6, false) === undefined) zonasOk = false;
+            }
             else campos(z, rz, base);
             if (z.alto !== undefined && numero(z, 'alto', rz, 5, 300, false) === undefined) zonasOk = false;
             if (tipo === 'balda_inferior' && iz !== zonas.length - 1) err(rz, 'la balda inferior debe ser la última zona (abajo)');
@@ -393,6 +432,16 @@ export interface ZonaMedida {
   zona: Zona;
   libre: number;   // alto libre del hueco
   arriba: number;  // cm desde arriba del cuerpo hasta el techo del hueco
+  balda_encima: number;       // grosor de la balda encima (0 en la primera zona)
+  grosor_estantes?: number;   // zona «estantes»: grosor de sus estantes
+  hueco_estantes?: number;    // zona «estantes»: alto libre entre estantes
+}
+
+/** 19 · 30 · 25 — grosor en mm a partir de cm. */
+export const fmtMm = (cm: number) => String(Math.round(cm * 10));
+function fmtGrosores(v: number[], def: number): string {
+  const distintos = [...new Set(v.length ? v : [def])];
+  return distintos.map((g) => `${fmtMm(g)} mm`).join(' / ');
 }
 
 export function repartoZonas(
@@ -400,9 +449,10 @@ export function repartoZonas(
   c: { alto: number; zocalo: number; grosor: number }
 ): { zonas: ZonaMedida[]; error?: string } {
   const interior = c.alto - c.zocalo - 2 * c.grosor;
-  const baldas = (zonas.length - 1) * c.grosor;
+  const encima = zonas.map((z, i) => (i === 0 ? 0 : z.grosor_balda_encima ?? c.grosor));   // balda encima de cada zona
+  const baldas = encima.reduce((s, v) => s + v, 0);
   const libres: (number | null)[] = zonas.map((z) => {
-    if (z.tipo === 'altillo') return z.alto - 2 * c.grosor;
+    if (z.tipo === 'altillo') return z.alto - c.grosor - (encima[1] ?? c.grosor);
     if (z.alto !== undefined) return z.alto;
     if (z.tipo === 'cajonera') return z.cajones * CAJON_ALTO_DEF;
     return null;
@@ -411,7 +461,7 @@ export function repartoZonas(
   const sueltas = libres.filter((v) => v === null).length;
   const resto = interior - baldas - fijos;
   if (sueltas === 0 && Math.abs(resto) > TOLERANCIA) {
-    return { zonas: [], error: `las zonas suman ${r1(fijos + baldas + 2 * c.grosor + c.zocalo)} cm y el cuerpo mide ${c.alto} cm de alto (incluye baldas de ${c.grosor} y zócalo de ${c.zocalo})` };
+    return { zonas: [], error: `las zonas suman ${r1(fijos + baldas + 2 * c.grosor + c.zocalo)} cm y el cuerpo mide ${c.alto} cm de alto (incluye baldas de ${fmtGrosores(encima.slice(1), c.grosor)} y zócalo de ${c.zocalo})` };
   }
   if (sueltas > 0 && resto / sueltas < 10) {
     return { zonas: [], error: `no queda sitio: las zonas con medida ya ocupan ${r1(fijos)} cm de ${r1(interior - baldas)} cm libres` };
@@ -420,10 +470,19 @@ export function repartoZonas(
   const reparto = sueltas ? resto / sueltas : 0;
   let arriba = c.grosor;
   const out: ZonaMedida[] = zonas.map((zona, i) => {
+    arriba += encima[i];
     const libre = libres[i] ?? reparto;
-    const zm = { zona, libre, arriba };
-    arriba += libre + c.grosor;
+    const zm: ZonaMedida = { zona, libre, arriba, balda_encima: encima[i] };
+    if (zona.tipo === 'estantes') {
+      zm.grosor_estantes = zona.grosor_estantes ?? c.grosor;
+      zm.hueco_estantes = (libre - zona.estantes * zm.grosor_estantes) / (zona.estantes + 1);
+    }
+    arriba += libre;
     return zm;
   });
+  const estrecho = out.find((z) => z.hueco_estantes !== undefined && z.hueco_estantes < HUECO_ESTANTE_MIN);
+  if (estrecho && estrecho.zona.tipo === 'estantes') {
+    return { zonas: [], error: `${estrecho.zona.estantes} estantes de ${fmtMm(estrecho.grosor_estantes!)} mm no caben en ${r1(estrecho.libre)} cm: quedan huecos de ${r1(estrecho.hueco_estantes!)} cm (mín. ${HUECO_ESTANTE_MIN})` };
+  }
   return { zonas: out };
 }

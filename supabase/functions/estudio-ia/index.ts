@@ -19,6 +19,7 @@
 //               proyecto (sin versión aún: con todos los archivos) o aplica
 //               el cambio pedido. Versión nueva o preguntas. Devuelve SVG.
 //   'restaurar' { proyecto_id, numero } → versión nueva copia de vN.
+//   'vistas'    { proyecto_id, diseno_id?, numero, codigo, vistas: ['lateral'|'planta'] } → versión nueva con esas vistas en el armario.
 //   'importar'  { proyecto_id, datos, nota? } → JSON pegado a mano (validado) → versión nueva.
 //   'render'    { proyecto_id, numero? } → SVG de cada armario.
 //   'pdf'       { proyecto_id, numero? } → PDF de alzados (base64).
@@ -299,6 +300,25 @@ Deno.serve(async (req) => {
       const numero = await nuevaVersion(v.proyecto, 'manual', String(body?.nota || 'Importado a mano').slice(0, 200));
       await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, diseno_id: diseno?.id ?? null, rol: 'asistente', texto: `Proyecto importado a mano como v${numero}.`, version: numero });
       return json({ version: numero, svgs: await svgsProyecto(v.proyecto) });
+    }
+
+    if (action === 'vistas') {
+      // Activar / quitar sección lateral y planta de un armario (un clic en Diseño): versión nueva, sin IA.
+      const v = await version(Number(body?.numero));
+      if (!v) return json({ error: 'Este diseño aún no tiene versiones.' }, 404);
+      const pedidas = Array.isArray(body?.vistas) ? body.vistas.filter((x: unknown) => x === 'lateral' || x === 'planta') : [];
+      const datos: Proyecto = JSON.parse(JSON.stringify(v.datos));
+      const arm = datos.armarios.find((x) => x.codigo === String(body?.codigo || ''));
+      if (!arm) return json({ error: 'Armario no encontrado' }, 404);
+      const vistas = (['lateral', 'planta'] as const).filter((x) => pedidas.includes(x));
+      if (vistas.length) arm.vistas = [...vistas]; else delete arm.vistas;
+      const val = validarProyecto(datos);
+      if (!val.ok) return json({ error: 'El diseño no es válido.', errores: val.errores.slice(0, 30) }, 400);
+      const nombres: Record<string, string> = { lateral: 'sección lateral', planta: 'planta' };
+      const nota = `${arm.codigo}: ${vistas.length ? vistas.map((x) => nombres[x]).join(' + ') : 'solo interior y cerrado'}`;
+      const numero = await nuevaVersion(val.proyecto, 'manual', `Vistas ${nota}`);
+      await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, diseno_id: diseno?.id ?? null, rol: 'asistente', texto: `Vistas de ${nota}. Guardado como versión nueva.`, version: numero });
+      return json({ version: numero, nota: `Vistas ${nota}`, svgs: await svgsProyecto(val.proyecto) });
     }
 
     if (action === 'restaurar') {

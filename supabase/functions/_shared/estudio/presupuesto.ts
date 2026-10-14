@@ -273,8 +273,10 @@ export function textoModulo(zonas: Zona[]): string {
   const huecos = new Map<string, number>();
   for (const z of zonas) if (z.tipo === 'hueco' && z.etiqueta) huecos.set(z.etiqueta.toLowerCase(), (huecos.get(z.etiqueta.toLowerCase()) ?? 0) + 1);
   for (const [et, n] of huecos) partes.push(n === 1 ? et : `${n} ${et}${/[aeiou]$/.test(et) ? 's' : 'es'}`);
+  const SOBRE: Record<string, string> = { cajonera: 'la cajonera', perchero: 'el perchero', perchero_extraible: 'el perchero extraíble', estantes: 'los estantes', hueco: 'el hueco', balda_inferior: 'la balda inferior' };
   for (const z of zonas) {
-    if (z.tipo === 'estantes') partes.push(plural(z.estantes, 'estante', 'estantes'));
+    if (z.tipo === 'estantes') partes.push(plural(z.estantes, 'estante', 'estantes') + (z.grosor_estantes !== undefined && Math.abs(z.grosor_estantes - 1.9) > 0.05 ? ` de ${Math.round(z.grosor_estantes * 10)} mm` : ''));
+    if (z.grosor_balda_encima !== undefined && Math.abs(z.grosor_balda_encima - 1.9) > 0.05 && SOBRE[z.tipo]) partes.push(`balda de ${Math.round(z.grosor_balda_encima * 10)} mm sobre ${SOBRE[z.tipo]}`);
     if (z.tipo === 'perchero_extraible') partes.push('perchero extraíble');
     if (z.tipo === 'balda_inferior') partes.push('balda inferior');
   }

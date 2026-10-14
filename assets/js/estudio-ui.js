@@ -167,7 +167,18 @@
       $('#esZona').innerHTML =
         '<div class="es-cab"><div><strong class="es-titulo">' + titulo + '</strong><div class="es-versiones">' + chips + '</div></div>' +
         '<div class="pa-btns">' + acciones + '</div></div>' +
-        '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) { return '<div class="es-hoja" title="' + esc(s.codigo) + '">' + s.svg + '</div>'; }).join('')
+        '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) {
+          // Vistas extra por armario (sobre su primera hoja): un clic = versión nueva
+          var vistas = s.vistas || [], barra = '';
+          if ((s.pagina || 1) === 1 && viendo) {
+            barra = '<div class="es-vistas" data-cod="' + esc(s.codigo) + '"><span>' + esc(s.codigo) + ' · vistas:</span><span class="pr-tag">Interior + Cerrado</span>' +
+              [['lateral', 'Lateral'], ['planta', 'Planta']].map(function (x) {
+                var on = vistas.indexOf(x[0]) >= 0;
+                return '<button type="button" class="es-vista' + (on ? ' on' : '') + '" data-vista="' + x[0] + '" title="' + (on ? 'Quitar' : 'Añadir') + ' vista ' + (x[0] === 'lateral' ? 'lateral (sección)' : 'en planta') + '">' + (on ? '✓ ' : '+ ') + x[1] + '</button>';
+              }).join('') + '</div>';
+          }
+          return barra + '<div class="es-hoja" title="' + esc(s.codigo) + ((s.pagina || 1) > 1 ? ' · hoja ' + s.pagina : '') + '">' + s.svg + '</div>';
+        }).join('')
           : '<div class="es-vacio es-blanco">' + (viendo ? 'Cargando alzados…' : '<b>Diseño en blanco</b><br>Sube un plano o describe el armario en el chat y Claude preparará la primera versión.<br><small>Para seguir con un diseño anterior: «Documentos» → «Editar diseño».</small>') + '</div>') + '</div>';
     }
     function pintarChat(msgs) {
@@ -222,6 +233,24 @@
     }
     function avisoZona(t) { var c = el.querySelector('.es-cab .pa-btns'); if (c) c.insertAdjacentHTML('beforeend', '<span class="pr-msg ok">' + esc(t) + '</span>'); }
     el.addEventListener('click', function (e) {
+      var bv = e.target.closest('[data-vista]');
+      if (bv) {
+        if (ocupado) return;
+        var cod = bv.closest('[data-cod]').dataset.cod, actuales = [];
+        bv.parentNode.querySelectorAll('.es-vista.on').forEach(function (x) { actuales.push(x.dataset.vista); });
+        var i = actuales.indexOf(bv.dataset.vista);
+        if (i >= 0) actuales.splice(i, 1); else actuales.push(bv.dataset.vista);
+        ocupado = true; bv.disabled = true; bv.textContent = '…';
+        api(ctx, { action: 'vistas', proyecto_id: pid, diseno_id: diseno && diseno.id, numero: viendo, codigo: cod, vistas: actuales }).then(function (d) {
+          if (diseno) diseno.version_actual = d.version;
+          viendo = d.version;
+          versiones.push({ numero: d.version, origen: 'manual', nota: d.nota, created_at: new Date().toISOString() });
+          pintarZona(d.svgs);
+          if (ctx.alCambiar) ctx.alCambiar();
+        }).catch(function (err) { alertaError(err.message); pintarZona(); cargarVersion(viendo); })
+          .then(function () { ocupado = false; });
+        return;
+      }
       var hoja = e.target.closest('.es-hoja');
       if (hoja) {
         var url = URL.createObjectURL(new Blob(['<!DOCTYPE html><meta charset="utf-8"><title>' + esc(hoja.title) + '</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"><body style="margin:0;background:#888">' + hoja.innerHTML.replace('<svg ', '<svg style="display:block;width:100%;height:auto;background:#fff" ') + '</body>'], { type: 'text/html' }));
@@ -1165,17 +1194,19 @@
         ws.getCell('J' + r).alignment = { vertical: 'middle', horizontal: 'center' };
       }
       // Dibujo (mismo tamaño que en el PDF)
-      var dib = p.libre ? null : d.dibujos.filter(function (x) { return x.codigo === (p.clave || p.codigo); })[0];
-      if (dib) {
-        var y0 = enPagina + 4, hMax = Math.max(120, Math.min(260, XL.alto - 12 - y0));
+      // Alzado y, si el armario tiene hoja extra (sección / planta), debajo: mismo reparto que el PDF
+      var dibs = p.libre ? [] : d.dibujos.filter(function (x) { return x.codigo === (p.clave || p.codigo); });
+      dibs.forEach(function (dib, j) {
+        var y0 = enPagina + 4, resto = dibs.length - j;
+        var hMax = Math.max(dibs.length > 1 ? 90 : 120, Math.min(260, (XL.alto - 12 - y0) / resto - 4));
         var kk = Math.min(461 / dib.ancho, hMax / dib.alto), w = dib.ancho * kk, h = dib.alto * kk;
-        nueva(4);
+        nueva(j ? 8 : 4);
         var rd = nueva(h + 2);
         var colOff = (87 - 87) + (461 - w) / 2 - 2;   // centrado en 85 → 546 como el PDF
         tareas.push(png(dib.svg, 1600).then(function (im) {
           ws.addImage(wb.addImage({ base64: png64(im), extension: 'png' }), { tl: { col: 2 + colOff / 88, row: rd - 1 }, ext: { width: w * 96 / 72, height: h * 96 / 72 }, editAs: 'absolute' });
         }));
-      }
+      });
       cerrarPagina(false);
     });
 
