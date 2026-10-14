@@ -102,10 +102,10 @@
 
   function fichaProyecto(el, ctx, pid, tab) {
     if (tab === 'archivos') tab = 'documentos';   // pestaña antigua: ahora todo está en «Documentos»
-    var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['metricas', 'Métricas']];
+    var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['presupuesto', 'Presupuesto'], ['metricas', 'Métricas']];
     el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
-      '<a href="' + ctx.rutas.presupuesto(pid) + '">Presupuesto</a></nav></div><div class="pj-montaje" id="pjMontaje"></div><div id="pjCuerpo"></div></div>';
+      '</nav></div><div class="pj-montaje" id="pjMontaje"></div><div id="pjCuerpo"></div></div>';
     ctx.supa.from('estudio_proyectos').select('nombre, referencia, montaje_previsto, montado, montado_at, montaje_nota').eq('id', pid).maybeSingle().then(function (r) {
       if (!r.data) return;
       document.getElementById('pjTitulo').innerHTML = esc(r.data.nombre) + (r.data.referencia ? ' <span class="pa-muted">· ' + esc(r.data.referencia) + '</span>' : '');
@@ -117,7 +117,8 @@
       z.innerHTML = '<label>Fecha prevista de montaje <input type="date" id="pmPrev" value="' + (d.montaje_previsto || '') + '"></label>' +
         '<label class="pm-chk"><input type="checkbox" id="pmMont"' + (d.montado ? ' checked' : '') + '> Montado</label>' +
         '<label' + (d.montado ? '' : ' hidden') + ' id="pmRealL">Fecha real <input type="date" id="pmReal" value="' + (d.montado_at || '') + '"></label>' +
-        (d.montaje_nota ? '<small class="pa-muted">' + esc(d.montaje_nota) + '</small>' : '') + '<span class="pr-msg" id="pmMsg"></span>';
+        (d.montaje_nota ? '<small class="pa-muted">' + esc(d.montaje_nota) + '</small>' : '') + '<span class="pr-msg" id="pmMsg"></span>' +
+        '<button type="button" class="pa-btn pm-borrar" id="pmBorrar">Borrar proyecto</button>';
       var guardar = function (body) {
         api(ctx, Object.assign({ action: 'proyecto_montaje', proyecto_id: pid }, body)).then(function (x) { pintarMontaje(x); var m = document.getElementById('pmMsg'); if (m) m.textContent = 'Guardado'; })
           .catch(function (e) { alert(e.message); });
@@ -125,55 +126,101 @@
       z.querySelector('#pmPrev').addEventListener('change', function () { guardar({ montaje_previsto: this.value || null }); });
       z.querySelector('#pmMont').addEventListener('change', function () { guardar({ montado: this.checked, montado_at: this.checked ? (z.querySelector('#pmReal').value || new Date().toLocaleDateString('sv-SE')) : undefined }); });
       z.querySelector('#pmReal').addEventListener('change', function () { guardar({ montado_at: this.value || null }); });
+      z.querySelector('#pmBorrar').addEventListener('click', function () {
+        if (!this.dataset.ok) { this.dataset.ok = '1'; this.textContent = '¿Seguro? Se borra todo el proyecto · pulsa otra vez'; this.classList.add('on'); return; }
+        api(ctx, { action: 'borrar', proyecto_id: pid }).then(function () { location.href = ctx.rutas.estudio(); if (ctx.alNavegar) ctx.alNavegar(); }).catch(function (e) { alert(e.message); });
+      });
     }
     var cuerpo = el.querySelector('#pjCuerpo');
     if (tab === 'documentos') return documentosProyecto(cuerpo, ctx, pid);
     if (tab === 'metricas') return metricasProyecto(cuerpo, ctx, pid);
+    if (tab === 'presupuesto') return presupuesto(cuerpo, ctx, pid, { embebido: true });
     return disenoProyecto(cuerpo, ctx, pid);
   }
 
   // ── Diseño: chat con Claude, versiones y alzados ──
+  /** Diseño: abre en blanco al instante; «Editar diseño» (desde Documentos) carga uno guardado. */
+  var CLAVE_EDITAR = 'estudio-diseno-editar';
   function disenoProyecto(el, ctx, pid) {
-    var supa = ctx.supa, actual = null, versiones = [], viendo = 0, ocupado = false;
+    var supa = ctx.supa, diseno = null, versiones = [], viendo = 0, ocupado = false, versionInicio = 0;
+    var editar = null; try { editar = sessionStorage.getItem(CLAVE_EDITAR); sessionStorage.removeItem(CLAVE_EDITAR); } catch (e) { /* sin almacenamiento */ }
     el.innerHTML =
       '<div class="es-grid es-grid-2">' +
-      '<section><div class="es-card" id="esZona"><div class="es-vacio">Cargando…</div></div></section>' +
-      '<aside class="es-card es-chat" id="esChat" hidden><div class="es-msgs" id="esMsgs"></div>' +
+      '<section><div class="es-card" id="esZona"></div></section>' +
+      '<aside class="es-card es-chat" id="esChat"><div class="es-msgs" id="esMsgs"></div>' +
       '<form class="es-compose" id="esForm"><textarea id="esTexto" placeholder="Describe el armario o pide un cambio: «el módulo 2 con 4 cajones», «altillo de 40»…" maxlength="4000"></textarea>' +
       '<div class="es-fila"><label class="pa-btn" style="cursor:pointer">📎 Plano<input type="file" id="esArchivos" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden></label>' +
       '<span class="es-adj" id="esAdj"></span><button class="pa-btn primary" type="submit" id="esEnviar">Enviar</button></div>' +
       '<div class="es-error" id="esError" hidden></div></form></aside></div>';
     function alertaError(t) { var e = $('#esError'); e.textContent = t; e.hidden = !t; }
-    function abrir() {
-      return Promise.all([
-        supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle(),
-        supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', pid).order('numero'),
-        supa.from('estudio_mensajes').select('rol, texto, version, pregunta, created_at').eq('proyecto_id', pid).order('created_at')
-      ]).then(function (rs) {
-        actual = rs[0].data; versiones = rs[1].data || [];
-        if (!actual) { $('#esZona').innerHTML = '<div class="es-vacio">Proyecto no encontrado.</div>'; return; }
-        $('#esChat').hidden = false;
-        pintarChat(rs[2].data || []);
-        viendo = actual.version_actual;
-        pintarZona();
-        if (viendo) cargarVersion(viendo);
-      });
-    }
     function pintarZona(svgs) {
-      var p = actual;
-      var chips = versiones.map(function (v) {
-        return '<button type="button" class="es-v' + (v.numero === viendo ? ' on' : '') + (v.numero === p.version_actual ? ' actual' : '') +
-          '" data-v="' + v.numero + '" title="' + esc((v.origen === 'ia' ? 'IA · ' : '') + (v.nota || '') + ' · ' + fecha(v.created_at)) + '">v' + v.numero + '</button>';
+      var guardado = diseno && diseno.guardado;
+      var titulo = diseno ? esc(diseno.nombre) + (guardado ? '' : ' <span class="pr-tag">sin guardar</span>') : 'Diseño nuevo';
+      var chips = versiones.map(function (v, i) {
+        return '<button type="button" class="es-v' + (v.numero === viendo ? ' on' : '') + (diseno && v.numero === diseno.version_actual ? ' actual' : '') +
+          '" data-v="' + v.numero + '" title="' + esc((v.origen === 'ia' ? 'IA · ' : '') + (v.nota || '') + ' · ' + fecha(v.created_at)) + '">v' + (i + 1) + '</button>';
       }).join('');
-      var acciones = viendo ? '<button type="button" class="pa-btn" id="esPdf">Descargar alzados v' + viendo + '</button>' : '';
-      if (viendo && viendo !== p.version_actual) acciones = '<button type="button" class="pa-btn primary" id="esRestaurar">Volver a v' + viendo + '</button> ' + acciones;
-      acciones += ' <button type="button" class="pa-btn" id="esBorrar">Borrar proyecto</button>';
+      var acciones = '';
+      if (viendo) acciones += '<button type="button" class="pa-btn primary" id="esGuardarDoc">Guardar en documentos</button><button type="button" class="pa-btn" id="esPdf">Descargar alzados</button>';
+      if (diseno && viendo && viendo !== diseno.version_actual) acciones = '<button type="button" class="pa-btn" id="esRestaurar">Volver a esta versión</button> ' + acciones;
+      if (diseno) acciones += '<button type="button" class="pa-btn" id="esNuevo">Empezar otro diseño</button>';
       $('#esZona').innerHTML =
-        '<div class="es-cab"><div class="es-versiones">' + (chips || '<span class="pa-muted" style="font-size:12.5px">Sin versiones todavía</span>') + '</div>' +
+        '<div class="es-cab"><div><strong class="es-titulo">' + titulo + '</strong><div class="es-versiones">' + chips + '</div></div>' +
         '<div class="pa-btns">' + acciones + '</div></div>' +
         '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) { return '<div class="es-hoja" title="' + esc(s.codigo) + '">' + s.svg + '</div>'; }).join('')
-          : '<div class="es-vacio">' + (viendo ? 'Cargando alzados…' : 'Sube un plano o describe el armario en el chat y Claude preparará la primera versión.') + '</div>') + '</div>';
+          : '<div class="es-vacio es-blanco">' + (viendo ? 'Cargando alzados…' : '<b>Diseño en blanco</b><br>Sube un plano o describe el armario en el chat y Claude preparará la primera versión.<br><small>Para seguir con un diseño anterior: «Documentos» → «Editar diseño».</small>') + '</div>') + '</div>';
     }
+    function pintarChat(msgs) {
+      $('#esMsgs').innerHTML = msgs.length ? msgs.map(burbuja).join('')
+        : '<div class="es-vacio" style="padding:20px 6px">Adjunta un plano (PDF o foto) y cuéntale lo que quieres: medidas del hueco, alto, fondo, puertas, interior…</div>';
+      $('#esMsgs').scrollTop = 1e9;
+    }
+    function burbuja(m) {
+      var meta = [];
+      if (m.version) meta.push('<a href="#" data-ir="' + m.version + '">ver</a>');
+      if (m.uso && ctx.modo === 'admin') meta.push(Number(m.uso.tokens.entrada + m.uso.tokens.salida + m.uso.tokens.cache_escritura + m.uso.tokens.cache_lectura).toLocaleString('es-ES') + ' tokens · ' + String(m.uso.coste_usd).replace('.', ',') + ' $');
+      if (m.created_at) meta.push(fecha(m.created_at));
+      return '<div class="es-msg ' + m.rol + (m.pregunta ? ' pregunta' : '') + '">' + esc(m.texto) + (meta.length ? '<span class="es-meta">' + meta.join(' · ') + '</span>' : '') + '</div>';
+    }
+    function cargarVersion(n) {
+      return api(ctx, { action: 'render', proyecto_id: pid, diseno_id: diseno && diseno.id, numero: n }).then(function (d) { if (viendo === n) pintarZona(d.svgs); })
+        .catch(function (err) { $('#esHojas').innerHTML = '<div class="es-vacio">' + esc(err.message) + '</div>'; });
+    }
+    function abrirDiseno(id) {
+      $('#esZona').innerHTML = '<div class="es-vacio">Abriendo el diseño…</div>';
+      return api(ctx, { action: 'diseno', proyecto_id: pid, diseno_id: id }).then(function (d) {
+        diseno = d.diseno; versiones = d.versiones; viendo = diseno.version_actual; versionInicio = diseno.version_actual;
+        pintarChat(d.mensajes); pintarZona(d.svgs);
+      }).catch(function (err) { alertaError(err.message); diseno = null; pintarZona(); });
+    }
+    // En blanco al instante; solo se carga algo si venimos de «Editar diseño»
+    pintarChat([]); pintarZona();
+    if (editar) abrirDiseno(editar);
+
+    function guardarEnDocumentos() {
+      var m = document.createElement('div'); m.className = 'eu-modal';
+      var editando = diseno.guardado;
+      m.innerHTML = '<form class="eu-modal-caja"><h2>' + (editando ? 'Guardar diseño' : 'Guardar en documentos') + '</h2>' +
+        '<p class="pa-muted" style="font-size:13px;margin:4px 0 12px">Se guarda como documento de tipo «Diseño» con su miniatura, su JSON y su PDF de alzados.</p>' +
+        '<label style="font-size:13px">Nombre<input id="dgNombre" value="' + esc(editando ? diseno.nombre : 'Diseño ' + (Date.now() % 1000)) + '" style="width:100%;padding:8px;border:1px solid #d9d3c8;border-radius:8px;margin-top:4px"></label>' +
+        '<div class="eu-modal-bot"><button type="button" class="pa-btn" data-dg="cancelar">Cancelar</button>' +
+        (editando ? '<button type="button" class="pa-btn" data-dg="nuevo">Guardar como nuevo diseño</button><button type="button" class="pa-btn primary" data-dg="cambios">Guardar cambios</button>' : '<button type="button" class="pa-btn primary" data-dg="cambios">Guardar</button>') + '</div></form>';
+      document.body.appendChild(m);
+      if (!editando) api(ctx, { action: 'disenos', proyecto_id: pid }).then(function (d) { var n = d.disenos.filter(function (x) { return x.guardado; }).length + 1; var i = m.querySelector('#dgNombre'); if (i && /^Diseño \d+$/.test(i.value)) i.value = 'Diseño ' + n; }).catch(function () {});
+      m.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-dg]'); if (!b) return;
+        if (b.dataset.dg === 'cancelar') return m.remove();
+        var nombre = m.querySelector('#dgNombre').value.trim();
+        if (!nombre) return;
+        m.querySelectorAll('button').forEach(function (x) { x.disabled = true; }); b.textContent = 'Guardando…';
+        api(ctx, { action: 'diseno_guardar', proyecto_id: pid, diseno_id: diseno.id, nombre: nombre, modo: b.dataset.dg, version_inicio: versionInicio }).then(function (d) {
+          m.remove(); diseno = d.diseno; versionInicio = diseno.version_actual;
+          if (b.dataset.dg === 'nuevo') return abrirDiseno(diseno.id).then(function () { avisoZona('Guardado como nuevo diseño en Documentos'); });
+          pintarZona(); cargarVersion(viendo); avisoZona('Guardado en Documentos');
+        }).catch(function (err) { m.remove(); alertaError(err.message); });
+      });
+    }
+    function avisoZona(t) { var c = el.querySelector('.es-cab .pa-btns'); if (c) c.insertAdjacentHTML('beforeend', '<span class="pr-msg ok">' + esc(t) + '</span>'); }
     el.addEventListener('click', function (e) {
       var hoja = e.target.closest('.es-hoja');
       if (hoja) {
@@ -185,43 +232,23 @@
       if (v) { viendo = Number(v.dataset.v); pintarZona(); cargarVersion(viendo); return; }
       var ir = e.target.closest('[data-ir]');
       if (ir) { e.preventDefault(); viendo = Number(ir.dataset.ir); pintarZona(); cargarVersion(viendo); return; }
+      if (e.target.id === 'esGuardarDoc') return guardarEnDocumentos();
+      if (e.target.id === 'esNuevo') { diseno = null; versiones = []; viendo = 0; pintarChat([]); pintarZona(); return; }
       if (e.target.id === 'esPdf') {
         e.target.disabled = true;
-        api(ctx, { action: 'pdf', proyecto_id: pid, numero: viendo }).then(function (d) { descargar(base64Blob(d.base64, 'application/pdf'), d.nombre); })
+        api(ctx, { action: 'pdf', proyecto_id: pid, diseno_id: diseno && diseno.id, numero: viendo }).then(function (d) { descargar(base64Blob(d.base64, 'application/pdf'), d.nombre); })
           .catch(function (err) { alertaError(err.message); }).then(function () { e.target.disabled = false; });
         return;
       }
       if (e.target.id === 'esRestaurar') {
         e.target.disabled = true;
-        api(ctx, { action: 'restaurar', proyecto_id: pid, numero: viendo }).then(abrir).catch(function (err) { alertaError(err.message); });
-        return;
-      }
-      if (e.target.id === 'esBorrar') {
-        if (!e.target.dataset.ok) { e.target.dataset.ok = '1'; e.target.textContent = '¿Seguro? Pulsa otra vez'; e.target.classList.add('primary'); return; }
-        api(ctx, { action: 'borrar', proyecto_id: pid }).then(function () { location.href = ctx.rutas.estudio(); if (ctx.alNavegar) ctx.alNavegar(); })
-          .catch(function (err) { alertaError(err.message); });
+        api(ctx, { action: 'restaurar', proyecto_id: pid, diseno_id: diseno.id, numero: viendo }).then(function () { return abrirDiseno(diseno.id); }).catch(function (err) { alertaError(err.message); });
       }
     });
-    function cargarVersion(n) {
-      return api(ctx, { action: 'render', proyecto_id: pid, numero: n }).then(function (d) { if (viendo === n) pintarZona(d.svgs); })
-        .catch(function (err) { $('#esHojas').innerHTML = '<div class="es-vacio">' + esc(err.message) + '</div>'; });
-    }
-    function pintarChat(msgs) {
-      $('#esMsgs').innerHTML = msgs.length ? msgs.map(burbuja).join('')
-        : '<div class="es-vacio" style="padding:20px 6px">Adjunta un plano (PDF o foto) y cuéntale lo que quieres: medidas del hueco, alto, fondo, puertas, interior…</div>';
-      $('#esMsgs').scrollTop = 1e9;
-    }
-    function burbuja(m) {
-      var meta = [];
-      if (m.version) meta.push('<a href="#" data-ir="' + m.version + '">v' + m.version + '</a>');
-      if (m.uso && ctx.modo === 'admin') meta.push(Number(m.uso.tokens.entrada + m.uso.tokens.salida + m.uso.tokens.cache_escritura + m.uso.tokens.cache_lectura).toLocaleString('es-ES') + ' tokens · ' + String(m.uso.coste_usd).replace('.', ',') + ' $');
-      if (m.created_at) meta.push(fecha(m.created_at));
-      return '<div class="es-msg ' + m.rol + (m.pregunta ? ' pregunta' : '') + '">' + esc(m.texto) + (meta.length ? '<span class="es-meta">' + meta.join(' · ') + '</span>' : '') + '</div>';
-    }
     $('#esArchivos').addEventListener('change', function () { $('#esAdj').textContent = Array.prototype.map.call(this.files, function (f) { return f.name; }).join(', '); });
     $('#esForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      if (ocupado || !actual) return;
+      if (ocupado) return;
       var texto = $('#esTexto').value.trim();
       var archivos = Array.prototype.slice.call($('#esArchivos').files || []);
       if (!texto && !archivos.length) return;
@@ -232,38 +259,41 @@
       msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'usuario', texto: texto + (archivos.length ? '\n📎 ' + archivos.map(function (f) { return f.name; }).join(', ') : '') }) + '<div class="es-trabajando" id="esTrab">Subiendo…</div>');
       msgs.scrollTop = 1e9;
       var ids = [];
-      archivos.reduce(function (p, f) {
-        return p.then(function () {
-          return api(ctx, { action: 'subida', proyecto_id: pid, nombre: f.name, tipo: f.type, bytes: f.size }).then(function (d) {
-            return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: f.type }).then(function (r) {
-              if (r.error) throw new Error('No se ha podido subir «' + f.name + '».');
-              ids.push(d.archivo_id);
+      // El diseño se crea al primer mensaje («Diseño sin guardar»)
+      (diseno ? Promise.resolve() : api(ctx, { action: 'diseno_nuevo', proyecto_id: pid }).then(function (d) { diseno = d.diseno; }))
+        .then(function () {
+          return archivos.reduce(function (p, f) {
+            return p.then(function () {
+              return api(ctx, { action: 'subida', proyecto_id: pid, diseno_id: diseno.id, nombre: f.name, tipo: f.type, bytes: f.size }).then(function (d) {
+                return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: f.type }).then(function (r) {
+                  if (r.error) throw new Error('No se ha podido subir «' + f.name + '».');
+                  ids.push(d.archivo_id);
+                });
+              });
             });
-          });
-        });
-      }, Promise.resolve()).then(function () {
-        $('#esTrab').textContent = 'Claude está trabajando… (puede tardar hasta un minuto)';
-        return api(ctx, { action: 'mensaje', proyecto_id: pid, texto: texto, archivo_ids: ids });
-      }).then(function (d) {
-        $('#esTexto').value = ''; $('#esArchivos').value = ''; $('#esAdj').textContent = '';
-        var t = d.tipo === 'pregunta' ? [d.mensaje].concat(d.preguntas.map(function (p) { return '• ' + p; })).filter(Boolean).join('\n') : d.mensaje;
-        $('#esTrab').remove();
-        msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'asistente', texto: t, pregunta: d.tipo === 'pregunta', version: d.version, uso: d.uso }));
-        msgs.scrollTop = 1e9;
-        if (ctx.alCambiar) ctx.alCambiar();
-        if (d.tipo === 'proyecto') {
-          actual.version_actual = d.version; viendo = d.version;
-          return supa.from('estudio_versiones').select('numero, origen, nota, created_at').eq('proyecto_id', pid).order('numero')
-            .then(function (r) { versiones = r.data || []; pintarZona(d.svgs); });
-        }
-      }).catch(function (err) {
-        var t = $('#esTrab'); if (t) t.remove();
-        var us = msgs.querySelectorAll('.es-msg.usuario'); if (us.length) us[us.length - 1].remove();
-        alertaError(err.message);
-        if (err.datos && err.datos.sin_credito && ctx.alCambiar) ctx.alCambiar();
-      }).then(function () { ocupado = false; $('#esEnviar').disabled = false; });
+          }, Promise.resolve());
+        }).then(function () {
+          $('#esTrab').textContent = 'Claude está trabajando… (puede tardar hasta un minuto)';
+          return api(ctx, { action: 'mensaje', proyecto_id: pid, diseno_id: diseno.id, texto: texto, archivo_ids: ids });
+        }).then(function (d) {
+          $('#esTexto').value = ''; $('#esArchivos').value = ''; $('#esAdj').textContent = '';
+          var t = d.tipo === 'pregunta' ? [d.mensaje].concat(d.preguntas.map(function (p) { return '• ' + p; })).filter(Boolean).join('\n') : d.mensaje;
+          $('#esTrab').remove();
+          msgs.insertAdjacentHTML('beforeend', burbuja({ rol: 'asistente', texto: t, pregunta: d.tipo === 'pregunta', version: d.version, uso: d.uso }));
+          msgs.scrollTop = 1e9;
+          if (ctx.alCambiar) ctx.alCambiar();
+          if (d.tipo === 'proyecto') {
+            diseno.version_actual = d.version; viendo = d.version;
+            versiones.push({ numero: d.version, origen: 'ia', nota: texto.slice(0, 200), created_at: new Date().toISOString() });
+            pintarZona(d.svgs);
+          }
+        }).catch(function (err) {
+          var t = $('#esTrab'); if (t) t.remove();
+          var us = msgs.querySelectorAll('.es-msg.usuario'); if (us.length) us[us.length - 1].remove();
+          alertaError(err.message);
+          if (err.datos && err.datos.sin_credito && ctx.alCambiar) ctx.alCambiar();
+        }).then(function () { ocupado = false; $('#esEnviar').disabled = false; });
     });
-    abrir();
   }
 
   // ── Documentos: lo generado (alzados, presupuestos) y lo subido (facturas, planos, fotos…) juntos ──
@@ -271,92 +301,220 @@
   var TIPO_F = { factura_proveedor: 'Factura de proveedor', presupuesto_proveedor: 'Presupuesto de proveedor', factura_cliente: 'Factura a cliente', foto_obra: 'Foto de obra', plano: 'Plano o medidas', otro: 'Otro' };
   var FILTROS_DOC = [['', 'Todo'], ['diseno', 'Diseño'], ['presupuesto', 'Presupuesto'], ['factura_cliente', 'Factura cliente'], ['factura_proveedor', 'Factura proveedor'], ['presupuesto_proveedor', 'Presupuesto proveedor'], ['plano', 'Plano'], ['foto_obra', 'Foto'], ['otro', 'Otro']];
   var filtroDoc = { tipo: '', orden: 'reciente' };
+  // Etiqueta de color por tipo (mismos colores en tarjetas y filtros)
+  var COL_TIPO = { diseno: '#2E6BE6', presupuesto: '#161616', factura_cliente: '#12B76A', factura_proveedor: '#F08C00', presupuesto_proveedor: '#E3B007', plano: '#7A5AF8', foto_obra: '#667085', otro: '#B9BDC5' };
+  var NOM_TIPO = { diseno: 'Diseño', presupuesto: 'Presupuesto', factura_cliente: 'Factura cliente', factura_proveedor: 'Factura proveedor', presupuesto_proveedor: 'Presupuesto proveedor', plano: 'Plano', foto_obra: 'Foto', otro: 'Otro' };
+  /** Tipo sugerido por el nombre del archivo al subirlo. */
+  function tipoSugerido(f) {
+    var n = (f.name || '').toLowerCase();
+    if (/factura|fra[\s_.-]|\bfra\b|invoice/.test(n)) return 'factura_proveedor';
+    if (/presupuesto|pressupost|oferta|\bpre\d|cotizaci/.test(n)) return 'presupuesto_proveedor';
+    if (/plano|planta|medid|croquis|cotas|alzado|secci[oó]n/.test(n)) return 'plano';
+    if (/^image\//.test(f.type || '') || /\.(jpe?g|png|webp|heic)$/.test(n)) return 'foto_obra';
+    return 'otro';
+  }
+  var pdfjsCarga = null;
+  function pdfjs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (!pdfjsCarga) pdfjsCarga = new Promise(function (ok, ko) {
+      var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      sc.onload = function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); };
+      sc.onerror = ko; document.head.appendChild(sc);
+    });
+    return pdfjsCarga;
+  }
+  /** Miniatura JPEG (320 px) de la 1.ª página de un PDF o de una imagen; se sube y se guarda para la próxima vez. */
+  function crearMiniatura(ctx, pid, x) {
+    var esPdf = /pdf$/i.test(x.mime || '') || /\.pdf$/i.test(x.nombre || '');
+    var lienzo = function () {
+      if (esPdf) return pdfjs().then(function (lib) { return lib.getDocument(x.url).promise; }).then(function (doc) { return doc.getPage(1); }).then(function (pg) {
+        var v = pg.getViewport({ scale: 1 }), k = 320 / v.width, vp = pg.getViewport({ scale: k });
+        var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+        var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        return pg.render({ canvasContext: g, viewport: vp }).promise.then(function () { return c; });
+      });
+      return new Promise(function (ok, ko) {
+        var im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = function () { var k = Math.min(1, 320 / im.width), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c); };
+        im.onerror = ko; im.src = x.url;
+      });
+    };
+    return lienzo().then(function (c) {
+      return new Promise(function (ok) { c.toBlob(ok, 'image/jpeg', 0.72); }).then(function (blob) {
+        var tabla = x.kind === 'doc' ? 'doc' : 'fichero';
+        return api(ctx, { action: 'miniatura_subida', proyecto_id: pid, tabla: tabla, id: x.id }).then(function (d) {
+          return ctx.supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, blob, { contentType: 'image/jpeg' })
+            .then(function () { return api(ctx, { action: 'miniatura_guardar', proyecto_id: pid, tabla: tabla, id: x.id }); })
+            .then(function () { return URL.createObjectURL(blob); });
+        });
+      });
+    });
+  }
   function documentosProyecto(el, ctx, pid) {
-    var supa = ctx.supa, items = [];
+    var supa = ctx.supa, items = [], cola = [];
     el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Documentos</h2><span class="pa-muted" id="arUso" style="font-size:12px"></span></div>' +
-      '<p class="pa-muted" style="font-size:12.5px;margin:0 0 10px">Los alzados y presupuestos se guardan solos al descargarlos. Sube aquí facturas, presupuestos de proveedor, planos y fotos.</p>' +
-      '<form class="ar-subir" id="arForm"><select id="arTipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '">' + TIPO_F[k] + '</option>'; }).join('') + '</select>' +
-      '<input type="file" id="arFile" accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" required><button class="pa-btn primary" type="submit">Subir archivo</button><span class="pa-muted" style="font-size:12px">PDF, foto o Excel</span></form>' +
-      '<div class="dc-filtros" id="dcFiltros">' + FILTROS_DOC.map(function (f) { return '<button type="button" data-f="' + f[0] + '"' + (f[0] === filtroDoc.tipo ? ' class="on"' : '') + '>' + f[1] + '</button>'; }).join('') +
-      '<select id="dcOrden"><option value="reciente">Más recientes</option><option value="antiguo">Más antiguos</option></select></div>' +
-      '<div id="arMsg" class="pr-msg"></div><div id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
+      '<label class="dc-drop" id="dcDrop"><input type="file" id="dcFile" multiple accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" hidden>' +
+      '<span class="dc-drop-ico">⇪</span><b>Arrastra aquí tus archivos o pulsa para seleccionarlos</b><small>PDF, fotos o Excel · varios a la vez · te proponemos el tipo de cada uno</small></label>' +
+      '<div id="dcCola"></div>' +
+      '<div class="dc-filtros" id="dcFiltros">' + [['', 'Todo']].concat(Object.keys(NOM_TIPO).map(function (k) { return [k, NOM_TIPO[k]]; })).map(function (f) {
+        return '<button type="button" data-f="' + f[0] + '"' + (f[0] === filtroDoc.tipo ? ' class="on"' : '') + (f[0] ? ' style="--c:' + COL_TIPO[f[0]] + '"' : '') + '>' + (f[0] ? '<i></i>' : '') + f[1] + '</button>';
+      }).join('') + '<select id="dcOrden"><option value="reciente">Más recientes</option><option value="antiguo">Más antiguos</option></select></div>' +
+      '<div id="arMsg" class="pr-msg"></div><div class="dc-grid" id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
     el.querySelector('#dcOrden').value = filtroDoc.orden;
     var msg = function (t, tipo) { var m = el.querySelector('#arMsg'); m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; };
-    var grupo = function (x) { return x.kind === 'doc' ? (x.tipo === 'alzados_pdf' ? 'diseno' : 'presupuesto') : x.tipo; };
-    function filaDoc(x) {
-      return '<li><div><strong>' + esc(TIPO_DOC[x.tipo] || x.tipo) + (x.numero ? ' · n.º ' + esc(x.numero) : '') + (x.version ? ' · v' + x.version : '') + (x.variante ? ' · ' + esc(x.variante) : '') + '</strong><small>' + esc(x.nombre) + ' · ' + fecha(x.created_at) + ' · ' + Math.max(1, Math.round(x.bytes / 1024)) + ' KB</small></div>' +
-        '<a class="pa-btn" href="' + esc(x.url) + '" target="_blank" rel="noopener">Ver</a><a class="pa-btn" href="' + esc(x.url) + '&download=' + encodeURIComponent(x.nombre) + '">Descargar</a><button class="pa-btn" data-borrar="' + x.id + '">Borrar</button></li>';
+    var grupo = function (x) { return x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? (x.tipo === 'alzados_pdf' ? 'diseno' : 'presupuesto') : x.tipo; };
+    var nombreDe = function (x) { return x.kind === 'diseno' ? x.nombre : x.nombre; };
+    var fechaDe = function (x) { return x.kind === 'diseno' ? x.updated_at : x.created_at; };
+    function tarjeta(x, i) {
+      var g = grupo(x), esImg = /^image\//.test(x.mime || ''), esPdf = /pdf$/i.test(x.mime || '') || /\.pdf$/i.test(x.nombre || ''), esXls = /\.xlsx?$/i.test(x.nombre || '');
+      var mini = x.kind === 'diseno' ? '<div class="dc-svg">' + (x.miniatura || '') + '</div>'
+        : x.miniatura_url ? '<img src="' + esc(x.miniatura_url) + '" alt="" loading="lazy">'
+        : (esPdf || esImg) && x.url ? '<span class="dc-ico" data-mini="' + i + '">' + (esPdf ? 'PDF' : 'IMG') + '</span>'
+        : '<span class="dc-ico">' + (esXls ? 'XLS' : (String(x.nombre || '').split('.').pop() || '').toUpperCase().slice(0, 4)) + '</span>';
+      var ver = x.kind === 'diseno' ? (x.pdf && x.pdf.url) : x.url;
+      var acciones = (ver ? '<a class="dc-a" href="' + esc(ver) + '" target="_blank" rel="noopener">Ver</a><a class="dc-a" href="' + esc(ver) + '&download=' + encodeURIComponent(x.kind === 'diseno' ? x.pdf.nombre : x.nombre) + '">Descargar</a>' : '') +
+        (x.kind === 'diseno' ? '<button class="dc-a" data-a="editar" data-i="' + i + '">Editar diseño</button><button class="dc-a" data-a="json" data-i="' + i + '">JSON</button>' : '') +
+        ((x.kind === 'diseno' && x.guardado) || esPdf || esImg ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
+        (x.kind === 'fich' ? '<button class="dc-a" data-a="datos" data-i="' + i + '">Datos</button>' : '') +
+        '<button class="dc-a dc-borrar" data-a="borrar" data-i="' + i + '">Borrar</button>';
+      var sub = x.kind === 'diseno' ? (x.guardado ? 'v' + versionesTxt(x) : 'Diseño sin guardar · se borra a los 30 días')
+        : x.kind === 'doc' ? [x.numero ? 'n.º ' + x.numero : '', x.variante || '', x.version ? 'v' + x.version : ''].filter(Boolean).join(' · ')
+        : [x.proveedor, x.base != null ? eur(Number(x.base)) : '', x.notas && /Pendiente/.test(x.notas) ? 'pendiente de revisar' : ''].filter(Boolean).join(' · ');
+      return '<div class="dc-card' + (x.kind === 'diseno' && !x.guardado ? ' dc-borrador' : '') + '" data-i="' + i + '"><div class="dc-mini">' + mini + '</div>' +
+        '<div class="dc-info"><span class="dc-tag" style="--c:' + COL_TIPO[g] + '">' + NOM_TIPO[g] + '</span>' +
+        (x.kind === 'fich' ? '<select class="dc-tipo" data-tipo="' + i + '" title="Cambiar tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === x.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select>' : '') +
+        '<strong title="' + esc(nombreDe(x)) + '">' + esc(nombreDe(x)) + '</strong><small>' + dia(fechaDe(x)) + (sub ? ' · ' + esc(sub) : '') + '</small></div>' +
+        '<div class="dc-acc">' + acciones + '</div></div>';
     }
-    function filaFich(f) {
-      var esImg = /^image\//.test(f.mime), leible = /^(application\/pdf|image\/)/.test(f.mime) && /factura|presupuesto_proveedor|otro/.test(f.tipo);
-      return '<div class="ar-fila" data-id="' + f.id + '"><a class="ar-ver" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + (esImg ? '<img src="' + esc(f.url) + '" alt="">' : '<span>' + esc((f.nombre.split('.').pop() || '').toUpperCase()) + '</span>') + '</a>' +
-        '<div class="ar-campos"><div class="ar-top"><strong>' + esc(f.nombre) + '</strong><small>' + esc(TIPO_F[f.tipo] || f.tipo) + ' · ' + fecha(f.created_at) + (f.leido_ia ? ' · leído con IA' : '') + (f.notas ? ' · ' + esc(f.notas) : '') + '</small></div>' +
-        '<div class="ar-g"><label>Tipo<select data-k="tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === f.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select></label>' +
-        '<label>Proveedor / cliente<input data-k="proveedor" value="' + esc(f.proveedor || '') + '"></label>' +
-        '<label>Fecha<input type="date" data-k="fecha" value="' + esc(f.fecha || '') + '"></label>' +
-        '<label>Base (€)<input data-k="base" inputmode="decimal" value="' + numOut(f.base) + '"></label>' +
-        '<label>IVA (€)<input data-k="iva" inputmode="decimal" value="' + numOut(f.iva) + '"></label>' +
-        '<label>Total (€)<input data-k="total" inputmode="decimal" value="' + numOut(f.total) + '"></label></div>' +
-        '<div class="pa-btns"><button class="pa-btn primary" data-a="guardar">Guardar</button>' + (leible ? '<button class="pa-btn" data-a="ia">Leer con IA</button>' : '') +
-        '<a class="pa-btn" href="' + esc(f.url) + '&download=' + encodeURIComponent(f.nombre) + '">Descargar</a><button class="pa-btn" data-a="borrar">Borrar</button></div></div></div>';
-    }
+    function versionesTxt(x) { return x.version_actual; }
+    var vistas = [];
     function pintar() {
       var lista = items.filter(function (x) { return !filtroDoc.tipo || grupo(x) === filtroDoc.tipo; })
-        .sort(function (a, b) { return filtroDoc.orden === 'antiguo' ? String(a.created_at).localeCompare(String(b.created_at)) : String(b.created_at).localeCompare(String(a.created_at)); });
+        .sort(function (a, b) { return filtroDoc.orden === 'antiguo' ? String(fechaDe(a)).localeCompare(String(fechaDe(b))) : String(fechaDe(b)).localeCompare(String(fechaDe(a))); });
+      vistas = lista;
       el.querySelectorAll('#dcFiltros [data-f]').forEach(function (b) {
         var n = b.dataset.f ? items.filter(function (x) { return grupo(x) === b.dataset.f; }).length : items.length;
         b.classList.toggle('on', b.dataset.f === filtroDoc.tipo); b.dataset.n = n; b.classList.toggle('vacio', !n);
       });
-      el.querySelector('#dcLista').innerHTML = lista.length ? lista.map(function (x) { return x.kind === 'doc' ? '<ul class="ng-lista dc-doc">' + filaDoc(x) + '</ul>' : filaFich(x); }).join('')
-        : '<p class="pa-muted">' + (items.length ? 'Nada de este tipo.' : 'Aún no hay documentos. Descarga los alzados o el presupuesto, o sube facturas, planos y fotos.') + '</p>';
+      el.querySelector('#dcLista').innerHTML = lista.length ? lista.map(tarjeta).join('')
+        : '<p class="pa-muted">' + (items.length ? 'Nada de este tipo.' : 'Aún no hay documentos. Guarda un diseño, descarga un presupuesto o sube facturas, planos y fotos.') + '</p>';
+      miniaturasPendientes();
+    }
+    // Miniaturas que faltan: se generan al verse la tarjeta, de 2 en 2
+    var obs = null, enCurso = 0, pendientes = [];
+    function miniaturasPendientes() {
+      if (obs) obs.disconnect();
+      if (!('IntersectionObserver' in window)) return;
+      obs = new IntersectionObserver(function (ents) {
+        ents.forEach(function (en) { if (en.isIntersecting) { obs.unobserve(en.target); pendientes.push(en.target); siguiente(); } });
+      }, { rootMargin: '200px' });
+      el.querySelectorAll('[data-mini]').forEach(function (n) { obs.observe(n); });
+    }
+    function siguiente() {
+      if (enCurso >= 2 || !pendientes.length) return;
+      var n = pendientes.shift(), x = vistas[Number(n.dataset.mini)]; if (!x) return siguiente();
+      enCurso++;
+      crearMiniatura(ctx, pid, x).then(function (url) { x.miniatura_url = url; if (n.isConnected) n.outerHTML = '<img src="' + url + '" alt="">'; })
+        .catch(function () { /* se queda el icono */ }).then(function () { enCurso--; siguiente(); });
     }
     function cargar() {
-      return Promise.all([api(ctx, { action: 'documentos', proyecto_id: pid }), api(ctx, { action: 'ficheros', proyecto_id: pid })]).then(function (rs) {
-        var a = rs[1].almacenamiento;
+      return Promise.all([api(ctx, { action: 'disenos', proyecto_id: pid }), api(ctx, { action: 'documentos', proyecto_id: pid }), api(ctx, { action: 'ficheros', proyecto_id: pid })]).then(function (rs) {
+        var a = rs[2].almacenamiento;
         el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
-        items = rs[0].documentos.map(function (x) { return Object.assign({ kind: 'doc' }, x); }).concat(rs[1].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
+        items = rs[0].disenos.map(function (x) { return Object.assign({ kind: 'diseno' }, x); })
+          .concat(rs[1].documentos.filter(function (x) { return !x.diseno_id; }).map(function (x) { return Object.assign({ kind: 'doc', mime: /\.xlsx$/i.test(x.nombre) ? 'xlsx' : 'application/pdf' }, x); }))
+          .concat(rs[2].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
         pintar();
       }).catch(function (e) { el.querySelector('#dcLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     }
+    // ── Subida: arrastrar o elegir varios, con tipo sugerido para cada uno ──
+    function pintarCola() {
+      el.querySelector('#dcCola').innerHTML = cola.length ? '<div class="dc-cola">' + cola.map(function (c, i) {
+        return '<div class="dc-cola-f"><span>' + esc(c.f.name) + ' <small class="pa-muted">' + Math.max(1, Math.round(c.f.size / 1024)) + ' KB</small></span><select data-cola="' + i + '">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === c.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select><button type="button" class="pa-btn" data-quitar-cola="' + i + '">×</button></div>';
+      }).join('') + '<div class="pr-barra"><button type="button" class="pa-btn primary" id="dcSubir">Subir ' + cola.length + (cola.length === 1 ? ' archivo' : ' archivos') + '</button><button type="button" class="pa-btn" id="dcVaciar">Cancelar</button></div></div>' : '';
+    }
+    function anadir(files) { [].slice.call(files || []).forEach(function (f) { cola.push({ f: f, tipo: tipoSugerido(f) }); }); pintarCola(); }
+    var drop = el.querySelector('#dcDrop');
+    ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('sobre'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('sobre'); }); });
+    drop.addEventListener('drop', function (e) { anadir(e.dataTransfer.files); });
+    el.querySelector('#dcFile').addEventListener('change', function () { anadir(this.files); this.value = ''; });
+    function subirCola() {
+      var lote = cola.slice(); cola = []; pintarCola();
+      var hechos = 0, errores = [];
+      return lote.reduce(function (p, c) {
+        return p.then(function () {
+          msg('Subiendo ' + (hechos + 1) + ' de ' + lote.length + '…');
+          var f = c.f, mime = f.type || (/\.xlsx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : /\.xls$/i.test(f.name) ? 'application/vnd.ms-excel' : '');
+          return api(ctx, { action: 'fichero_subida', proyecto_id: pid, nombre: f.name, mime: mime, bytes: f.size, tipo: c.tipo }).then(function (d) {
+            return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: mime }).then(function (r) {
+              if (r.error) throw new Error('No se ha podido subir «' + f.name + '».');
+              return api(ctx, { action: 'fichero_guardar', id: d.id, subido: true, tipo: c.tipo });
+            });
+          }).then(function () { hechos++; }, function (err) { errores.push(f.name + ': ' + err.message); });
+        });
+      }, Promise.resolve()).then(function () { msg(errores.length ? errores.join(' · ') : hechos + (hechos === 1 ? ' archivo subido' : ' archivos subidos'), errores.length ? 'err' : 'ok'); return cargar(); });
+    }
+    // ── Datos de un archivo (base, IVA, proveedor…) y «Leer con IA» ──
+    function datos(x) {
+      var leible = /^(application\/pdf|image\/)/.test(x.mime || '');
+      var m = document.createElement('div'); m.className = 'eu-modal';
+      m.innerHTML = '<div class="eu-modal-caja" style="max-width:560px"><h2>' + esc(x.nombre) + '</h2><div class="ar-g" style="margin-top:10px">' +
+        '<label>Tipo<select data-k="tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === x.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select></label>' +
+        '<label>Proveedor / cliente<input data-k="proveedor" value="' + esc(x.proveedor || '') + '"></label>' +
+        '<label>Fecha<input type="date" data-k="fecha" value="' + esc(x.fecha || '') + '"></label>' +
+        '<label>Base (€)<input data-k="base" inputmode="decimal" value="' + numOut(x.base) + '"></label>' +
+        '<label>IVA (€)<input data-k="iva" inputmode="decimal" value="' + numOut(x.iva) + '"></label>' +
+        '<label>Total (€)<input data-k="total" inputmode="decimal" value="' + numOut(x.total) + '"></label></div>' +
+        (x.notas ? '<p class="pa-muted" style="font-size:12px">' + esc(x.notas) + '</p>' : '') + '<span class="pr-msg" id="dmMsg"></span>' +
+        '<div class="eu-modal-bot">' + (leible ? '<button class="pa-btn" data-m="ia">Leer con IA</button>' : '') + '<button class="pa-btn" data-m="cerrar">Cerrar</button><button class="pa-btn primary" data-m="guardar">Guardar</button></div></div>';
+      document.body.appendChild(m);
+      var mm = function (t, k) { var q = m.querySelector('#dmMsg'); q.className = 'pr-msg ' + (k || ''); q.textContent = t; };
+      m.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-m]'); if (!b) { if (e.target === m) m.remove(); return; }
+        if (b.dataset.m === 'cerrar') return m.remove();
+        if (b.dataset.m === 'guardar') {
+          var d = { action: 'fichero_guardar', id: x.id };
+          m.querySelectorAll('[data-k]').forEach(function (i) { d[i.dataset.k] = i.value; });
+          return api(ctx, d).then(function () { m.remove(); msg('Guardado', 'ok'); cargar(); }).catch(function (err) { mm(err.message, 'err'); });
+        }
+        if (b.dataset.m === 'ia') {
+          if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = 'Gasta ≈ 1–2 créditos · ¿leer?'; b.classList.add('primary'); return; }
+          b.disabled = true; b.textContent = 'Leyendo…';
+          api(ctx, { action: 'fichero_leer_ia', id: x.id }).then(function (d) { m.remove(); msg('Leído con IA (' + d.creditos + (d.creditos === 1 ? ' crédito' : ' créditos') + '). Revisa los datos.', 'ok'); if (ctx.alCambiar) ctx.alCambiar(); return cargar().then(function () { var y = items.filter(function (z) { return z.id === x.id; })[0]; if (y) datos(y); }); })
+            .catch(function (err) { mm(err.message, 'err'); b.disabled = false; b.textContent = 'Leer con IA'; });
+        }
+      });
+    }
     el.querySelector('#dcFiltros').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; filtroDoc.tipo = b.dataset.f; pintar(); });
     el.querySelector('#dcOrden').addEventListener('change', function () { filtroDoc.orden = this.value; pintar(); });
-    el.querySelector('#arForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var f = el.querySelector('#arFile').files[0]; if (!f) return;
-      var mime = f.type || (/\.xlsx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : /\.xls$/i.test(f.name) ? 'application/vnd.ms-excel' : '');
-      msg('Subiendo…');
-      api(ctx, { action: 'fichero_subida', proyecto_id: pid, nombre: f.name, mime: mime, bytes: f.size, tipo: el.querySelector('#arTipo').value }).then(function (d) {
-        return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: mime }).then(function (r) {
-          if (r.error) throw new Error('No se ha podido subir el archivo.');
-          return api(ctx, { action: 'fichero_guardar', id: d.id, subido: true, tipo: el.querySelector('#arTipo').value });
-        });
-      }).then(function () { el.querySelector('#arFile').value = ''; msg('Archivo subido', 'ok'); cargar(); })
-        .catch(function (err) { msg(err.message, 'err'); });
+    el.addEventListener('change', function (e) {
+      if (e.target.dataset.cola !== undefined) { cola[Number(e.target.dataset.cola)].tipo = e.target.value; return; }
+      if (e.target.dataset.tipo !== undefined) {
+        var x = vistas[Number(e.target.dataset.tipo)];
+        api(ctx, { action: 'fichero_guardar', id: x.id, tipo: e.target.value }).then(function () { msg('Tipo cambiado', 'ok'); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
+      }
     });
     el.addEventListener('click', function (e) {
-      var bd = e.target.closest('[data-borrar]');
-      if (bd) {
-        if (!bd.dataset.ok) { bd.dataset.ok = '1'; bd.textContent = '¿Seguro?'; bd.classList.add('primary'); return; }
-        return api(ctx, { action: 'doc_borrar', id: bd.dataset.borrar }).then(cargar).catch(function (err) { alert(err.message); });
-      }
+      if (e.target.id === 'dcSubir') return subirCola();
+      if (e.target.id === 'dcVaciar') { cola = []; pintarCola(); return; }
+      if (e.target.dataset.quitarCola !== undefined) { cola.splice(Number(e.target.dataset.quitarCola), 1); pintarCola(); return; }
       var b = e.target.closest('[data-a]'); if (!b) return;
-      var fila = b.closest('.ar-fila'), id = fila.dataset.id;
-      if (b.dataset.a === 'guardar') {
-        var datos = { action: 'fichero_guardar', id: id };
-        fila.querySelectorAll('[data-k]').forEach(function (i) { datos[i.dataset.k] = i.value; });
-        api(ctx, datos).then(function () { msg('Guardado', 'ok'); cargar(); }).catch(function (err) { msg(err.message, 'err'); });
-      } else if (b.dataset.a === 'ia') {
-        if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = 'Gasta ≈ 1–2 créditos · ¿leer?'; b.classList.add('primary'); return; }
-        b.disabled = true; b.textContent = 'Leyendo…';
-        api(ctx, { action: 'fichero_leer_ia', id: id }).then(function (d) { msg('Leído con IA (' + d.creditos + (d.creditos === 1 ? ' crédito' : ' créditos') + '). Revisa los datos.', 'ok'); cargar(); if (ctx.alCambiar) ctx.alCambiar(); })
-          .catch(function (err) { msg(err.message, 'err'); b.disabled = false; b.textContent = 'Leer con IA'; });
-      } else if (b.dataset.a === 'borrar') {
-        if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('primary'); return; }
-        api(ctx, { action: 'fichero_borrar', id: id }).then(cargar).catch(function (err) { msg(err.message, 'err'); });
+      var x = vistas[Number(b.dataset.i)]; if (!x) return;
+      var a = b.dataset.a;
+      if (a === 'editar') { try { sessionStorage.setItem(CLAVE_EDITAR, x.id); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'diseno'); if (ctx.alNavegar) ctx.alNavegar(); return; }
+      if (a === 'presupuesto') { try { sessionStorage.setItem(CLAVE_PRE, JSON.stringify({ tabla: x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? 'doc' : 'fichero', id: x.id })); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'presupuesto'); if (ctx.alNavegar) ctx.alNavegar(); return; }
+      if (a === 'json') return api(ctx, { action: 'diseno_json', proyecto_id: pid, diseno_id: x.id }).then(function (d) { descargar(new Blob([JSON.stringify(d.datos, null, 2)], { type: 'application/json' }), (x.nombre || 'diseno').replace(/[^\wÀ-ÿ-]+/g, '_') + '.json'); });
+      if (a === 'datos') return datos(x);
+      if (a === 'borrar') {
+        if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('on'); return; }
+        var accion = x.kind === 'diseno' ? { action: 'diseno_borrar', proyecto_id: pid, diseno_id: x.id } : x.kind === 'doc' ? { action: 'doc_borrar', id: x.id } : { action: 'fichero_borrar', id: x.id };
+        api(ctx, accion).then(cargar).catch(function (err) { msg(err.message, 'err'); });
       }
     });
     cargar();
   }
+  var CLAVE_PRE = 'estudio-presupuesto-desde';
 
   // ── Métricas del proyecto ──
   var COL_CAT = { proveedores: '#161616', materiales: '#8a6234', mano_obra: '#12B76A', transporte: '#b9b6ad', montaje: '#5f5b52', otros: '#d9d3c8', comision: '#c08a2b' };
@@ -459,31 +617,28 @@
   // ════════════════════════════════════════════════════════════════
   // Presupuesto
   // ════════════════════════════════════════════════════════════════
-  function presupuesto(el, ctx, pid) {
+  function presupuesto(el, ctx, pid, opts) {
+    opts = opts || {};
     var supa = ctx.supa, proyecto, doc = null, iva = 21, versionActual = 0, ocupado = false;
-    var lista = [], info = { versiones: [], documentos: [], siguiente: '' }, sel = null;
-    el.innerHTML = '<div class="pa-hero"><div><h1 id="prTitulo">Presupuestos</h1><p id="prSub" class="pa-muted"></p></div></div>' +
+    var lista = [], info = { versiones: [], disenos: [], documentos: [], siguiente: '' }, sel = null;
+    var pre = null; try { pre = JSON.parse(sessionStorage.getItem(CLAVE_PRE) || 'null'); sessionStorage.removeItem(CLAVE_PRE); } catch (e) { /* */ }
+    el.innerHTML = (opts.embebido ? '<p id="prSub" class="pa-muted" style="margin:0 0 8px"></p>' : '<div class="pa-hero"><div><h1 id="prTitulo">Presupuestos</h1><p id="prSub" class="pa-muted"></p></div></div>') +
       '<div class="pr-card" id="prLista"><p class="pa-muted">Cargando…</p></div><div class="pr-card" id="prNuevo" hidden></div><div id="prZona"></div>';
     supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle().then(function (r) {
       proyecto = r && r.data;
       if (!proyecto) { $('#prLista').innerHTML = 'Proyecto no encontrado.'; return; }
-      $('#prTitulo').textContent = 'Presupuestos · ' + proyecto.nombre;
-      return cargarLista(true);
+      if ($('#prTitulo')) $('#prTitulo').textContent = 'Presupuestos · ' + proyecto.nombre;
+      // Al entrar: solo la lista (ninguno abierto); desde «Crear presupuesto» de un documento, el asistente
+      return cargarLista(false).then(function () { if (pre) pintarNuevo(pre); });
     });
 
     // ── Lista de presupuestos del proyecto ──
-    function cargarLista(abrirPrincipal) {
+    function cargarLista(reabrir) {
       return api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) {
         lista = d.presupuestos; info = d;
-        if (abrirPrincipal || !sel) {
-          var acc = lista.filter(function (x) { return x.estado === 'aceptado'; })[0];
-          var ult = lista.slice().sort(function (a, b) { return String(b.actualizado).localeCompare(String(a.actualizado)); })[0];
-          sel = (acc || ult || {}).id || null;
-        }
         pintarLista();
-        if (sel) return abrir(sel);
-        $('#prZona').innerHTML = '';
-        $('#prSub').textContent = 'Aún no hay presupuestos. Crea el primero desde el diseño, desde documentos o en blanco.';
+        if (reabrir && sel) return abrir(sel);
+        if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = lista.length ? 'Abre un presupuesto de la lista o crea uno nuevo.' : 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.'; }
       });
     }
     function pintarLista() {
@@ -497,51 +652,55 @@
     }
 
     // ── Nuevo presupuesto: desde el diseño, desde documentos o en blanco ──
-    function pintarNuevo() {
+    function pintarNuevo(preSel) {
+      // Se cierra cualquier presupuesto abierto
+      sel = null; doc = null; $('#prZona').innerHTML = ''; pintarLista();
       var z = $('#prNuevo'); z.hidden = false;
-      var ult = info.versiones.length ? info.versiones[info.versiones.length - 1].numero : null;
+      var hayDocs = info.disenos.length || info.documentos.length;
+      var marcado = function (tabla, id) { return preSel && preSel.tabla === tabla && preSel.id === id; };
       z.innerHTML = '<h3 style="margin-top:0">Nuevo presupuesto</h3>' +
         '<div class="pn-fila"><label>N.º de presupuesto <input id="pnNum" value="' + esc(info.siguiente || '') + '" placeholder="Z…"></label></div>' +
-        '<div class="pn-bases">' +
-        '<label class="pn-base"><input type="radio" name="pnBase" value="versiones"' + (info.versiones.length ? ' checked' : ' disabled') + '> <b>Desde el diseño</b><small>Una o varias versiones de los alzados, eligiendo qué armarios entran.</small></label>' +
-        '<label class="pn-base"><input type="radio" name="pnBase" value="documentos"' + (!info.versiones.length && info.documentos.length ? ' checked' : '') + (info.documentos.length ? '' : ' disabled') + '> <b>Desde documentos</b><small>Claude lee planos, croquis o presupuestos (de proveedor u otros) y propone las partidas. Gasta créditos.</small></label>' +
-        '<label class="pn-base"><input type="radio" name="pnBase" value="blanco"' + (!info.versiones.length && !info.documentos.length ? ' checked' : '') + '> <b>En blanco</b><small>Partidas a mano.</small></label></div>' +
-        '<div class="pn-det" data-base="versiones">' + (info.versiones.length ? info.versiones.slice().reverse().map(function (v) {
-          var on = v.numero === ult;
-          return '<div class="pn-ver"><label><input type="checkbox" data-ver="' + v.numero + '"' + (on ? ' checked' : '') + '> <b>Versión v' + v.numero + '</b></label><div class="pn-arm">' + v.armarios.map(function (a) {
-            return '<label><input type="checkbox" data-arm="' + v.numero + '" value="' + esc(a.codigo) + '"' + (on ? ' checked' : '') + '> ' + esc(a.codigo + ' ' + (a.titulo || '')) + '</label>';
+        '<div class="pn-bases pn-bases-2">' +
+        '<label class="pn-base"><input type="radio" name="pnBase" value="documentos"' + (hayDocs ? ' checked' : ' disabled') + '> <b>Desde documentos</b><small>Diseños, planos, croquis o presupuestos del proyecto. De los diseños salen partidas con su dibujo; del resto, Claude propone las partidas (gasta créditos).</small></label>' +
+        '<label class="pn-base"><input type="radio" name="pnBase" value="blanco"' + (hayDocs ? '' : ' checked') + '> <b>En blanco</b><small>Partidas a mano.</small></label></div>' +
+        '<div class="pn-det" data-base="documentos">' +
+        (info.disenos.length ? '<h4 class="pn-h">Diseños</h4>' + info.disenos.map(function (d) {
+          var on = marcado('diseno', d.id) || (!preSel && info.disenos.length === 1);
+          return '<div class="pn-ver"><label class="pn-dis"><input type="checkbox" data-dis="' + d.id + '"' + (on ? ' checked' : '') + '><span class="pn-mini">' + (d.miniatura || '') + '</span><b>' + esc(d.nombre) + '</b>' + (d.guardado ? '' : ' <span class="pr-tag">sin guardar</span>') + '</label><div class="pn-arm">' + d.armarios.map(function (a) {
+            return '<label><input type="checkbox" data-arm="' + d.id + '" value="' + esc(a.codigo) + '"' + (on ? ' checked' : '') + '> ' + esc(a.codigo + ' ' + (a.titulo || '')) + '</label>';
           }).join('') + '</div></div>';
-        }).join('') : '<p class="pa-muted">El proyecto aún no tiene versiones del diseño.</p>') + '</div>' +
-        '<div class="pn-det" data-base="documentos" hidden>' + (info.documentos.length ? info.documentos.map(function (x) {
-          return '<label class="pn-doc"><input type="checkbox" data-doc="' + x.tabla + ':' + x.id + '"> ' + esc(x.nombre) + ' <small class="pa-muted">' + esc(TIPO_DOC[x.tipo] || TIPO_F[x.tipo] || x.tipo) + '</small></label>';
-        }).join('') + '<p class="pa-muted" style="font-size:12px">Hasta 4 documentos (PDF o fotos).</p>' : '<p class="pa-muted">Sube antes planos o presupuestos en «Documentos».</p>') + '</div>' +
+        }).join('') : '') +
+        (info.documentos.filter(function (x) { return x.tipo !== 'alzados_pdf' || true; }).length ? '<h4 class="pn-h">Otros documentos <small class="pa-muted">(Claude los lee · hasta 4)</small></h4>' + info.documentos.map(function (x) {
+          return '<label class="pn-doc"><input type="checkbox" data-doc="' + x.tabla + ':' + x.id + '"' + (marcado(x.tabla, x.id) ? ' checked' : '') + '> ' + esc(x.nombre) + ' <small class="pa-muted">' + esc(TIPO_DOC[x.tipo] || TIPO_F[x.tipo] || x.tipo) + '</small></label>';
+        }).join('') : '') +
+        (hayDocs ? '' : '<p class="pa-muted">Aún no hay documentos: guarda un diseño o sube planos y presupuestos en «Documentos».</p>') + '</div>' +
         '<div class="pr-barra"><button class="pa-btn primary" id="pnCrear">Crear presupuesto</button><button class="pa-btn" id="pnCancelar">Cancelar</button><span id="pnMsg" class="pr-msg"></span></div>';
       var mostrar = function () { var v = (z.querySelector('[name=pnBase]:checked') || {}).value; z.querySelectorAll('.pn-det').forEach(function (d) { d.hidden = d.dataset.base !== v; }); };
       z.querySelectorAll('[name=pnBase]').forEach(function (r) { r.addEventListener('change', mostrar); });
-      z.querySelectorAll('[data-ver]').forEach(function (c) { c.addEventListener('change', function () { z.querySelectorAll('[data-arm="' + c.dataset.ver + '"]').forEach(function (a) { a.checked = c.checked; }); }); });
+      z.querySelectorAll('[data-dis]').forEach(function (c) { c.addEventListener('change', function () { z.querySelectorAll('[data-arm="' + c.dataset.dis + '"]').forEach(function (a) { a.checked = c.checked; }); }); });
       mostrar();
+      z.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
     function crearNuevo() {
       var z = $('#prNuevo'), tipo = (z.querySelector('[name=pnBase]:checked') || {}).value || 'blanco', base = { tipo: tipo };
-      if (tipo === 'versiones') {
-        base.versiones = [];
-        z.querySelectorAll('[data-ver]').forEach(function (c) {
-          var arm = [].slice.call(z.querySelectorAll('[data-arm="' + c.dataset.ver + '"]:checked')).map(function (a) { return a.value; });
-          if (arm.length) base.versiones.push({ numero: Number(c.dataset.ver), armarios: arm });
+      if (tipo === 'documentos') {
+        base.documentos = [];
+        z.querySelectorAll('[data-dis]').forEach(function (c) {
+          var arm = [].slice.call(z.querySelectorAll('[data-arm="' + c.dataset.dis + '"]:checked')).map(function (a) { return a.value; });
+          if (arm.length) base.documentos.push({ tabla: 'diseno', id: c.dataset.dis, armarios: arm });
         });
-        if (!base.versiones.length) throw new Error('Elige al menos un armario.');
-        base.versiones.sort(function (a, b) { return a.numero - b.numero; });
-      } else if (tipo === 'documentos') {
-        base.documentos = [].slice.call(z.querySelectorAll('[data-doc]:checked')).map(function (c) { var p = c.dataset.doc.split(':'); return { tabla: p[0], id: p[1] }; });
-        if (!base.documentos.length) throw new Error('Elige al menos un documento.');
-        if (base.documentos.length > 4) throw new Error('Elige como mucho 4 documentos.');
+        var otros = [].slice.call(z.querySelectorAll('[data-doc]:checked')).map(function (c) { var p = c.dataset.doc.split(':'); return { tabla: p[0], id: p[1] }; });
+        if (otros.length > 4) throw new Error('Elige como mucho 4 documentos para que los lea Claude.');
+        base.documentos = base.documentos.concat(otros);
+        if (!base.documentos.length) throw new Error('Elige al menos un diseño (con algún armario) o un documento.');
       }
       return api(ctx, { action: 'presupuesto_nuevo', proyecto_id: pid, numero: z.querySelector('#pnNum').value, base: base });
     }
 
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
     var estadoP = 'borrador', importado = null, importes = null;
-    function abrir(id) { sel = id; pintarLista(); return api(ctx, { action: 'presupuesto', presupuesto_id: id }).then(cargar); }
+    function refrescarLista() { return api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) { lista = d.presupuestos; pintarLista(); }); }
+    function abrir(id) { sel = id; $('#prNuevo').hidden = true; pintarLista(); $('#prZona').innerHTML = '<div class="pr-card pa-muted">Abriendo…</div>'; return api(ctx, { action: 'presupuesto', presupuesto_id: id }).then(cargar); }
     function cargar(d) {
       doc = d.presupuesto; importado = d.importado || null; importes = d.importes || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador';
       if (d.id && d.id !== sel) { sel = d.id; }
@@ -642,7 +801,7 @@
     el.addEventListener('input', function () { if (doc) recalcular(); });
     el.addEventListener('change', function (e) {
       if (doc && (e.target.id === 'prComOn' || (e.target.dataset && e.target.dataset.p === 'precio_manual'))) recalcular();
-      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { cargarLista(false); });
+      if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { api(ctx, { action: 'presupuestos', proyecto_id: pid }).then(function (d) { lista = d.presupuestos; pintarLista(); }); });
     });
 
     function guardar() { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: leer() }).then(function (d) { cargar(d); return d; }); }
@@ -654,21 +813,21 @@
     }
     el.addEventListener('click', function (e) {
       var id = e.target.id, t = e.target;
-      if (id === 'prNuevoBtn') return pintarNuevo();
+      if (id === 'prNuevoBtn') return pintarNuevo(null);
       if (id === 'pnCancelar') { $('#prNuevo').hidden = true; return; }
       if (id === 'pnCrear') return bloquear(function () {
-        return crearNuevo().then(function (d) { $('#prNuevo').hidden = true; sel = d.id; if (ctx.alCambiar) ctx.alCambiar(); return cargarLista(false).then(function () { return 'Presupuesto ' + (d.numero || '') + ' creado'; }); });
+        return crearNuevo().then(function (d) { $('#prNuevo').hidden = true; sel = d.id; if (ctx.alCambiar) ctx.alCambiar(); return cargarLista(true).then(function () { return 'Presupuesto ' + (d.numero || '') + ' creado'; }); });
       }, 'Creando…');
       if (t.dataset.abrir) return abrir(t.dataset.abrir);
       if (t.dataset.duplicar) return bloquear(function () {
-        return api(ctx, { action: 'presupuesto_duplicar', presupuesto_id: t.dataset.duplicar }).then(function (d) { sel = d.id; return cargarLista(false).then(function () { return 'Duplicado como ' + (d.numero || ''); }); });
+        return api(ctx, { action: 'presupuesto_duplicar', presupuesto_id: t.dataset.duplicar }).then(function (d) { sel = d.id; return cargarLista(true).then(function () { return 'Duplicado como ' + (d.numero || ''); }); });
       }, 'Duplicando…');
       if (t.dataset.quitar !== undefined && doc) { var d0 = leer(); d0.partidas.splice(Number(t.dataset.quitar), 1); return bloquear(function () { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: d0 }).then(cargar).then(function () { return 'Partida quitada'; }); }, 'Guardando…'); }
       if (id === 'prAnadir' && doc) { var d1 = leer(); d1.partidas.push({ titulo: 'NUEVA PARTIDA', cantidad: 1, precio: null, dto_pct: 0 }); return bloquear(function () { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: d1 }).then(cargar).then(function () { return 'Partida añadida'; }); }, 'Guardando…'); }
       if (id === 'prGenerar') bloquear(function () {
-        return guardar().then(function () { return api(ctx, { action: 'presupuesto_generar', presupuesto_id: sel }); }).then(cargar).then(function () { cargarLista(false); return 'Recalculado con la tarifa (se conservan precios a mano y textos editados)'; });
+        return guardar().then(function () { return api(ctx, { action: 'presupuesto_generar', presupuesto_id: sel }); }).then(cargar).then(function () { refrescarLista(); return 'Recalculado con la tarifa (se conservan precios a mano y textos editados)'; });
       }, 'Recalculando…');
-      if (id === 'prGuardar') bloquear(function () { return guardar().then(function () { cargarLista(false); return 'Guardado'; }); }, 'Guardando…');
+      if (id === 'prGuardar') bloquear(function () { return guardar().then(function () { refrescarLista(); return 'Guardado'; }); }, 'Guardando…');
       if (id === 'prTextos') bloquear(function () {
         return guardar().then(function () { return api(ctx, { action: 'presupuesto_textos', presupuesto_id: sel }); })
           .then(function (d) { cargar(d); if (ctx.alCambiar) ctx.alCambiar(); return 'Textos redactados' + (ctx.modo === 'admin' ? ' · ' + String(d.coste_usd).replace('.', ',') + ' $' : ''); });

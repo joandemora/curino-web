@@ -77,7 +77,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   var rutas = {
     estudio: function (pid, tab) { return '#proyectos' + (pid ? '/' + pid + (tab && tab !== 'diseno' ? '/' + tab : '') : ''); },
     creditos: function () { return '#creditos'; },
-    presupuesto: function (pid) { return '#presupuesto/' + pid; },
+    presupuesto: function (pid) { return '#proyectos/' + pid + '/presupuesto'; },
     datos: function () { return '#datos'; },
     tarifa: function () { return '#tarifa'; }
   };
@@ -167,8 +167,8 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
     main.innerHTML = aviso + '<div id="euVista"></div>';
     var v = $('#euVista');
     if (t === 'presupuesto' && id) {
-      v.insertAdjacentHTML('beforebegin', '<p><a href="' + rutas.estudio(id) + '">← Volver al proyecto</a> · <a href="' + rutas.estudio(id, 'documentos') + '">Documentos</a></p>');
-      EstudioUI.presupuesto(v, ctx(), id);
+      // Enlace antiguo: el presupuesto ahora es una pestaña de la ficha del proyecto
+      location.replace('#proyectos/' + id + '/presupuesto'); return;
     } else if (t === 'datos') {
       v.className = 'tf-grid'; EstudioUI.plantilla(v, ctx());
     } else if (t === 'tarifa') {
