@@ -47,11 +47,13 @@ export interface Comision { activa: boolean; pct: number; paga: 'cliente' | 'int
 export interface DocPresupuesto {
   numero: string;
   fecha: string;           // AAAA-MM-DD
-  atencion: string;
+  atencion: string;        // cliente (nombre o empresa)
+  cliente_nif?: string;
+  direccion_facturacion?: string;
   proyecto: string;
-  proyecto_2: string;      // segunda línea (ciudad…)
+  proyecto_2: string;      // dirección del proyecto (antes «2.ª línea»)
   validez: string;         // «30 DÍAS»
-  seccion: string;         // «MOBILIARIO A MEDIDA»
+  seccion: string;         // ya no se muestra (se conserva en presupuestos antiguos)
   version: number;         // versión del proyecto de la que sale (la primera si hay varias)
   versiones?: number[];    // versiones del diseño usadas
   comision?: Comision;

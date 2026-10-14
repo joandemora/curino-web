@@ -50,7 +50,7 @@ export interface Ctx {
 }
 
 const ACCIONES = new Set(['tarifa', 'tarifa_guardar', 'plantilla', 'plantilla_guardar', 'plantilla_subida',
-  'presupuestos', 'presupuesto_nuevo', 'presupuesto_duplicar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
+  'presupuesto_borrar', 'presupuesto_asistente', 'presupuesto_vista', 'presupuestos', 'presupuesto_nuevo', 'presupuesto_duplicar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
 export const esAccionPresupuesto = (a: string) => ACCIONES.has(a);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -194,7 +194,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', proyectoId).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
   // Sin id: el principal del proyecto (el aceptado o el último modificado)
-  if (!fila && action !== 'presupuestos' && action !== 'presupuesto_nuevo') {
+  if (!fila && !['presupuestos', 'presupuesto_nuevo', 'presupuesto_asistente', 'presupuesto_borrar'].includes(action)) {
     fila = (await supa.from('estudio_presupuesto_principal').select('*').eq('proyecto_id', proyectoId).maybeSingle()).data;
   }
   const duenoAdmin = await emisorCurinoDe(supa, proyecto.user_id);
@@ -231,21 +231,61 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     enviado_at: fila?.enviado_at ?? null, aceptado_at: fila?.aceptado_at ?? null, rechazado_at: fila?.rechazado_at ?? null
   });
   const cabecera = (numero: string): Omit<DocPresupuesto, 'version' | 'partidas'> => ({
-    numero, fecha: hoy, atencion: String(proyecto.nombre || '').replace(/^\d{1,4}\s*-\s*/, ''),
-    proyecto: 'MOBILIARIO A MEDIDA', proyecto_2: '', validez: '30 DÍAS', seccion: 'MOBILIARIO A MEDIDA'
+    numero, fecha: hoy, atencion: proyecto.cliente_nombre || String(proyecto.nombre || '').replace(/^\d{1,4}\s*-\s*/, ''),
+    cliente_nif: proyecto.cliente_nif || '', direccion_facturacion: proyecto.cliente_direccion || '',
+    proyecto: 'MOBILIARIO A MEDIDA', proyecto_2: proyecto.obra_direccion || '', validez: '30 DÍAS', seccion: ''
   });
   /** Siguiente n.º Z del usuario (el mayor + 1); vacío si no usa ese formato. */
   const siguienteZ = async () => {
     const { data: ps } = await supa.from('estudio_proyectos').select('id').eq('user_id', proyecto.user_id);
     const ids = (ps ?? []).map((x: Any) => x.id);
-    const { data: ns } = ids.length ? await supa.from('estudio_presupuestos').select('numero, datos').in('proyecto_id', ids) : { data: [] };
+    const { data: ns } = ids.length ? await supa.from('estudio_presupuestos').select('numero').in('proyecto_id', ids) : { data: [] };
     let max = 0, ancho = 0;
     for (const x of ns ?? []) {
-      const m = String(x.numero || x.datos?.numero || '').match(/^z(\d{3,})/i);
+      const m = String(x.numero || '').match(/^z(\d{3,})/i);
       if (m && Number(m[1]) > max) { max = Number(m[1]); ancho = m[1].length; }
     }
     return max ? 'Z' + String(max + 1).padStart(ancho, '0') : '';
   };
+
+  if (action === 'presupuesto_borrar') {
+    if (!fila) return json({ error: 'Presupuesto no encontrado' }, 404);
+    if (fila.estado === 'aceptado' && body?.confirmar_aceptado !== true) return json({ error: 'Es el presupuesto aceptado: confirma que quieres borrarlo.', requiere_confirmacion: true }, 400);
+    if (body?.borrar_documentos === true) {
+      const { data: ds } = await supa.from('estudio_documentos').select('id, path, miniatura_path').eq('presupuesto_id', fila.id);
+      const paths = (ds ?? []).flatMap((x: Any) => [x.path, x.miniatura_path]).filter(Boolean);
+      if (paths.length) await supa.storage.from('estudio').remove(paths);
+      if (ds?.length) await supa.from('estudio_documentos').delete().in('id', ds.map((x: Any) => x.id));
+    }
+    const r = await supa.from('estudio_presupuestos').delete().eq('id', fila.id);
+    if (r.error) throw r.error;
+    // Sin el aceptado no hay plazos que cobrar (salvo los ya cobrados)
+    if (fila.estado === 'aceptado') await supa.from('estudio_cobros').delete().eq('proyecto_id', proyectoId).eq('cobrado', false);
+    return json({ ok: true });
+  }
+
+  if (action === 'presupuesto_asistente') {
+    // Lo que necesita «Nuevo presupuesto» (solo al pulsarlo): siguiente n.º, diseños con sus armarios y documentos
+    const [{ data: dis }, docs, fichs, sig] = await Promise.all([
+      supa.from('estudio_disenos').select('id, nombre, guardado, version_actual, miniatura').eq('proyecto_id', proyectoId).gt('version_actual', 0).order('updated_at', { ascending: false }),
+      supa.from('estudio_documentos').select('id, tipo, nombre').eq('proyecto_id', proyectoId).in('tipo', ['alzados_pdf', 'presupuesto_pdf']).is('diseno_id', null).order('created_at', { ascending: false }),
+      supa.from('estudio_ficheros').select('id, tipo, nombre, mime').eq('proyecto_id', proyectoId).eq('subido', true).order('created_at', { ascending: false }),
+      siguienteZ()
+    ]);
+    const nums = (dis ?? []).map((d: Any) => d.version_actual);
+    const { data: vers } = nums.length ? await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).in('numero', nums) : { data: [] };
+    return json({
+      siguiente: sig,
+      disenos: (dis ?? []).map((d: Any) => {
+        const v = (vers ?? []).find((x: Any) => x.numero === d.version_actual);
+        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: (v?.datos?.armarios ?? []).map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
+      }),
+      documentos: [
+        ...(docs.data ?? []).map((x: Any) => ({ tabla: 'doc', id: x.id, nombre: x.nombre, tipo: x.tipo })),
+        ...(fichs.data ?? []).filter((x: Any) => /^(application\/pdf|image\/(jpeg|png|webp))$/.test(x.mime)).map((x: Any) => ({ tabla: 'fichero', id: x.id, nombre: x.nombre, tipo: x.tipo }))
+      ]
+    });
+  }
 
   if (action === 'presupuestos') {
     const { data: lista } = await supa.from('estudio_presupuestos').select('id, numero, datos, estado, estado_nota, importe, pvp, comision_importe, created_at, updated_at').eq('proyecto_id', proyectoId).order('created_at');
@@ -278,7 +318,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
 
   if (action === 'presupuesto_nuevo') {
     const b = body?.base ?? {};
-    const numero = txt(body?.numero, 40) || await siguienteZ();
+    const numero = txt(body?.numero, 40);
+    if (!numero) return json({ error: 'Pon el n.º de presupuesto.' }, 400);
     let d: DocPresupuesto;
     if (b.tipo === 'versiones') {
       const elegidas = (Array.isArray(b.versiones) ? b.versiones : []).slice(0, 10);
@@ -387,46 +428,89 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json(respuesta(d));
   }
 
+  /** Aplica los cambios del formulario sobre el presupuesto (sin guardar): lo usan «Guardar» y la vista previa. */
+  const fusionar = async (e: Any): Promise<DocPresupuesto> => {
+      const d: DocPresupuesto = { ...doc };
+      for (const [k, max] of [['numero', 40], ['atencion', 100], ['cliente_nif', 30], ['direccion_facturacion', 160], ['proyecto', 80], ['proyecto_2', 160], ['validez', 30]] as const) {
+        if (e[k] !== undefined) (d as Any)[k] = txt(e[k], max);
+      }
+      if (typeof e.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.fecha)) d.fecha = e.fecha;
+      if (e.comision && typeof e.comision === 'object') {
+        d.comision = { activa: e.comision.activa === true, pct: numOrNull(e.comision.pct, 0, 100) ?? 0, paga: e.comision.paga === 'interiorista' ? 'interiorista' : 'cliente' };
+      }
+      if (Array.isArray(e.partidas)) {
+        const prev = new Map(doc.partidas.map((p) => [claveDe(p), p]));
+        d.partidas = e.partidas.slice(0, 40).map((x: Any, i: number): Partida => {
+          const p = prev.get(String(x?.clave || x?.codigo || ''));
+          const cantidad = Math.max(1, Math.min(99, Math.round(Number(x?.cantidad) || 1)));
+          const comunes = {
+            cantidad,
+            subtitulo: x?.subtitulo !== undefined ? txt(x.subtitulo, 160) : p?.subtitulo ?? '',
+            intro: x?.intro !== undefined ? txt(x.intro, 800) : p?.intro ?? '',
+            tecnico: x?.tecnico !== undefined ? txt(x.tecnico, 3000) : p?.tecnico ?? '',
+            materiales: x?.materiales !== undefined ? txt(x.materiales, 1500) : p?.materiales ?? '',
+            dto_pct: numOrNull(x?.dto_pct, 0, 100) ?? p?.dto_pct ?? 0
+          };
+          if (p && !p.libre) {
+            const precioManual = x?.precio_manual === true;
+            return { ...p, ...comunes, precio_manual: precioManual, precio: precioManual ? numOrNull(x?.precio, 0, 10_000_000) : p.precio_manual ? null : p.precio };
+          }
+          // Partida libre (nueva o existente): todo a mano
+          return {
+            ...(p ?? partidaLibre({ n: i + 1 })), ...comunes,
+            codigo: txt(x?.codigo, 10) || p?.codigo || `P.${String(i + 1).padStart(2, '0')}`,
+            titulo: (txt(x?.titulo, 120) || p?.titulo || 'PARTIDA').toUpperCase(),
+            precio: numOrNull(x?.precio, 0, 10_000_000), precio_manual: true, libre: true
+          };
+        });
+        // Al quitar el precio manual vuelve el de la tarifa
+        if (d.partidas.some((p) => !p.libre && !p.precio_manual && p.precio === null)) await recalcularDesdeVersiones(d, true);
+      }
+      return d;
+
+  };
+
   if (action === 'presupuesto_guardar') {
-    const e = body?.datos ?? {};
-    const d: DocPresupuesto = { ...doc };
-    for (const [k, max] of [['numero', 40], ['atencion', 80], ['proyecto', 80], ['proyecto_2', 80], ['validez', 30], ['seccion', 60]] as const) {
-      if (e[k] !== undefined) (d as Any)[k] = txt(e[k], max);
-    }
-    if (typeof e.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.fecha)) d.fecha = e.fecha;
-    if (e.comision && typeof e.comision === 'object') {
-      d.comision = { activa: e.comision.activa === true, pct: numOrNull(e.comision.pct, 0, 100) ?? 0, paga: e.comision.paga === 'interiorista' ? 'interiorista' : 'cliente' };
-    }
-    if (Array.isArray(e.partidas)) {
-      const prev = new Map(doc.partidas.map((p) => [claveDe(p), p]));
-      d.partidas = e.partidas.slice(0, 40).map((x: Any, i: number): Partida => {
-        const p = prev.get(String(x?.clave || x?.codigo || ''));
-        const cantidad = Math.max(1, Math.min(99, Math.round(Number(x?.cantidad) || 1)));
-        const comunes = {
-          cantidad,
-          subtitulo: x?.subtitulo !== undefined ? txt(x.subtitulo, 160) : p?.subtitulo ?? '',
-          intro: x?.intro !== undefined ? txt(x.intro, 800) : p?.intro ?? '',
-          tecnico: x?.tecnico !== undefined ? txt(x.tecnico, 3000) : p?.tecnico ?? '',
-          materiales: x?.materiales !== undefined ? txt(x.materiales, 1500) : p?.materiales ?? '',
-          dto_pct: numOrNull(x?.dto_pct, 0, 100) ?? p?.dto_pct ?? 0
-        };
-        if (p && !p.libre) {
-          const precioManual = x?.precio_manual === true;
-          return { ...p, ...comunes, precio_manual: precioManual, precio: precioManual ? numOrNull(x?.precio, 0, 10_000_000) : p.precio_manual ? null : p.precio };
-        }
-        // Partida libre (nueva o existente): todo a mano
-        return {
-          ...(p ?? partidaLibre({ n: i + 1 })), ...comunes,
-          codigo: txt(x?.codigo, 10) || p?.codigo || `P.${String(i + 1).padStart(2, '0')}`,
-          titulo: (txt(x?.titulo, 120) || p?.titulo || 'PARTIDA').toUpperCase(),
-          precio: numOrNull(x?.precio, 0, 10_000_000), precio_manual: true, libre: true
-        };
-      });
-      // Al quitar el precio manual vuelve el de la tarifa
-      if (d.partidas.some((p) => !p.libre && !p.precio_manual && p.precio === null)) await recalcularDesdeVersiones(d, true);
-    }
+    const d = await fusionar(body?.datos ?? {});
     await guardar(d);
+    // Los datos del cliente quedan en el proyecto para los presupuestos nuevos
+    const cli: Any = {};
+    if (d.atencion) cli.cliente_nombre = d.atencion;
+    if (d.cliente_nif) cli.cliente_nif = d.cliente_nif;
+    if (d.direccion_facturacion) cli.cliente_direccion = d.direccion_facturacion;
+    if (d.proyecto_2) cli.obra_direccion = d.proyecto_2;
+    if (Object.keys(cli).length) await supa.from('estudio_proyectos').update(cli).eq('id', proyectoId);
     return json(respuesta(d));
+  }
+
+  if (action === 'presupuesto_vista') {
+    // Vista previa: el PDF tal cual saldría, con los cambios sin guardar y marca «VISTA PREVIA»
+    const d = await fusionar(body?.datos ?? {});
+    const variante = d.comision?.activa ? (body?.variante === 'interiorista' ? 'interiorista' : 'cliente') : null;
+    const pdf = await PDFDocument.create(); pdf.registerFontkit(fontkit);
+    const os = { regular: await pdf.embedFont(openSansRegular(), { subset: true }), bold: await pdf.embedFont(openSansBold(), { subset: true }) };
+    const inter = { regular: await pdf.embedFont(interRegular(), { subset: true }), bold: await pdf.embedFont(interBold(), { subset: true }) };
+    const medir = medirConFuentes(inter);
+    const docV = docVariante(d, variante);
+    const porVersion = new Map<number, Partida[]>();
+    for (const p of docV.partidas) if (!p.libre) { const n = p.version ?? docV.version; porVersion.set(n, [...(porVersion.get(n) ?? []), p]); }
+    const dibujos: Any[] = [];
+    for (const [n, ps] of porVersion) {
+      const v = await versionDatos(n);
+      if (!v) continue;
+      for (const l of laminasProyecto(v.datos, medir)) { const p = ps.find((x) => x.codigo === l.codigo); if (p) dibujos.push({ ...dibujoLamina(l, medir), codigo: claveDe(p) }); }
+    }
+    const imagen = async (path: string | null) => {
+      if (!path) return undefined;
+      const { data } = await supa.storage.from('estudio').download(path);
+      if (!data) return undefined;
+      const b = new Uint8Array(await data.arrayBuffer());
+      return b[0] === 0x89 ? await pdf.embedPng(b) : await pdf.embedJpg(b);
+    };
+    pintarPresupuesto(pdf, { presupuesto: docV, plantilla, dibujos, ivaPct: iva }, { os, inter }, { rgb, degrees },
+      { logo: plantilla.tipo === 'propia' ? await imagen(plantilla.logo_path) : undefined, firma: await imagen(plantilla.firma_path) });
+    for (const pg of pdf.getPages()) pg.drawText('VISTA PREVIA', { x: 140, y: 330, size: 62, font: os.bold, color: rgb(0.85, 0.85, 0.85), rotate: degrees(35), opacity: 0.35 });
+    return json({ base64: ctx.base64(await pdf.save()), variante });
   }
 
   if (action === 'presupuesto_textos') {
