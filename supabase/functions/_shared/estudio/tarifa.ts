@@ -42,6 +42,8 @@ export interface Tarifa {
   iva_pct: number | null;
   precio_punto?: number | null;            // € por punto (null = PENDIENTE)
   puntos?: Record<string, number>;         // solo los puntos cambiados sobre la tabla OTG 2026
+  precio_punto_cocina?: number | null;     // € por punto de cocina (null = PENDIENTE)
+  puntos_cocina?: Record<string, number>;  // solo los cambiados sobre la tarifa del proveedor
 }
 
 /** Puntos que usa la tarifa: la tabla original + lo que el usuario haya cambiado. */

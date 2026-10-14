@@ -107,6 +107,7 @@ export function puntosBaseCocina(): Record<string, number> {
   b.tirador = 15;
   b.tirador_premium = 45;
   b.zocalo_ml = 15;
+  b.regleta = 10;
   return b;
 }
 /** Avisos fijos por clave (dudas del PDF). */
@@ -210,6 +211,7 @@ function calcularTramo(c: Cocina, t: TramoCocina, it: number, p: Record<string, 
   for (const [fila, mods] of [['bajos', t.bajos], ['altos', t.altos ?? []]] as const) {
     for (const m of mods) {
       if (m.tipo === 'hueco') continue;
+      if (m.tipo === 'regleta') { sumar('regleta', `Regleta de ajuste (${fila})`, p.regleta ?? 0, 1, p.regleta ? undefined : 'sin precio – revisar'); continue; }
       const acabado = m.acabado ?? c.acabado!;
       // Cuerpo
       const h = buscarModulo(p, m.tipo, m.alto ?? null, m.ancho, acabado);

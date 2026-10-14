@@ -212,13 +212,19 @@ function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
     // Bajos y columnas
     let mx = x0;
     const tramosEncimera: [number, number][] = [];
-    const lados = ladosTirador(t.bajos.map((m) => ({ tipo: 'puerta' as const, ancho: m.ancho })));
+    const lados = ladosTirador(t.bajos.map((m) => (m.tipo === 'regleta' || m.tipo === 'hueco' ? { tipo: 'fijo' as const, ancho: m.ancho } : { tipo: 'puerta' as const, ancho: m.ancho })));
     t.bajos.forEach((m, i) => {
       const w = cm(m.ancho), alto = m.alto ?? (m.tipo === 'columna' || m.tipo === 'columna_hm' ? COCINA_DEF.alto_columna : COCINA_DEF.alto_bajo);
       const conEncimera = !(m.tipo === 'columna' || m.tipo === 'columna_hm' || (m.tipo === 'hueco' && m.electro?.includes('nevera')));
       if (conEncimera && t.encimera !== false) {
         const ult = tramosEncimera[tramosEncimera.length - 1];
         if (ult && Math.abs(ult[1] - mx) < 0.01) ult[1] = mx + w; else tramosEncimera.push([mx, mx + w]);
+      }
+      if (m.tipo === 'regleta') {
+        // Regleta de ajuste: tira de frente, con su zócalo, bajo la encimera
+        if (z > 0) rect(mx, yZ, w, cm(z), { fill: E.zocalo, stroke: E.tinta, sw: 0.5 });
+        rect(mx, yZ - cm(H.hb), w, cm(H.hb), { fill: E.tablero, stroke: E.tinta, sw: 0.7 });
+        mx += w; return;
       }
       if (m.tipo === 'hueco') {
         const ev = m.electro ?? [];
@@ -257,9 +263,10 @@ function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
     for (const [a, b] of tramosEncimera) rect(a - 0.5, yEnc, b - a + 1, cm(COCINA_DEF.encimera_grueso) + 0.6, { fill: D.encimera, stroke: E.tinta, sw: 0.5 });
     // Altos (alineados por arriba)
     let ax = x0;
-    const ladosA = ladosTirador((t.altos ?? []).map((m) => ({ tipo: 'puerta' as const, ancho: m.ancho })));
+    const ladosA = ladosTirador((t.altos ?? []).map((m) => (m.tipo === 'regleta' || m.tipo === 'hueco' ? { tipo: 'fijo' as const, ancho: m.ancho } : { tipo: 'puerta' as const, ancho: m.ancho })));
     (t.altos ?? []).forEach((m, i) => {
       const w = cm(m.ancho);
+      if (m.tipo === 'regleta') { rect(ax, yTechoAltos, w, cm(H.ha), { fill: E.tablero, stroke: E.tinta, sw: 0.7 }); ax += w; return; }
       if (m.tipo === 'hueco') {
         const ev = m.electro ?? [];
         if (ev.includes('campana')) {
@@ -282,7 +289,11 @@ function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
     });
     // Cotas: módulos (abajo), total (arriba), alturas (izquierda)
     let cx0 = x0;
-    t.bajos.forEach((m) => { cotaH(cx0, cx0 + cm(m.ancho), suelo + cm(E.cota_abajo), fmtCm(m.ancho)); cx0 += cm(m.ancho); });
+    t.bajos.forEach((m) => {
+      if (m.tipo === 'regleta') text(cx0 + cm(m.ancho) / 2, suelo + cm(E.cota_abajo) + 12, `regleta ${fmtCm(m.ancho)}`, 5.5, E.cota, 'middle');
+      else cotaH(cx0, cx0 + cm(m.ancho), suelo + cm(E.cota_abajo), fmtCm(m.ancho));
+      cx0 += cm(m.ancho);
+    });
     if ((t.altos ?? []).length) {
       let ax0 = x0; const ya = suelo - cm(H.techo) - cm(E.cota_arriba);
       (t.altos ?? []).forEach((m) => { if (m.tipo !== 'hueco' || m.ancho >= 30) cotaH(ax0, ax0 + cm(m.ancho), ya, fmtCm(m.ancho)); ax0 += cm(m.ancho); });
@@ -297,7 +308,9 @@ function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
     }
     cotaV(x0 - cm(E.cota_alto), yEnc, suelo, `encimera ${fmtCm(H.encimera)}`);
     text(x0 + cm(W) / 2, suelo + cm(E.pie_vista), `${(t.nombre ?? 'TRAMO').toUpperCase()} · ALZADO`, 8.5, E.tinta, 'middle', true);
-    const desc = [plural(t.bajos.filter((m) => m.tipo !== 'hueco').length, 'bajo', 'bajos'), (t.altos ?? []).some((m) => m.tipo !== 'hueco') ? plural((t.altos ?? []).filter((m) => m.tipo !== 'hueco').length, 'alto', 'altos') : ''].filter(Boolean).join(' + ');
+    const mueble = (m: ModuloCocina) => m.tipo !== 'hueco' && m.tipo !== 'regleta';
+    const nReg = [...t.bajos, ...(t.altos ?? [])].filter((m) => m.tipo === 'regleta').length;
+    const desc = [plural(t.bajos.filter(mueble).length, 'bajo', 'bajos'), (t.altos ?? []).some(mueble) ? plural((t.altos ?? []).filter(mueble).length, 'alto', 'altos') : '', nReg ? plural(nReg, 'regleta', 'regletas') : '', t.largo ? `pared ${fmtCm(t.largo)}` : ''].filter(Boolean).join(' + ').replace(/ \+ pared/, ' · pared');
     text(x0 + cm(W) / 2, suelo + cm(E.pie_vista) + 10, desc, 7.5, E.cota, 'middle');
     x += cm(W);
   }
@@ -425,12 +438,13 @@ function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
       const t = q.t, fb = COCINA_DEF.fondo_bajo;
       // Bajos
       let mu = 0;
-      const lados = ladosTirador(t.bajos.map((m) => ({ tipo: 'puerta' as const, ancho: m.ancho })));
+      const lados = ladosTirador(t.bajos.map((m) => (m.tipo === 'regleta' || m.tipo === 'hueco' ? { tipo: 'fijo' as const, ancho: m.ancho } : { tipo: 'puerta' as const, ancho: m.ancho })));
       const encimera: [number, number][] = [];
       t.bajos.forEach((m, i) => {
         const w = m.ancho, ev = m.electro ?? [];
         const col = m.tipo === 'columna' || m.tipo === 'columna_hm', nev = m.tipo === 'hueco' && ev.includes('nevera');
         if (!col && !nev && t.encimera !== false) { const u = encimera[encimera.length - 1]; if (u && Math.abs(u[1] - mu) < 0.01) u[1] = mu + w; else encimera.push([mu, mu + w]); }
+        if (m.tipo === 'regleta') { rectL(mu, fb - 2, mu + w, fb + D.puerta, { fill: E.tablero, stroke: E.tinta, sw: 0.6 }); mu += w; return; }
         if (m.tipo === 'hueco') {
           if (nev) { rectL(mu + 1, 1, mu + w - 1, fb + D.puerta, { fill: D.electro, stroke: D.electroBorde, sw: 0.7 }); const [cx, cy] = P(mu + w / 2, fb / 2); text(cx, cy + 2, 'NEV.', 5.5, E.etiqueta, 'middle'); }
           else if (ev.length) { const [cx, cy] = P(mu + w / 2, fb / 2); text(cx, cy + 2, ev[0] === 'lavavajillas' ? 'LV' : ev[0] === 'lavadora' ? 'LAV.' : '', 5.5, E.suave, 'middle'); }

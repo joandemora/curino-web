@@ -137,3 +137,24 @@ test('dibujo: alzado por tramo; sección y planta en hoja 2 si no caben', () => 
   for (const k of ['PLACA', 'CAMPANA', 'VENTANA', 'HORNO', 'MICRO', 'RINCÓN']) assert.ok(t1.includes(k), k);
   for (const k of ['SECCIÓN TIPO', 'PLANTA', 'cocina en L', 'SECCIÓN + PLANTA']) assert.ok(t2.includes(k), k);
 });
+
+test('largo de pared: suma exacta, regletas de ≤ 5 cm en los extremos', () => {
+  const p = (bajos: unknown[], o: Record<string, unknown> = {}) => validarProyecto({ version: 1, armarios: [], cocinas: [cocina({ tramos: [{ largo: 160, bajos, ...o } as never] })] });
+  assert.equal(p([{ tipo: 'bajo', ancho: 80 }, { tipo: 'bajo', ancho: 80 }]).ok, true);
+  const sobra = p([{ tipo: 'bajo', ancho: 90 }, { tipo: 'bajo', ancho: 80 }]);
+  assert.match(JSON.stringify(!sobra.ok && sobra.errores), /sobran 10 cm/);
+  const falta = p([{ tipo: 'bajo', ancho: 80 }, { tipo: 'bajo', ancho: 74 }]);
+  assert.match(JSON.stringify(!falta.ok && falta.errores), /faltan 6 cm → pon regletas/);
+  assert.equal(p([{ tipo: 'regleta', ancho: 3 }, { tipo: 'bajo', ancho: 80 }, { tipo: 'bajo', ancho: 74 }, { tipo: 'regleta', ancho: 3 }]).ok, true);
+  assert.equal(p([{ tipo: 'regleta', ancho: 6 }, { tipo: 'bajo', ancho: 80 }, { tipo: 'bajo', ancho: 74 }]).ok, false);
+  assert.equal(p([{ tipo: 'bajo', ancho: 80 }, { tipo: 'regleta', ancho: 3 }, { tipo: 'bajo', ancho: 77 }]).ok, false);
+  // Más de 10 cm: válido (se avisa en el chat, no se rellena)
+  assert.equal(p([{ tipo: 'bajo', ancho: 80 }, { tipo: 'bajo', ancho: 60 }]).ok, true);
+  // Esquina: largo − 60
+  const esq = validarProyecto({ version: 1, armarios: [], cocinas: [cocina({ tramos: [{ bajos: [{ tipo: 'bajo', ancho: 60 }] }, { colocacion: 'esquina_der', largo: 210, bajos: [{ tipo: 'bajo', ancho: 90 }, { tipo: 'bajo', ancho: 60 }] }] })] });
+  assert.equal(esq.ok, true);
+  // Regleta en el desglose: 10 pt
+  const r = puntosCocina(cocina({ tramos: [{ largo: 160, bajos: [{ tipo: 'regleta', ancho: 3 }, { tipo: 'bajo', ancho: 80 }, { tipo: 'bajo', ancho: 77 }] }] }), P);
+  const rg = r.tramos[0].lineas.find((l) => l.clave === 'regleta')!;
+  assert.deepEqual([rg.cantidad, rg.puntos], [1, 10]);
+});

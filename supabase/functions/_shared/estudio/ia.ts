@@ -16,6 +16,7 @@
 // Sin dependencias de Deno: la Edge Function pasa la clave y fetch.
 
 import { ESQUEMA_JSON, validarProyecto, type Proyecto, type ErrorValidacion } from './esquema.ts';
+import { avisosLargo, largoUtil, completarCocina, type ModuloCocina } from './cocina.ts';
 
 export const REINTENTOS = 2;
 export const MAX_TOKENS = 12000;
@@ -59,9 +60,11 @@ FORMATO
 
 COCINAS (proyecto.cocinas; si el proyecto es solo una cocina, armarios = [])
 - Una cocina C.01 con tramos: uno por pared (el primero, la pared principal; «esquina_izq» / «esquina_der» para la otra pared de una cocina en L o U, como en armarios) y «isla» si hay isla. «Cocina en L, 3,20 + 2,10» = dos tramos.
-- Rincón de una L o U: la pared principal llega hasta la pared de la esquina y el tramo en esquina arranca DELANTE de ella, así que sus módulos suman el largo de su pared MENOS 60 (fondo de la principal). Ej.: «L 3,20 + 2,10» → principal 320 (con el esquinero de 93 o el último bajo en el rincón) y tramo en esquina 150. Dilo en el mensaje.
+- Medidas de módulos que da el alumno («bajos de 60, 80 y 90», «fregadero de 90»): se respetan EXACTAMENTE, una por una; no cambies un 80 por un 70 para cuadrar.
+- «largo» de cada tramo = largo de su pared cuando lo dan («L 3,20 + 2,10» → 320 y 210). Los bajos de cada tramo suman EXACTAMENTE su largo útil: el largo en la pared principal; largo − 60 en un tramo en esquina (arranca delante de la principal, que llega hasta el rincón). Ej.: L 3,20 + 2,10 → bajos de la principal = 320 (el esquinero de 93 o el último bajo en el rincón) y bajos del tramo en esquina = 150.
+- Si con los módulos pedidos sobra hueco: hasta 10 cm, regletas de ajuste (tipo «regleta», ancho ≤ 5) al principio y/o al final de la fila de bajos (y de altos si hace falta); más de 10 cm, NO lo rellenes con módulos inventados: deja la fila más corta y dilo en el mensaje. Los altos nunca suman más que su pared.
 - En cada tramo, «bajos» de izquierda a derecha (bajo, fregadero, horno, esquinero —93 de ancho, en el rincón—, columna, columna_hm = horno + micro, hueco = sin mueble: nevera, lavavajillas, lavadora) y «altos» de izquierda a derecha alineados con los bajos (alto, esquinero_alto —63—, sobrenevera, transversal, hueco = campana, ventana o encima de una columna o de la nevera).
-- Anchos de la tarifa: bajos y altos de 30 a 100 (30, 35, 40, 45, 50, 60, 70, 80, 90, 100), fregadero 60/80/90/100/120, horno y columnas 60. Reparte cada pared con esos anchos; si el ancho de la pared no cuadra, deja un hueco o ajusta un módulo y dilo en el mensaje.
+- Anchos de la tarifa: bajos y altos de 30 a 100 (30, 35, 40, 45, 50, 60, 70, 80, 90, 100), fregadero 60/80/90/100/120, horno y columnas 60. Los módulos que el alumno no ha medido los eliges tú con esos anchos para completar la pared.
 - Medidas que no te den: NO preguntes; deja el campo sin poner y el programa usa los valores por defecto, marcados «supuesto» en la ficha: bajos de 70 de alto, altos de 70, columnas de 220, cuerpo Blanco 16, puerta grupo 1, encimera compacto núcleo negro, zócalo 10, cajones Advänced. Sí pregunta si no sabes el largo de las paredes.
 - «altos de 90» → alto 90 en los altos; «bajos de 80» → alto 80.
 - Cuerpo («acabado»): blanco16 (Blanco 16, por defecto), gris_plomo16 (Gris plomo), blanco_plus18 (Blanco Plus hidrófugo).
@@ -91,6 +94,11 @@ export const HERRAMIENTAS = [
         proyecto: ESQUEMA_JSON
       }
     }
+  },
+  {
+    name: 'confirmar',
+    description: 'Solo en la revisión de una cocina: el proyecto que acabas de guardar cuadra con lo que pidió el alumno.',
+    input_schema: { type: 'object', additionalProperties: false, properties: { nota: { type: 'string', description: 'Opcional: algo que añadir al mensaje.' } } }
   },
   {
     name: 'preguntar',
@@ -157,7 +165,7 @@ export function costeUsd(u: Uso, p: Precios): number {
 
 // ── Llamada con validación ──────────────────────────────────────────
 export type Resultado =
-  | { tipo: 'proyecto'; mensaje: string; proyecto: Proyecto }
+  | { tipo: 'proyecto'; mensaje: string; proyecto: Proyecto; revision?: 'confirmado' | 'corregido' | 'sin_respuesta' }
   | { tipo: 'pregunta'; mensaje: string; preguntas: string[] }
   | { tipo: 'error'; mensaje: string; errores?: ErrorValidacion[]; detalle?: string };
 
@@ -173,8 +181,16 @@ export async function pedirAClaude(o: {
   const mensajes = [...o.mensajes];
   const llamadas: Llamada[] = [];
   let ultimosErrores: ErrorValidacion[] | undefined;
+  // Cocinas: una revisión del resultado frente a la descripción (y como mucho una corrección)
+  let provisional: { mensaje: string; proyecto: Proyecto } | null = null;
+  let maxIntentos = REINTENTOS;
+  const final = (r: Resultado): Resultado => {
+    if (r.tipo !== 'proyecto') return r;
+    const avisos = avisosLargo(r.proyecto.cocinas);
+    return avisos.length ? { ...r, mensaje: [r.mensaje, ...avisos.map((a) => `⚠ ${a}`)].join('\n') } : r;
+  };
 
-  for (let intento = 0; intento <= REINTENTOS; intento++) {
+  for (let intento = 0; intento <= maxIntentos; intento++) {
     const r = await f('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': o.clave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
@@ -202,6 +218,11 @@ export async function pedirAClaude(o: {
       return { resultado: { tipo: 'error', mensaje: 'El proyecto es demasiado grande para una sola respuesta. Divide la petición (por ejemplo, armario a armario).' }, llamadas };
     }
     const uso_herr = (d.content ?? []).find((b: Bloque) => b.type === 'tool_use') as { id: string; name: string; input: Record<string, unknown> } | undefined;
+    if (provisional && (!uso_herr || uso_herr.name !== 'guardar_proyecto')) {
+      // Revisión: confirma (o no contesta con una corrección) → vale el guardado
+      const nota = uso_herr?.name === 'confirmar' ? String(uso_herr.input.nota ?? '').trim() : '';
+      return { resultado: final({ tipo: 'proyecto', mensaje: [provisional.mensaje, nota].filter(Boolean).join('\n'), proyecto: provisional.proyecto, revision: uso_herr?.name === 'confirmar' ? 'confirmado' : 'sin_respuesta' }), llamadas };
+    }
     if (!uso_herr) {
       const texto = (d.content ?? []).filter((b: Bloque) => b.type === 'text').map((b: Bloque) => String(b.text)).join('\n').trim();
       if (intento < REINTENTOS && d.content?.length) {
@@ -218,7 +239,17 @@ export async function pedirAClaude(o: {
       return { resultado: { tipo: 'pregunta', mensaje: String(uso_herr.input.mensaje ?? ''), preguntas }, llamadas };
     }
     const v = validarProyecto(uso_herr.input.proyecto);
+    if (v.ok && provisional) return { resultado: final({ tipo: 'proyecto', mensaje: String(uso_herr.input.mensaje ?? ''), proyecto: v.proyecto, revision: 'corregido' }), llamadas };
+    if (v.ok && v.proyecto.cocinas?.length) {
+      // Cocina válida: antes de darla por buena, Claude la compara con lo que pidió el alumno
+      provisional = { mensaje: String(uso_herr.input.mensaje ?? ''), proyecto: v.proyecto };
+      maxIntentos = intento + 1;
+      mensajes.push({ role: 'assistant', content: d.content });
+      mensajes.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: uso_herr.id, content: textoRevision(v.proyecto) }] });
+      continue;
+    }
     if (v.ok) return { resultado: { tipo: 'proyecto', mensaje: String(uso_herr.input.mensaje ?? ''), proyecto: v.proyecto }, llamadas };
+    if (provisional) return { resultado: final({ tipo: 'proyecto', mensaje: provisional.mensaje, proyecto: provisional.proyecto, revision: 'sin_respuesta' }), llamadas };
 
     // JSON no válido: se le devuelven los errores para que lo corrija.
     ultimosErrores = v.errores;
@@ -232,10 +263,30 @@ export async function pedirAClaude(o: {
       }]
     });
   }
+  if (provisional) return { resultado: final({ tipo: 'proyecto', mensaje: provisional.mensaje, proyecto: provisional.proyecto, revision: 'sin_respuesta' }), llamadas };
   return {
     resultado: { tipo: 'error', mensaje: 'La IA no ha conseguido un proyecto coherente. Revisa las medidas o dale más detalle.', errores: ultimosErrores },
     llamadas
   };
+}
+
+/** Resumen calculado de las cocinas para la revisión de Claude. */
+export function textoRevision(p: Proyecto): string {
+  const mod = (m: ModuloCocina) => `${m.tipo} ${m.ancho}${m.frente?.tipo === 'cajones' ? ` (${m.frente.cajones ?? m.frente.alturas?.length ?? 3} cajones ${m.frente.sistema ?? 'advanced'})` : ''}${m.electro?.length ? ` [${m.electro.join(', ')}]` : ''}${m.etiqueta ? ` «${m.etiqueta}»` : ''}${m.grupo ? ` G${m.grupo}` : ''}`;
+  const lineas: string[] = [];
+  for (const c0 of p.cocinas ?? []) {
+    const c = completarCocina(c0);
+    lineas.push(`${c.codigo} «${c.titulo}» · cuerpo ${c.acabado} · grupo ${c.grupo} · agarre ${c.agarre} · encimera ${c.encimera?.nucleo ?? '—'} (${c.encimera?.ref ?? '—'})`);
+    c.tramos.forEach((t, i) => {
+      const util = largoUtil(t), sb = t.bajos.reduce((s, m) => s + m.ancho, 0), sa = (t.altos ?? []).reduce((s, m) => s + m.ancho, 0);
+      lineas.push(`- ${t.nombre ?? `tramo ${i + 1}`} (${t.colocacion ?? 'linea'}${t.largo ? `, pared ${t.largo} → bajos deben sumar ${util}` : ', sin largo de pared'}):`);
+      lineas.push(`  bajos: ${t.bajos.map(mod).join(' · ')} = ${sb}`);
+      if (t.altos?.length) lineas.push(`  altos: ${t.altos.map(mod).join(' · ')} = ${sa}`);
+    });
+  }
+  return 'Guardado provisional. Antes de darlo por bueno, compáralo punto por punto con el mensaje del alumno: medidas de módulos que dio (exactas), número de módulos, cajoneras y su sistema, largo de cada pared, grupos y uñero, electrodomésticos y encimera. Resumen calculado:\n' +
+    lineas.join('\n') +
+    '\n\nSi algo no cuadra, llama UNA vez a guardar_proyecto con el proyecto completo corregido. Si está todo bien, llama a confirmar.';
 }
 
 // ── Textos del presupuesto (F3) ─────────────────────────────────────

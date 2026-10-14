@@ -21,12 +21,14 @@ export type AcabadoCuerpo = 'blanco16' | 'gris_plomo16' | 'blanco_plus18';
 export const ACABADOS_CUERPO: AcabadoCuerpo[] = ['blanco16', 'gris_plomo16', 'blanco_plus18'];
 export const ACABADO_TXT: Record<AcabadoCuerpo, string> = { blanco16: 'Blanco 16', gris_plomo16: 'Gris plomo 16', blanco_plus18: 'Blanco Plus 18 hidrófugo' };
 
-export type TipoModuloCocina = 'bajo' | 'fregadero' | 'horno' | 'esquinero' | 'alto' | 'esquinero_alto' | 'columna' | 'columna_hm' | 'sobrenevera' | 'transversal' | 'hueco';
-export const TIPOS_BAJOS: TipoModuloCocina[] = ['bajo', 'fregadero', 'horno', 'esquinero', 'columna', 'columna_hm', 'hueco'];
-export const TIPOS_ALTOS: TipoModuloCocina[] = ['alto', 'esquinero_alto', 'sobrenevera', 'transversal', 'hueco'];
+export type TipoModuloCocina = 'bajo' | 'fregadero' | 'horno' | 'esquinero' | 'alto' | 'esquinero_alto' | 'columna' | 'columna_hm' | 'sobrenevera' | 'transversal' | 'hueco' | 'regleta';
+export const TIPOS_BAJOS: TipoModuloCocina[] = ['bajo', 'fregadero', 'horno', 'esquinero', 'columna', 'columna_hm', 'hueco', 'regleta'];
+export const TIPOS_ALTOS: TipoModuloCocina[] = ['alto', 'esquinero_alto', 'sobrenevera', 'transversal', 'hueco', 'regleta'];
+export const REGLETA_MAX = 5;          // cm por extremo
+export const AJUSTE_MAX = 2 * REGLETA_MAX;
 export const TIPO_TXT: Record<TipoModuloCocina, string> = {
   bajo: 'Bajo', fregadero: 'Fregadero', horno: 'Horno', esquinero: 'Esquinero bajo', alto: 'Alto', esquinero_alto: 'Esquinero alto',
-  columna: 'Columna', columna_hm: 'Columna horno + micro', sobrenevera: 'Sobrenevera', transversal: 'Transversal', hueco: 'Hueco'
+  columna: 'Columna', columna_hm: 'Columna horno + micro', sobrenevera: 'Sobrenevera', transversal: 'Transversal', hueco: 'Hueco', regleta: 'Regleta de ajuste'
 };
 
 export type Electro = 'placa' | 'horno' | 'microondas' | 'fregadero' | 'campana' | 'nevera' | 'lavavajillas' | 'lavadora';
@@ -61,6 +63,7 @@ export interface ModuloCocina {
 export interface TramoCocina {
   nombre?: string;           // «PARED VENTANA», «ISLA»
   colocacion?: Colocacion | 'isla';
+  largo?: number;            // largo de la pared (cm); los bajos suman esto (en esquina: largo − 60)
   bajos: ModuloCocina[];
   altos?: ModuloCocina[];
   encimera?: boolean;        // def. sí (si hay bajos con encimera)
@@ -91,6 +94,23 @@ export const COCINA_DEF = {
   sistema_cajon: 'advanced' as SistemaCajon, horno_hueco: 60, micro_hueco: 38
 };
 /** Fondo del cuerpo (cm). */
+/** Largo que deben sumar los bajos de un tramo: el de la pared; en esquina, menos el fondo de la principal. */
+export const FONDO_RINCON = 60;
+export function largoUtil(t: TramoCocina): number | null {
+  if (!t.largo) return null;
+  return t.colocacion === 'esquina_izq' || t.colocacion === 'esquina_der' ? t.largo - FONDO_RINCON : t.largo;
+}
+/** Avisos de paredes que no llegan a su largo (más de lo que cubren las regletas): se dicen en el chat. */
+export function avisosLargo(cocinas: Cocina[] = []): string[] {
+  const out: string[] = [];
+  for (const c of cocinas) c.tramos.forEach((t, i) => {
+    const util = largoUtil(t);
+    if (util === null) return;
+    const suma = t.bajos.reduce((s, m) => s + m.ancho, 0);
+    if (util - suma > AJUSTE_MAX + 0.5) out.push(`${c.codigo} · ${t.nombre ?? `tramo ${i + 1}`}: los bajos suman ${suma} cm y la pared ${t.colocacion === 'esquina_izq' || t.colocacion === 'esquina_der' ? `deja ${util} (${t.largo} − ${FONDO_RINCON} del rincón)` : `mide ${util}`}: faltan ${Math.round((util - suma) * 10) / 10} cm. No lo he rellenado; dime qué va ahí.`);
+  });
+  return out;
+}
 export const fondoModulo = (t: TipoModuloCocina) => TIPOS_ALTOS.includes(t) && t !== 'hueco' ? COCINA_DEF.fondo_alto : COCINA_DEF.fondo_bajo;
 export const esUnero = (grupo: number, agarre?: AgarreCocina) => agarre === 'unero' || GRUPOS_UNERO.includes(grupo);
 
@@ -131,7 +151,7 @@ export function completarCocina(entrada: Cocina): Cocina {
             sup.add(m.tipo === 'columna' || m.tipo === 'columna_hm' ? `columnas de ${a}` : m.tipo === 'sobrenevera' || m.tipo === 'transversal' ? `${TIPO_TXT[m.tipo].toLowerCase()} de ${a}` : fila === 'altos' ? `altos de ${a} de alto` : `bajos de ${a} de alto`);
           }
         }
-        if (m.tipo === 'hueco') continue;
+        if (m.tipo === 'hueco' || m.tipo === 'regleta') continue;
         if (!m.frente) {
           if (m.tipo === 'horno') m.frente = { tipo: 'cajones', cajones: 1, alturas: [Math.max(10, (m.alto ?? 70) - COCINA_DEF.horno_hueco)] };
           else if (m.tipo === 'columna_hm') {
@@ -182,8 +202,8 @@ const herrajes = { type: 'array', maxItems: 12, items: { type: 'object', additio
 const modulo = {
   type: 'object', additionalProperties: false, required: ['tipo', 'ancho'],
   properties: {
-    tipo: { enum: ['bajo', 'fregadero', 'horno', 'esquinero', 'alto', 'esquinero_alto', 'columna', 'columna_hm', 'sobrenevera', 'transversal', 'hueco'] },
-    ancho: num(10, 200, 'Ancho en cm (esquinero bajo 93, esquinero alto 63).'),
+    tipo: { enum: ['bajo', 'fregadero', 'horno', 'esquinero', 'alto', 'esquinero_alto', 'columna', 'columna_hm', 'sobrenevera', 'transversal', 'hueco', 'regleta'], description: 'regleta = regleta de ajuste (máx. 5 cm), solo al principio o al final de la fila.' },
+    ancho: num(1, 200, 'Ancho en cm (esquinero bajo 93, esquinero alto 63; regleta 1–5).'),
     alto: num(10, 280, 'Alto del cuerpo en cm, solo si lo dicen (bajos 70/80, altos 70/80/90, columnas 220/230).'),
     acabado: { enum: ['blanco16', 'gris_plomo16', 'blanco_plus18'], description: 'Solo si es distinto del de la cocina.' },
     frente: {
@@ -225,6 +245,7 @@ export const ESQUEMA_COCINA_JSON = {
           properties: {
             nombre: { type: 'string', maxLength: 40 },
             colocacion: { enum: ['linea', 'esquina_izq', 'esquina_der', 'isla'], description: 'Como en armarios: el primero es la pared principal; esquina_izq / esquina_der = pared de la izquierda / derecha (cocina en L o U); isla = exenta, delante.' },
+            largo: num(30, 1500, 'Largo de la pared en cm si lo dan («L 3,20 + 2,10» → 320 y 210). Los bajos suman exactamente esto; en un tramo en esquina, esto − 60.'),
             bajos: { type: 'array', maxItems: 20, items: modulo, description: 'Bajos y columnas de izquierda a derecha.' },
             altos: { type: 'array', maxItems: 20, items: modulo, description: 'Altos de izquierda a derecha, alineados con los bajos (hueco = sin mueble: campana, ventana, encima de columnas).' },
             encimera: { type: 'boolean' },
@@ -282,7 +303,8 @@ export function validarCocinas(lista: unknown, err: (ruta: string, mensaje: stri
     c.tramos.forEach((t, it) => {
       const rt = `${rc}.tramos[${it}]`;
       if (!esObj(t)) return err(rt, 'debe ser un objeto');
-      campos(t, rt, ['nombre', 'colocacion', 'bajos', 'altos', 'encimera', 'metros_encimera', 'laterales', 'herrajes']);
+      campos(t, rt, ['nombre', 'colocacion', 'largo', 'bajos', 'altos', 'encimera', 'metros_encimera', 'laterales', 'herrajes']);
+      numero(t, 'largo', rt, 30, 1500);
       opcion(t, 'colocacion', rt, ['linea', 'esquina_izq', 'esquina_der', 'isla']);
       if (it === 0 && t.colocacion !== undefined && t.colocacion !== 'linea') err(`${rt}.colocacion`, 'el primer tramo es la pared principal (en línea)');
       numero(t, 'metros_encimera', rt, 0.3, 20);
@@ -298,10 +320,14 @@ export function validarCocinas(lista: unknown, err: (ruta: string, mensaje: stri
           campos(m, rm, ['tipo', 'ancho', 'alto', 'acabado', 'frente', 'grupo', 'agarre', 'electro', 'etiqueta', 'herrajes']);
           const permitidos = fila === 'bajos' ? TIPOS_BAJOS : TIPOS_ALTOS;
           if (!permitidos.includes(m.tipo as TipoModuloCocina)) err(`${rm}.tipo`, `en ${fila}: ${permitidos.join(' / ')}`);
-          numero(m, 'ancho', rm, 10, 200, true); numero(m, 'alto', rm, 10, 280);
+          numero(m, 'ancho', rm, m.tipo === 'regleta' ? 1 : 10, 200, true); numero(m, 'alto', rm, 10, 280);
           opcion(m, 'acabado', rm, ACABADOS_CUERPO); opcion(m, 'grupo', rm, GRUPOS); opcion(m, 'agarre', rm, ['tirador', 'tirador_premium', 'unero']);
           if (m.electro !== undefined && (!Array.isArray(m.electro) || m.electro.some((e) => !ELECTROS.includes(e as Electro)))) err(`${rm}.electro`, `lista de ${ELECTROS.join(' / ')}`);
           herr(m, rm);
+          if (m.tipo === 'regleta') {
+            if (esNum(m.ancho) && (m.ancho as number) > REGLETA_MAX) err(`${rm}.ancho`, `la regleta de ajuste es de ${REGLETA_MAX} cm como máximo; si sobra más, avísalo en el mensaje en vez de rellenarlo`);
+            if (im !== 0 && im !== mods.length - 1) err(rm, 'la regleta de ajuste va al principio o al final de la fila');
+          }
           if (m.frente !== undefined) {
             const f = m.frente, rf = `${rm}.frente`;
             if (!esObj(f)) return err(rf, 'debe ser un objeto');
@@ -315,6 +341,17 @@ export function validarCocinas(lista: unknown, err: (ruta: string, mensaje: stri
             }
           }
         });
+      }
+      // Largo de la pared: los bajos lo suman (con regletas de ajuste si falta poco)
+      const util = esObj(t) && esNum(t.largo) ? largoUtil(t as unknown as TramoCocina) : null;
+      const anchos = (l: unknown) => Array.isArray(l) && l.every((m) => esObj(m) && esNum(m.ancho)) ? (l as Obj[]).reduce((s, m) => s + (m.ancho as number), 0) : null;
+      if (util !== null) {
+        const sb = anchos(t.bajos), sa = anchos(t.altos);
+        const esq = t.colocacion === 'esquina_izq' || t.colocacion === 'esquina_der';
+        const pared = esq ? `${util} (${t.largo} − ${FONDO_RINCON} del rincón)` : `${util}`;
+        if (sb !== null && sb > util + 0.5) err(`${rt}.bajos`, `los bajos suman ${sb} cm y la pared deja ${pared}: sobran ${Math.round((sb - util) * 10) / 10} cm`);
+        else if (sb !== null && util - sb > 0.5 && util - sb <= AJUSTE_MAX + 0.5) err(`${rt}.bajos`, `los bajos suman ${sb} cm y la pared deja ${pared}: faltan ${Math.round((util - sb) * 10) / 10} cm → pon regletas de ajuste (máx. ${REGLETA_MAX} cm por extremo, tipo «regleta») o ajusta un módulo que no tenga medida dada`);
+        if (sa !== null && sa > util + 0.5) err(`${rt}.altos`, `los altos suman ${sa} cm y la pared deja ${pared}`);
       }
     });
   });

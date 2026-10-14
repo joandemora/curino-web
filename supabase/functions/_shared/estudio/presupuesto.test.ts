@@ -199,3 +199,44 @@ test('puntos: opciones de la partida (costados, remate, cajeado) suman puntos', 
   // 2 costados de melamina (2 × 89) + remate hasta 260 cm lacado (178) + 10 % del interior
   assert.ok(con > sin + 2 * 89 + 178);
 });
+
+// ── Cocinas en el presupuesto (fase 4) y bloqueo del PDF / Excel del cliente ──
+import { lineasBloqueantes } from './presupuesto.ts';
+const conCocina = (): Proyecto => ({ ...ejemplo(), cocinas: [{ codigo: 'C.01', titulo: 'COCINA EN L', grupo: 6, tramos: [
+  { nombre: 'PARED 1', largo: 230, bajos: [{ tipo: 'bajo', ancho: 60 }, { tipo: 'bajo', ancho: 80, frente: { tipo: 'cajones', cajones: 3, sistema: 'legrabox' } }, { tipo: 'fregadero', ancho: 90 }] },
+  { nombre: 'PARED 2', colocacion: 'esquina_der', largo: 210, bajos: [{ tipo: 'bajo', ancho: 90 }, { tipo: 'bajo', ancho: 60 }] }] }] });
+
+test('cocina: una partida por tramo, dibujo en la primera, precio con el punto de cocina', () => {
+  const t = { ...tarifaPrueba(), precio_punto_cocina: 2 };
+  const d = generarPresupuesto({ proyecto: conCocina(), version: 3, tarifa: t, plantilla: PLANTILLA_ADMIN, nombre: 'Cliente PRUEBA', hoy: '2026-10-14' });
+  const cs = d.partidas.filter((p) => p.tipo === 'cocina');
+  assert.deepEqual(cs.map((p) => [p.codigo, p.clave, p.dibujo]), [['C.01.1', 'v3:C.01.1', 'C.01'], ['C.01.2', 'v3:C.01.2', undefined]]);
+  assert.ok(cs[0].titulo.startsWith('C.01 COCINA EN L · PARED 1'));
+  assert.equal(cs[0].precio, Math.round(cs[0].puntos! * 2 * 100) / 100);
+  assert.ok(cs[0].desglose.some((l) => /Legrabox/.test(l.nombre)));
+  assert.match(cs[0].materiales, /Cuerpo: Blanco 16 \(supuesto\)/);
+  // Armarios y cocina en el mismo presupuesto: cada uno con su punto, y se suman
+  assert.ok(d.partidas.some((p) => p.codigo === 'A.01') && totales(d, 21).pvp > cs[0].precio! + cs[1].precio!);
+  // Sin precio del punto cocina: PENDIENTE (con sus puntos)
+  const sin = generarPresupuesto({ proyecto: conCocina(), version: 3, tarifa: tarifaPrueba(), plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14', armarios: ['C.01'] });
+  assert.equal(sin.partidas.length, 2);
+  assert.equal(sin.partidas[0].precio, null);
+  assert.deepEqual(sin.partidas[0].pendientes, ['Precio del punto cocina']);
+  assert.ok(sin.partidas[0].puntos! > 0);
+});
+
+test('bloqueo: líneas a 0 puntos o fuera de tarifa (también en armarios); el precio a mano manda', () => {
+  const p = conCocina();
+  p.cocinas![0].tramos[1].bajos[0].ancho = 120;   // bajo de 120: fuera de tarifa
+  const d = generarPresupuesto({ proyecto: p, version: 1, tarifa: { ...tarifaPrueba(), precio_punto_cocina: 2 }, plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14' });
+  const soloCocina = (x: DocPresupuesto): DocPresupuesto => ({ ...x, partidas: x.partidas.filter((q) => q.tipo === 'cocina') });
+  const b = lineasBloqueantes(soloCocina(d));
+  assert.equal(b.length, 1);
+  assert.match(b[0], /PARED 2 · Cuerpo Bajo 70 × 120 .*: fuera de tarifa/);
+  const manual = { ...d, partidas: d.partidas.map((x) => x.codigo === 'C.01.2' ? { ...x, precio_manual: true, precio: 500 } : x) };
+  assert.deepEqual(lineasBloqueantes(soloCocina(manual)), []);
+  // Armario con un módulo de más de 1000 mm (fuera de tabla) también bloquea
+  const a = ejemplo(); a.armarios[0].cuerpos[0].modulos[0].ancho = 110;
+  const da = generarPresupuesto({ proyecto: a, version: 1, tarifa: tarifaPrueba(), plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14', armarios: ['A.01'] });
+  assert.ok(lineasBloqueantes(da).some((l) => /fuera de tarifa/.test(l)));
+});

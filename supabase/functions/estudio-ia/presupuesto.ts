@@ -32,7 +32,7 @@ import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tar
 import { ANCHOS, COSTADOS, EXTRAS, HERRAJES, MODELOS, PUERTAS, RECARGOS, REMATES, SUELTOS, VERSION_PUNTOS, puntosBase, type OpcionesPuntos } from '../_shared/estudio/puntos.ts'
 import {
   generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
-  claveDe, docVariante, importesNegocio, partidaLibre, type DocPresupuesto, type Partida, type Plantilla
+  claveDe, docVariante, importesNegocio, partidaLibre, lineasBloqueantes, type DocPresupuesto, type Partida, type Plantilla
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos, proponerPartidas, type Adjunto } from '../_shared/estudio/ia.ts'
@@ -74,7 +74,9 @@ async function cargarTarifa(supa: Any, userId: string | null): Promise<Tarifa & 
     descuento_pct: fila?.descuento_pct === null || fila?.descuento_pct === undefined ? TARIFA_PENDIENTE.descuento_pct : Number(fila.descuento_pct),
     iva_pct: fila?.iva_pct === null || fila?.iva_pct === undefined ? TARIFA_PENDIENTE.iva_pct : Number(fila.iva_pct),
     precio_punto: fila?.precio_punto === null || fila?.precio_punto === undefined ? null : Number(fila.precio_punto),
-    puntos: fila?.puntos && typeof fila.puntos === 'object' ? fila.puntos : {}
+    puntos: fila?.puntos && typeof fila.puntos === 'object' ? fila.puntos : {},
+    precio_punto_cocina: fila?.precio_punto_cocina === null || fila?.precio_punto_cocina === undefined ? null : Number(fila.precio_punto_cocina),
+    puntos_cocina: fila?.puntos_cocina && typeof fila.puntos_cocina === 'object' ? fila.puntos_cocina : {}
   };
 }
 
@@ -367,7 +369,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       siguiente: sig,
       disenos: (dis ?? []).map((d: Any) => {
         const v = (vers ?? []).find((x: Any) => x.numero === d.version_actual);
-        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: (v?.datos?.armarios ?? []).map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
+        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: [...(v?.datos?.armarios ?? []), ...(v?.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
       }),
       documentos: [
         ...(docs.data ?? []).map((x: Any) => ({ tabla: 'doc', id: x.id, nombre: x.nombre, tipo: x.tipo })),
@@ -392,11 +394,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         comision: x.datos?.comision?.activa ? x.datos.comision : null, partidas: x.datos?.partidas?.length ?? 0, actualizado: x.updated_at
       })),
       siguiente: await siguienteZ(),
-      versiones: (vers ?? []).map((v: Any) => ({ numero: v.numero, armarios: (v.datos?.armarios ?? []).map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) })),
+      versiones: (vers ?? []).map((v: Any) => ({ numero: v.numero, armarios: [...(v.datos?.armarios ?? []), ...(v.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) })),
       // Diseños (los documentos de tipo «Diseño»): partidas con su dibujo desde su versión actual
       disenos: (dis ?? []).map((d: Any) => {
         const v = (vers ?? []).find((x: Any) => x.numero === d.version_actual);
-        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: (v?.datos?.armarios ?? []).map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
+        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: [...(v?.datos?.armarios ?? []), ...(v?.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
       }),
       documentos: [
         ...(docs.data ?? []).map((x: Any) => ({ tabla: 'doc', id: x.id, nombre: x.nombre, tipo: x.tipo })),
@@ -590,7 +592,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     for (const [n, ps] of porVersion) {
       const v = await versionDatos(n);
       if (!v) continue;
-      for (const l of laminasProyecto(v.datos, medir)) { const p = ps.find((x) => x.codigo === l.codigo); if (p) dibujos.push({ ...dibujoLamina(l, medir), codigo: claveDe(p) }); }
+      for (const l of laminasProyecto(v.datos, medir)) { const p = ps.find((x) => (x.dibujo ?? x.codigo) === l.codigo); if (p) dibujos.push({ ...dibujoLamina(l, medir), codigo: claveDe(p) }); }
     }
     const imagen = async (path: string | null) => {
       if (!path) return undefined;
@@ -639,12 +641,18 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       const v = await versionDatos(n);
       if (!v) continue;
       for (const l of laminasProyecto(v.datos, medir)) {
-        const p = ps.find((x) => x.codigo === l.codigo);
+        const p = ps.find((x) => (x.dibujo ?? x.codigo) === l.codigo);
         if (p) out.push(mapa(l, claveDe(p)));
       }
     }
     return out;
   };
+
+  // PDF y Excel del cliente: no con líneas a 0 puntos o fuera de tarifa (la vista interna sí)
+  if (action === 'presupuesto_dibujos' || action === 'presupuesto_pdf') {
+    const bloquean = lineasBloqueantes(doc);
+    if (bloquean.length) return json({ error: `No se puede generar el presupuesto para el cliente: ${bloquean.length === 1 ? 'hay una línea' : `hay ${bloquean.length} líneas`} a 0 puntos o fuera de tarifa. Revísalas en la tarifa o pon el precio de la partida a mano.`, bloqueantes: bloquean }, 409);
+  }
 
   if (action === 'presupuesto_dibujos') {
     const pdf = await PDFDocument.create(); pdf.registerFontkit(fontkit);
