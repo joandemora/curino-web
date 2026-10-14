@@ -158,3 +158,9 @@ test('largo de pared: suma exacta, regletas de ≤ 5 cm en los extremos', () => 
   const rg = r.tramos[0].lineas.find((l) => l.clave === 'regleta')!;
   assert.deepEqual([rg.cantidad, rg.puntos], [1, 10]);
 });
+
+test('columna horno + micro con «puertas» sin alturas: puerta arriba y abajo, no de 220', () => {
+  const r = puntosCocina(cocina({ tramos: [{ bajos: [{ tipo: 'columna_hm', ancho: 60, frente: { tipo: 'puertas' } }] }] }), P);
+  const puertas = r.tramos[0].lineas.filter((l) => l.nombre.startsWith('Puerta'));
+  assert.ok(puertas.length === 2 && !puertas.some((l) => /220 ×/.test(l.nombre)));
+});

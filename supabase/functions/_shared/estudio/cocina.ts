@@ -152,6 +152,8 @@ export function completarCocina(entrada: Cocina): Cocina {
           }
         }
         if (m.tipo === 'hueco' || m.tipo === 'regleta') continue;
+        // Columna horno + micro con puertas sin alturas: la puerta no tapa los huecos del horno y el micro
+        if (m.tipo === 'columna_hm' && m.frente?.tipo === 'puertas' && !m.frente.alturas?.length) delete m.frente;
         if (!m.frente) {
           if (m.tipo === 'horno') m.frente = { tipo: 'cajones', cajones: 1, alturas: [Math.max(10, (m.alto ?? 70) - COCINA_DEF.horno_hueco)] };
           else if (m.tipo === 'columna_hm') {
