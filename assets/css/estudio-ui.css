@@ -274,3 +274,7 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .ng-cal-poner{display:flex;gap:6px;align-items:center}
 .ng-cal-poner input{padding:4px 6px;border:1px solid #d9d3c8;border-radius:6px}
 @media (max-width:700px){.ng-cal-dia{min-height:58px}.ng-cal-it span{display:none}.ng-cal-poner{flex-wrap:wrap}}
+
+.ng-fiable{font-size:12.5px;margin:8px 0 0}
+.ng-aviso-txt{font-size:12.5px;color:#b54708;background:#fffaf0;border:1px solid #f5c26b;border-radius:8px;padding:6px 10px;margin:4px 0 8px}
+.ng-incompletos li{opacity:.8}
