@@ -92,8 +92,9 @@ export function metricas(proyectos: Any[], presupuestos: Any[], periodo: string,
  * en el periodo o con facturas a cliente fechadas en él) + ranking por margen.
  */
 async function reales(supa: Any, proyectos: Any[], presupuestos: Any[], periodo: string) {
+  const vacio = { facturacion: 0, costes: 0, margen: null, margen_pct: null, ranking: [], incompletos: [], n_fiables: 0, n_aceptados: 0, n_incompletos: 0 };
   const ids = proyectos.map((p) => p.id);
-  if (!ids.length) return { facturacion: 0, costes: 0, margen: null, margen_pct: null, ranking: [] };
+  if (!ids.length) return vacio;
   const [f, c] = await Promise.all([
     supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, proveedor').in('proyecto_id', ids).eq('subido', true),
     supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
@@ -101,25 +102,33 @@ async function reales(supa: Any, proyectos: Any[], presupuestos: Any[], periodo:
   const desde = inicioPeriodo(periodo);
   const en = (iso: string | null) => !!iso && (!desde || new Date(iso) >= desde);
   const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
-  let fact = 0, cost = 0, conCostes = false;
-  const ranking: Any[] = [];
+  let fact = 0, cost = 0, nAceptados = 0;
+  const ranking: Any[] = [], incompletos: Any[] = [];
   for (const p of proyectos) {
     const pr = presupuestos.find((x) => x.proyecto_id === p.id) ?? null;
     const fich = (f.data ?? []).filter((x: Any) => x.proyecto_id === p.id);
     const cos = (c.data ?? []).filter((x: Any) => x.proyecto_id === p.id);
     const facturasEnPeriodo = fich.some((x: Any) => x.tipo === 'factura_cliente' && en(x.fecha));
     if (!(pr?.estado === 'aceptado' && en(pr.aceptado_at)) && !facturasEnPeriodo) continue;
+    nAceptados++;
     const m = metricasProyecto({ presupuesto: pr, ficheros: fich, costes: cos, cobros: [], hoy });
-    if (!m.facturacion) continue;
+    // Margen fiable: con facturación, algún coste y ningún coste sin importe
+    const provs = fich.filter((x: Any) => x.tipo === 'factura_proveedor');
+    const sinImporte = provs.filter((x: Any) => x.base === null || x.base === undefined).length;
+    const hayCostes = provs.length + cos.length > 0;
+    const fila = { proyecto_id: p.id, cliente: p.nombre, facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct };
+    const motivo = !m.facturacion ? 'sin facturación' : !hayCostes ? 'sin costes' : sinImporte ? (sinImporte === 1 ? '1 coste sin importe' : `${sinImporte} costes sin importe`) : null;
+    if (motivo) { incompletos.push({ ...fila, motivo }); continue; }
     fact += m.facturacion; cost += m.costes;
-    if (m.margen !== null) conCostes = true;
-    ranking.push({ proyecto_id: p.id, cliente: p.nombre, facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct });
+    ranking.push(fila);
   }
   ranking.sort((a, b) => (b.margen_pct ?? -1e9) - (a.margen_pct ?? -1e9));
+  incompletos.sort((a, b) => (b.facturacion || 0) - (a.facturacion || 0));
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return {
-    facturacion: r2(fact), costes: r2(cost), margen: conCostes ? r2(fact - cost) : null,
-    margen_pct: conCostes && fact > 0 ? Math.round((1000 * (fact - cost)) / fact) / 10 : null, ranking
+    facturacion: r2(fact), costes: r2(cost), margen: ranking.length ? r2(fact - cost) : null,
+    margen_pct: ranking.length && fact > 0 ? Math.round((1000 * (fact - cost)) / fact) / 10 : null,
+    ranking, incompletos, n_fiables: ranking.length, n_aceptados: nAceptados, n_incompletos: incompletos.length
   };
 }
 
@@ -236,6 +245,7 @@ export async function accionNegocio(action: string, o: {
     const total = metricas(proyectos, pres ?? [], periodo, 21, dias);
     const real = await reales(supa, proyectos, pres ?? [], periodo);
     real.ranking = real.ranking.map((r: Any) => ({ ...r, alumno: email.get(proyectos.find((p: Any) => p.id === r.proyecto_id)?.user_id) ?? '' }));
+    real.incompletos = real.incompletos.map((r: Any) => ({ ...r, alumno: email.get(proyectos.find((p: Any) => p.id === r.proyecto_id)?.user_id) ?? '' }));
     return json({ ...total, real, alumnos: filas, alumnos_con_actividad: filas.length });
   }
   return json({ error: 'accion_desconocida' }, 400);

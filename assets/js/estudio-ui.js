@@ -1133,17 +1133,13 @@
           kpi('Pendientes de respuesta', String(m.pendientes.length), viejo !== null ? 'el más antiguo, hace ' + viejo + (viejo === 1 ? ' día' : ' días') : 'ninguno') +
           (c ? (c.ilimitado ? kpi('Créditos', 'Ilimitados', cr(c.gastados) + ' gastados este mes') : kpi('Créditos del mes', cr(c.restantes), 'de ' + cr(c.mes) + (c.saldo > 0 ? ' · +' + cr(c.saldo) + ' de packs' : ''))) : '') +
           '</div>';
-        // Rentabilidad real (facturas y costes de los proyectos)
+        // Rentabilidad real: solo proyectos con margen fiable (facturación y todos los costes con importe)
         var r = m.real;
         if (r) {
           html += '<div class="ng-card"><div class="ng-card-cab"><h2>Rentabilidad real</h2><span class="pa-muted" style="font-size:12px">Proyectos aceptados o facturados en el periodo · sin IVA</span></div>' +
             '<div class="ng-kpis ng-kpis-in">' + kpi('Facturación', eur0(r.facturacion), '') + kpi('Costes', eur0(r.costes), 'proveedores y costes manuales') +
             kpi('Margen bruto', eur0(r.margen), r.margen_pct === null ? 'añade costes en cada proyecto' : String(r.margen_pct).replace('.', ',') + ' %', false) + '</div>' +
-            (r.ranking.length ? '<h3 class="dc-grupo">Proyectos por margen</h3><ul class="ng-lista">' + r.ranking.map(function (x, i) {
-              var bajo = x.margen_pct !== null && x.margen_pct < 30;
-              return '<li><span class="ng-pos">' + (i + 1) + '</span><div><strong>' + esc(x.cliente) + '</strong><small>' + (x.alumno ? esc(x.alumno) + ' · ' : '') + 'facturación ' + eur0(x.facturacion) + ' · costes ' + eur0(x.costes) + '</small></div>' +
-                '<span class="ng-imp">' + eur0(x.margen) + '</span><span class="ng-tag ' + (x.margen_pct === null ? 'ng-e-borrador' : bajo ? 'ng-e-rechazado' : 'ng-e-aceptado') + '">' + (x.margen_pct === null ? 'sin costes' : String(x.margen_pct).replace('.', ',') + ' %') + '</span></li>';
-            }).join('') + '</ul>' : '<p class="pa-muted" style="margin:4px 0 0">Aún no hay proyectos aceptados o facturados en el periodo.</p>') + '</div>';
+            '<p class="pa-muted ng-fiable">Calculado con ' + r.n_fiables + ' de ' + r.n_aceptados + ' proyectos aceptados · ' + r.n_incompletos + ' sin costes completos</p></div>';
         }
         html += '<div class="ng-card"><div class="ng-card-cab"><h2>Evolución mensual</h2><span class="ng-ley"><i style="background:#d9d3c8"></i>Presupuestado <i style="background:#161616"></i>Aceptado <i style="background:#12B76A"></i>Margen</span></div>' + grafica(m.serie) + '</div>';
         if (!admin) html += '<div class="ng-card" id="ngCal"></div>';
@@ -1161,11 +1157,24 @@
           }).join('') + '</ul></div>';
         }
         html += '<div class="ng-dos">' + lista('Pendientes de respuesta', m.pendientes, true) + lista('Últimos presupuestos', m.ultimos, false) + '</div>';
+        var fin = '';   // «Proyectos por margen» al final de la página
+        if (r) {
+          var filaR = function (x, i, incompleto) {
+            var bajo = x.margen_pct !== null && x.margen_pct < 30;
+            return '<li><span class="ng-pos">' + (incompleto ? '·' : i + 1) + '</span><div><strong>' + esc(x.cliente) + '</strong><small>' + (x.alumno ? esc(x.alumno) + ' · ' : '') + 'facturación ' + eur0(x.facturacion) + ' · costes ' + eur0(x.costes) + (incompleto ? ' · ' + esc(x.motivo) : '') + '</small></div>' +
+              (incompleto ? '<span class="ng-tag ng-e-borrador">incompleto</span>' : '<span class="ng-imp">' + eur0(x.margen) + '</span><span class="ng-tag ' + (bajo ? 'ng-e-rechazado' : 'ng-e-aceptado') + '">' + String(x.margen_pct).replace('.', ',') + ' %</span>') + '</li>';
+          };
+          fin = '<div class="ng-card"><div class="ng-card-cab"><h2>Proyectos por margen</h2><span class="pa-muted" style="font-size:12px">Solo proyectos con todos los costes con importe</span></div>' +
+            (r.ranking.length ? '<ul class="ng-lista">' + r.ranking.map(function (x, i) { return filaR(x, i, false); }).join('') + '</ul>' : '<p class="pa-muted" style="margin:4px 0 0">Aún no hay proyectos con margen fiable en el periodo.</p>') +
+            (r.incompletos && r.incompletos.length ? '<h3 class="dc-grupo">Margen incompleto (' + r.incompletos.length + ')</h3><p class="ng-aviso-txt">Faltan costes o importes: su margen no es real y no cuenta en la rentabilidad. Añade las facturas de proveedor o los costes en cada proyecto.</p><ul class="ng-lista ng-incompletos">' +
+              r.incompletos.map(function (x, i) { return filaR(x, i, true); }).join('') + '</ul>' : '') + '</div>';
+        }
         if (admin && m.alumnos) {
           html += '<div class="ng-card"><h2>Por alumno</h2>' + (m.alumnos.length ? '<div style="overflow-x:auto"><table class="ng-tabla"><thead><tr><th>Alumno</th><th>Proyectos</th><th>Enviados</th><th>Presupuestado</th><th>Aceptados</th><th>Ventas</th><th>Cierre</th><th>Pendientes</th></tr></thead><tbody>' +
             m.alumnos.map(function (a) { return '<tr><td>' + esc(a.email) + '</td><td>' + a.proyectos + '</td><td>' + a.enviados + '</td><td>' + eur0(a.presupuestado) + '</td><td>' + a.aceptados + '</td><td><b>' + eur0(a.ventas) + '</b></td><td>' + (a.tasa_cierre === null ? '—' : String(a.tasa_cierre).replace('.', ',') + ' %') + '</td><td>' + a.pendientes + '</td></tr>'; }).join('') +
             '</tbody></table></div>' : '<p class="pa-muted">Sin actividad de alumnos en el periodo.</p>') + '</div>';
         }
+        html += fin;
         el.querySelector('#ngCuerpo').innerHTML = html;
         if (!admin) calendario(el.querySelector('#ngCal'), ctx, m.calendario || [], cargar);
       }).catch(function (e) { el.querySelector('#ngCuerpo').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
