@@ -20,7 +20,7 @@
 
 import { laminasProyecto, dibujoLamina, medirAprox } from '../_shared/estudio/alzado.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
-import { cobrosPorDefecto, metricasProyecto } from '../_shared/estudio/metricas.ts'
+import { cobrosPorDefecto, metricasProyecto, TIPOS_COSTE_DEF } from '../_shared/estudio/metricas.ts'
 import { costeUsd, leerFactura } from '../_shared/estudio/ia.ts'
 import { PLANTILLA_ADMIN, PLANTILLA_ALUMNO, type Plantilla } from '../_shared/estudio/presupuesto.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
@@ -38,7 +38,7 @@ const TIPOS_F = ['factura_proveedor', 'presupuesto_proveedor', 'factura_cliente'
 const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
-const ACCIONES = new Set(['miniatura_subida', 'miniatura_guardar', 'proyecto_montaje', 'proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
+const ACCIONES = new Set(['coste_nuevo', 'miniatura_subida', 'miniatura_guardar', 'proyecto_montaje', 'proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
   'fichero_borrar', 'fichero_leer_ia', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
 export const esAccionProyecto = (a: string) => ACCIONES.has(a);
 
@@ -81,7 +81,7 @@ async function usoAlmacenamiento(supa: Any, userId: string): Promise<number> {
 async function datosProyecto(supa: Any, pid: string) {
   const [pres, fich, cost, cob] = await Promise.all([
     supa.from('estudio_presupuestos').select('id, numero, estado, importe, pvp, aceptado_at, updated_at, datos, comision_importe, montaje_previsto, montado, montado_at').eq('proyecto_id', pid),
-    supa.from('estudio_ficheros').select('id, tipo, base, iva, total, fecha, proveedor').eq('proyecto_id', pid),
+    supa.from('estudio_ficheros').select('id, tipo, base, iva, total, fecha, proveedor, tipo_coste, sustituido_por, nombre, concepto').eq('proyecto_id', pid),
     supa.from('estudio_costes').select('id, categoria, concepto, fecha, importe, created_at').eq('proyecto_id', pid).order('fecha', { nullsFirst: false }),
     supa.from('estudio_cobros').select('*').eq('proyecto_id', pid).order('orden')
   ]);
@@ -127,13 +127,13 @@ export async function accionProyecto(action: string, ctx: {
   };
 
   if (action === 'proyectos_lista') {
-    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, referencia, version_actual, updated_at, created_at, miniatura').eq('user_id', userId).order('updated_at', { ascending: false });
+    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, referencia, version_actual, updated_at, created_at, miniatura, costes_v2').eq('user_id', userId).order('updated_at', { ascending: false });
     const lista = proyectos ?? [];
     const ids = lista.map((p: Any) => p.id);
     const vacio = { data: [] };
     const [pres, fich, cost] = ids.length ? await Promise.all([
       supa.from('estudio_presupuestos').select('proyecto_id, numero, estado, importe, pvp, aceptado_at, updated_at, datos, comision_importe').in('proyecto_id', ids),
-      supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha').in('proyecto_id', ids),
+      supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, tipo_coste, sustituido_por').in('proyecto_id', ids),
       supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
     ]) : [vacio, vacio, vacio];
     const hoy = hoyMadrid();
@@ -148,7 +148,7 @@ export async function accionProyecto(action: string, ctx: {
       }
       const pr = agg.get(p.id) ?? null;
       const m = metricasProyecto({
-        presupuesto: pr, hoy, cobros: [],
+        presupuesto: pr, hoy, cobros: [], v2: !!p.costes_v2,
         ficheros: (fich.data ?? []).filter((x: Any) => x.proyecto_id === p.id), costes: (cost.data ?? []).filter((x: Any) => x.proyecto_id === p.id)
       });
       const ultima = [p.updated_at, pr?.updated_at].filter(Boolean).sort().pop();
@@ -187,8 +187,17 @@ export async function accionProyecto(action: string, ctx: {
     for (const k of ['base', 'iva', 'total']) if (body?.[k] !== undefined) fila[k] = num(body[k]);
     if (body?.notas !== undefined) fila.notas = String(body.notas || '').slice(0, 500) || null;
     if (body?.subido === true) fila.subido = true;
+    if (body?.tipo_coste !== undefined) fila.tipo_coste = String(body.tipo_coste || '').trim().slice(0, 60) || null;
+    if (body?.concepto !== undefined) fila.concepto = String(body.concepto || '').trim().slice(0, 200) || null;
     const r = await supa.from('estudio_ficheros').update(fila).eq('id', f.id).select('*').single();
     if (r.error) throw r.error;
+    // «Sustituye a…»: presupuestos de proveedor del proyecto que esta factura sustituye (dejan de contar como coste)
+    if (Array.isArray(body?.sustituye) && r.data.tipo === 'factura_proveedor') {
+      const ids = body.sustituye.map(String).filter((x: string) => UUID.test(x)).slice(0, 50);
+      await supa.from('estudio_ficheros').update({ sustituido_por: null }).eq('sustituido_por', f.id).eq('proyecto_id', f.proyecto_id);
+      if (ids.length) await supa.from('estudio_ficheros').update({ sustituido_por: f.id }).in('id', ids).eq('proyecto_id', f.proyecto_id).eq('tipo', 'presupuesto_proveedor');
+    }
+    if (body?.tipo !== undefined && r.data.tipo !== 'factura_proveedor') await supa.from('estudio_ficheros').update({ sustituido_por: null }).eq('sustituido_por', f.id);
     return json({ fichero: r.data });
   }
   if (action === 'leer_paginas') {
@@ -295,7 +304,22 @@ export async function accionProyecto(action: string, ctx: {
     const u = await firmarVarias((data ?? []).flatMap((f: Any) => [f.path, f.miniatura_path]));
     const lista = (data ?? []).map((f: Any) => ({ ...f, url: u.get(f.path) ?? null, miniatura_url: f.miniatura_path ? u.get(f.miniatura_path) ?? null : null }));
     const usado = await usoAlmacenamiento(supa, proyecto.user_id);
-    return json({ ficheros: lista, almacenamiento: { usado, limite: cuotaMb * 1024 * 1024 } });
+    const { data: t } = await supa.from('estudio_tarifas').select('tipos_coste').eq('user_id', proyecto.user_id).maybeSingle();
+    const tipos = Array.isArray(t?.tipos_coste) && t.tipos_coste.length ? t.tipos_coste : TIPOS_COSTE_DEF;
+    return json({ ficheros: lista, almacenamiento: { usado, limite: cuotaMb * 1024 * 1024 }, tipos_coste: tipos, costes_v2: !!proyecto.costes_v2 });
+  }
+  if (action === 'coste_nuevo') {
+    // Documento de coste sin archivo (factura o presupuesto de proveedor con su importe)
+    const tipo = body?.tipo === 'presupuesto_proveedor' ? 'presupuesto_proveedor' : 'factura_proveedor';
+    const concepto = String(body?.concepto || '').trim().slice(0, 200) || null;
+    const proveedor = String(body?.proveedor || '').trim().slice(0, 120) || null;
+    const { data: f, error } = await supa.from('estudio_ficheros').insert({
+      proyecto_id: pid, user_id: proyecto.user_id, path: null, mime: null, bytes: 0, subido: true, tipo,
+      nombre: (concepto || proveedor || 'Coste sin archivo').slice(0, 120), proveedor, concepto, fecha: fecha(body?.fecha), base: num(body?.base),
+      tipo_coste: String(body?.tipo_coste || '').trim().slice(0, 60) || 'Otros'
+    }).select('*').single();
+    if (error) throw error;
+    return json({ fichero: f });
   }
   if (action === 'fichero_subida') {
     const mime = String(body?.mime || '');
@@ -384,8 +408,21 @@ export async function accionProyecto(action: string, ctx: {
   if (action === 'metricas_proyecto') {
     const d = await datosProyecto(supa, pid);
     const cobros = await asegurarCobros(supa, proyecto, d.pres, d.cobros);
-    const m = metricasProyecto({ presupuesto: d.pres, ficheros: d.ficheros, costes: d.costes, cobros, hoy: hoyMadrid() });
-    return json({ ...m, iva_pct: Number(proyecto.iva_pct ?? 21), presupuesto: d.pres ? { estado: d.pres.estado, importe: d.pres.importe, numero: d.pres.datos?.numero || null } : null, costes_lista: d.costes, cobros_lista: cobros });
+    const v2 = !!proyecto.costes_v2;
+    const m = metricasProyecto({ presupuesto: d.pres, ficheros: d.ficheros, costes: d.costes, cobros, hoy: hoyMadrid(), v2 });
+    // Presupuestos por estado y montajes (uno por aceptado; sin aceptados, el del proyecto)
+    const cuenta = (e: string) => d.todos.filter((x: Any) => x.estado === e).length;
+    const aceptados = d.todos.filter((x: Any) => x.estado === 'aceptado');
+    const montajes = aceptados.length
+      ? aceptados.map((x: Any) => ({ numero: x.numero || x.datos?.numero || null, importe: x.importe ?? null, montaje_previsto: x.montaje_previsto ?? null, montado: !!x.montado, montado_at: x.montado_at ?? null }))
+      : (proyecto.montaje_previsto || proyecto.montado ? [{ numero: null, importe: null, montaje_previsto: proyecto.montaje_previsto ?? null, montado: !!proyecto.montado, montado_at: proyecto.montado_at ?? null }] : []);
+    return json({
+      ...m, v2, iva_pct: Number(proyecto.iva_pct ?? 21),
+      presupuesto: d.pres ? { estado: d.pres.estado, importe: d.pres.importe, numero: d.pres.numero || d.pres.datos?.numero || null } : null,
+      presupuestos: { aceptados: cuenta('aceptado'), pendientes: cuenta('enviado'), borradores: cuenta('borrador'), rechazados: cuenta('rechazado'), total: d.todos.length,
+        importe_aceptado: Math.round(aceptados.reduce((s: number, x: Any) => s + Number(x.importe ?? 0), 0) * 100) / 100 },
+      montajes, costes_lista: d.costes, cobros_lista: cobros
+    });
   }
   return json({ error: 'accion_desconocida' }, 400);
 }

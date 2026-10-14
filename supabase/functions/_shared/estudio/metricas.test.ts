@@ -80,3 +80,38 @@ test('comisión del interiorista: coste automático del presupuesto aceptado', (
   assert.equal(m.margen, 3500);
   assert.ok(m.costes_por_categoria.some((c) => c.categoria === 'comision' && c.importe === 1500));
 });
+
+// ── Costes desde documentos (costes_v2) ──
+test('v2: facturas y presupuestos de proveedor no sustituidos, por tipo de coste; 0 € = sin importe', () => {
+  const base = { presupuesto: { estado: 'aceptado', importe: 10000, aceptado_at: '2026-10-01' }, cobros: [], hoy: '2026-10-14', costes: [{ categoria: 'otros', importe: 999, fecha: null }] };
+  const ficheros = [
+    { id: 'f1', tipo: 'factura_proveedor', base: 3000, total: 3630, fecha: '2026-10-05', tipo_coste: 'Tablero/material' },
+    { id: 'p1', tipo: 'presupuesto_proveedor', base: 2800, total: null, fecha: '2026-09-20', tipo_coste: 'Tablero/material', sustituido_por: 'f1' },
+    { id: 'p2', tipo: 'presupuesto_proveedor', base: 1200, total: null, fecha: '2026-09-21', tipo_coste: 'Lacado/barniz' },
+    { id: 'f2', tipo: 'factura_proveedor', base: 500, total: 605, fecha: '2026-10-06', tipo_coste: null }
+  ];
+  const m = metricasProyecto({ ...base, ficheros, v2: true });
+  assert.equal(m.costes, 4700);                                   // 3000 + 1200 + 500 (p1 sustituido; costes manuales ya no cuentan)
+  assert.deepEqual(m.costes_por_tipo, [{ tipo: 'Tablero/material', importe: 3000 }, { tipo: 'Lacado/barniz', importe: 1200 }, { tipo: 'Otros', importe: 500 }]);
+  assert.equal(m.fiable, true);
+  // Un presupuesto a 0 € cuenta como «sin importe»: margen no fiable
+  const cero = metricasProyecto({ ...base, ficheros: [...ficheros, { id: 'p3', tipo: 'presupuesto_proveedor', base: 0, total: null, fecha: null, tipo_coste: 'Herrajes' }], v2: true });
+  assert.equal(cero.costes, 4700);
+  assert.deepEqual([cero.fiable, cero.motivo], [false, '1 coste sin importe']);
+  // Reglas de antes (proyecto sin migrar): facturas + costes manuales; presupuestos de proveedor no cuentan; 0 € sí es importe
+  const antes = metricasProyecto({ ...base, ficheros: [...ficheros, { id: 'p3', tipo: 'presupuesto_proveedor', base: 0, total: null, fecha: null }] });
+  assert.equal(antes.costes, 3000 + 500 + 999);
+  assert.equal(antes.fiable, true);
+});
+
+test('v2: sin presupuesto aceptado, los presupuestos de proveedor son «coste previsto» (no cuentan)', () => {
+  const ficheros = [
+    { tipo: 'presupuesto_proveedor', base: 2000, total: null, fecha: null, tipo_coste: 'Tablero/material' },
+    { tipo: 'presupuesto_proveedor', base: 500, total: null, fecha: null },
+    { tipo: 'factura_proveedor', base: 300, total: 363, fecha: null }
+  ];
+  const m = metricasProyecto({ presupuesto: { estado: 'rechazado', importe: 9000, aceptado_at: null }, ficheros, costes: [], cobros: [], hoy: '2026-10-14', v2: true });
+  assert.deepEqual([m.costes, m.coste_previsto], [300, 2500]);
+  const a = metricasProyecto({ presupuesto: { estado: 'aceptado', importe: 9000, aceptado_at: '2026-10-01' }, ficheros, costes: [], cobros: [], hoy: '2026-10-14', v2: true });
+  assert.deepEqual([a.costes, a.coste_previsto], [2800, 0]);
+});

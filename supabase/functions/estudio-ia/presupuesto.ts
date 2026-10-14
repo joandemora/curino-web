@@ -43,6 +43,7 @@ import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/in
 import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensans.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
 import { numeroEnProyecto, partirNumero, incrementarSerie } from '../_shared/estudio/aceptados.ts'
+import { TIPOS_COSTE_DEF } from '../_shared/estudio/metricas.ts'
 import { ENTRADAS_MODULO, puntosBaseCocina, revisarCocina, claveEncimera, claveTablero } from '../_shared/estudio/cocina-puntos.ts'
 import { PROVEEDOR_COCINA, FECHA_TARIFA_COCINA, FECHAS_HOJAS, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA, SERVICIO_COCINA, ALTOS_PUERTA, ANCHOS_PUERTA, GRUPOS_PUERTA, REVISAR_COCINA } from '../_shared/estudio/cocina-tarifa.ts'
 
@@ -170,6 +171,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       de: deCurino ? 'curino' : 'mia', propia: t.propia, conceptos: CONCEPTOS,
       tarifa: { valores: t.valores, descuento_pct: t.descuento_pct, iva_pct: t.iva_pct, precio_punto: t.precio_punto, puntos: t.puntos },
       // Serie de n.º de presupuesto (solo en «Mi tarifa»): la guardada o, si no, la que se usaría (siguiente Z)
+      // Tipos de coste del usuario (documentos de coste); vacío = lista inicial
+      tipos_coste: deCurino ? null : ((await supa.from('estudio_tarifas').select('tipos_coste').eq('user_id', userId).maybeSingle()).data?.tipos_coste ?? null), tipos_coste_def: TIPOS_COSTE_DEF,
       serie: deCurino ? null : { guardada: (await supa.from('estudio_tarifas').select('serie_presupuesto').eq('user_id', userId).maybeSingle()).data?.serie_presupuesto ?? null, auto: await siguienteZUsuario(supa, userId) },
       puntos: { version: VERSION_PUNTOS, base: puntosBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES, puertas: PUERTAS, herrajes: HERRAJES }
     });
@@ -187,6 +190,10 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     }
     const fila = { valores, descuento_pct: numOrNull(body?.descuento_pct, 0, 100) ?? 0, iva_pct: numOrNull(body?.iva_pct, 0, 100) ?? 21,
       precio_punto: numOrNull(body?.precio_punto, 0, 10000), puntos: cambiados, updated_at: new Date().toISOString() };
+    if (!deCurino && Array.isArray(body?.tipos_coste)) {
+      const tipos = [...new Set(body.tipos_coste.map((x: unknown) => String(x ?? '').trim().slice(0, 60)).filter(Boolean))].slice(0, 30);
+      (fila as Any).tipos_coste = tipos.length ? tipos : null;
+    }
     if (!deCurino && body?.serie_presupuesto !== undefined) {
       const serie = txt(body.serie_presupuesto, 20).toUpperCase();
       if (serie && !/^[A-Z]{0,4}\d{1,12}$/.test(serie)) return json({ error: 'La serie de presupuestos es un prefijo de letras y un número, p. ej. Z2606964.' }, 400);

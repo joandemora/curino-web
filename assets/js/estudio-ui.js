@@ -60,7 +60,7 @@
   var pctTxt = function (n) { return n === null || n === undefined ? '—' : String(n).replace('.', ',') + ' %'; };
 
   function proyectos(el, ctx, pid, tab) {
-    if (pid) return fichaProyecto(el, ctx, pid, tab || 'diseno');
+    if (pid) return fichaProyecto(el, ctx, pid, tab || 'resumen');
     var lista = [], q = '', estado = '', orden = 'num';
     el.innerHTML = '<div class="ng"><div class="ng-cab"><h1>Proyectos</h1><div class="pj-filtros">' +
       '<input type="search" id="pjBuscar" placeholder="Buscar cliente o referencia">' +
@@ -106,8 +106,9 @@
   }
 
   function fichaProyecto(el, ctx, pid, tab) {
-    if (tab === 'archivos') tab = 'documentos';   // pestaña antigua: ahora todo está en «Documentos»
-    var TABS = [['diseno', 'Diseño'], ['documentos', 'Documentos'], ['presupuesto', 'Presupuesto'], ['metricas', 'Métricas']];
+    // Pestañas antiguas (Archivos, Documentos, Métricas): ahora todo está en «Resumen»
+    if (tab === 'archivos' || tab === 'documentos' || tab === 'metricas') tab = 'resumen';
+    var TABS = [['resumen', 'Resumen'], ['diseno', 'Diseño'], ['presupuesto', 'Presupuesto']];
     el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
       '</nav></div><div class="pj-montaje" id="pjMontaje"></div><div id="pjCuerpo"></div></div>';
@@ -156,8 +157,7 @@
     var cuerpo = el.querySelector('#pjCuerpo');
     // Cambios en presupuestos (aceptar, montaje) refrescan el montaje de la cabecera
     var ctx0 = ctx; ctx = Object.assign({}, ctx0, { alCambiar: function () { if (ctx0.alCambiar) ctx0.alCambiar(); cargarCab(); } });
-    if (tab === 'documentos') return documentosProyecto(cuerpo, ctx, pid);
-    if (tab === 'metricas') return metricasProyecto(cuerpo, ctx, pid);
+    if (tab === 'resumen') return resumenProyecto(cuerpo, ctx, pid);
     if (tab === 'presupuesto') return presupuesto(cuerpo, ctx, pid, { embebido: true });
     return disenoProyecto(cuerpo, ctx, pid);
   }
@@ -418,7 +418,8 @@
   }
   function documentosProyecto(el, ctx, pid) {
     var supa = ctx.supa, items = [], cola = [];
-    el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Documentos</h2><span class="pa-muted" id="arUso" style="font-size:12px"></span></div>' +
+    var tiposCoste = [], v2 = true, primeraCarga = true;
+    el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Documentos</h2><span class="pa-btns"><span class="pa-muted" id="arUso" style="font-size:12px"></span><button type="button" class="pa-btn" id="dcCoste">+ Coste sin archivo</button></span></div>' +
       '<label class="dc-drop" id="dcDrop"><input type="file" id="dcFile" multiple accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" hidden>' +
       '<span class="dc-drop-ico">⇪</span><b>Arrastra aquí tus archivos o pulsa para seleccionarlos</b><small>PDF, fotos o Excel · varios a la vez · te proponemos el tipo de cada uno</small></label>' +
       '<div id="dcCola"></div>' +
@@ -433,26 +434,37 @@
     var fechaDe = function (x) { return x.kind === 'diseno' ? x.updated_at : x.created_at; };
     function tarjeta(x, i) {
       var g = grupo(x), esImg = /^image\//.test(x.mime || ''), esPdf = /pdf$/i.test(x.mime || '') || /\.pdf$/i.test(x.nombre || ''), esXls = /\.xlsx?$/i.test(x.nombre || '');
-      var mini = x.kind === 'diseno' ? '<div class="dc-svg">' + (x.miniatura || '') + '</div>'
+      var sinArchivo = x.kind === 'fich' && !x.path;
+      var esCoste = x.kind === 'fich' && (x.tipo === 'factura_proveedor' || x.tipo === 'presupuesto_proveedor');
+      var mini = sinArchivo ? '<span class="dc-ico dc-ico-coste">€</span>'
+        : x.kind === 'diseno' ? '<div class="dc-svg">' + (x.miniatura || '') + '</div>'
         : x.miniatura_url ? '<img src="' + esc(x.miniatura_url) + '" alt="" loading="lazy">'
         : (esPdf || esImg) && x.url && !(Number(x.bytes) > 15 * 1048576) ? '<span class="dc-ico" data-mini="' + i + '">' + (esPdf ? 'PDF' : 'IMG') + '</span>'
         : '<span class="dc-ico">' + (esXls ? 'XLS' : (String(x.nombre || '').split('.').pop() || '').toUpperCase().slice(0, 4)) + '</span>';
-      var ver = x.kind === 'diseno' ? (x.pdf && x.pdf.url) : x.url;
+      var ver = x.kind === 'diseno' ? (x.pdf && x.pdf.url) : sinArchivo ? null : x.url;
       var acciones = (ver ? '<a class="dc-a" href="' + esc(ver) + '" target="_blank" rel="noopener">Ver</a><a class="dc-a" href="' + esc(ver) + '&download=' + encodeURIComponent(x.kind === 'diseno' ? x.pdf.nombre : x.nombre) + '">Descargar</a>' : '') +
         (x.kind === 'diseno' ? '<button class="dc-a" data-a="editar" data-i="' + i + '">Editar diseño</button><button class="dc-a" data-a="json" data-i="' + i + '">JSON</button>' : '') +
         ((x.kind === 'diseno' && x.guardado) || esPdf || esImg ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
         (x.kind === 'fich' ? '<button class="dc-a" data-a="datos" data-i="' + i + '">Datos</button>' : '') +
+        (x.kind === 'fich' && x.tipo === 'factura_proveedor' ? '<button class="dc-a" data-a="sustituye" data-i="' + i + '">Sustituye a…' + (sustituidos(x).length ? ' (' + sustituidos(x).length + ')' : '') + '</button>' : '') +
         '<button class="dc-a dc-borrar" data-a="borrar" data-i="' + i + '">Borrar</button>';
       var sub = x.kind === 'diseno' ? (x.guardado ? '' : 'sin guardar · se borra a los 30 días')
         : x.kind === 'doc' ? [x.numero ? 'n.º ' + x.numero : '', x.variante || '', x.version ? 'v' + x.version : ''].filter(Boolean).join(' · ')
-        : [x.proveedor, x.base != null ? eur(Number(x.base)) : '', x.notas && /Pendiente/.test(x.notas) ? 'pendiente de revisar' : ''].filter(Boolean).join(' · ');
+        : [x.proveedor, x.concepto && x.concepto !== x.nombre ? x.concepto : '', x.base != null && Number(x.base) !== 0 ? eur(Number(x.base)) : '', x.notas && /Pendiente/.test(x.notas) ? 'pendiente de revisar' : '', sinArchivo ? 'sin archivo' : ''].filter(Boolean).join(' · ');
+      // Documento de coste: tipo de coste, importe y, en presupuestos, si una factura lo sustituye
+      var sust = x.kind === 'fich' && x.tipo === 'presupuesto_proveedor' && x.sustituido_por ? items.filter(function (y) { return y.id === x.sustituido_por; })[0] : null;
+      var costeHtml = esCoste ? '<div class="dc-coste">' +
+        '<select class="dc-tcoste" data-tcoste="' + i + '" title="Tipo de coste">' + tiposCoste.concat(x.tipo_coste && tiposCoste.indexOf(x.tipo_coste) < 0 ? [x.tipo_coste] : []).map(function (t) { return '<option' + (t === (x.tipo_coste || 'Otros') ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>' +
+        (x.base == null || Number(x.base) === 0 ? '<span class="dc-sinimp" title="El margen del proyecto no es fiable hasta que tenga importe">sin importe</span>' : '') +
+        (sust ? '<span class="dc-sust" title="No cuenta como coste: lo sustituye la factura">sustituido por ' + esc(sust.nombre || 'factura') + '</span>' : '') + '</div>' : '';
       return '<div class="dc-card' + (x.kind === 'diseno' && !x.guardado ? ' dc-borrador' : '') + '" data-i="' + i + '"><div class="dc-mini">' + mini + '</div>' +
         '<div class="dc-info"><span class="dc-tag" style="--c:' + COL_TIPO[g] + '">' + NOM_TIPO[g] + '</span>' +
         (x.kind === 'fich' ? '<select class="dc-tipo" data-tipo="' + i + '" title="Cambiar tipo">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === x.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select>' : '') +
-        '<strong title="' + esc(nombreDe(x)) + '">' + esc(nombreDe(x)) + '</strong><small>' + dia(fechaDe(x)) + (sub ? ' · ' + esc(sub) : '') + '</small></div>' +
+        '<strong title="' + esc(nombreDe(x)) + '">' + esc(nombreDe(x)) + '</strong><small>' + dia(fechaDe(x)) + (sub ? ' · ' + esc(sub) : '') + '</small>' + costeHtml + '</div>' +
         '<div class="dc-acc">' + acciones + '</div></div>';
     }
     function versionesTxt(x) { return x.version_actual; }
+    function sustituidos(f) { return items.filter(function (y) { return y.kind === 'fich' && y.tipo === 'presupuesto_proveedor' && y.sustituido_por === f.id; }); }
     var vistas = [];
     function pintar() {
       var lista = items.filter(function (x) { return !filtroDoc.tipo || grupo(x) === filtroDoc.tipo; })
@@ -495,13 +507,15 @@
         .catch(function () { /* se queda el icono */ }).then(function () { enCurso--; siguiente(); });
     }
     function cargar() {
-      return api(ctx, { action: 'documentos_ficha', proyecto_id: pid }).then(function (d) { return [{ disenos: d.disenos }, { documentos: d.documentos }, { ficheros: d.ficheros, almacenamiento: d.almacenamiento }]; }).then(function (rs) {
+      return api(ctx, { action: 'documentos_ficha', proyecto_id: pid }).then(function (d) { tiposCoste = d.tipos_coste || []; v2 = d.costes_v2 !== false; return [{ disenos: d.disenos }, { documentos: d.documentos }, { ficheros: d.ficheros, almacenamiento: d.almacenamiento }]; }).then(function (rs) {
         var a = rs[2].almacenamiento;
         el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
         items = rs[0].disenos.map(function (x) { return Object.assign({ kind: 'diseno' }, x); })
           .concat(rs[1].documentos.filter(function (x) { return !x.diseno_id; }).map(function (x) { return Object.assign({ kind: 'doc', mime: /\.xlsx$/i.test(x.nombre) ? 'xlsx' : 'application/pdf' }, x); }))
           .concat(rs[2].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
         pintar();
+        if (!primeraCarga && ctx.alCambiarDocs) ctx.alCambiarDocs();
+        primeraCarga = false;
       }).catch(function (e) { el.querySelector('#dcLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     }
     // ── Subida: arrastrar o elegir varios, con tipo sugerido para cada uno ──
@@ -563,10 +577,53 @@
         }
       });
     }
+    /** Factura de proveedor: qué presupuestos de proveedor del proyecto sustituye (dejan de contar como coste). */
+    function sustituye(f) {
+      var pres = items.filter(function (y) { return y.kind === 'fich' && y.tipo === 'presupuesto_proveedor'; });
+      var m = document.createElement('div'); m.className = 'eu-modal';
+      m.innerHTML = '<div class="eu-modal-caja" style="max-width:520px"><h2>' + esc(f.nombre) + ' sustituye a…</h2><p class="pa-muted" style="font-size:13px;margin:4px 0 10px">Un presupuesto de proveedor cuenta como coste mientras ninguna factura lo sustituya.</p>' +
+        (pres.length ? pres.map(function (y) {
+          var otra = y.sustituido_por && y.sustituido_por !== f.id ? items.filter(function (z) { return z.id === y.sustituido_por; })[0] : null;
+          return '<label class="dc-sus-op"><input type="checkbox" value="' + y.id + '"' + (y.sustituido_por === f.id ? ' checked' : '') + '> ' + esc(y.nombre) + ' <small class="pa-muted">' + [y.proveedor, y.base != null ? eur(Number(y.base)) : 'sin importe', otra ? 'ahora: ' + otra.nombre : ''].filter(Boolean).map(esc).join(' · ') + '</small></label>';
+        }).join('') : '<p class="pa-muted">Este proyecto no tiene presupuestos de proveedor.</p>') +
+        '<div class="eu-modal-bot"><button class="pa-btn" data-s="cerrar">Cancelar</button><button class="pa-btn primary" data-s="ok">Guardar</button></div></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-s]'); if (!b) { if (e.target === m) m.remove(); return; }
+        if (b.dataset.s === 'cerrar') return m.remove();
+        var ids = Array.prototype.map.call(m.querySelectorAll('input:checked'), function (c) { return c.value; });
+        api(ctx, { action: 'fichero_guardar', id: f.id, sustituye: ids }).then(function () { m.remove(); msg('Guardado', 'ok'); return cargar(); }).catch(function (err) { alert(err.message); });
+      });
+    }
+    /** Documento de coste sin archivo: factura o presupuesto de proveedor con su importe. */
+    function costeSinArchivo() {
+      var m = document.createElement('div'); m.className = 'eu-modal';
+      m.innerHTML = '<form class="eu-modal-caja" style="max-width:560px"><h2>Coste sin archivo</h2><div class="ar-g" style="margin-top:10px">' +
+        '<label>Documento<select data-k="tipo"><option value="factura_proveedor">Factura de proveedor</option><option value="presupuesto_proveedor">Presupuesto de proveedor</option></select></label>' +
+        '<label>Tipo de coste<select data-k="tipo_coste">' + tiposCoste.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select></label>' +
+        '<label>Concepto<input data-k="concepto" maxlength="200" required></label>' +
+        '<label>Proveedor<input data-k="proveedor" maxlength="120"></label>' +
+        '<label>Fecha<input type="date" data-k="fecha" value="' + new Date().toLocaleDateString('sv-SE') + '"></label>' +
+        '<label>Importe sin IVA (€)<input data-k="base" inputmode="decimal" placeholder="vacío = sin importe"></label></div>' +
+        '<div class="eu-modal-bot"><button type="button" class="pa-btn" data-c="cerrar">Cancelar</button><button class="pa-btn primary" type="submit">Añadir</button></div></form>';
+      document.body.appendChild(m);
+      m.querySelector('[data-c=cerrar]').addEventListener('click', function () { m.remove(); });
+      m.querySelector('form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var d = { action: 'coste_nuevo', proyecto_id: pid };
+        m.querySelectorAll('[data-k]').forEach(function (i) { d[i.dataset.k] = i.value; });
+        api(ctx, d).then(function () { m.remove(); msg('Coste añadido', 'ok'); return cargar(); }).catch(function (err) { alert(err.message); });
+      });
+    }
     el.querySelector('#dcFiltros').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; filtroDoc.tipo = b.dataset.f; pintar(); });
     el.querySelector('#dcOrden').addEventListener('change', function () { filtroDoc.orden = this.value; pintar(); });
     el.addEventListener('change', function (e) {
       if (e.target.dataset.cola !== undefined) { cola[Number(e.target.dataset.cola)].tipo = e.target.value; return; }
+      if (e.target.dataset.tcoste !== undefined) {
+        var xc = vistas[Number(e.target.dataset.tcoste)];
+        api(ctx, { action: 'fichero_guardar', id: xc.id, tipo_coste: e.target.value }).then(function () { msg('Tipo de coste: ' + e.target.value, 'ok'); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
+        return;
+      }
       if (e.target.dataset.tipo !== undefined) {
         var x = vistas[Number(e.target.dataset.tipo)];
         api(ctx, { action: 'fichero_guardar', id: x.id, tipo: e.target.value }).then(function () { msg('Tipo cambiado', 'ok'); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
@@ -574,6 +631,7 @@
     });
     el.addEventListener('click', function (e) {
       if (e.target.id === 'dcSubir') return subirCola();
+      if (e.target.id === 'dcCoste') return costeSinArchivo();
       if (e.target.id === 'dcVaciar') { cola = []; pintarCola(); return; }
       if (e.target.dataset.quitarCola !== undefined) { cola.splice(Number(e.target.dataset.quitarCola), 1); pintarCola(); return; }
       var b = e.target.closest('[data-a]'); if (!b) return;
@@ -583,6 +641,7 @@
       if (a === 'presupuesto') { try { sessionStorage.setItem(CLAVE_PRE, JSON.stringify({ tabla: x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? 'doc' : 'fichero', id: x.id })); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'presupuesto'); if (ctx.alNavegar) ctx.alNavegar(); return; }
       if (a === 'json') return api(ctx, { action: 'diseno_json', proyecto_id: pid, diseno_id: x.id }).then(function (d) { descargar(new Blob([JSON.stringify(d.datos, null, 2)], { type: 'application/json' }), (x.nombre || 'diseno').replace(/[^\wÀ-ÿ-]+/g, '_') + '.json'); });
       if (a === 'datos') return datos(x);
+      if (a === 'sustituye') return sustituye(x);
       if (a === 'borrar') {
         if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('on'); return; }
         var accion = x.kind === 'diseno' ? { action: 'diseno_borrar', proyecto_id: pid, diseno_id: x.id } : x.kind === 'doc' ? { action: 'doc_borrar', id: x.id } : { action: 'fichero_borrar', id: x.id };
@@ -592,6 +651,38 @@
     cargar();
   }
   var CLAVE_PRE = 'estudio-presupuesto-desde';
+
+  // ── Resumen del proyecto: métricas (arriba) + documentos (debajo) ──
+  function resumenProyecto(el, ctx, pid) {
+    el.innerHTML = '<div class="ng-card rs-met" id="rsMet"><p class="pa-muted">Cargando…</p></div><div id="rsDocs"></div>';
+    var pintarMet = function () {
+      return api(ctx, { action: 'metricas_proyecto', proyecto_id: pid }).then(function (m) {
+        var z = el.querySelector('#rsMet'); if (!z) return;
+        var P = m.presupuestos || {}, pct = m.margen_pct == null ? '' : ' · ' + String(m.margen_pct).replace('.', ',') + ' %';
+        var origen = m.origen_facturacion === 'facturas' ? 'por facturas a cliente (superan lo aceptado)' : m.origen_facturacion === 'presupuesto' ? (P.aceptados > 1 ? 'suma de ' + P.aceptados + ' presupuestos aceptados' : 'presupuesto aceptado') : 'sin presupuesto aceptado';
+        var nDocs = (m.costes_por_tipo || []).length;
+        var tipos = (m.costes_por_tipo || []).filter(function (c) { return c.importe > 0; });
+        var maxT = Math.max.apply(null, tipos.map(function (c) { return c.importe; }).concat([1]));
+        z.innerHTML =
+          '<div class="rs-kpis">' +
+          '<div class="rs-kpi"><span>Facturación</span><b>' + eur(m.facturacion || 0) + '</b><small>' + esc(origen) + '</small></div>' +
+          '<div class="rs-kpi"><span>Coste total</span><b>' + eur(m.costes || 0) + '</b><small>' + (m.costes_sin_importe ? '<em class="rs-mal">' + m.costes_sin_importe + (m.costes_sin_importe === 1 ? ' coste' : ' costes') + ' sin importe</em>' : m.hay_costes ? 'documentos de coste' : 'sin documentos de coste') + '</small>' +
+            (m.coste_previsto ? '<small class="rs-previsto" title="Presupuestos de proveedor de un proyecto sin presupuesto aceptado: no cuentan como coste ni en el margen">Coste previsto: ' + eur(m.coste_previsto) + '</small>' : '') + '</div>' +
+          '<div class="rs-kpi"><span>Margen</span><b class="' + (m.margen != null && m.margen < 0 ? 'rs-mal' : '') + '">' + (m.margen == null ? '—' : eur(m.margen)) + pct + '</b><small>' + (m.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(m.motivo || '') + '</em>') + '</small></div>' +
+          '<div class="rs-kpi"><span>Presupuestos</span><b>' + (P.aceptados || 0) + (P.aceptados === 1 ? ' aceptado' : ' aceptados') + '</b><small>' + [(P.pendientes || 0) + ' pendientes', (P.rechazados || 0) + ' rechazados', P.borradores ? P.borradores + ' en borrador' : ''].filter(Boolean).join(' · ') + '</small></div>' +
+          '</div>' +
+          '<div class="rs-fila"><div class="rs-bloque"><h3>Coste por tipo</h3>' + (tipos.length ? '<ul class="rs-tipos">' + tipos.map(function (c) {
+            return '<li><span>' + esc(c.tipo) + '</span><i><em style="width:' + Math.max(2, c.importe / maxT * 100) + '%"></em></i><b>' + eur(c.importe) + '</b></li>';
+          }).join('') + '</ul>' : '<p class="pa-muted">Aún no hay costes con importe. Sube facturas o presupuestos de proveedor en Documentos.</p>') + '</div>' +
+          '<div class="rs-bloque"><h3>Montaje</h3>' + ((m.montajes || []).length ? '<ul class="rs-mont">' + m.montajes.map(function (x) {
+            return '<li>' + (x.numero ? '<b>' + esc(x.numero) + '</b> ' : '') + (x.montado ? '<em class="rs-ok">montado' + (x.montado_at ? ' el ' + dia(x.montado_at) : '') + '</em>' : x.montaje_previsto ? 'previsto el ' + dia(x.montaje_previsto) : '<em class="rs-mal">sin fecha</em>') + '</li>';
+          }).join('') + '</ul>' : '<p class="pa-muted">Se pide al aceptar cada presupuesto.</p>') + '</div></div>' +
+          (m.v2 ? '' : '<p class="pa-muted" style="font-size:12px;margin:8px 0 0">Costes con las reglas de antes (facturas de proveedor + costes manuales) hasta que se migre este proyecto.</p>');
+      }).catch(function (e) { var z = el.querySelector('#rsMet'); if (z) z.innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    };
+    pintarMet();
+    documentosProyecto(el.querySelector('#rsDocs'), Object.assign({}, ctx, { alCambiarDocs: pintarMet }), pid);
+  }
 
   // ── Métricas del proyecto ──
   var COL_CAT = { proveedores: '#161616', materiales: '#8a6234', mano_obra: '#12B76A', transporte: '#b9b6ad', montaje: '#5f5b52', otros: '#d9d3c8', comision: '#c08a2b' };
@@ -1342,6 +1433,7 @@
       '<h3>Descuento e IVA</h3><table class="tf-tabla"><tbody>' +
       '<tr><td>Descuento profesional por defecto</td><td><input class="tf-in" id="tfDto" inputmode="decimal" placeholder="PENDIENTE"><span class="tf-u">%</span></td></tr>' +
       '<tr><td>IVA</td><td><input class="tf-in" id="tfIva" inputmode="decimal" placeholder="PENDIENTE"><span class="tf-u">%</span></td></tr></tbody></table>' +
+      (mia ? '<h3>Tipos de coste</h3><p class="pa-muted" style="font-size:12px;margin:0 0 6px">Los que eliges en cada factura o presupuesto de proveedor. Uno por línea.</p><textarea id="tfTiposCoste" rows="6" style="width:100%;max-width:360px"></textarea>' : '') +
       (mia ? '<h3>Numeración de presupuestos</h3><table class="tf-tabla"><tbody><tr><td>Siguiente n.º base (proyecto nuevo)<br><span class="pa-muted" style="font-size:11.5px">El primer presupuesto de cada proyecto sale con este número y «-A» (Z2606964-A) y la serie avanza; los siguientes del proyecto, -B, -C… Vacío = el siguiente a tu número más alto.</span></td>' +
         '<td><input class="tf-in" id="tfSerie" style="width:120px;text-align:left" autocomplete="off"></td></tr></tbody></table>' : '') +
       '<div class="tf-pie"><button class="pa-btn primary" id="tfGuardar">Guardar tarifa</button><span id="tfMsg"></span></div></section>' +
@@ -1391,6 +1483,7 @@
         });
         $('#tfConceptos').innerHTML = html;
         $('#tfDto').value = numOut(d.tarifa.descuento_pct);
+        if ($('#tfTiposCoste')) $('#tfTiposCoste').value = (d.tipos_coste && d.tipos_coste.length ? d.tipos_coste : d.tipos_coste_def || []).join('\n');
         if ($('#tfSerie') && d.serie) { $('#tfSerie').value = d.serie.guardada || ''; $('#tfSerie').placeholder = d.serie.auto || 'Z…'; }
         $('#tfIva').value = numOut(d.tarifa.iva_pct);
       });
@@ -1411,7 +1504,7 @@
       document.querySelectorAll('#tfConceptos [data-k]').forEach(function (i) { valores[i.dataset.k] = i.value.trim() === '' ? null : i.value.trim(); });
       var puntos = {};
       document.querySelectorAll('#tfConceptos [data-pk]').forEach(function (i) { var n = numIn(i.value); if (n !== null) puntos[i.dataset.pk] = n; });
-      api(ctx, { action: 'tarifa_guardar', de: mia ? 'mia' : 'curino', valores: valores, descuento_pct: $('#tfDto').value, iva_pct: $('#tfIva').value, precio_punto: $('#tfPunto') ? $('#tfPunto').value : null, puntos: puntos, serie_presupuesto: $('#tfSerie') ? $('#tfSerie').value : undefined })
+      api(ctx, { action: 'tarifa_guardar', de: mia ? 'mia' : 'curino', valores: valores, descuento_pct: $('#tfDto').value, iva_pct: $('#tfIva').value, precio_punto: $('#tfPunto') ? $('#tfPunto').value : null, puntos: puntos, serie_presupuesto: $('#tfSerie') ? $('#tfSerie').value : undefined, tipos_coste: $('#tfTiposCoste') ? $('#tfTiposCoste').value.split('\n') : undefined })
         .then(function (d) { msg('Guardada' + (d.cambiados ? ' · ' + d.cambiados + ' puntos modificados' : '') + (d.pendientes ? ' · ' + d.pendientes + ' conceptos PENDIENTE' : ''), true); return cargar(); })
         .catch(function (e) { msg(e.message); });
     });
@@ -1661,7 +1754,7 @@
     var clave = function (p) { return p.presupuesto_id || p.id; };
     var clase = function (p) { var d = dias(p.montaje_previsto); return p.montado ? 'montado' : d >= 0 && d <= 7 ? 'prox' : d < 0 ? 'atrasado' : ''; };
     var chip = function (p) {
-      return '<a class="ng-cal-it ' + clase(p) + '" href="' + ctx.rutas.estudio(p.id, 'metricas') + '" title="' + esc(p.nombre) + ' · ' + eur0(p.importe) + ' · ' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente de cobro') + (p.montado ? ' · montado' : '') + '">' +
+      return '<a class="ng-cal-it ' + clase(p) + '" href="' + ctx.rutas.estudio(p.id, 'resumen') + '" title="' + esc(p.nombre) + ' · ' + eur0(p.importe) + ' · ' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente de cobro') + (p.montado ? ' · montado' : '') + '">' +
         '<b>' + nom(p) + '</b><span>' + eur0(p.importe) + ' · <i class="ng-cobro ' + p.cobro + '">' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente') + '</i></span></a>';
     };
     var y = Number(calEstado.mes.slice(0, 4)), mo = Number(calEstado.mes.slice(5)) - 1;
@@ -1685,12 +1778,12 @@
       var orden = conFecha.slice().sort(function (a, b) { return a.montaje_previsto.localeCompare(b.montaje_previsto); });
       cuerpo = orden.length ? '<ul class="ng-lista ng-cal-lista">' + orden.map(function (p) {
         var dd = dias(p.montaje_previsto);
-        return '<li class="' + clase(p) + '"><span class="ng-cal-fecha">' + new Date(p.montaje_previsto + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) + '</span><div><a href="' + ctx.rutas.estudio(p.id, 'metricas') + '"><strong>' + nom(p) + '</strong></a><small>' + (p.montado ? 'montado' : dd === 0 ? 'hoy' : dd > 0 ? 'en ' + dd + (dd === 1 ? ' día' : ' días') : 'hace ' + (-dd) + (dd === -1 ? ' día' : ' días') + ', sin marcar como montado') + '</small></div>' +
+        return '<li class="' + clase(p) + '"><span class="ng-cal-fecha">' + new Date(p.montaje_previsto + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) + '</span><div><a href="' + ctx.rutas.estudio(p.id, 'resumen') + '"><strong>' + nom(p) + '</strong></a><small>' + (p.montado ? 'montado' : dd === 0 ? 'hoy' : dd > 0 ? 'en ' + dd + (dd === 1 ? ' día' : ' días') : 'hace ' + (-dd) + (dd === -1 ? ' día' : ' días') + ', sin marcar como montado') + '</small></div>' +
           '<span class="ng-imp">' + eur0(p.importe) + '</span><i class="ng-cobro ' + p.cobro + '">' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente') + '</i></li>';
       }).join('') + '</ul>' : '<p class="pa-muted">Aún no hay montajes con fecha.</p>';
     }
     var sin = '<h3 class="dc-grupo">Aceptados sin fecha de montaje' + (sinFecha.length ? ' (' + sinFecha.length + ')' : '') + '</h3>' + (sinFecha.length ? '<ul class="ng-lista">' + sinFecha.map(function (p) {
-      return '<li><div><a href="' + ctx.rutas.estudio(p.id, 'metricas') + '"><strong>' + nom(p) + '</strong></a><small>' + eur0(p.importe) + ' · ' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente de cobro') + '</small></div>' +
+      return '<li><div><a href="' + ctx.rutas.estudio(p.id, 'resumen') + '"><strong>' + nom(p) + '</strong></a><small>' + eur0(p.importe) + ' · ' + (p.cobro === 'cobrado' ? 'cobrado' : 'pendiente de cobro') + '</small></div>' +
         '<span class="ng-cal-poner"><input type="date" data-mfecha="' + clave(p) + '"><button class="pa-btn" data-mguardar="' + clave(p) + '" data-mpid="' + p.id + '" data-mprid="' + (p.presupuesto_id || '') + '">Guardar</button><button class="pa-btn" data-mmontado="' + clave(p) + '" data-mpid="' + p.id + '" data-mprid="' + (p.presupuesto_id || '') + '" title="Ya está montado">Montado</button></span></li>';
     }).join('') + '</ul>' : '<p class="pa-muted" style="margin:4px 0 0">Todos los aceptados tienen fecha de montaje o están montados.</p>');
     el.innerHTML = cab + cuerpo + sin;

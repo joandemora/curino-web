@@ -99,7 +99,7 @@ async function reales(supa: Any, proyectos: Any[], presupuestos: Any[], periodo:
   const ids = proyectos.map((p) => p.id);
   if (!ids.length) return vacio;
   const [f, c] = await Promise.all([
-    supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, proveedor').in('proyecto_id', ids).eq('subido', true),
+    supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, proveedor, tipo_coste, sustituido_por').in('proyecto_id', ids).eq('subido', true),
     supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
   ]);
   const desde = inicioPeriodo(periodo);
@@ -117,13 +117,10 @@ async function reales(supa: Any, proyectos: Any[], presupuestos: Any[], periodo:
     const facturasEnPeriodo = fich.some((x: Any) => x.tipo === 'factura_cliente' && en(x.fecha));
     if (!(pr?.estado === 'aceptado' && aceptadoEnPeriodo(p.id)) && !facturasEnPeriodo) continue;
     nAceptados++;
-    const m = metricasProyecto({ presupuesto: pr, ficheros: fich, costes: cos, cobros: [], hoy });
-    // Margen fiable: con facturación, algún coste y ningún coste sin importe
-    const provs = fich.filter((x: Any) => x.tipo === 'factura_proveedor');
-    const sinImporte = provs.filter((x: Any) => x.base === null || x.base === undefined).length;
-    const hayCostes = provs.length + cos.length > 0;
+    // Margen fiable: con facturación, algún coste y ningún coste sin importe (metricasProyecto, según las reglas del proyecto)
+    const m = metricasProyecto({ presupuesto: pr, ficheros: fich, costes: cos, cobros: [], hoy, v2: !!p.costes_v2 });
     const fila = { proyecto_id: p.id, cliente: p.nombre, facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct };
-    const motivo = !m.facturacion ? 'sin facturación' : !hayCostes ? 'sin costes' : sinImporte ? (sinImporte === 1 ? '1 coste sin importe' : `${sinImporte} costes sin importe`) : null;
+    const motivo = m.motivo;
     if (motivo) { incompletos.push({ ...fila, motivo }); continue; }
     fact += m.facturacion; cost += m.costes;
     ranking.push(fila);
@@ -146,7 +143,7 @@ async function extras(supa: Any, proyectos: Any[], presupuestos: Any[], serie: A
   const ids = proyectos.map((p) => p.id);
   if (!ids.length) return { serie, calendario: [] };
   const [f, c, cb] = await Promise.all([
-    supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha').in('proyecto_id', ids).eq('subido', true),
+    supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, tipo_coste, sustituido_por').in('proyecto_id', ids).eq('subido', true),
     supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids),
     supa.from('estudio_cobros').select('proyecto_id, concepto, pct, importe, fecha_prevista, cobrado, fecha_cobro').in('proyecto_id', ids)
   ]);
@@ -163,13 +160,13 @@ async function extras(supa: Any, proyectos: Any[], presupuestos: Any[], serie: A
       continue;
     }
     const m = metricasProyecto({
-      presupuesto: pr, hoy,
+      presupuesto: pr, hoy, v2: !!p.costes_v2,
       ficheros: (f.data ?? []).filter((x: Any) => x.proyecto_id === p.id),
       costes: (c.data ?? []).filter((x: Any) => x.proyecto_id === p.id),
       cobros: (cb.data ?? []).filter((x: Any) => x.proyecto_id === p.id)
     });
     // Margen fiable: con facturación y todos los costes con importe (sin «pendiente de revisar»)
-    const costeSinImporte = (f.data ?? []).some((x: Any) => x.proyecto_id === p.id && x.tipo === 'factura_proveedor' && (x.base === null || x.base === undefined));
+    const costeSinImporte = m.costes_sin_importe > 0;
     if (m.margen !== null && m.facturacion > 0 && !costeSinImporte && pr.aceptado_at) {
       const k = mesClave(pr.aceptado_at), a = porMes.get(k) ?? { f: 0, c: 0 };
       a.f += m.facturacion; a.c += m.costes; porMes.set(k, a);
@@ -234,7 +231,7 @@ export async function accionNegocio(action: string, o: {
   }
 
   if (action === 'negocio') {
-    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, created_at, user_id, montaje_previsto, montado, montado_at, montaje_nota').eq('user_id', userId);
+    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, created_at, user_id, montaje_previsto, montado, montado_at, montaje_nota, costes_v2').eq('user_id', userId);
     const ids = (proyectos ?? []).map((p: Any) => p.id);
     // Todos los presupuestos: métricas de envío con los «relevantes» (aceptados o, si no hay, el último), margen y calendario con todos los aceptados
     const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
@@ -250,7 +247,7 @@ export async function accionNegocio(action: string, o: {
     // Tampoco las cuentas que emiten como Curino (cuenta propia de Juan)
     const { data: propias } = await supa.from('estudio_accesos').select('email').eq('emisor_curino', true);
     for (const a of propias ?? []) { const { data: u } = await supa.rpc('estudio_alumnos', { p_email: a.email }); if (u?.[0]?.user_id) fuera.add(u[0].user_id); }
-    const { data: todos } = await supa.from('estudio_proyectos').select('id, user_id, nombre, created_at');
+    const { data: todos } = await supa.from('estudio_proyectos').select('id, user_id, nombre, created_at, costes_v2');
     const proyectos = (todos ?? []).filter((p: Any) => !fuera.has(p.user_id));   // sin los proyectos de admin
     const ids = proyectos.map((p: Any) => p.id);
     const { data: pres0 } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };

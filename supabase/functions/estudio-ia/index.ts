@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
       // Documentos de la ficha en una sola llamada: diseños + documentos + archivos
       const sub = (a: string) => accionProyecto(a, { supa, userId, esAdmin, cfg, clave, modelo, body: { ...body, action: a }, alumno, json }).then((r) => r.json());
       const [docs, fichs] = await Promise.all([sub('documentos'), sub('ficheros')]);
-      return json({ disenos: await listaDisenos(), documentos: docs.documentos ?? [], ficheros: fichs.ficheros ?? [], almacenamiento: fichs.almacenamiento });
+      return json({ disenos: await listaDisenos(), documentos: docs.documentos ?? [], ficheros: fichs.ficheros ?? [], almacenamiento: fichs.almacenamiento, tipos_coste: fichs.tipos_coste, costes_v2: fichs.costes_v2 });
     }
     if (action === 'disenos') return json({ disenos: await listaDisenos() });
     async function listaDisenos() {
