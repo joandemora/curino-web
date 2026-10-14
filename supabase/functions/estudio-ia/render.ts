@@ -24,7 +24,7 @@ export async function svgsProyecto(p: Proyecto): Promise<{ codigo: string; svg: 
   const { fuentes } = await documento();
   return laminasProyecto(p, medirConFuentes(fuentes)).map((l) => ({
     codigo: l.codigo, svg: laminaSvg(l), pagina: l.pagina ?? 1,
-    vistas: p.armarios.find((a) => a.codigo === l.codigo)?.vistas ?? []
+    vistas: [...p.armarios, ...(p.cocinas ?? [])].find((a) => a.codigo === l.codigo)?.vistas ?? []
   }));
 }
 

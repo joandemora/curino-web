@@ -17,6 +17,7 @@ import {
   type Armario, type Cuerpo, type Frente, type PiezaFrente, type Proyecto, type Zona, type Formato,
   repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, fmtMm
 } from './esquema.ts';
+import { type Cocina, type ModuloCocina, completarCocina, TIPO_TXT, ACABADO_TXT } from './cocina.ts';
 
 // ── Primitivas ──────────────────────────────────────────────────────
 export type Prim =
@@ -318,7 +319,58 @@ function escala(a: Armario, o: Composicion, formato: Formato): number {
 
 // ── Lámina ──────────────────────────────────────────────────────────
 export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
-  return p.armarios.flatMap((a) => laminasArmario(a, p, medir));
+  return [...p.armarios.flatMap((a) => laminasArmario(a, p, medir)), ...(p.cocinas ?? []).map((c) => laminaFichaCocina(c, p, medir))];
+}
+
+/**
+ * Cocina (fase 2): ficha en texto de cada tramo, con los supuestos. El alzado,
+ * la planta y la sección de cocina llegan en la fase 3.
+ */
+export function laminaFichaCocina(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox): Lamina {
+  const c = completarCocina(entrada);
+  const pg = PAGINA.A4, E = ESTILO, prims: Prim[] = [];
+  const text = (x: number, y: number, t: string, size: number, color: string, anchor: 'start' | 'end' = 'start', bold = false) =>
+    prims.push({ k: 'text', x, y, t, size, color, anchor, bold });
+  const logoAlto = (LOGO_ANCHO_PT * LOGO_ALTO) / LOGO_ANCHO;
+  prims.push({ k: 'logo', x: pg.logo[0], y: pg.logo[1] + LOGO_CAJA_ALTO - logoAlto, h: logoAlto, color: E.tinta });
+  text(pg.ml, pg.titulo, `${c.codigo}  ${c.titulo}`, 11, E.tinta, 'start', true);
+  const ancho = (mods: ModuloCocina[] = []) => mods.reduce((s, m) => s + m.ancho, 0);
+  text(pg.ml, pg.subtitulo, c.tramos.map((t, i) => `${t.nombre ?? `Tramo ${i + 1}`} ${fmtCm(ancho(t.bajos))} cm`).join(' + '), 9, E.subtitulo);
+  text(pg.mr, pg.der1, 'FICHA DE COCINA', 8, E.cota, 'end');
+  text(pg.mr, pg.der2, `Cuerpo ${ACABADO_TXT[c.acabado!]} · puertas grupo ${c.grupo}${c.agarre === 'unero' ? ' · uñero' : ''} · cotas en cm`, 8, E.cota, 'end');
+  const pie = [p.referencia ? `Presupuesto ${p.referencia}` : '', p.cliente ?? ''].filter(Boolean).join(' · ');
+  if (pie) text(pg.mr, pg.pie, pie, 7.5, E.suave, 'end');
+  const inicioDibujo = prims.length;
+  const mod = (m: ModuloCocina) => {
+    const f = m.frente;
+    const fr = !f || m.tipo === 'hueco' ? '' : f.tipo === 'cajones' ? ` · ${f.alturas?.length ?? f.cajones ?? 3} cajones ${f.sistema === 'legrabox' ? 'Legrabox' : 'Advänced'}` : f.tipo === 'puertas' ? ` · ${f.puertas ?? 1} p.` : f.tipo.startsWith('aventos') ? ' · Aventos' : '';
+    const extra = [m.grupo ? `G${m.grupo}` : '', ...(m.electro ?? []), m.etiqueta ?? ''].filter(Boolean).join(', ');
+    return `${TIPO_TXT[m.tipo]} ${fmtCm(m.ancho)}${m.alto ? `×${fmtCm(m.alto)}` : ''}${fr}${extra ? ` (${extra})` : ''}`;
+  };
+  // Texto partido en líneas que quepan en el ancho útil
+  const anchoUtil = pg.mr - pg.ml - 20;
+  const partir = (t: string, size: number) => {
+    const out: string[] = []; let l = '';
+    for (const w of t.split(' ')) { const n = l ? `${l} ${w}` : w; if (medir(n, size, false) > anchoUtil && l) { out.push(l); l = w; } else l = n; }
+    if (l) out.push(l);
+    return out;
+  };
+  let y = 130;
+  c.tramos.forEach((t, i) => {
+    text(pg.ml, y, `${t.nombre ?? `TRAMO ${i + 1}`}${t.colocacion && t.colocacion !== 'linea' ? ` · ${t.colocacion === 'isla' ? 'isla' : t.colocacion === 'esquina_izq' ? 'pared izquierda' : 'pared derecha'}` : ''}`, 9.5, E.tinta, 'start', true);
+    y += 14;
+    for (const [nom, mods] of [['Bajos y columnas', t.bajos], ['Altos', t.altos ?? []]] as const) {
+      if (!mods.length) continue;
+      for (const l of partir(`${nom}: ${mods.map(mod).join(' · ')}`, 8)) { text(pg.ml + 10, y, l, 8, E.etiqueta); y += 11; }
+    }
+    y += 8;
+  });
+  if (c.supuestos?.length) {
+    text(pg.ml, y, 'Supuestos (valores por defecto)', 8.5, E.tinta, 'start', true); y += 12;
+    for (const l of partir(c.supuestos.join(' · '), 7.5)) { text(pg.ml + 10, y, l, 7.5, E.suave); y += 10; }
+  }
+  text(pg.ml, Math.max(y + 18, 470), 'Alzado, planta y sección de la cocina: próximamente.', 8, E.suave);
+  return { codigo: c.codigo, formato: 'A4', ancho: pg.w, alto: pg.h, prims, inicioDibujo, pagina: 1 };
 }
 
 /** Láminas de un armario: una, o dos si la sección / planta no caben con el alzado. */

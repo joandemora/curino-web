@@ -170,7 +170,7 @@
         '<div class="es-hojas" id="esHojas">' + (svgs ? svgs.map(function (s) {
           // Vistas extra por armario (sobre su primera hoja): un clic = versión nueva
           var vistas = s.vistas || [], barra = '';
-          if ((s.pagina || 1) === 1 && viendo) {
+          if ((s.pagina || 1) === 1 && viendo && /^A\./.test(s.codigo)) {   // cocinas: vistas en la fase 3
             barra = '<div class="es-vistas" data-cod="' + esc(s.codigo) + '"><span>' + esc(s.codigo) + ' · vistas:</span><span class="pr-tag">Interior + Cerrado</span>' +
               [['lateral', 'Lateral'], ['planta', 'Planta']].map(function (x) {
                 var on = vistas.indexOf(x[0]) >= 0;
@@ -1297,7 +1297,9 @@
       '<h3>Descuento e IVA</h3><table class="tf-tabla"><tbody>' +
       '<tr><td>Descuento profesional por defecto</td><td><input class="tf-in" id="tfDto" inputmode="decimal" placeholder="PENDIENTE"><span class="tf-u">%</span></td></tr>' +
       '<tr><td>IVA</td><td><input class="tf-in" id="tfIva" inputmode="decimal" placeholder="PENDIENTE"><span class="tf-u">%</span></td></tr></tbody></table>' +
-      '<div class="tf-pie"><button class="pa-btn primary" id="tfGuardar">Guardar tarifa</button><span id="tfMsg"></span></div></section>';
+      '<div class="tf-pie"><button class="pa-btn primary" id="tfGuardar">Guardar tarifa</button><span id="tfMsg"></span></div></section>' +
+      '<section class="tf-card" id="tfCocina"><p class="pa-muted">Cargando tarifa de cocinas…</p></section>';
+    tarifaCocina($('#tfCocina'), ctx, mia);
     function msg(t, ok) { var m = $('#tfMsg'); m.className = ok ? 'tf-ok' : 'tf-err'; m.textContent = t; }
     function cargar() {
       return api(ctx, { action: 'tarifa', de: mia ? 'mia' : 'curino' }).then(function (d) {
@@ -1364,6 +1366,85 @@
       api(ctx, { action: 'tarifa_guardar', de: mia ? 'mia' : 'curino', valores: valores, descuento_pct: $('#tfDto').value, iva_pct: $('#tfIva').value, precio_punto: $('#tfPunto') ? $('#tfPunto').value : null, puntos: puntos })
         .then(function (d) { msg('Guardada' + (d.cambiados ? ' · ' + d.cambiados + ' puntos modificados' : '') + (d.pendientes ? ' · ' + d.pendientes + ' conceptos PENDIENTE' : ''), true); return cargar(); })
         .catch(function (e) { msg(e.message); });
+    });
+    cargar();
+  }
+
+  // ── Tarifa de cocinas: puntos (€ del proveedor al alza) y precio del punto cocina propio ──
+  var TIPO_COC = { bajo: 'Módulo bajo', horno: 'Horno', fregadero: 'Fregadero', esquinero: 'Esquinero bajo (93 × 93)', alto: 'Módulo alto', esquinero_alto: 'Esquinero alto (63 × 63)', columna: 'Columna universal', columna_hm: 'Columna horno + micro (sin medida)', sobrenevera: 'Sobrenevera', transversal: 'Transversal', lateral_bajo: 'Lateral bajo (366 × 58)', lateral_alto: 'Lateral alto (366 × 33)' };
+  var ACAB_COC = { blanco16: 'Blanco 16', gris_plomo16: 'Gris plomo 16', blanco_plus18: 'Blanco Plus 18 hidrófugo' };
+  function tarifaCocina(el, ctx, mia) {
+    var base = {}, revisar = {};
+    function msg(t, ok) { var m = el.querySelector('#tcMsg'); if (m) { m.className = ok ? 'tf-ok' : 'tf-err'; m.textContent = t; } }
+    function cargar() {
+      return api(ctx, { action: 'tarifa_cocina', de: mia ? 'mia' : 'curino' }).then(function (d) {
+        var T = d.tarifa, mios = d.puntos || {};
+        base = T.base; revisar = T.revisar;
+        var eur = function (v) { return v === null || v === undefined ? '' : String(v.toFixed(2)).replace('.', ','); };
+        var celda = function (k) {
+          if (base[k] === undefined) return '<td class="tf-pt tc-sin" title="Sin precio en la tarifa">—</td>';
+          var val = mios[k] !== undefined ? mios[k] : base[k], mod = mios[k] !== undefined && mios[k] !== base[k];
+          return '<td class="tf-pt' + (mod ? ' mod' : '') + (revisar[k] ? ' tc-rev' : '') + '"' + (revisar[k] ? ' title="Revisar: ' + esc(revisar[k]) + '"' : '') + '><input class="tf-in" data-ck="' + k + '" inputmode="decimal" value="' + esc(numOut(val)) + '"><button type="button" class="tf-reset" data-creset="' + k + '" title="Restablecer al original (' + numOut(base[k]) + ')">↺</button></td>';
+        };
+        var fila1 = function (nombre, k, extra) { return '<tr><td>' + nombre + (extra ? '<br><span class="pa-muted" style="font-size:11px">' + extra + '</span>' : '') + '</td>' + celda(k) + '</tr>'; };
+        var h = '<div class="tf-puntos-cab"><h2 style="margin:0">Cocinas por puntos <span class="pr-tag">' + esc(T.proveedor) + ' · ' + T.fecha.split('-').reverse().join('/') + '</span></h2>' +
+          '<label class="tf-punto">Precio del punto cocina <input class="tf-in" id="tcPunto" inputmode="decimal" placeholder="PENDIENTE" value="' + esc(numOut(d.precio_punto)) + '"><span class="tf-u">€/punto</span></label>' +
+          '<button type="button" class="pa-btn" id="tcResetTodo">Restablecer todo</button></div>' +
+          '<p class="pa-muted" style="font-size:12.5px;margin:4px 0 10px">Independiente del precio del punto de armarios. Puntos = € de coste de la tarifa del proveedor redondeados al alza (39,64 € → 40). Precio = puntos × precio del punto cocina (vacío = PENDIENTE: el presupuesto muestra los puntos pero no el importe). Medida entre escalones → el siguiente hacia arriba con precio; por encima del último → «fuera de tarifa – revisar». Celdas <span class="tc-rev-leyenda">en ámbar</span> = dudas del PDF pendientes del proveedor (salen con aviso).</p>';
+        // 1 · Cuerpos: una tabla por tipo (filas alto · acabado, columnas anchos)
+        var porTipo = {};
+        T.modulos.forEach(function (m) { (porTipo[m.tipo] = porTipo[m.tipo] || []).push(m); });
+        h += '<details class="tc-sec" open><summary>1 · Módulos (cuerpos) · p1</summary>';
+        Object.keys(porTipo).forEach(function (tipo) {
+          var ms = porTipo[tipo], anchos = [], filas = {};
+          ms.forEach(function (m) { if (m.ancho !== null && anchos.indexOf(m.ancho) < 0) anchos.push(m.ancho); var f = (m.alto === null ? '' : m.alto + ' alto · ') + ACAB_COC[m.acabado]; (filas[f] = filas[f] || {})[m.ancho === null ? '-' : m.ancho] = m.clave; });
+          anchos.sort(function (a, b) { return a - b; });
+          var cols = anchos.length ? anchos : ['-'];
+          h += '<h4>' + esc(TIPO_COC[tipo] || tipo) + '</h4><div class="tf-scroll"><table class="tf-tabla tf-pts"><thead><tr><th></th>' + cols.map(function (a) { return '<th>' + (a === '-' ? 'pieza' : a) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+            Object.keys(filas).map(function (f) { return '<tr><td>' + esc(f) + '</td>' + cols.map(function (a) { var k = filas[f][a]; return k ? celda(k) : '<td class="tf-pt tc-sin">—</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+        });
+        h += '</details>';
+        // 2 · Puertas por grupo (alto × ancho)
+        h += '<details class="tc-sec"><summary>2 · Puertas por grupo (alto × ancho, cm) · p4–6</summary>';
+        T.puertas.grupos.forEach(function (g) {
+          var srv = T.servicio.filter(function (x) { return x.grupo === g; }).map(function (x) { return x.linea + ' (' + x.acabado + ', ' + x.grueso + ' mm)'; }).join(' · ');
+          h += '<details class="tc-sub"><summary>Grupo ' + g + (g === 12 || g === 14 ? ' · uñero' : g === 10 ? ' · 4 cantos' : '') + (srv ? ' <span class="pa-muted" style="font-weight:400">— ' + esc(srv) + '</span>' : '') + '</summary><div class="tf-scroll"><table class="tf-tabla tf-pts"><thead><tr><th>alto \\ ancho</th>' +
+            T.puertas.anchos.map(function (a) { return '<th>' + a + '</th>'; }).join('') + '</tr></thead><tbody>' +
+            T.puertas.altos.map(function (a) { return '<tr><td>' + String(a).replace('.', ',') + '</td>' + T.puertas.anchos.map(function (w) { return celda('puerta_g' + g + '_' + String(a).replace('.', '_') + 'x' + w); }).join('') + '</tr>'; }).join('') + '</tbody></table></div></details>';
+        });
+        h += '</details>';
+        // 3 · Encimeras, 4 · Cajones, 5 · Herrajes
+        h += '<details class="tc-sec"><summary>3 · Encimeras de compacto (por placa) · p2</summary><table class="tf-tabla tf-pts"><tbody>' +
+          T.encimeras.map(function (e) { return fila1('<b>' + esc(e.ref) + '</b>', e.clave, 'Núcleo ' + ({ negro: 'negro', al_tono: 'al tono', blanco: 'blanco' })[e.nucleo] + ' · ' + e.medida + ' mm · ' + eur(e.eur) + ' €'); }).join('') + '</tbody></table></details>';
+        h += '<details class="tc-sec"><summary>4 · Cajones Advänced y Legrabox · p2</summary><table class="tf-tabla tf-pts"><tbody>' +
+          T.cajones.map(function (c) { return fila1(esc(c.nombre), c.clave, eur(c.eur) + ' €'); }).join('') + '</tbody></table></details>';
+        h += '<details class="tc-sec"><summary>5 · Herrajes, cubos y Aventos · p2</summary><table class="tf-tabla tf-pts"><tbody>' +
+          T.herrajes.map(function (x) { return x.eur === null ? '<tr><td>' + esc(x.codigo + ' · ' + x.articulo) + '<br><span class="pa-muted" style="font-size:11px">sin precio en la tarifa – revisar</span></td><td class="tf-pt tc-sin">—</td></tr>' : fila1(esc(x.codigo + ' · ' + x.articulo), x.clave, eur(x.eur) + ' €'); }).join('') + '</tbody></table></details>';
+        h += '<details class="tc-sec"><summary>6 · Tableros por grupo (puntos por m²) · p3</summary><table class="tf-tabla tf-pts"><tbody>' +
+          T.tableros.map(function (t) { var info = (t.grupo ? 'Grupo ' + t.grupo : 'Sin grupo') + ' · ' + t.calidad + (t.grueso ? ' · ' + String(t.grueso).replace('.', ',') + ' mm' : ''); return t.eur === null ? '<tr><td>' + esc(t.descripcion) + '<br><span class="pa-muted" style="font-size:11px">' + esc(info) + ' · sin precio – revisar</span></td><td class="tf-pt tc-sin">—</td></tr>' : fila1(esc(t.descripcion), t.clave, esc(info) + ' · ' + eur(t.eur) + ' €/m²'); }).join('') + '</tbody></table></details>';
+        h += '<h4>No están en la tarifa del proveedor</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">Con 0 puntos salen en el presupuesto como «sin precio en la tarifa – revisar».</p><table class="tf-tabla tf-pts"><tbody>' +
+          T.extras.map(function (x) { return fila1(esc(x.nombre), x.clave); }).join('') + '</tbody></table>';
+        h += '<details class="tc-sec"><summary>Dudas del PDF pendientes del proveedor (' + T.dudas.length + ')</summary><ul class="tc-dudas">' + T.dudas.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></details>';
+        h += '<div class="tf-pie"><button class="pa-btn primary" id="tcGuardar">Guardar tarifa de cocinas</button><span id="tcMsg"></span></div>';
+        el.innerHTML = h;
+      }).catch(function (e) { el.innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
+    }
+    el.addEventListener('input', function (e) {
+      var k = e.target.dataset && e.target.dataset.ck; if (!k) return;
+      e.target.closest('td').classList.toggle('mod', numIn(e.target.value) !== base[k]);
+    });
+    el.addEventListener('click', function (e) {
+      var r = e.target.closest('[data-creset]');
+      if (r) { var i = el.querySelector('[data-ck="' + r.dataset.creset + '"]'); i.value = numOut(base[r.dataset.creset]); i.closest('td').classList.remove('mod'); msg('Restablecido · pulsa «Guardar tarifa de cocinas» para aplicarlo', true); return; }
+      if (e.target.id === 'tcResetTodo') { el.querySelectorAll('[data-ck]').forEach(function (i) { i.value = numOut(base[i.dataset.ck]); i.closest('td').classList.remove('mod'); }); msg('Tarifa original restablecida · pulsa «Guardar tarifa de cocinas» para aplicarlo', true); return; }
+      if (e.target.id === 'tcGuardar') {
+        var puntos = {};
+        el.querySelectorAll('[data-ck]').forEach(function (i) { var n = numIn(i.value); if (n !== null) puntos[i.dataset.ck] = n; });
+        e.target.disabled = true;
+        api(ctx, { action: 'tarifa_cocina_guardar', de: mia ? 'mia' : 'curino', precio_punto: el.querySelector('#tcPunto').value, puntos: puntos })
+          .then(function (d) { return cargar().then(function () { msg('Guardada' + (d.cambiados ? ' · ' + d.cambiados + ' puntos modificados' : '') + (d.pendiente ? ' · precio del punto cocina PENDIENTE' : ''), true); }); })
+          .catch(function (err) { msg(err.message); }).then(function () { var b = el.querySelector('#tcGuardar'); if (b) b.disabled = false; });
+      }
     });
     cargar();
   }

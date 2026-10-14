@@ -41,6 +41,8 @@ import { guardarDocumento } from './proyecto.ts'
 import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/inter.ts'
 import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensans.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
+import { ENTRADAS_MODULO, puntosBaseCocina, revisarCocina, claveEncimera, claveTablero } from '../_shared/estudio/cocina-puntos.ts'
+import { PROVEEDOR_COCINA, FECHA_TARIFA_COCINA, FECHAS_HOJAS, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA, SERVICIO_COCINA, ALTOS_PUERTA, ANCHOS_PUERTA, GRUPOS_PUERTA, REVISAR_COCINA } from '../_shared/estudio/cocina-tarifa.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -50,7 +52,7 @@ export interface Ctx {
   alumno?: EstadoAlumno | null;
 }
 
-const ACCIONES = new Set(['tarifa', 'tarifa_guardar', 'plantilla', 'plantilla_guardar', 'plantilla_subida',
+const ACCIONES = new Set(['tarifa', 'tarifa_guardar', 'tarifa_cocina', 'tarifa_cocina_guardar', 'plantilla', 'plantilla_guardar', 'plantilla_subida',
   'presupuesto_borrar', 'presupuesto_asistente', 'presupuesto_vista', 'presupuestos', 'presupuesto_nuevo', 'presupuesto_duplicar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
 export const esAccionPresupuesto = (a: string) => ACCIONES.has(a);
 
@@ -170,10 +172,67 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     if (deCurino) r = await supa.from('estudio_tarifas').update(fila).is('user_id', null);
     else {
       const { data: ya } = await supa.from('estudio_tarifas').select('id').eq('user_id', userId).maybeSingle();
-      r = ya ? await supa.from('estudio_tarifas').update(fila).eq('id', ya.id) : await supa.from('estudio_tarifas').insert({ user_id: userId, ...fila });
+      // Primera tarifa propia: la parte de cocinas sale de la de Curino
+      const cocina = ya ? {} : (await supa.from('estudio_tarifas').select('precio_punto_cocina, puntos_cocina').is('user_id', null).maybeSingle()).data ?? {};
+      r = ya ? await supa.from('estudio_tarifas').update(fila).eq('id', ya.id) : await supa.from('estudio_tarifas').insert({ user_id: userId, ...cocina, ...fila });
     }
     if (r.error) throw r.error;
     return json({ ok: true, pendientes: Object.values(valores).filter((v) => v === null).length + (fila.precio_punto === null ? 1 : 0), cambiados: Object.keys(cambiados).length });
+  }
+
+  // ── Tarifa de cocinas (puntos; precio del punto cocina propio) ──
+  if (action === 'tarifa_cocina') {
+    const deCurino = body?.de === 'curino' || (esAdmin && body?.de !== 'mia');
+    const curino = (await supa.from('estudio_tarifas').select('precio_punto_cocina, puntos_cocina').is('user_id', null).maybeSingle()).data;
+    const propia = deCurino ? null : (await supa.from('estudio_tarifas').select('precio_punto_cocina, puntos_cocina').eq('user_id', userId).maybeSingle()).data;
+    const fila = propia ?? curino;
+    return json({
+      de: deCurino ? 'curino' : 'mia', propia: !!propia,
+      precio_punto: fila?.precio_punto_cocina === null || fila?.precio_punto_cocina === undefined ? null : Number(fila.precio_punto_cocina),
+      puntos: fila?.puntos_cocina ?? {},
+      tarifa: {
+        proveedor: PROVEEDOR_COCINA, fecha: FECHA_TARIFA_COCINA, fechas: FECHAS_HOJAS, base: puntosBaseCocina(), revisar: revisarCocina(), dudas: REVISAR_COCINA,
+        modulos: ENTRADAS_MODULO.map((e) => ({ clave: e.clave, tipo: e.tipo, alto: e.alto, ancho: e.ancho, acabado: e.acabado, eur: e.eur })),
+        puertas: { altos: ALTOS_PUERTA, anchos: ANCHOS_PUERTA, grupos: GRUPOS_PUERTA },
+        encimeras: ENCIMERAS_COCINA.map((e) => ({ clave: claveEncimera(e.ref), ref: e.ref, nucleo: e.nucleo, medida: `${e.largo} × ${e.ancho} × ${e.grueso}`, eur: e.eur })),
+        herrajes: HERRAJES_COCINA.map((h) => ({ clave: `herraje_${h.codigo}`, codigo: h.codigo, articulo: h.articulo, eur: h.eur })),
+        cajones: [
+          ...CAJON_ADVANCED.kits.map((k) => ({ clave: `advanced_h${k.altura}_f${k.fondo}`, nombre: `Advänced kit guía H=${k.altura} / fondo ${k.fondo}`, eur: k.eur })),
+          { clave: 'advanced_base_blanco', nombre: 'Advänced base + trasera blanco', eur: CAJON_ADVANCED.base_trasera.blanco },
+          { clave: 'advanced_base_antracita', nombre: 'Advänced base + trasera antracita', eur: CAJON_ADVANCED.base_trasera.antracita },
+          { clave: 'advanced_montaje', nombre: 'Advänced cargo montaje (neto, por cajón)', eur: CAJON_ADVANCED.montaje },
+          ...CAJON_LEGRABOX.kits.map((k) => ({ clave: `legrabox_${k.altura}`, nombre: `Legrabox kit guía fondo ${k.fondo} / altura ${k.altura} (${String(k.mm).replace('.', ',')} mm)`, eur: k.eur })),
+          { clave: 'legrabox_base_antracita', nombre: 'Legrabox base + trasera antracita', eur: CAJON_LEGRABOX.base_trasera.antracita },
+          { clave: 'legrabox_montaje', nombre: 'Legrabox cargo montaje (neto, por cajón)', eur: CAJON_LEGRABOX.montaje }
+        ],
+        tableros: TABLEROS_COCINA.map((t) => ({ clave: claveTablero(t), grupo: t.grupo, descripcion: t.descripcion, calidad: t.calidad, grueso: t.grueso, eur: t.eur_m2 })),
+        servicio: SERVICIO_COCINA,
+        extras: [{ clave: 'tirador', nombre: 'Tirador (no está en la tarifa del proveedor)' }, { clave: 'zocalo_ml', nombre: 'Zócalo por metro (no está en la tarifa del proveedor)' }]
+      }
+    });
+  }
+  if (action === 'tarifa_cocina_guardar') {
+    const deCurino = body?.de === 'curino';
+    if (deCurino && !esAdmin) return json({ error: 'Solo admin edita la tarifa Curino.' }, 403);
+    const base = puntosBaseCocina(), cambiados: Record<string, number> = {};
+    for (const [k, v] of Object.entries(body?.puntos ?? {})) {
+      const n = numOrNull(v, 0, 1_000_000);
+      if (k in base && n !== null && n !== base[k]) cambiados[k] = n;
+    }
+    const fila = { precio_punto_cocina: numOrNull(body?.precio_punto, 0, 10000), puntos_cocina: cambiados, updated_at: new Date().toISOString() };
+    let r;
+    if (deCurino) r = await supa.from('estudio_tarifas').update(fila).is('user_id', null);
+    else {
+      const { data: ya } = await supa.from('estudio_tarifas').select('id').eq('user_id', userId).maybeSingle();
+      if (ya) r = await supa.from('estudio_tarifas').update(fila).eq('id', ya.id);
+      else {
+        // Sin tarifa propia: parte de la de Curino (armarios incluidos) para no perderla
+        const c = (await supa.from('estudio_tarifas').select('valores, descuento_pct, iva_pct, precio_punto, puntos').is('user_id', null).maybeSingle()).data ?? {};
+        r = await supa.from('estudio_tarifas').insert({ user_id: userId, ...c, ...fila });
+      }
+    }
+    if (r.error) throw r.error;
+    return json({ ok: true, cambiados: Object.keys(cambiados).length, pendiente: fila.precio_punto_cocina === null });
   }
 
   // ── Plantilla ──
