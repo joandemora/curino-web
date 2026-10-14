@@ -14,33 +14,53 @@ import { generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTIL
 const ejemplo = (): Proyecto => JSON.parse(readFileSync(new URL('./ejemplos/a01-a03.json', import.meta.url), 'utf8'));
 const tarifaPrueba = (): Tarifa => ({ valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, c.unidad === '%' ? 10 : 100])), descuento_pct: 30, iva_pct: 21, precio_punto: 1, puntos: {} });
 
-test('cantidades de A.02 (200 × 274 × 60, 4 puertas molduradas lacadas)', () => {
-  const n = contarArmario(ejemplo().armarios[1]);
-  // Cuerpo e interior van por puntos: en € quedan puertas y tiradores
-  assert.deepEqual(n, { puerta_moldurada: 4, tirador: 4 });
+test('A.02: puertas y herrajes por puntos (4 molduradas lacadas abatibles, tirador)', () => {
+  assert.deepEqual(contarArmario(ejemplo().armarios[1]), {});   // ya no hay conceptos en €
+  const r = precioArmario(ejemplo().armarios[1], tarifaPrueba());
+  const linea = (re: RegExp) => r.desglose.find((d) => re.test(d.nombre));
+  assert.equal(linea(/^Puerta moldurada lacada/)?.cantidad, 4);
+  assert.equal(linea(/^Puerta moldurada lacada/)?.puntos, 475);
+  assert.equal(linea(/^Bisagras/)?.cantidad, 4);
 });
 
-test('A.01: frente fijo por metro y perchero extraíble (siguen en €)', () => {
-  const p = ejemplo();
-  const n1 = contarArmario(p.armarios[0]);
-  assert.equal(n1.frente_fijo, 0.48);       // 47,5 cm → 0,48 ml (redondeo a 2 decimales)
-  assert.equal(n1.perchero_extraible, 1);
+test('A.01: frente fijo con los puntos de su material y perchero extraíble', () => {
+  const r = precioArmario(ejemplo().armarios[0], tarifaPrueba());
+  assert.ok(r.desglose.some((d) => /^Frente fijo/.test(d.nombre)));
+  assert.ok(r.desglose.some((d) => /^Perchero extraíble/.test(d.nombre) && d.puntos === 45));
 });
 
-test('tarifa PENDIENTE → sin precio y con la lista de pendientes', () => {
+test('tarifa PENDIENTE → sin precio; solo falta el precio del punto', () => {
   const r = precioArmario(ejemplo().armarios[1], TARIFA_PENDIENTE);
   assert.equal(r.pvp, null);
-  assert.ok(r.pendientes.includes('Puerta moldurada'));
-  assert.ok(r.pendientes.includes('Recargo acabado lacado'));
-  assert.ok(r.pendientes.includes('Precio del punto'));
+  assert.deepEqual(r.pendientes, ['Precio del punto']);
   assert.ok(r.puntos_total > 0);
 });
 
-test('precio con tarifa completa: suma + recargo de acabado sobre puertas', () => {
-  const r = precioArmario(ejemplo().armarios[1], tarifaPrueba());
-  // € : 4 puertas + 4 tiradores = 800; lacado 10 % de 400; + puntos × 1 €/punto
-  assert.equal(r.pvp, Math.round((800 + 40 + r.puntos_total) * 100) / 100);
+test('precio = puntos × precio del punto', () => {
+  const r = precioArmario(ejemplo().armarios[1], { ...tarifaPrueba(), precio_punto: 2 });
+  assert.equal(r.pvp, Math.round(r.puntos_total * 2 * 100) / 100);
   assert.equal(r.modulos.length, 2);
+});
+
+test('puertas: coplanar por juego (impares al juego superior), uñero sin tirador, fuera de medida proporcional', () => {
+  const a = ejemplo().armarios[1];
+  const c = a.cuerpos[0];
+  c.frente = { ...c.frente, apertura: 'coplanar', material: 'lisa_lacada', agarre: 'unero_dm', piezas: [{ tipo: 'puerta', ancho: 70 }, { tipo: 'puerta', ancho: 65 }, { tipo: 'puerta', ancho: 65 }] };
+  const r = precioArmario(a, tarifaPrueba());
+  const linea = (re: RegExp) => r.desglose.find((d) => re.test(d.nombre));
+  assert.equal(linea(/coplanar/)?.cantidad, 2);          // 3 puertas → 2 juegos
+  assert.equal(linea(/coplanar/)?.puntos, 700);
+  assert.equal(linea(/^Uñero fresado/)?.cantidad, 3);
+  assert.equal(linea(/^Tirador/), undefined);             // el uñero sustituye al tirador
+  const fuera = r.desglose.find((d) => /^Puerta lisa lacada · /.test(d.nombre));   // 70 cm > 650 mm
+  assert.ok(fuera && fuera.puntos > 330 && /fuera de medida/.test(fuera.aviso || ''));
+});
+
+test('diseños anteriores: material y agarre deducidos de modelo, acabado y tirador', () => {
+  const a = ejemplo().armarios[1];                                    // molduradas lacadas, tirador «laton»
+  assert.ok(precioArmario(a, tarifaPrueba()).desglose.some((d) => /^Tirador latón/.test(d.nombre)));   // latón → premium
+  delete (a.cuerpos[0].frente as { tirador?: string }).tirador;
+  assert.ok(precioArmario(a, tarifaPrueba()).desglose.some((d) => /^Tirador estándar/.test(d.nombre)));   // sin tirador → estándar
 });
 
 test('presupuesto: importe = PVP × (1 − dto) y totales', () => {

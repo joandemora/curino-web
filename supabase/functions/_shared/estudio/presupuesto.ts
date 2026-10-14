@@ -18,6 +18,7 @@
 // introducción, sin tocar medidas.
 
 import type { Armario, Cuerpo, Frente, Proyecto, Zona } from './esquema.ts';
+import { agarrePuerta, materialPieza } from './esquema.ts';
 import { modelosPuertas } from './alzado.ts';
 import { eur, importeLinea, precioArmario } from './tarifa.ts';
 import type { LineaDesglose, Tarifa } from './tarifa.ts';
@@ -229,7 +230,19 @@ function grupos(anchos: number[]): string {
   return g.map((x) => `${plural(x.n, 'módulo', 'módulos')} de ${mm(x.a)} mm`).join(' + ');
 }
 
+// Nombres para los textos: material de las puertas, apertura y agarre
+const MAT_TXT: Record<string, string> = {
+  lisa_melamina: 'lisas en melamina', lisa_lacada: 'lisas lacadas', moldurada_lacada: 'molduradas lacadas',
+  chapa_madera: 'en chapa de madera natural barnizada', textil: 'textiles (bastidor tapizado)', ratan: 'de ratán (bastidor de madera y rejilla)'
+};
+const AP_TXT: Record<string, [string, string]> = { abatible: ['abatible', 'abatibles'], corredera: ['corredera', 'correderas'], coplanar: ['coplanar', 'coplanares'], escamoteable: ['escamoteable', 'escamoteables'] };
+const AGARRE_TXT: Record<string, string> = { tirador: 'tiradores', tirador_premium: 'tiradores en latón', unero_dm: 'uñero fresado en DM lacado', unero_madera: 'uñero en madera maciza', ninguno: '' };
 function adjetivos(f: Frente): string {
+  // Material indicado en el frente o en alguna puerta: se describe por material
+  if (f.material || f.piezas.some((p) => p.material)) {
+    const mats = [...new Set(f.piezas.filter((p) => p.tipo === 'puerta').map((p) => materialPieza(f, p)))];
+    return mats.map((m) => MAT_TXT[m]).join(' y ');
+  }
   const mods = modelosPuertas(f);
   const modelo = mods.length > 1 ? 'molduradas y lisas' : (mods[0] ?? f.modelo) === 'moldurada' ? 'molduradas' : 'lisas';
   const acabado = (f.acabado || '').trim().split(' ').map((w, i) => (i === 0 && /[aeiou]$/i.test(w) ? w + 's' : w)).join(' ');
@@ -240,7 +253,7 @@ function textoPuertas(f: Frente): string {
   const puertas = f.piezas.filter((p) => p.tipo === 'puerta');
   const fijos = f.piezas.filter((p) => p.tipo === 'fijo');
   const iguales = puertas.length > 0 && puertas.every((p) => p.ancho === puertas[0].ancho);
-  let t = `${plural(puertas.length, 'puerta', 'puertas')} ${f.apertura === 'abatible' ? (puertas.length === 1 ? 'abatible' : 'abatibles') : (puertas.length === 1 ? 'corredera' : 'correderas')} ${adjetivos(f)}`;
+  let t = `${plural(puertas.length, 'puerta', 'puertas')} ${(AP_TXT[f.apertura] ?? AP_TXT.abatible)[puertas.length === 1 ? 0 : 1]} ${adjetivos(f)}`;
   if (iguales) t += ` de ${mm(puertas[0].ancho)} mm`;
   if (fijos.length) t += ` + ${plural(fijos.length, 'frente fijo liso', 'frentes fijos lisos')}`;
   return t;
@@ -296,7 +309,11 @@ export function textosArmario(a: Armario, materiales: string): Pick<Partida, 'ti
   const sep = c0.frente.separacion_suelo ?? 2;
   const extra = [
     `Acabado exterior: puertas ${adjetivos(c0.frente)}`,
-    `Puertas hasta suelo con ${cmTxt(sep)} cm de separación${c0.frente.tirador === 'ninguno' ? '' : ' · tiradores en latón'}`
+    (() => {
+      const pz = c0.frente.piezas.find((p) => p.tipo === 'puerta');
+      const ag = pz ? AGARRE_TXT[agarrePuerta(c0.frente, pz)] : '';
+      return `Puertas hasta suelo con ${cmTxt(sep)} cm de separación${ag ? ' · ' + ag : ''}`;
+    })()
   ];
   return {
     titulo: `${a.codigo} ${a.titulo.replace(/\s+\d+([.,]\d+)?\s*cm$/i, '')}`.toUpperCase(),

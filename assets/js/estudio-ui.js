@@ -1284,13 +1284,18 @@
         html += '<h4>2 · Extras de interior</h4><div class="tf-scroll"><table class="tf-tabla tf-pts">' + cabAnchos + '<tbody>' +
           Object.keys(P.extras).map(function (k) { return '<tr><td>' + esc(P.extras[k].nombre) + '</td>' + P.anchos.map(function (a) { return celda(k + '_' + a); }).join('') + '</tr>'; }).join('') +
           '<tr><td>' + esc(P.sueltos.division.nombre) + '</td>' + celda('division') + '</tr></tbody></table></div>';
-        html += '<div class="tf-dos-col"><div><h4>3 · Costados vistos (2800 × 650 × 16)</h4><table class="tf-tabla tf-pts"><tbody>' +
+        // Puertas y herrajes
+        html += '<div class="tf-dos-col"><div><h4>Puertas (por puerta hasta 2800 × 650 × 19 mm)</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">Frente fijo = su material, sin bisagras. Más grande: proporcional al exceso de superficie («revisar»).</p><table class="tf-tabla tf-pts"><tbody>' +
+          Object.keys(P.puertas || {}).map(function (k) { return '<tr><td>' + esc(P.puertas[k].nombre.replace('Puerta ', '')) + '</td>' + celda('puerta_' + k) + '</tr>'; }).join('') + '</tbody></table></div>' +
+          '<div><h4>Herrajes y accesorios</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">El uñero sustituye al tirador. Coplanar por juego de 2 puertas (impares, al juego superior).</p><table class="tf-tabla tf-pts"><tbody>' +
+          Object.keys(P.herrajes || {}).map(function (k) { return '<tr><td>' + esc(P.herrajes[k].nombre) + '</td>' + celda(k) + '</tr>'; }).join('') + '</tbody></table></div></div>';
+        html += '<div class="tf-dos-col"><div><h4>3 · Costados vistos (2800 × 650 × 19)</h4><table class="tf-tabla tf-pts"><tbody>' +
           Object.keys(P.costados).map(function (k) { return '<tr><td>' + esc(P.costados[k].nombre.replace('Costado visto ', '')) + '</td>' + celda('costado_' + k) + '</tr>'; }).join('') + '</tbody></table>' +
           '<h4>4 · Recargos (% sobre el interior)</h4><table class="tf-tabla tf-pts"><tbody>' +
           Object.keys(P.recargos).map(function (k) { return '<tr><td>' + esc(P.recargos[k].nombre) + '</td>' + celda('recargo_' + k) + '</tr>'; }).join('') + '</tbody></table></div>' +
           '<div><h4>5 · Remate armario (conjunto)</h4><table class="tf-tabla tf-pts"><thead><tr><th></th><th>Barniz</th><th>Lacado</th></tr></thead><tbody>' +
           P.remates.map(function (r) { return '<tr><td>Hasta ' + r.hasta + ' cm</td>' + celda('remate_' + r.hasta + '_barniz') + celda('remate_' + r.hasta + '_lacado') + '</tr>'; }).join('') + '</tbody></table></div></div></div>';
-        html += '<h3 style="margin-top:18px">En euros (aún no están en la tabla de puntos)</h3>';
+        if (d.conceptos.length) html += '<h3 style="margin-top:18px">En euros (aún no están en la tabla de puntos)</h3>';
         var grupos = {};
         d.conceptos.filter(function (c) { return c.clave.indexOf('cuerpo_') !== 0; }).forEach(function (c) { (grupos[c.grupo] = grupos[c.grupo] || []).push(c); });
         Object.keys(grupos).forEach(function (g) {
