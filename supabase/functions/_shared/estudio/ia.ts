@@ -326,3 +326,57 @@ export async function leerFactura(o: { clave: string; modelo: string; adjunto: A
   const b = (d.content ?? []).find((x: Bloque) => x.type === 'tool_use') as { input?: Record<string, unknown> } | undefined;
   return { datos: b?.input ?? null, llamadas, error: b ? undefined : 'sin_datos' };
 }
+
+// ── Proponer partidas de presupuesto desde documentos (plano, croquis, presupuesto de proveedor…) ──
+const HERRAMIENTA_PARTIDAS = {
+  name: 'proponer_partidas',
+  description: 'Partidas del presupuesto de carpintería a medida que se deducen de los documentos.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      partidas: {
+        type: 'array', maxItems: 30,
+        items: {
+          type: 'object',
+          properties: {
+            titulo: { type: 'string', description: 'Nombre corto en mayúsculas: «ARMARIO DORMITORIO PRINCIPAL», «MUEBLE TV»…' },
+            descripcion: { type: 'string', description: 'Medidas (mm), distribución, puertas, acabados y materiales que se ven en los documentos. Sin inventar.' },
+            cantidad: { type: 'integer', minimum: 1 },
+            precio_unitario: { type: ['number', 'null'], description: 'PVP sin IVA si aparece en los documentos; si no, null.' }
+          },
+          required: ['titulo', 'descripcion', 'cantidad', 'precio_unitario']
+        }
+      },
+      nota: { type: 'string', description: 'Dudas o datos que faltan (opcional).' }
+    },
+    required: ['partidas']
+  }
+};
+
+export async function proponerPartidas(o: { clave: string; modelo: string; adjuntos: Adjunto[]; fetch?: typeof fetch }):
+  Promise<{ partidas: { titulo: string; descripcion: string; cantidad: number; precio_unitario: number | null }[] | null; nota?: string; llamadas: Llamada[]; error?: string }> {
+  const f = o.fetch ?? fetch;
+  const bloques = o.adjuntos.map((a) => a.tipo === 'application/pdf'
+    ? { type: 'document', source: { type: 'base64', media_type: a.tipo, data: a.base64 } }
+    : { type: 'image', source: { type: 'base64', media_type: a.tipo, data: a.base64 } });
+  const r = await f('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': o.clave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: o.modelo, max_tokens: 4000,
+      system: 'Eres técnico de presupuestos de un taller de carpintería a medida en España (armarios, vestidores, cocinas, muebles). A partir de los documentos (planos, croquis, presupuestos de proveedor u otros presupuestos) propones las partidas del presupuesto: una por mueble o trabajo. Usa solo lo que se ve; si un precio no aparece, precio_unitario = null. Responde siempre con la herramienta proponer_partidas.',
+      tools: [HERRAMIENTA_PARTIDAS], tool_choice: { type: 'auto' },
+      messages: [{ role: 'user', content: [...bloques, { type: 'text', text: `Documentos: ${o.adjuntos.map((a) => a.nombre).join(', ')}. Propón las partidas del presupuesto.` }] }]
+    })
+  });
+  const d = await r.json().catch(() => ({}));
+  const uso: Uso = {
+    input_tokens: d?.usage?.input_tokens ?? 0, output_tokens: d?.usage?.output_tokens ?? 0,
+    cache_creation_input_tokens: d?.usage?.cache_creation_input_tokens ?? 0, cache_read_input_tokens: d?.usage?.cache_read_input_tokens ?? 0
+  };
+  const llamadas = [{ uso, ok: r.ok }];
+  if (!r.ok) return { partidas: null, llamadas, error: d?.error?.type ?? `http_${r.status}` };
+  const b = (d.content ?? []).find((x: Bloque) => x.type === 'tool_use') as { input?: { partidas?: unknown[]; nota?: string } } | undefined;
+  const lista = Array.isArray(b?.input?.partidas) ? b!.input!.partidas as { titulo: string; descripcion: string; cantidad: number; precio_unitario: number | null }[] : null;
+  return { partidas: lista, nota: b?.input?.nota, llamadas, error: lista ? undefined : 'sin_datos' };
+}

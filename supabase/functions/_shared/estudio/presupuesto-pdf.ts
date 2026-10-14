@@ -11,7 +11,7 @@
 import type { Prim } from './alzado.ts';
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from './logo.ts';
 import { colorPdf, pintarPrims, type Documento, type Fuente, type FuentesPdf, type LibPdf, type Pagina } from './pdf.ts';
-import { fechaCorta, fechaLarga, precioTxt, totales, type DocPresupuesto, type Plantilla } from './presupuesto.ts';
+import { claveDe, fechaCorta, fechaLarga, precioTxt, totales, type DocPresupuesto, type Plantilla } from './presupuesto.ts';
 import { eur, importeLinea } from './tarifa.ts';
 
 export interface ImagenPdf { width: number; height: number }
@@ -33,6 +33,8 @@ export function pintarPresupuesto(
   img: { logo?: ImagenPdf; firma?: ImagenPdf } = {}
 ): void {
   const { presupuesto: p, plantilla: pl } = o;
+  // Sin ningún descuento no se muestra la columna ni la línea «DTO. PROFESIONAL»
+  const conDto = p.partidas.some((x) => Number(x.dto_pct) > 0);
   const c = (hex: string) => colorPdf(lib, hex);
   const acento = pl.tipo === 'propia' && /^#[0-9a-f]{6}$/i.test(pl.color) ? pl.color : NEGRO;
 
@@ -77,7 +79,7 @@ export function pintarPresupuesto(
     txt(pg, 258, y0 + 16, 'ANCHO', 5.4, g); txt(pg, 294, y0 + 16, 'ALTO', 5.4, g); txt(pg, 324, y0 + 16, 'FONDO', 5.4, g);
     txt(pg, 362, y0 + 11.5, 'PRECIO', s, g);
     txt(pg, 414, y0 + 11.5, 'PVP', s, g);
-    txt(pg, 470, y0 + 6, 'DTO.', s, g, false, 'middle'); txt(pg, 470, y0 + 17, 'PROFESIONAL', s, g, false, 'middle');
+    if (conDto) { txt(pg, 470, y0 + 6, 'DTO.', s, g, false, 'middle'); txt(pg, 470, y0 + 17, 'PROFESIONAL', s, g, false, 'middle'); }
     txt(pg, 508, y0 + 11.5, 'IMPORTE', s, g);
     barra(pg, X0, y0 + 20.4, X1, y0 + 21);
     txt(pg, 45, y0 + 31, p.seccion.toUpperCase(), s, NEGRO, true);
@@ -136,11 +138,11 @@ export function pintarPresupuesto(
     txt(pg, 64, ym, String(pt.cantidad), s, NEGRO, false, 'middle');
     txt(pg, 395, ym, precioTxt(pt.precio), s, NEGRO, false, 'end');
     txt(pg, 441, ym, precioTxt(linea.pvp), s, GRIS_P, false, 'end');
-    txt(pg, 470, ym, `${Math.round(pt.dto_pct * 100) / 100}%`, s, NEGRO, false, 'middle');
+    if (conDto) txt(pg, 470, ym, `${Math.round(pt.dto_pct * 100) / 100}%`, s, NEGRO, false, 'middle');
     txt(pg, 545, ym, precioTxt(linea.importe), s, NEGRO, true, 'end');
 
     // Dibujo debajo de la partida
-    const d = o.dibujos.find((x) => x.codigo === pt.codigo);
+    const d = pt.libre ? undefined : o.dibujos.find((x) => x.codigo === claveDe(pt));
     if (d) {
       const y0 = top + alto + 4, limite = MARCO.bottom - 12;
       const hMax = Math.max(120, Math.min(260, limite - y0));
@@ -171,7 +173,7 @@ export function pintarPresupuesto(
     txt(pg, X1, y + 1, v, 8.2, colorV, bold, 'end');
   };
   fila(111, 'PVP SIN IVA', pend ? 'PENDIENTE' : eur(t.pvp), GRIS_P);
-  fila(133, 'DTO.  PROFESIONAL', pend ? 'PENDIENTE' : eur(t.descuento), NEGRO);
+  if (conDto) fila(133, 'DTO.  PROFESIONAL', pend ? 'PENDIENTE' : eur(t.descuento), NEGRO);
   fila(150, 'IMPORTE TOTAL', pend ? 'PENDIENTE' : eur(t.importe), NEGRO, true);
   if (pl.mostrar_iva) {
     fila(166, `IVA (${o.ivaPct}%)`, pend ? 'PENDIENTE' : eur(t.iva), NEGRO);

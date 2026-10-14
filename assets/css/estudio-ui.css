@@ -278,3 +278,34 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .ng-fiable{font-size:12.5px;margin:8px 0 0}
 .ng-aviso-txt{font-size:12.5px;color:#b54708;background:#fffaf0;border:1px solid #f5c26b;border-radius:8px;padding:6px 10px;margin:4px 0 8px}
 .ng-incompletos li{opacity:.8}
+
+/* Documentos unificados: filtros por tipo */
+.dc-filtros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 10px}
+.dc-filtros button{border:1px solid #d9d3c8;background:#fff;border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;color:#161616}
+.dc-filtros button.on{background:#161616;color:#fff;border-color:#161616}
+.dc-filtros button.vacio:not(.on){color:#b9b6ad}
+.dc-filtros button[data-n]:not([data-f=""])::after{content:" " attr(data-n);opacity:.6;font-size:11px}
+.dc-filtros select{margin-left:auto;padding:4px 8px;border:1px solid #d9d3c8;border-radius:8px;font-size:12.5px}
+.dc-doc{margin:0}
+
+/* Varios presupuestos por proyecto */
+.pr-tabla{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+.pr-tabla th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#8a867c;font-weight:600;padding:6px 8px;border-bottom:1px solid #ece9e2}
+.pr-tabla td{padding:8px;border-bottom:1px solid #f1eee8;vertical-align:middle}
+.pr-tabla tr.on td{background:#f7f7f2}
+.pr-acc{white-space:nowrap;text-align:right}.pr-acc .pa-btn{margin-left:4px}
+.pn-fila input{padding:6px 8px;border:1px solid #d9d3c8;border-radius:8px;margin-left:6px}
+.pn-bases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.pn-base{border:1px solid #ece9e2;border-radius:10px;padding:10px;cursor:pointer;display:block}
+.pn-base small{display:block;color:#8a867c;font-size:12px;margin-top:3px}
+.pn-base:has(input:checked){border-color:#161616;background:#fafaf7}
+.pn-ver{border-top:1px solid #f1eee8;padding:8px 0}
+.pn-arm{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 0 22px;font-size:13px}
+.pn-doc{display:block;padding:4px 0;font-size:13px}
+.pr-com{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:12px;padding-top:10px;border-top:1px solid #f1eee8;font-size:13px}
+.pr-com span{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.pr-com [hidden]{display:none!important}
+.pr-com input,.pr-com select{padding:4px 6px;border:1px solid #d9d3c8;border-radius:6px}
+.pr-quitar{margin-top:10px;font-size:12px}
+.pr-num [hidden]{display:none!important}
+@media (max-width:760px){.pn-bases{grid-template-columns:1fr}.pr-tabla th:nth-child(2),.pr-tabla td:nth-child(2){display:none}}

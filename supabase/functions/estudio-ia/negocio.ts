@@ -180,7 +180,7 @@ export async function accionNegocio(action: string, o: {
 }): Promise<Response> {
   const { supa, userId, esAdmin, body, json } = o;
   const periodo = ['mes', 'trimestre', 'anio', 'todo'].includes(body?.periodo) ? body.periodo : 'mes';
-  const campos = 'proyecto_id, estado, estado_nota, estado_at, enviado_at, aceptado_at, rechazado_at, importe, pvp, created_at, updated_at, datos';
+  const campos = 'proyecto_id, estado, estado_nota, estado_at, enviado_at, aceptado_at, rechazado_at, importe, pvp, comision_importe, created_at, updated_at, datos';
   const { data: cfgC } = await supa.from('estudio_config').select('dias_caducidad').eq('id', 1).maybeSingle();
   const dias = Number(cfgC?.dias_caducidad ?? 90);
 
@@ -197,8 +197,23 @@ export async function accionNegocio(action: string, o: {
       const u = await supa.from('estudio_proyectos').update({ montaje_previsto: fm }).eq('id', pid);
       if (u.error) throw u.error;
     }
-    const { data: p } = await supa.from('estudio_presupuestos').select('enviado_at').eq('proyecto_id', pid).maybeSingle();
+    // Varios presupuestos por proyecto: el indicado o, si no, el principal
+    const prid = String(body?.presupuesto_id || '');
+    const { data: p } = UUID.test(prid)
+      ? await supa.from('estudio_presupuestos').select('id, proyecto_id, enviado_at, numero, estado').eq('id', prid).eq('proyecto_id', pid).maybeSingle()
+      : await supa.from('estudio_presupuesto_principal').select('id, proyecto_id, enviado_at, numero, estado').eq('proyecto_id', pid).maybeSingle();
     if (!p) return json({ error: 'Genera primero el presupuesto.' }, 400);
+    // Solo uno aceptado: el que lo estaba pasa a «rechazado» (sustituido); sin cobros cobrados, los plazos se rehacen
+    if (estado === 'aceptado' && p.estado !== 'aceptado') {
+      const { data: otro } = await supa.from('estudio_presupuestos').select('id').eq('proyecto_id', pid).eq('estado', 'aceptado').neq('id', p.id).maybeSingle();
+      if (otro) {
+        const ah = new Date().toISOString();
+        const u = await supa.from('estudio_presupuestos').update({ estado: 'rechazado', estado_at: ah, rechazado_at: ah, aceptado_at: null, estado_nota: `Sustituido por ${p.numero || 'otro presupuesto'}` }).eq('id', otro.id);
+        if (u.error) throw u.error;
+        const { count } = await supa.from('estudio_cobros').select('id', { count: 'exact', head: true }).eq('proyecto_id', pid).eq('cobrado', true);
+        if (!count) await supa.from('estudio_cobros').delete().eq('proyecto_id', pid);
+      }
+    }
     const ahora = new Date().toISOString();
     // Cambio manual: se borra la nota automática; si vuelve a «enviado», los días cuentan desde ahora
     const fila: Any = { estado, estado_at: ahora, estado_nota: null };
@@ -208,15 +223,15 @@ export async function accionNegocio(action: string, o: {
       fila.aceptado_at = estado === 'aceptado' ? ahora : null;
       fila.rechazado_at = estado === 'rechazado' ? ahora : null;
     }
-    const r = await supa.from('estudio_presupuestos').update(fila).eq('proyecto_id', pid);
+    const r = await supa.from('estudio_presupuestos').update(fila).eq('id', p.id);
     if (r.error) throw r.error;
-    return json({ ok: true, ...fila });
+    return json({ ok: true, presupuesto_id: p.id, ...fila });
   }
 
   if (action === 'negocio') {
     const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, created_at, user_id, montaje_previsto, montado, montado_at, montaje_nota').eq('user_id', userId);
     const ids = (proyectos ?? []).map((p: Any) => p.id);
-    const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
+    const { data: pres } = ids.length ? await supa.from('estudio_presupuesto_principal').select(campos).in('proyecto_id', ids) : { data: [] };
     const base = metricas(proyectos ?? [], pres ?? [], periodo, 21, dias);
     const ex = await extras(supa, proyectos ?? [], pres ?? [], base.serie);
     return json({ ...base, serie: ex.serie, calendario: ex.calendario, real: await reales(supa, proyectos ?? [], pres ?? [], periodo) });
@@ -232,7 +247,7 @@ export async function accionNegocio(action: string, o: {
     const { data: todos } = await supa.from('estudio_proyectos').select('id, user_id, nombre, created_at');
     const proyectos = (todos ?? []).filter((p: Any) => !fuera.has(p.user_id));   // sin los proyectos de admin
     const ids = proyectos.map((p: Any) => p.id);
-    const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
+    const { data: pres } = ids.length ? await supa.from('estudio_presupuesto_principal').select(campos).in('proyecto_id', ids) : { data: [] };
     const { data: alumnos } = await supa.rpc('estudio_alumnos', { p_email: null });
     const email = new Map((alumnos ?? []).filter((a: Any) => a.user_id).map((a: Any) => [a.user_id, a.email]));
     const porUsuario = new Map<string, Any[]>();

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { Proyecto } from './esquema.ts';
 import { contarArmario, precioArmario, claveCuerpo, TARIFA_PENDIENTE, CONCEPTOS, eur, type Tarifa } from './tarifa.ts';
-import { generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO, textoModulo } from './presupuesto.ts';
+import { generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO, textoModulo, docVariante, importesNegocio, partidaLibre, type DocPresupuesto } from './presupuesto.ts';
 
 const ejemplo = (): Proyecto => JSON.parse(readFileSync(new URL('./ejemplos/a01-a03.json', import.meta.url), 'utf8'));
 const tarifaPrueba = (): Tarifa => ({ valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, c.unidad === '%' ? 10 : 100])), descuento_pct: 30, iva_pct: 21 });
@@ -95,4 +95,38 @@ test('qué le falta a un alumno para descargar', () => {
   assert.deepEqual(faltanPlantilla(completa), []);
   assert.deepEqual(faltanPlantilla({ ...completa, tipo: 'propia' }), ['Logo (plantilla propia)']);
   assert.equal(PLANTILLA_ADMIN.direccion_1, 'Carrer de Balmes 252, 5-2');
+});
+
+// ── Comisión del interiorista y partidas libres ──
+const docLibre = (): DocPresupuesto => ({
+  numero: 'Z1', fecha: '2026-10-14', atencion: '', proyecto: '', proyecto_2: '', validez: '', seccion: '', version: 1,
+  partidas: [partidaLibre({ n: 1, titulo: 'Armario', precio: 1000, dto: 30 }), partidaLibre({ n: 2, titulo: 'Montaje', precio: 500, cantidad: 2 })]
+});
+
+test('sin comisión: importe = PVP − descuento de cada partida', () => {
+  assert.deepEqual(importesNegocio(docLibre(), 21), { importe: 1700, pvp: 2000, comision: 0 });
+});
+
+test('comisión que paga el cliente: facturación = PVP y comisión como coste; variantes', () => {
+  const d = { ...docLibre(), comision: { activa: true, pct: 15, paga: 'cliente' as const } };
+  assert.deepEqual(importesNegocio(d, 21), { importe: 2000, pvp: 2000, comision: 300 });
+  assert.ok(docVariante(d, 'cliente').partidas.every((p) => p.dto_pct === 0));
+  assert.ok(docVariante(d, 'interiorista').partidas.every((p) => p.dto_pct === 15));
+});
+
+test('comisión con el interiorista comprando a neto: facturación = neto, sin coste', () => {
+  const d = { ...docLibre(), comision: { activa: true, pct: 15, paga: 'interiorista' as const } };
+  assert.deepEqual(importesNegocio(d, 21), { importe: 1700, pvp: 2000, comision: 0 });
+});
+
+test('partida sin precio: importes pendientes', () => {
+  const d = docLibre(); d.partidas[1].precio = null;
+  assert.deepEqual(importesNegocio(d, 21), { importe: null, pvp: null, comision: null });
+});
+
+test('elegir armarios de una versión y clave por partida', () => {
+  const d = generarPresupuesto({ proyecto: ejemplo(), version: 3, tarifa: TARIFA_PENDIENTE, plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14', armarios: ['A.02'] });
+  assert.equal(d.partidas.length, 1);
+  assert.equal(d.partidas[0].clave, 'v3:A.02');
+  assert.equal(d.partidas[0].version, 3);
 });

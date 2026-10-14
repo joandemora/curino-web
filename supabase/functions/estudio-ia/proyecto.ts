@@ -59,12 +59,12 @@ export function miniaturaSvg(datos: Proyecto): string | null {
 }
 
 /** Guarda en Documentos un PDF generado en el servidor. */
-export async function guardarDocumento(supa: Any, o: { proyecto_id: string; user_id: string; tipo: string; version?: number | null; numero?: string | null; nombre: string; bytes: Uint8Array }) {
+export async function guardarDocumento(supa: Any, o: { proyecto_id: string; user_id: string; tipo: string; version?: number | null; numero?: string | null; nombre: string; bytes: Uint8Array; presupuesto_id?: string | null; variante?: string | null }) {
   try {
     const path = `${o.user_id}/${o.proyecto_id}/documentos/${crypto.randomUUID()}.pdf`;
     const up = await supa.storage.from('estudio').upload(path, o.bytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
-    await supa.from('estudio_documentos').insert({ proyecto_id: o.proyecto_id, user_id: o.user_id, tipo: o.tipo, version: o.version ?? null, numero: o.numero ?? null, nombre: o.nombre, path, bytes: o.bytes.length });
+    await supa.from('estudio_documentos').insert({ proyecto_id: o.proyecto_id, user_id: o.user_id, tipo: o.tipo, version: o.version ?? null, numero: o.numero ?? null, nombre: o.nombre, path, bytes: o.bytes.length, presupuesto_id: o.presupuesto_id ?? null, variante: o.variante ?? null });
   } catch (e) { console.error('estudio: guardar documento', e); }
 }
 
@@ -79,7 +79,7 @@ async function usoAlmacenamiento(supa: Any, userId: string): Promise<number> {
 
 async function datosProyecto(supa: Any, pid: string) {
   const [pres, fich, cost, cob] = await Promise.all([
-    supa.from('estudio_presupuestos').select('estado, importe, aceptado_at, datos').eq('proyecto_id', pid).maybeSingle(),
+    supa.from('estudio_presupuesto_principal').select('estado, importe, aceptado_at, datos, comision_importe').eq('proyecto_id', pid).maybeSingle(),
     supa.from('estudio_ficheros').select('id, tipo, base, iva, total, fecha, proveedor').eq('proyecto_id', pid),
     supa.from('estudio_costes').select('id, categoria, concepto, fecha, importe, created_at').eq('proyecto_id', pid).order('fecha', { nullsFirst: false }),
     supa.from('estudio_cobros').select('*').eq('proyecto_id', pid).order('orden')
@@ -120,7 +120,7 @@ export async function accionProyecto(action: string, ctx: {
     const ids = lista.map((p: Any) => p.id);
     const vacio = { data: [] };
     const [pres, fich, cost] = ids.length ? await Promise.all([
-      supa.from('estudio_presupuestos').select('proyecto_id, estado, importe, aceptado_at, updated_at, datos').in('proyecto_id', ids),
+      supa.from('estudio_presupuesto_principal').select('proyecto_id, estado, importe, aceptado_at, updated_at, datos, comision_importe').in('proyecto_id', ids),
       supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha').in('proyecto_id', ids),
       supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
     ]) : [vacio, vacio, vacio];
@@ -273,7 +273,8 @@ export async function accionProyecto(action: string, ctx: {
     const path = `${proyecto.user_id}/${pid}/documentos/${crypto.randomUUID()}.xlsx`;
     const { data: s, error } = await supa.storage.from('estudio').createSignedUploadUrl(path);
     if (error) throw error;
-    await supa.from('estudio_documentos').insert({ proyecto_id: pid, user_id: proyecto.user_id, tipo, version: Number(body?.version) || null, numero: String(body?.numero || '').slice(0, 40) || null, nombre: String(body?.nombre || 'Presupuesto.xlsx').slice(0, 120), path, bytes });
+    await supa.from('estudio_documentos').insert({ proyecto_id: pid, user_id: proyecto.user_id, tipo, version: Number(body?.version) || null, numero: String(body?.numero || '').slice(0, 40) || null, nombre: String(body?.nombre || 'Presupuesto.xlsx').slice(0, 120), path, bytes,
+      presupuesto_id: /^[0-9a-f-]{36}$/i.test(String(body?.presupuesto_id || '')) ? body.presupuesto_id : null, variante: ['cliente', 'interiorista'].includes(body?.variante) ? body.variante : null });
     return json({ path, token: s.token });
   }
   if (action === 'ficheros') {

@@ -69,3 +69,14 @@ test('las facturas a cliente cubren plazos: no vencen y cuentan como cobrado', (
   assert.equal(m.cobros.vencidos.length, 1);           // solo el 10 % no está cubierto
   assert.equal(m.facturacion, 1000);
 });
+
+test('comisión del interiorista: coste automático del presupuesto aceptado', () => {
+  const m = metricasProyecto({
+    presupuesto: { estado: 'aceptado', importe: 10000, aceptado_at: '2026-10-01', comision_importe: 1500 },
+    ficheros: [{ tipo: 'factura_proveedor', base: 5000, total: 6050, fecha: '2026-10-05' }], costes: [], cobros: [], hoy: '2026-10-13'
+  });
+  assert.equal(m.facturacion, 10000);
+  assert.equal(m.costes, 6500);
+  assert.equal(m.margen, 3500);
+  assert.ok(m.costes_por_categoria.some((c) => c.categoria === 'comision' && c.importe === 1500));
+});
