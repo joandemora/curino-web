@@ -23,6 +23,7 @@ import {
   MODULOS_COCINA, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA,
   PUERTAS_COCINA, ALTOS_PUERTA, ANCHOS_PUERTA, GRUPOS_PUERTA, puntosDeEur
 } from './cocina-tarifa.ts';
+import { puntosLinea } from './tarifa.ts';
 import {
   type Cocina, type ModuloCocina, type TramoCocina, type AcabadoCuerpo, type TipoModuloCocina,
   completarCocina, alturasCajones, anchoPuerta, cmEncimera, esUnero, ACABADO_TXT, TIPO_TXT, COCINA_DEF
@@ -282,7 +283,7 @@ function calcularTramo(c: Cocina, t: TramoCocina, it: number, p: Record<string, 
     const ml = Math.ceil(mlZocalo * 10) / 10;
     sumar('zocalo_ml', `Zócalo ${fmt(c.zocalo!)} cm · ${fmt(ml)} m`, p.zocalo_ml ?? 0, ml, p.zocalo_ml ? undefined : 'sin precio – revisar');
   }
-  const total = Math.round(L.reduce((s, l) => s + l.puntos * l.cantidad, 0) * 100) / 100;
+  const total = L.reduce((s, l) => s + puntosLinea(l.puntos, l.cantidad), 0);
   return { tramo: it, nombre, lineas: L, puntos: total, revisar: L.filter((l) => l.aviso).length };
 }
 

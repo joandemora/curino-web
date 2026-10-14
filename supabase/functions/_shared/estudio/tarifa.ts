@@ -46,12 +46,15 @@ export interface Tarifa {
   puntos_cocina?: Record<string, number>;  // solo los cambiados sobre la tarifa del proveedor
 }
 
+/** Puntos de una línea: unidades × puntos por unidad, al alza y sin decimales (3,2 m × 15 = 48; 1,5 × 15 = 23). */
+export const puntosLinea = (puntos: number, cantidad: number) => Math.ceil(Math.round(puntos * cantidad * 1e6) / 1e6 - 1e-9);
+
 /** Puntos que usa la tarifa: la tabla original + lo que el usuario haya cambiado. */
 export const puntosDe = (t: Tarifa): Record<string, number> => ({ ...puntosBase(), ...(t.puntos ?? {}) });
 
 export const TARIFA_PENDIENTE: Tarifa = {
   valores: Object.fromEntries(CONCEPTOS.map((c) => [c.clave, null])),
-  descuento_pct: 30,
+  descuento_pct: 0,
   iva_pct: 21,
   precio_punto: null,
   puntos: {}
@@ -65,6 +68,7 @@ export interface LineaDesglose {
   precio: number | null;   // por unidad (o % si unidad '%')
   importe: number | null;
   puntos?: number;         // por unidad, si va por puntos
+  puntos_linea?: number;   // puntos de la línea (unidades × puntos, al alza sin decimales)
   aviso?: string;          // «fuera de tabla», «revisar»…
 }
 export interface PrecioArmario {
@@ -106,10 +110,10 @@ export function precioArmario(a: Armario, t: Tarifa, op: OpcionesPuntos = {}): P
   const pt = puntosArmario(a, puntosDe(t), op);
   let puntosTotal = 0, totalPuntos = 0;
   for (const l of pt.lineas) {
-    const pts = Math.round(l.puntos * l.cantidad * 100) / 100;
+    const pts = puntosLinea(l.puntos, l.cantidad);
     puntosTotal += pts;
     const precio = pp === null ? null : r2(l.puntos * pp);
-    desglose.push({ clave: l.clave, nombre: l.nombre, cantidad: l.cantidad, unidad: 'ud', precio, importe: pp === null ? null : r2(pts * pp), puntos: l.puntos, aviso: l.aviso });
+    desglose.push({ clave: l.clave, nombre: l.nombre, cantidad: l.cantidad, unidad: 'ud', precio, importe: pp === null ? null : r2(pts * pp), puntos: l.puntos, puntos_linea: pts, aviso: l.aviso });
     if (pp !== null) totalPuntos += r2(pts * pp);
   }
   if (pt.lineas.length && pp === null) pendientes.push('Precio del punto');

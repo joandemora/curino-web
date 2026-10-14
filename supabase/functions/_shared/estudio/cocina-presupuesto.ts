@@ -13,7 +13,7 @@
 import type { Proyecto } from './esquema.ts';
 import { type Cocina, type ModuloCocina, type TramoCocina, completarCocina, alturasCajones, largoUtil, ACABADO_TXT, TIPO_TXT, esUnero } from './cocina.ts';
 import { puntosCocina, puntosBaseCocina } from './cocina-puntos.ts';
-import type { LineaDesglose } from './tarifa.ts';
+import { puntosLinea, type LineaDesglose } from './tarifa.ts';
 
 export interface PrecioTramo {
   pvp: number | null; desglose: LineaDesglose[]; pendientes: string[]; puntos_total: number; avisos: string[];
@@ -32,8 +32,8 @@ export function preciosCocina(c: Cocina, puntos: Record<string, number>, precioP
     cocina: r.cocina,
     tramos: r.tramos.map((t) => {
       const desglose: LineaDesglose[] = t.lineas.map((l) => {
-        const pts = r2(l.puntos * l.cantidad);
-        return { clave: l.clave, nombre: l.nombre, cantidad: l.cantidad, unidad: 'ud', precio: pp === null ? null : r2(l.puntos * pp), importe: pp === null ? null : r2(pts * pp), puntos: l.puntos, aviso: l.aviso };
+        const pts = puntosLinea(l.puntos, l.cantidad);
+        return { clave: l.clave, nombre: l.nombre, cantidad: l.cantidad, unidad: 'ud', precio: pp === null ? null : r2(l.puntos * pp), importe: pp === null ? null : r2(pts * pp), puntos: l.puntos, puntos_linea: pts, aviso: l.aviso };
       });
       const total = desglose.reduce((s, l) => s + (l.importe ?? 0), 0);
       return { pvp: pp === null ? null : r2(total), desglose, pendientes: pp === null ? ['Precio del punto cocina'] : [], puntos_total: t.puntos, avisos: t.lineas.filter((l) => l.aviso).map((l) => `${l.nombre}: ${l.aviso}`) };

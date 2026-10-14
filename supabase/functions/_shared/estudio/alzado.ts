@@ -17,7 +17,7 @@ import {
   type Armario, type Cuerpo, type Frente, type PiezaFrente, type Proyecto, type Zona, type Formato,
   repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, fmtMm
 } from './esquema.ts';
-import { laminasCocina } from './cocina-alzado.ts';
+import { laminasCocina, laminasCocinaPresupuesto } from './cocina-alzado.ts';
 
 // ── Primitivas ──────────────────────────────────────────────────────
 export type Prim =
@@ -322,6 +322,11 @@ export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[
   return [...p.armarios.flatMap((a) => laminasArmario(a, p, medir)), ...(p.cocinas ?? []).flatMap((c) => laminasCocina(c, p, medir))];
 }
 
+
+/** Láminas para el presupuesto: las de cada armario y, en cocinas, una por tramo (código de su partida). */
+export function laminasPresupuesto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
+  return [...p.armarios.flatMap((a) => laminasArmario(a, p, medir)), ...(p.cocinas ?? []).flatMap((c) => laminasCocinaPresupuesto(c, p, medir))];
+}
 
 /** Láminas de un armario: una, o dos si la sección / planta no caben con el alzado. */
 export function laminasArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox): Lamina[] {

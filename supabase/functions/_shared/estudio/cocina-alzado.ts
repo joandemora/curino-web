@@ -132,6 +132,19 @@ export function laminasCocina(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 
   return [lamina(c, p, medir, SOLO), lamina(c, p, medir, { principal: false, lateral, planta })];
 }
 
+/**
+ * Láminas para el presupuesto (una partida por tramo): el alzado de cada pared
+ * con el código de su partida («C.01.1», «C.01.2»…) y, si la cocina tiene
+ * vistas, la sección y la planta con el código de la última partida.
+ */
+export function laminasCocinaPresupuesto(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox): Lamina[] {
+  const c = completarCocina(entrada);
+  const out = c.tramos.map((t, i) => ({ ...lamina({ ...c, tramos: [t] }, p, medir, SOLO), codigo: `${c.codigo}.${i + 1}` }));
+  const lateral = !!c.vistas?.includes('lateral'), planta = !!c.vistas?.includes('planta');
+  if (lateral || planta) out.push({ ...lamina(c, p, medir, { principal: false, lateral, planta }), codigo: `${c.codigo}.${c.tramos.length}` });
+  return out;
+}
+
 function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir, comp: Composicion): Lamina {
   const E = ESTILO;
   const pg = PAGINA.A4, prims: Prim[] = [];

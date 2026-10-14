@@ -682,7 +682,7 @@
     var op = p.opciones || {}, cost = (op.costados && op.costados[0]) || { tipo: 'melamina', n: 0 };
     var hayPuntos = p.desglose.some(function (d) { return d.puntos != null; });
     var filas = p.desglose.map(function (d) {
-      var pts = d.puntos != null ? Math.round(d.puntos * d.cantidad * 100) / 100 : null;
+      var pts = d.puntos_linea != null ? d.puntos_linea : d.puntos != null ? Math.ceil(Math.round(d.puntos * d.cantidad * 1e6) / 1e6 - 1e-9) : null;
       return '<tr' + (d.aviso ? ' class="pr-aviso"' : '') + '><td>' + esc(d.nombre) + (d.aviso ? '<br><small>⚠ ' + esc(d.aviso) + '</small>' : '') + '</td><td>' + (d.unidad === '%' ? '' : numOut(d.cantidad)) + '</td>' +
         '<td>' + (d.puntos != null ? numOut(d.puntos) + ' pt' : '') + '</td><td>' + (pts != null ? '<b>' + numOut(pts) + '</b>' : '') + '</td>' +
         '<td>' + (d.precio === null ? 'PENDIENTE' : d.unidad === '%' ? numOut(d.precio) + '%' : eur(d.precio)) + '</td><td>' + (d.importe == null ? '—' : eur(d.importe)) + '</td></tr>';
