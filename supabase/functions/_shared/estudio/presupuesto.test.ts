@@ -130,3 +130,13 @@ test('elegir armarios de una versión y clave por partida', () => {
   assert.equal(d.partidas[0].clave, 'v3:A.02');
   assert.equal(d.partidas[0].version, 3);
 });
+
+test('comisión: mismo redondeo que el PDF (neto por línea; comisión = PVP − neto)', () => {
+  const d: DocPresupuesto = { ...docLibre(), comision: { activa: true, pct: 15, paga: 'cliente' as const },
+    partidas: [partidaLibre({ n: 1, precio: 5819.5 }), partidaLibre({ n: 2, precio: 5594.5 }), partidaLibre({ n: 3, precio: 6373.52 })] };
+  const neto = totales(docVariante(d, 'interiorista'), 21).importe;
+  const r = importesNegocio(d, 21);
+  assert.equal(r.pvp, 17787.52);
+  assert.equal(neto, 15119.4);
+  assert.equal(r.comision, 2668.12);
+});

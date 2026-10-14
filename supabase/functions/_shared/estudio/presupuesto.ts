@@ -79,10 +79,12 @@ export function importesNegocio(d: DocPresupuesto, ivaPct: number): { importe: n
   if (d.comision?.activa) {
     const t = totales(docVariante(d, 'cliente'), ivaPct);
     if (t.pendientes) return { importe: null, pvp: null, comision: null };
-    const pct = (Number(d.comision.pct) || 0) / 100, r = (n: number) => Math.round(n * 100) / 100;
+    // Mismo redondeo que el PDF/Excel «interiorista»: neto redondeado por línea; comisión = PVP − neto
+    const neto = totales(docVariante(d, 'interiorista'), ivaPct).importe;
+    const comision = Math.round((t.pvp - neto) * 100) / 100;
     return d.comision.paga === 'interiorista'
-      ? { importe: r(t.pvp * (1 - pct)), pvp: t.pvp, comision: 0 }
-      : { importe: t.pvp, pvp: t.pvp, comision: r(t.pvp * pct) };
+      ? { importe: neto, pvp: t.pvp, comision: 0 }
+      : { importe: t.pvp, pvp: t.pvp, comision };
   }
   const t = totales(d, ivaPct);
   return t.pendientes ? { importe: null, pvp: null, comision: null } : { importe: t.importe, pvp: t.pvp, comision: 0 };
