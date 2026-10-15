@@ -30,7 +30,7 @@ initAdminShell({ activeSection: 'partners-estudio', title: 'Partners · Estudio'
   EstudioUI.proyectos(document.getElementById('esApp'), {
     supa: c.supabase, modo: 'admin', usuario: 'admin',
     rutas: {
-      estudio: function (pid, tab) { return '/admin/partners/estudio.html' + (pid ? '?p=' + pid + (tab && tab !== 'diseno' ? '&t=' + tab : '') : ''); },
+      estudio: function (pid, tab) { return '/admin/partners/estudio.html' + (pid ? '?p=' + pid + (tab && tab !== 'resumen' ? '&t=' + tab : '') : ''); },
       presupuesto: function (pid) { return '/admin/partners/estudio.html?p=' + pid + '&t=presupuesto'; },
       datos: function () { return '/admin/partners/estudio-tarifa.html'; },
       tarifa: function () { return '/admin/partners/estudio-tarifa.html'; }

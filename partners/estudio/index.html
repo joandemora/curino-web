@@ -75,7 +75,7 @@ body{margin:0;background:var(--papel);color:var(--negro);font-family:'Open Sans'
   var main = $('#euMain');
 
   var rutas = {
-    estudio: function (pid, tab) { return '#proyectos' + (pid ? '/' + pid + (tab && tab !== 'diseno' ? '/' + tab : '') : ''); },
+    estudio: function (pid, tab) { return '#proyectos' + (pid ? '/' + pid + (tab && tab !== 'resumen' ? '/' + tab : '') : ''); },
     creditos: function () { return '#creditos'; },
     presupuesto: function (pid) { return '#proyectos/' + pid + '/presupuesto'; },
     datos: function () { return '#datos'; },
