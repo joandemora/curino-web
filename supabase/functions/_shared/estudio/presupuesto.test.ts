@@ -93,7 +93,7 @@ test('textos técnicos como en el presupuesto de referencia', () => {
     'Distribución: 2 módulos de 1000 mm',
     'Puertas: 4 puertas abatibles molduradas lacadas de 500 mm',
     'Módulo 1 – 100 cm: doble perchero + altillo 50 cm.',
-    'Módulo 2 – 100 cm: cajonera de 4 cajones + barra de colgar + altillo 50 cm.'
+    'Módulo 2 – 100 cm: cajonera de 4 cajones y tapetas laterales 3 cm para bisagras + barra de colgar + altillo 50 cm.'
   ].join('\n'));
   assert.match(doc.partidas[0].tecnico, /^Cuerpo principal: 1900 x 2800 x 600 mm · 2 módulos de 950 mm/);
   assert.match(doc.partidas[0].tecnico, /Lateral: 1000 x 2800 x 400 mm/);

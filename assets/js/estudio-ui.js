@@ -1474,7 +1474,9 @@
           '<tr><td>' + esc(P.sueltos.rinconero.nombre) + '</td>' + celda('rinconero') + '</tr></tbody></table></div>';
         html += '<h4>2 · Extras de interior</h4><div class="tf-scroll"><table class="tf-tabla tf-pts">' + cabAnchos + '<tbody>' +
           Object.keys(P.extras).map(function (k) { return '<tr><td>' + esc(P.extras[k].nombre) + '</td>' + P.anchos.map(function (a) { return celda(k + '_' + a); }).join('') + '</tr>'; }).join('') +
-          '<tr><td>' + esc(P.sueltos.division.nombre) + '</td>' + celda('division') + '</tr></tbody></table></div>';
+          '<tr><td>' + esc(P.sueltos.division.nombre) + '</td>' + celda('division') + '</tr>' +
+          (P.sueltos.tapeta_cajonera ? '<tr><td>' + esc(P.sueltos.tapeta_cajonera.nombre) + ' <span class="pr-tag">revisar</span><br><span class="pa-muted" style="font-size:11px">No está en la tabla OTG: valor propio pendiente de confirmar</span></td>' + celda('tapeta_cajonera') + '</tr>' : '') +
+          '</tbody></table></div>';
         // Puertas y herrajes
         html += '<div class="tf-dos-col"><div><h4>Puertas (por puerta hasta 2800 × 650 × 19 mm)</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">Frente fijo = su material, sin bisagras. Más grande: proporcional al exceso de superficie («revisar»).</p><table class="tf-tabla tf-pts"><tbody>' +
           Object.keys(P.puertas || {}).map(function (k) { return '<tr><td>' + esc(P.puertas[k].nombre.replace('Puerta ', '')) + '</td>' + celda('puerta_' + k) + '</tr>'; }).join('') + '</tbody></table></div>' +
