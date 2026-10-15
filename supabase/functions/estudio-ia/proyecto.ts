@@ -157,7 +157,7 @@ export async function accionProyecto(action: string, ctx: {
     const ids = lista.map((p: Any) => p.id);
     const vacio = { data: [] };
     const [pres, fich, cost] = ids.length ? await Promise.all([
-      supa.from('estudio_presupuestos').select('proyecto_id, numero, estado, importe, pvp, aceptado_at, updated_at, datos, comision_importe').in('proyecto_id', ids),
+      supa.from('estudio_presupuestos').select('proyecto_id, numero, estado, importe, pvp, aceptado_at, enviado_at, estado_at, updated_at, datos, comision_importe, montado').in('proyecto_id', ids),
       supa.from('estudio_ficheros').select('proyecto_id, tipo, base, total, fecha, tipo_coste, sustituido_por').in('proyecto_id', ids),
       supa.from('estudio_costes').select('proyecto_id, categoria, importe, fecha').in('proyecto_id', ids)
     ]) : [vacio, vacio, vacio];
@@ -177,10 +177,14 @@ export async function accionProyecto(action: string, ctx: {
         ficheros: (fich.data ?? []).filter((x: Any) => x.proyecto_id === p.id), costes: (cost.data ?? []).filter((x: Any) => x.proyecto_id === p.id)
       });
       const ultima = [p.updated_at, pr?.updated_at].filter(Boolean).sort().pop();
+      // Importe y margen de la tarjeta: el mismo cálculo que las cajas del Resumen (resumenFicha)
+      const R = resumenFicha({ presupuestos: (pres.data ?? []).filter((x: Any) => x.proyecto_id === p.id), ficheros: (fich.data ?? []).filter((x: Any) => x.proyecto_id === p.id),
+        costes: (cost.data ?? []).filter((x: Any) => x.proyecto_id === p.id), v2: !!p.costes_v2 });
       out.push({
         id: p.id, num: p.numero ?? null, nombre: p.nombre, referencia: p.referencia, version: p.version_actual, miniatura: p.miniatura || null,
-        estado: pr?.estado ?? null, numero: pr?.numero || pr?.datos?.numero || null, importe: pr?.importe ?? null, aceptados: pr?.aceptados ?? (pr?.estado === 'aceptado' ? 1 : 0),
-        facturacion: m.facturacion, costes: m.costes, margen: m.margen, margen_pct: m.margen_pct, actualizado: ultima
+        estado: pr?.estado ?? null, numero: pr?.numero || pr?.datos?.numero || null, aceptados: pr?.aceptados ?? (pr?.estado === 'aceptado' ? 1 : 0),
+        importe: R.importe, margen: R.margen, margen_pct: R.margen_pct, cerrado: R.cerrado, fiable: R.fiable, motivo: R.motivo,
+        facturacion: m.facturacion, costes: m.costes, actualizado: ultima
       });
     }
     return json({ proyectos: out });
