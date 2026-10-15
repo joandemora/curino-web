@@ -44,7 +44,6 @@ import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensa
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
 import { numeroEnProyecto, partirNumero, incrementarSerie } from '../_shared/estudio/aceptados.ts'
 import { TIPOS_COSTE_DEF } from '../_shared/estudio/metricas.ts'
-import { aPapelera } from '../_shared/estudio-papelera.ts'
 import { ENTRADAS_MODULO, puntosBaseCocina, revisarCocina, claveEncimera, claveTablero } from '../_shared/estudio/cocina-puntos.ts'
 import { PROVEEDOR_COCINA, FECHA_TARIFA_COCINA, FECHAS_HOJAS, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA, SERVICIO_COCINA, ALTOS_PUERTA, ANCHOS_PUERTA, GRUPOS_PUERTA, REVISAR_COCINA } from '../_shared/estudio/cocina-tarifa.ts'
 
@@ -386,16 +385,15 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (action === 'presupuesto_borrar') {
     if (!fila) return json({ error: 'Presupuesto no encontrado' }, 404);
     if (fila.estado === 'aceptado' && body?.confirmar_aceptado !== true) return json({ error: 'Es el presupuesto aceptado: confirma que quieres borrarlo.', requiere_confirmacion: true }, 400);
-    // A la papelera 30 días, con sus PDF / Excel (van en su tarjeta) y, si estaba aceptado, los plazos sin cobrar
-    const { data: ds } = await supa.from('estudio_documentos').select('*').eq('presupuesto_id', fila.id);
-    const { data: cobros } = fila.estado === 'aceptado' ? await supa.from('estudio_cobros').select('*').eq('proyecto_id', proyectoId).eq('cobrado', false) : { data: [] };
-    await aPapelera(supa, { tipo: 'presupuesto', user_id: proyecto.user_id, proyecto_id: proyectoId, nombre: `Presupuesto ${fila.numero || fila.datos?.numero || ''}`.trim(), borrado_por: userId,
-      filas: { estudio_presupuestos: [fila], estudio_documentos: ds ?? [], estudio_cobros: cobros ?? [] }, paths: (ds ?? []).flatMap((x: Any) => [x.path, x.miniatura_path]) });
+    // Definitivo: con sus PDF / Excel (van en su tarjeta) y, si estaba aceptado, los plazos sin cobrar
+    const { data: ds } = await supa.from('estudio_documentos').select('id, path, miniatura_path').eq('presupuesto_id', fila.id);
+    const paths = (ds ?? []).flatMap((x: Any) => [x.path, x.miniatura_path]).filter(Boolean);
+    if (paths.length) await supa.storage.from('estudio').remove(paths);
     if (ds?.length) await supa.from('estudio_documentos').delete().in('id', ds.map((x: Any) => x.id));
     const r = await supa.from('estudio_presupuestos').delete().eq('id', fila.id);
     if (r.error) throw r.error;
-    if (cobros?.length) await supa.from('estudio_cobros').delete().in('id', cobros.map((x: Any) => x.id));
-    return json({ ok: true, papelera: true });
+    if (fila.estado === 'aceptado') await supa.from('estudio_cobros').delete().eq('proyecto_id', proyectoId).eq('cobrado', false);
+    return json({ ok: true });
   }
 
   if (action === 'presupuesto_asistente') {

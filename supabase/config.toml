@@ -186,10 +186,3 @@ entrypoint = "./functions/estudio-ia/index.ts"
 # user_roles.role = 'admin' (F1: solo 'ping'; F4 abrira a alumnos activos).
 # Usa el secret ANTHROPIC_API_KEY; nunca lo devuelve.
 
-[functions.estudio-papelera]
-enabled = true
-verify_jwt = false
-import_map = "./functions/estudio-papelera/deno.json"
-entrypoint = "./functions/estudio-papelera/index.ts"
-# verify_jwt=false: invocada por pg_cron una vez al día (estudio-papelera-purgar).
-# Auth propia por X-Cron-Secret. Borra definitivamente lo que lleva más de 30 días en la papelera.

@@ -20,13 +20,12 @@
 
 import { laminasProyecto, dibujoLamina, medirAprox } from '../_shared/estudio/alzado.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
-import { cobrosPorDefecto, metricasProyecto, TIPOS_COSTE_DEF, ventaPrevista } from '../_shared/estudio/metricas.ts'
+import { cobrosPorDefecto, metricasProyecto, resumenFicha, TIPOS_COSTE_DEF } from '../_shared/estudio/metricas.ts'
 import { costeUsd, leerFactura } from '../_shared/estudio/ia.ts'
 import { PLANTILLA_ADMIN, PLANTILLA_ALUMNO, type Plantilla } from '../_shared/estudio/presupuesto.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
 import { descontarSaldo, sinCredito, type EstadoAlumno } from './acceso.ts'
 import { agregado, agregadosPorProyecto } from '../_shared/estudio/aceptados.ts'
-import { aPapelera, purgar, restaurar } from '../_shared/estudio-papelera.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -40,7 +39,7 @@ const CATS = ['materiales', 'mano_obra', 'transporte', 'montaje', 'otros'];
 const hoyMadrid = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 
 const ACCIONES = new Set(['coste_nuevo', 'miniatura_subida', 'miniatura_guardar', 'proyecto_montaje', 'proyecto_iva', 'leer_paginas', 'proyectos_lista', 'documentos', 'doc_subida', 'doc_borrar', 'ficheros', 'fichero_subida', 'fichero_guardar',
-  'fichero_borrar', 'fichero_leer_ia', 'papelera', 'papelera_restaurar', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
+  'fichero_borrar', 'fichero_leer_ia', 'coste_guardar', 'coste_borrar', 'cobro_guardar', 'cobros_regenerar', 'metricas_proyecto']);
 export const esAccionProyecto = (a: string) => ACCIONES.has(a);
 
 const num = (v: unknown, max = 1e9): number | null => {
@@ -198,16 +197,10 @@ export async function accionProyecto(action: string, ctx: {
     const tabla = action === 'doc_borrar' ? 'estudio_documentos' : 'estudio_ficheros';
     const fila = await dueno(tabla, String(body?.id || ''));
     if (!fila) return json({ error: 'No encontrado' }, 404);
-    // A la papelera 30 días (con su archivo y su miniatura); una factura recuerda qué presupuestos de proveedor sustituía
-    let enlaces = {};
-    if (tabla === 'estudio_ficheros') {
-      const { data: sus } = await supa.from('estudio_ficheros').select('id').eq('sustituido_por', fila.id);
-      if (sus?.length) enlaces = { sustituido_por: { factura: fila.id, ids: sus.map((x: Any) => x.id) } };
-    }
-    await aPapelera(supa, { tipo: tabla === 'estudio_documentos' ? 'documento' : 'fichero', user_id: fila.user_id, proyecto_id: fila.proyecto_id, nombre: fila.nombre || fila.concepto || 'Documento',
-      borrado_por: userId, filas: { [tabla]: [fila] }, enlaces, paths: [fila.path, fila.miniatura_path] });
+    // Definitivo, con su miniatura (los documentos la tienen aparte)
+    await supa.storage.from('estudio').remove([fila.path, fila.miniatura_path].filter(Boolean));
     await supa.from(tabla).delete().eq('id', fila.id);
-    return json({ ok: true, papelera: true });
+    return json({ ok: true });
   }
   if (action === 'fichero_guardar') {
     const f = await dueno('estudio_ficheros', String(body?.id || ''));
@@ -306,26 +299,11 @@ export async function accionProyecto(action: string, ctx: {
     return json({ cobro: r.data });
   }
 
-  if (action === 'papelera_restaurar') {
-    const id = String(body?.id || '');
-    if (!UUID.test(id)) return json({ error: 'id no válido' }, 400);
-    const { data: e } = await supa.from('estudio_papelera').select('*').eq('id', id).maybeSingle();
-    if (!e || (e.user_id !== userId && !esAdmin)) return json({ error: 'No está en la papelera' }, 404);
-    try { await restaurar(supa, e); } catch (err) { return json({ error: (err as Error).message }, 409); }
-    return json({ ok: true, tipo: e.tipo, nombre: e.nombre });
-  }
-
   // El resto, sobre un proyecto
   const pid = String(body?.proyecto_id || '');
   if (!UUID.test(pid)) return json({ error: 'proyecto_id no válido' }, 400);
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
-  if (action === 'papelera') {
-    // Lo caducado se borra ya; el resto, con los días que le quedan
-    await purgar(supa, proyecto.user_id).catch((err) => console.error('estudio: purgar papelera', err));
-    const { data } = await supa.from('estudio_papelera').select('id, tipo, nombre, borrado_at, caduca_at, paths').eq('proyecto_id', pid).order('borrado_at', { ascending: false });
-    return json({ papelera: (data ?? []).map((x: Any) => ({ id: x.id, tipo: x.tipo, nombre: x.nombre, borrado_at: x.borrado_at, caduca_at: x.caduca_at, archivos: (x.paths ?? []).length })) });
-  }
   // Cuota: la propia del acceso (estudio_accesos.almacenamiento_mb) o la general
   const cuotaMb = Number(ctx.alumno?.almacenamiento_mb ?? cfg?.almacenamiento_mb ?? 1024);
   const maxFichero = (ctx.alumno?.max_fichero_mb ?? 20) * 1024 * 1024;
@@ -477,8 +455,8 @@ export async function accionProyecto(action: string, ctx: {
       presupuestos: { aceptados: cuenta('aceptado'), pendientes: cuenta('enviado'), borradores: cuenta('borrador'), rechazados: cuenta('rechazado'), total: d.todos.length,
         importe_aceptado: Math.round(aceptados.reduce((s: number, x: Any) => s + Number(x.importe ?? 0), 0) * 100) / 100 },
       montajes, costes_lista: d.costes, cobros_lista: cobros,
-      // Sin aceptados: venta (último enviado o borrador) y margen previstos, solo en la ficha
-      ...ventaPrevista(d.todos, Number(m.costes ?? 0), Number(m.coste_previsto ?? 0))
+      // Cajas de la ficha (importe presupuestado, coste real + previsto, margen, cerrado); no afectan a «Mi negocio»
+      resumen: resumenFicha({ presupuestos: d.todos, ficheros: d.ficheros, costes: d.costes, v2 })
     });
   }
   return json({ error: 'accion_desconocida' }, 400);

@@ -37,7 +37,6 @@ import { accionAdminAcceso, accionEnlace, accionYo, descontarSaldo, esAccionAdmi
 import { accionTienda, accionSinAcceso, esAccionTienda } from './tienda.ts'
 import { accionNegocio, esAccionNegocio } from './negocio.ts'
 import { accionProyecto, esAccionProyecto, guardarDocumento, miniaturaSvg } from './proyecto.ts'
-import { aPapelera } from '../_shared/estudio-papelera.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -415,21 +414,16 @@ Deno.serve(async (req) => {
     }
     if (action === 'diseno_borrar') {
       if (!diseno) return json({ error: 'Falta el diseño' }, 400);
-      // A la papelera 30 días: el diseño con sus versiones, mensajes, PDF de alzados y archivos del chat
-      const [{ data: fila }, { data: vers }, { data: mens }, { data: docs }, { data: arch }] = await Promise.all([
-        supa.from('estudio_disenos').select('*').eq('id', diseno.id).maybeSingle(),
-        supa.from('estudio_versiones').select('*').eq('diseno_id', diseno.id),
-        supa.from('estudio_mensajes').select('*').eq('diseno_id', diseno.id),
-        supa.from('estudio_documentos').select('*').eq('diseno_id', diseno.id),
-        supa.from('estudio_archivos').select('*').eq('diseno_id', diseno.id)
+      const [{ data: docs }, { data: arch }] = await Promise.all([
+        supa.from('estudio_documentos').select('path, miniatura_path').eq('diseno_id', diseno.id),
+        supa.from('estudio_archivos').select('path').eq('diseno_id', diseno.id)
       ]);
       // deno-lint-ignore no-explicit-any
-      const paths = [...(docs ?? []).flatMap((x: any) => [x.path, x.miniatura_path]), ...(arch ?? []).map((x: any) => x.path)];
-      await aPapelera(supa, { tipo: 'diseno', user_id: proyecto.user_id, proyecto_id: proyectoId, nombre: diseno.nombre || 'Diseño', borrado_por: userId,
-        filas: { estudio_disenos: fila ? [fila] : [], estudio_versiones: vers ?? [], estudio_mensajes: mens ?? [], estudio_archivos: arch ?? [], estudio_documentos: docs ?? [] }, paths });
+      const paths = [...(docs ?? []).flatMap((x: any) => [x.path, x.miniatura_path]), ...(arch ?? []).map((x) => x.path)].filter(Boolean);
+      if (paths.length) await supa.storage.from('estudio').remove(paths);
       await supa.from('estudio_archivos').delete().eq('diseno_id', diseno.id);
       await supa.from('estudio_disenos').delete().eq('id', diseno.id);
-      return json({ ok: true, papelera: true });
+      return json({ ok: true });
     }
 
     if (action === 'borrar') {
