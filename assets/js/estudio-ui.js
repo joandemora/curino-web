@@ -979,7 +979,7 @@
       return leerLista().then(function () {
         pintarLista();
         if (reabrir && sel) return abrir(sel);
-        if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = lista.length ? 'Abre un presupuesto de la lista o crea uno nuevo.' : 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.'; }
+        if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = !lista.length ? 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.' : opts.embebido ? '' : 'Abre un presupuesto de la lista o crea uno nuevo.'; }
       });
     }
     /** En el Resumen, solo «Nuevo presupuesto» y «Fusionar»: los presupuestos son tarjetas en Documentos. */
