@@ -85,11 +85,14 @@
         '<input id="pjNombre" placeholder="Nombre del proyecto (el n.º se pone solo)" maxlength="80" required><input id="pjRef" placeholder="Referencia (opcional)" maxlength="40"><button class="pa-btn primary" type="submit">Crear</button></form>';
       document.getElementById('pjGrid').innerHTML = nueva + f.map(function (p) {
         var m = p.margen_pct;
+        // Igual que las cajas del Resumen: «previsto» mientras el proyecto no esté cerrado; «no fiable» con el motivo
+        var nota = p.importe == null ? '' : p.motivo ? '<em class="pj-nofiable" title="' + esc(p.motivo) + '">no fiable</em>' : p.cerrado ? '' : '<em class="pj-prev">previsto</em>';
         return '<a class="pj-card" href="' + ctx.rutas.estudio(p.id) + '" data-id="' + p.id + '">' +
           '<div class="pj-mini">' + (p.miniatura || '<span>Sin alzados todavía</span>') + '</div>' +
           '<div class="pj-info"><div class="pj-fila"><strong>' + esc(p.nombre) + '</strong>' + (p.estado ? '<span class="ng-tag ng-e-' + p.estado + '">' + EST_NOMBRE[p.estado] + '</span>' : '<span class="ng-tag ng-e-borrador">Sin presupuesto</span>') + '</div>' +
           '<small>' + esc([p.referencia, p.numero && p.numero !== p.referencia ? 'n.º ' + p.numero : '', p.version ? 'v' + p.version : ''].filter(Boolean).join(' · ') || '—') + '</small>' +
-          '<div class="pj-nums"><span><b>' + eurN(p.importe) + '</b>importe</span><span class="' + (m !== null && m < 30 ? 'pj-bajo' : '') + '"><b>' + pctTxt(m) + '</b>margen</span><span><b>' + dia(p.actualizado) + '</b>modificado</span></div></div></a>';
+          '<div class="pj-nums"><span><b>' + eurN(p.importe) + '</b>importe</span><span class="' + (m !== null && m < 30 ? 'pj-bajo' : '') + '"><b>' + (p.margen == null ? '—' : eur(p.margen) + ' · ' + pctTxt(m)) + '</b>margen</span><span><b>' + dia(p.actualizado) + '</b>modificado</span></div>' +
+          (nota ? '<div class="pj-nota">' + nota + '</div>' : '') + '</div></a>';
       }).join('') + (f.length ? '' : '<p class="pa-muted pj-vacio">' + (lista.length ? 'Ningún proyecto con esos filtros.' : 'Crea tu primer proyecto con la tarjeta «Nuevo proyecto».') + '</p>');
       document.getElementById('pjNueva').addEventListener('submit', function (e) {
         e.preventDefault();

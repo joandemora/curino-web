@@ -476,3 +476,8 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 #dcPresZona:not(:empty){margin-top:16px}
 /* Etiqueta «previsto» en las cajas mientras el proyecto no esté cerrado */
 .rs-prev{font-style:normal;font-size:10.5px;font-weight:600;color:#8a6234;background:#f6efe2;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+
+/* Tarjetas de proyecto: «previsto» / «no fiable» bajo importe y margen (mismo cálculo que el Resumen) */
+.pj-nota{margin-top:3px;font-size:11px}
+.pj-prev{font-style:normal;color:#999}
+.pj-nofiable{font-style:normal;color:#b42318}
