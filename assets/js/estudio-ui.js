@@ -698,10 +698,12 @@
         var maxT = Math.max.apply(null, tipos.map(function (c) { return c.importe; }).concat([1]));
         z.innerHTML =
           '<div class="rs-kpis">' +
-          '<div class="rs-kpi"><span>Facturación</span><b>' + eur(m.facturacion || 0) + '</b><small>' + esc(origen) + '</small></div>' +
+          '<div class="rs-kpi"><span>Facturación</span><b>' + eur(m.facturacion || 0) + '</b><small>' + esc(origen) + '</small>' +
+            (m.venta_prevista ? '<small class="rs-previsto" title="Sin presupuesto aceptado: importe del último enviado (o del último borrador). No cuenta en la facturación ni en «Mi negocio»">Venta prevista: ' + eur(m.venta_prevista.importe) + (m.venta_prevista.numero ? ' · ' + esc(m.venta_prevista.numero) : '') + '</small>' : '') + '</div>' +
           '<div class="rs-kpi"><span>Coste total</span><b>' + eur(m.costes || 0) + '</b><small>' + (m.costes_sin_importe ? '<em class="rs-mal">' + m.costes_sin_importe + (m.costes_sin_importe === 1 ? ' coste' : ' costes') + ' sin importe</em>' : m.hay_costes ? 'documentos de coste' : 'sin documentos de coste') + '</small>' +
             (m.coste_previsto ? '<small class="rs-previsto" title="Presupuestos de proveedor de un proyecto sin presupuesto aceptado: no cuentan como coste ni en el margen">Coste previsto: ' + eur(m.coste_previsto) + '</small>' : '') + '</div>' +
-          '<div class="rs-kpi"><span>Margen</span><b class="' + (m.margen != null && m.margen < 0 ? 'rs-mal' : '') + '">' + (m.margen == null ? '—' : eur(m.margen)) + pct + '</b><small>' + (m.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(m.motivo || '') + '</em>') + '</small></div>' +
+          '<div class="rs-kpi"><span>Margen</span><b class="' + (m.margen != null && m.margen < 0 ? 'rs-mal' : '') + '">' + (m.margen == null ? '—' : eur(m.margen)) + pct + '</b><small>' + (m.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(m.motivo || '') + '</em>') + '</small>' +
+            (m.margen_previsto != null ? '<small class="rs-previsto" title="Venta prevista − costes (incluido el coste previsto). No cuenta en «Mi negocio»">Margen previsto: ' + eur(m.margen_previsto) + (m.margen_previsto_pct != null ? ' · ' + numOut(m.margen_previsto_pct) + ' %' : '') + '</small>' : '') + '</div>' +
           // Montaje: una línea por presupuesto aceptado (n.º · fecha prevista · Montado · fecha real), se guarda en ese presupuesto
           '<div class="rs-kpi rs-kpi-mont"><span>Montaje</span>' + ((m.montajes || []).filter(function (x) { return x.id; }).length ? m.montajes.filter(function (x) { return x.id; }).map(function (x) {
             return '<div class="rs-mont-f" data-mpr="' + x.id + '"><b>' + esc(x.numero || 'Aceptado') + '</b>' +
