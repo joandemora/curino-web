@@ -37,6 +37,7 @@ import { accionAdminAcceso, accionEnlace, accionYo, descontarSaldo, esAccionAdmi
 import { accionTienda, accionSinAcceso, esAccionTienda } from './tienda.ts'
 import { accionNegocio, esAccionNegocio } from './negocio.ts'
 import { accionProyecto, esAccionProyecto, guardarDocumento, miniaturaSvg } from './proyecto.ts'
+import { aPapelera } from './papelera.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -346,8 +347,14 @@ Deno.serve(async (req) => {
     if (action === 'documentos_ficha') {
       // Documentos de la ficha en una sola llamada: diseños + documentos + archivos
       const sub = (a: string) => accionProyecto(a, { supa, userId, esAdmin, cfg, clave, modelo, body: { ...body, action: a }, alumno, json }).then((r) => r.json());
-      const [docs, fichs] = await Promise.all([sub('documentos'), sub('ficheros')]);
-      return json({ disenos: await listaDisenos(), documentos: docs.documentos ?? [], ficheros: fichs.ficheros ?? [], almacenamiento: fichs.almacenamiento, tipos_coste: fichs.tipos_coste, costes_v2: fichs.costes_v2 });
+      const [docs, fichs, pres] = await Promise.all([sub('documentos'), sub('ficheros'),
+        supa.from('estudio_presupuestos').select('id, numero, estado, estado_nota, importe, pvp, created_at, updated_at, montaje_previsto, fecha:datos->>fecha, importado:datos->importado, archivo:datos->>archivo, comision:datos->comision, partidas:datos->partidas').eq('proyecto_id', proyectoId).order('created_at')]);
+      // Una tarjeta por presupuesto (también los borradores sin PDF): sus PDF / Excel van dentro
+      // deno-lint-ignore no-explicit-any
+      const presupuestos = (pres.data ?? []).map((x: any) => ({ id: x.id, numero: x.numero || '', estado: x.estado, estado_nota: x.estado_nota, importe: x.importe, pvp: x.pvp,
+        fecha: x.fecha || String(x.created_at).slice(0, 10), created_at: x.created_at, updated_at: x.updated_at, importado: !!x.importado, archivo: x.archivo || null,
+        comision: x.comision?.activa ? x.comision : null, editable: !x.importado && Array.isArray(x.partidas) }));
+      return json({ disenos: await listaDisenos(), documentos: docs.documentos ?? [], ficheros: fichs.ficheros ?? [], presupuestos, almacenamiento: fichs.almacenamiento, tipos_coste: fichs.tipos_coste, costes_v2: fichs.costes_v2 });
     }
     if (action === 'disenos') return json({ disenos: await listaDisenos() });
     async function listaDisenos() {
@@ -408,16 +415,21 @@ Deno.serve(async (req) => {
     }
     if (action === 'diseno_borrar') {
       if (!diseno) return json({ error: 'Falta el diseño' }, 400);
-      const [{ data: docs }, { data: arch }] = await Promise.all([
-        supa.from('estudio_documentos').select('path, miniatura_path').eq('diseno_id', diseno.id),
-        supa.from('estudio_archivos').select('path').eq('diseno_id', diseno.id)
+      // A la papelera 30 días: el diseño con sus versiones, mensajes, PDF de alzados y archivos del chat
+      const [{ data: fila }, { data: vers }, { data: mens }, { data: docs }, { data: arch }] = await Promise.all([
+        supa.from('estudio_disenos').select('*').eq('id', diseno.id).maybeSingle(),
+        supa.from('estudio_versiones').select('*').eq('diseno_id', diseno.id),
+        supa.from('estudio_mensajes').select('*').eq('diseno_id', diseno.id),
+        supa.from('estudio_documentos').select('*').eq('diseno_id', diseno.id),
+        supa.from('estudio_archivos').select('*').eq('diseno_id', diseno.id)
       ]);
       // deno-lint-ignore no-explicit-any
-      const paths = [...(docs ?? []).flatMap((x: any) => [x.path, x.miniatura_path]), ...(arch ?? []).map((x) => x.path)].filter(Boolean);
-      if (paths.length) await supa.storage.from('estudio').remove(paths);
+      const paths = [...(docs ?? []).flatMap((x: any) => [x.path, x.miniatura_path]), ...(arch ?? []).map((x: any) => x.path)];
+      await aPapelera(supa, { tipo: 'diseno', user_id: proyecto.user_id, proyecto_id: proyectoId, nombre: diseno.nombre || 'Diseño', borrado_por: userId,
+        filas: { estudio_disenos: fila ? [fila] : [], estudio_versiones: vers ?? [], estudio_mensajes: mens ?? [], estudio_archivos: arch ?? [], estudio_documentos: docs ?? [] }, paths });
       await supa.from('estudio_archivos').delete().eq('diseno_id', diseno.id);
       await supa.from('estudio_disenos').delete().eq('id', diseno.id);
-      return json({ ok: true });
+      return json({ ok: true, papelera: true });
     }
 
     if (action === 'borrar') {

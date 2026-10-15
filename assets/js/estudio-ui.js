@@ -393,10 +393,45 @@
       '<div id="arMsg" class="pr-msg"></div><div class="dc-grid" id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
     el.querySelector('#dcOrden').value = filtroDoc.orden;
     var msg = function (t, tipo) { var m = el.querySelector('#arMsg'); m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; };
-    var grupo = function (x) { return x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? (x.tipo === 'alzados_pdf' ? 'diseno' : 'presupuesto') : x.tipo; };
+    var grupo = function (x) { return x.kind === 'pres' ? 'presupuesto' : x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? (x.tipo === 'alzados_pdf' ? 'diseno' : 'presupuesto') : x.tipo; };
     var nombreDe = function (x) { return x.kind === 'diseno' ? x.nombre : x.nombre; };
-    var fechaDe = function (x) { return x.kind === 'diseno' ? x.updated_at : x.created_at; };
+    var fechaDe = function (x) { return x.kind === 'diseno' || x.kind === 'pres' ? x.updated_at : x.created_at; };
+    /** Último documento de un presupuesto (de un tipo y, si se pide, de una variante). */
+    function ultimoDoc(x, tipo, variante) {
+      return x.docs.filter(function (d) { return d.tipo === tipo && (variante === undefined || (d.variante || null) === variante); })
+        .sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); })[0] || null;
+    }
+    /** Presupuesto: UNA tarjeta (también en borrador sin PDF); con comisión, descargas cliente e interiorista. */
+    function tarjetaPres(x, i) {
+      var pdf = x.comision ? ultimoDoc(x, 'presupuesto_pdf', 'cliente') || ultimoDoc(x, 'presupuesto_pdf') : ultimoDoc(x, 'presupuesto_pdf', null) || ultimoDoc(x, 'presupuesto_pdf');
+      var xls = ultimoDoc(x, 'presupuesto_xlsx');
+      x.pdf = pdf;
+      var bajar = function (d, t) { return '<a class="dc-a" href="' + esc(d.url) + '&download=' + encodeURIComponent(d.nombre) + '">' + t + '</a>'; };
+      var verA = function (d) { return '<a class="dc-a" href="' + esc(d.url) + '" target="_blank" rel="noopener">Ver</a>'; };
+      var mini = pdf && pdf.miniatura_url ? '<img src="' + esc(pdf.miniatura_url) + '" alt="" loading="lazy">'
+        : pdf && pdf.url ? '<span class="dc-ico" data-mini="' + i + '">PDF</span>' : '<span class="dc-ico">' + (x.importado && xls ? 'XLS' : 'PDF') + '</span>';
+      var acc = '';
+      if (x.importado) {
+        var f = pdf || xls;
+        if (f && f.url) acc += verA(f) + bajar(f, 'Descargar');
+      } else {
+        acc += pdf && pdf.url ? verA(pdf) : '<button class="dc-a" data-a="pver" data-i="' + i + '">Ver</button>';
+        if (x.comision) acc += ['cliente', 'interiorista'].map(function (v) { var d = ultimoDoc(x, 'presupuesto_pdf', v); return d && d.url ? bajar(d, 'Descargar ' + v) : '<button class="dc-a" data-a="pdesc" data-v="' + v + '" data-i="' + i + '">Descargar ' + v + '</button>'; }).join('');
+        else acc += pdf && pdf.url ? bajar(pdf, 'Descargar') : '<button class="dc-a" data-a="pdesc" data-v="" data-i="' + i + '">Descargar</button>';
+        if (xls && xls.url) acc += bajar(xls, 'Excel');
+        if (x.editable) acc += '<button class="dc-a" data-a="peditar" data-i="' + i + '">Editar</button><button class="dc-a" data-a="pduplicar" data-i="' + i + '">Duplicar</button>';
+      }
+      acc += '<button class="dc-a dc-borrar" data-a="pborrar" data-i="' + i + '">Borrar</button>';
+      var sub = [dia(x.fecha), x.importe == null ? '' : eur(Number(x.importe))].filter(Boolean).join(' · ');
+      return '<div class="dc-card dc-pres" data-i="' + i + '"><div class="dc-mini">' + mini + '</div>' +
+        '<div class="dc-info"><span class="dc-tag" style="--c:' + COL_TIPO.presupuesto + '">' + NOM_TIPO.presupuesto + '</span>' +
+        '<strong title="' + esc(x.numero || '') + '">' + (x.editable ? '<input type="checkbox" data-fus="' + x.id + '" title="Marcar para fusionar" style="width:auto;margin:0 6px 0 0;vertical-align:-1px">' : '') + esc(x.numero || 'Sin número') + '</strong>' +
+        '<small>' + esc(sub) + (x.importado ? ' · <span class="pr-tag">histórico</span>' : '') + (x.comision ? ' <span class="pr-tag">interiorista ' + numOut(x.comision.pct) + ' %</span>' : '') + '</small>' +
+        '<div style="margin-top:4px">' + selectEstado(pid, x.estado, x.id) + (x.estado_nota ? '<br><small class="pr-nota">' + esc(x.estado_nota) + '</small>' : '') + '</div></div>' +
+        '<div class="dc-acc">' + acc + '</div></div>';
+    }
     function tarjeta(x, i) {
+      if (x.kind === 'pres') return tarjetaPres(x, i);
       var g = grupo(x), esImg = /^image\//.test(x.mime || ''), esPdf = /pdf$/i.test(x.mime || '') || /\.pdf$/i.test(x.nombre || ''), esXls = /\.xlsx?$/i.test(x.nombre || '');
       var sinArchivo = x.kind === 'fich' && !x.path;
       var esCoste = x.kind === 'fich' && (x.tipo === 'factura_proveedor' || x.tipo === 'presupuesto_proveedor');
@@ -407,8 +442,8 @@
         : '<span class="dc-ico">' + (esXls ? 'XLS' : (String(x.nombre || '').split('.').pop() || '').toUpperCase().slice(0, 4)) + '</span>';
       var ver = x.kind === 'diseno' ? (x.pdf && x.pdf.url) : sinArchivo ? null : x.url;
       var acciones = (ver ? '<a class="dc-a" href="' + esc(ver) + '" target="_blank" rel="noopener">Ver</a><a class="dc-a" href="' + esc(ver) + '&download=' + encodeURIComponent(x.kind === 'diseno' ? x.pdf.nombre : x.nombre) + '">Descargar</a>' : '') +
-        (x.kind === 'diseno' ? '<button class="dc-a" data-a="editar" data-i="' + i + '">Editar diseño</button><button class="dc-a" data-a="json" data-i="' + i + '">JSON</button>' : '') +
-        ((x.kind === 'diseno' && x.guardado) || esPdf || esImg ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
+        (x.kind === 'diseno' ? '<button class="dc-a" data-a="editar" data-i="' + i + '">Editar diseño</button>' : '') +
+        (((x.kind === 'diseno' && x.guardado) || esPdf || esImg) && !(x.kind === 'doc' && /^presupuesto/.test(x.tipo)) ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
         (x.kind === 'fich' ? '<button class="dc-a" data-a="datos" data-i="' + i + '">Datos</button>' : '') +
         (x.kind === 'fich' && x.tipo === 'factura_proveedor' ? '<button class="dc-a" data-a="sustituye" data-i="' + i + '">Sustituye a…' + (sustituidos(x).length ? ' (' + sustituidos(x).length + ')' : '') + '</button>' : '') +
         '<button class="dc-a dc-borrar" data-a="borrar" data-i="' + i + '">Borrar</button>';
@@ -465,18 +500,24 @@
     }
     function siguiente() {
       if (enCurso >= 2 || !pendientes.length) return;
-      var n = pendientes.shift(), x = vistas[Number(n.dataset.mini)]; if (!x) return siguiente();
+      var n = pendientes.shift(), x0 = vistas[Number(n.dataset.mini)]; if (!x0) return siguiente();
+      // En la tarjeta de un presupuesto, la miniatura es la de su último PDF
+      var x = x0.kind === 'pres' ? (x0.pdf ? Object.assign({ kind: 'doc', mime: 'application/pdf' }, x0.pdf) : null) : x0; if (!x) return siguiente();
       enCurso++;
-      crearMiniatura(ctx, pid, x).then(function (url) { x.miniatura_url = url; if (n.isConnected) n.outerHTML = '<img src="' + url + '" alt="">'; })
+      crearMiniatura(ctx, pid, x).then(function (url) { (x0.kind === 'pres' ? x0.pdf : x).miniatura_url = url; if (n.isConnected) n.outerHTML = '<img src="' + url + '" alt="">'; })
         .catch(function () { /* se queda el icono */ }).then(function () { enCurso--; siguiente(); });
     }
     function cargar() {
-      return api(ctx, { action: 'documentos_ficha', proyecto_id: pid }).then(function (d) { tiposCoste = d.tipos_coste || []; v2 = d.costes_v2 !== false; return [{ disenos: d.disenos }, { documentos: d.documentos }, { ficheros: d.ficheros, almacenamiento: d.almacenamiento }]; }).then(function (rs) {
+      var presus = [];
+      return api(ctx, { action: 'documentos_ficha', proyecto_id: pid }).then(function (d) { tiposCoste = d.tipos_coste || []; v2 = d.costes_v2 !== false; presus = d.presupuestos || []; return [{ disenos: d.disenos }, { documentos: d.documentos }, { ficheros: d.ficheros, almacenamiento: d.almacenamiento }]; }).then(function (rs) {
         var a = rs[2].almacenamiento;
         var gb = function (b) { return (b / 1073741824).toFixed(1).replace('.', ',').replace(/,0$/, '') + ' GB'; };
         el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1073741824).toFixed(1).replace('.', ',') + ' GB de ' + gb(a.limite);
+        // Los PDF / Excel de un presupuesto van dentro de su tarjeta
+        var conPres = {}; presus.forEach(function (p) { conPres[p.id] = true; });
         items = rs[0].disenos.map(function (x) { return Object.assign({ kind: 'diseno' }, x); })
-          .concat(rs[1].documentos.filter(function (x) { return !x.diseno_id; }).map(function (x) { return Object.assign({ kind: 'doc', mime: /\.xlsx$/i.test(x.nombre) ? 'xlsx' : 'application/pdf' }, x); }))
+          .concat(presus.map(function (p) { return Object.assign({ kind: 'pres', docs: rs[1].documentos.filter(function (x) { return x.presupuesto_id === p.id; }) }, p); }))
+          .concat(rs[1].documentos.filter(function (x) { return !x.diseno_id && !(x.presupuesto_id && conPres[x.presupuesto_id]); }).map(function (x) { return Object.assign({ kind: 'doc', mime: /\.xlsx$/i.test(x.nombre) ? 'xlsx' : 'application/pdf' }, x); }))
           .concat(rs[2].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
         pintar();
         if (!primeraCarga && ctx.alCambiarDocs) ctx.alCambiarDocs();
@@ -583,7 +624,10 @@
     }
     el.querySelector('#dcFiltros').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; filtroDoc.tipo = b.dataset.f; pintar(); });
     el.querySelector('#dcOrden').addEventListener('change', function () { filtroDoc.orden = this.value; pintar(); });
+    if (ctx.alDocsListo) ctx.alDocsListo({ cargar: cargar });
     el.addEventListener('change', function (e) {
+      if (e.target.classList.contains('ng-estado')) return cambiarEstado(ctx, e.target, function () { cargar(); if (ctx.alCambiarDocs) ctx.alCambiarDocs(); });
+      if (e.target.dataset.fus !== undefined) { if (ctx.alFusMarcados) ctx.alFusMarcados(); return; }
       if (e.target.dataset.cola !== undefined) { cola[Number(e.target.dataset.cola)].tipo = e.target.value; return; }
       if (e.target.dataset.tcoste !== undefined) {
         var xc = vistas[Number(e.target.dataset.tcoste)];
@@ -609,13 +653,30 @@
         if (ctx.abrirPresupuesto) return ctx.abrirPresupuesto(preSel);
         try { sessionStorage.setItem(CLAVE_PRE, JSON.stringify(preSel)); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'presupuesto'); if (ctx.alNavegar) ctx.alNavegar(); return;
       }
-      if (a === 'json') return api(ctx, { action: 'diseno_json', proyecto_id: pid, diseno_id: x.id }).then(function (d) { descargar(new Blob([JSON.stringify(d.datos, null, 2)], { type: 'application/json' }), (x.nombre || 'diseno').replace(/[^\wÀ-ÿ-]+/g, '_') + '.json'); });
+      // Tarjeta de presupuesto
+      if (a === 'peditar') { if (ctx.editarPresupuesto) ctx.editarPresupuesto(x.id); return; }
+      if (a === 'pduplicar') { if (ctx.duplicarPresupuesto) ctx.duplicarPresupuesto(x.id); return; }
+      if (a === 'pborrar') { if (ctx.borrarPresupuesto) ctx.borrarPresupuesto(x); return; }
+      if (a === 'pver') {
+        // Sin PDF guardado: la vista previa (no guarda nada)
+        var w = window.open('', '_blank'); msg('Generando la vista previa…');
+        return api(ctx, { action: 'presupuesto_vista', presupuesto_id: x.id, datos: {} }).then(function (d) { msg(''); var u = URL.createObjectURL(base64Blob(d.base64, 'application/pdf')); if (w) w.location.href = u; else window.open(u, '_blank'); })
+          .catch(function (err) { if (w) w.close(); msg(err.message, 'err'); });
+      }
+      if (a === 'pdesc') {
+        // Sin PDF: se genera (y se guarda en Documentos) y se descarga
+        b.disabled = true; msg('Generando PDF…');
+        return api(ctx, { action: 'presupuesto_pdf', presupuesto_id: x.id }).then(function (d) {
+          (d.archivos || [d]).filter(function (f) { return !b.dataset.v || f.variante === b.dataset.v; }).forEach(function (f) { descargar(base64Blob(f.base64, 'application/pdf'), f.nombre); });
+          msg('PDF descargado y guardado en Documentos', 'ok'); return cargar();
+        }).catch(function (err) { b.disabled = false; msg(err.message, 'err'); });
+      }
       if (a === 'datos') return datos(x);
       if (a === 'sustituye') return sustituye(x);
       if (a === 'borrar') {
         if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('on'); return; }
         var accion = x.kind === 'diseno' ? { action: 'diseno_borrar', proyecto_id: pid, diseno_id: x.id } : x.kind === 'doc' ? { action: 'doc_borrar', id: x.id } : { action: 'fichero_borrar', id: x.id };
-        api(ctx, accion).then(cargar).catch(function (err) { msg(err.message, 'err'); });
+        api(ctx, accion).then(function () { msg('Movido a la papelera (se puede restaurar durante 30 días)', 'ok'); if (ctx.alPapelera) ctx.alPapelera(); if (ctx.alCambiarDocs) ctx.alCambiarDocs(); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
       }
     });
     cargar();
@@ -667,15 +728,50 @@
     var irASeccion = function (suave) { var z = el.querySelector('#rsPres'); if (z) z.scrollIntoView({ block: 'start', behavior: suave ? 'smooth' : 'auto' }); };
     // Enlace a la antigua pestaña Presupuesto: baja a la sección cuando ya está la lista y otra vez al cargar los documentos (empujan hacia abajo)
     var bajarAlCargar = function () { if (ropts.irPresupuestos) irASeccion(false); };
-    var ctxPres = Object.assign({}, ctx, { alCambiarPres: pintarMet, alListo: function (api2) { pres = api2; }, alListaCargada: bajarAlCargar });
+    var docsApi = null;
+    var ctxPres = Object.assign({}, ctx, { alCambiarPres: function () { pintarMet(); if (docsApi) docsApi.cargar(); }, alListo: function (api2) { pres = api2; }, alListaCargada: bajarAlCargar, alPapelera: function () { pintarPapelera(); } });
     presupuesto(el.querySelector('#rsPresCuerpo'), ctxPres, pid, { embebido: true });
     // «Crear presupuesto» de una tarjeta: baja a la sección y abre el asistente con ese documento, sin recargar
-    var ctxDocs = Object.assign({}, ctx, { alCambiarDocs: pintarMet, alDocsCargados: bajarAlCargar, abrirPresupuesto: function (preSel) { irASeccion(true); if (pres) pres.nuevo(preSel); } });
+    var ctxDocs = Object.assign({}, ctx, { alCambiarDocs: pintarMet, alDocsCargados: bajarAlCargar, abrirPresupuesto: function (preSel) { irASeccion(true); if (pres) pres.nuevo(preSel); },
+      alDocsListo: function (a) { docsApi = a; }, alFusMarcados: function () { if (pres) pres.actualizarFus(); }, alPapelera: function () { pintarPapelera(); },
+      editarPresupuesto: function (id) { if (pres) pres.abrir(id); }, duplicarPresupuesto: function (id) { if (pres) pres.duplicar(id); }, borrarPresupuesto: function (x) { if (pres) pres.borrar(x); } });
     documentosProyecto(el.querySelector('#rsDocs'), ctxDocs, pid);
     // «Borrar proyecto»: al final, con confirmación escribiendo el nombre
     var pie = document.createElement('div'); pie.className = 'rs-pie';
-    pie.innerHTML = '<button type="button" class="rs-borrar">Borrar proyecto</button>';
+    pie.innerHTML = '<button type="button" class="pa-btn" id="rsPapelera">Papelera</button><button type="button" class="rs-borrar">Borrar proyecto</button>';
     el.appendChild(pie);
+    // Papelera: lo borrado (presupuestos, diseños, documentos) se puede restaurar durante 30 días
+    function pintarPapelera() {
+      return api(ctx, { action: 'papelera', proyecto_id: pid }).then(function (d) { var b = pie.querySelector('#rsPapelera'); var n = (d.papelera || []).length; b.textContent = 'Papelera' + (n ? ' (' + n + ')' : ''); return d.papelera || []; }).catch(function () { return []; });
+    }
+    pintarPapelera();
+    pie.querySelector('#rsPapelera').addEventListener('click', function () {
+      var NOM = { presupuesto: 'Presupuesto', diseno: 'Diseño', documento: 'Documento', fichero: 'Archivo' };
+      var m = document.createElement('div'); m.className = 'eu-modal';
+      m.innerHTML = '<div class="eu-modal-caja" style="max-width:620px"><h2>Papelera</h2><p class="pa-muted" style="font-size:13px;margin:4px 0 10px">Lo borrado se guarda 30 días; después se borra definitivamente.</p><div id="ppLista"><p class="pa-muted">Cargando…</p></div><span class="pr-msg" id="ppMsg"></span><div class="eu-modal-bot"><button class="pa-btn" data-pp="cerrar">Cerrar</button></div></div>';
+      document.body.appendChild(m);
+      var pintarPp = function () {
+        return pintarPapelera().then(function (xs) {
+          m.querySelector('#ppLista').innerHTML = xs.length ? '<table class="pr-tabla"><tbody>' + xs.map(function (x) {
+            var dias = Math.max(0, Math.ceil((new Date(x.caduca_at) - new Date()) / 86400000));
+            return '<tr><td><span class="pr-tag">' + (NOM[x.tipo] || x.tipo) + '</span> <b>' + esc(x.nombre) + '</b><br><small class="pa-muted">Borrado el ' + dia(String(x.borrado_at).slice(0, 10)) + ' · se borra definitivamente en ' + dias + (dias === 1 ? ' día' : ' días') + '</small></td><td class="pr-acc"><button class="pa-btn" data-restaurar="' + x.id + '">Restaurar</button></td></tr>';
+          }).join('') + '</tbody></table>' : '<p class="pa-muted">La papelera está vacía.</p>';
+        });
+      };
+      pintarPp();
+      m.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t === m || t.dataset.pp === 'cerrar') return m.remove();
+        if (t.dataset.restaurar) {
+          t.disabled = true; t.textContent = 'Restaurando…';
+          api(ctx, { action: 'papelera_restaurar', id: t.dataset.restaurar }).then(function (r) {
+            var q = m.querySelector('#ppMsg'); q.className = 'pr-msg ok'; q.textContent = 'Restaurado: ' + (r.nombre || '');
+            pintarMet(); if (docsApi) docsApi.cargar();
+            return pintarPp();
+          }).catch(function (err) { t.disabled = false; t.textContent = 'Restaurar'; var q = m.querySelector('#ppMsg'); q.className = 'pr-msg err'; q.textContent = err.message; });
+        }
+      });
+    });
     pie.querySelector('.rs-borrar').addEventListener('click', function () {
       ctx.supa.from('estudio_proyectos').select('nombre').eq('id', pid).maybeSingle().then(function (r) {
         var nombre = (r.data && r.data.nombre) || '';
@@ -856,8 +952,15 @@
       // Al entrar: solo la lista (ninguno abierto); desde «Crear presupuesto» de un documento, el asistente
       return cargarLista(false).then(function () { if (pre) pintarNuevo(pre); if (ctx.alListaCargada) ctx.alListaCargada(); });
     });
-    // Dentro del Resumen: «Crear presupuesto» de una tarjeta abre el asistente aquí mismo
-    if (ctx.alListo) ctx.alListo({ nuevo: function (preSel) { return pintarNuevo(preSel); } });
+    // Dentro del Resumen: las tarjetas de Documentos abren aquí el asistente o el editor
+    function actualizarFus() { var b = $('#prFusionar'); if (b) b.disabled = document.querySelectorAll('[data-fus]:checked').length < 2; }
+    if (ctx.alListo) ctx.alListo({
+      nuevo: function (preSel) { return pintarNuevo(preSel); },
+      abrir: function (id) { return abrir(id); },
+      borrar: function (x) { return borrarPresupuesto(x); },
+      duplicar: function (id) { return bloquear(function () { return api(ctx, { action: 'presupuesto_duplicar', presupuesto_id: id }).then(function (d) { return refrescarLista().then(function () { return abrir(d.id); }).then(function () { return 'Duplicado como ' + (d.numero || ''); }); }); }, 'Duplicando…'); },
+      actualizarFus: actualizarFus
+    });
 
     // ── Lista de presupuestos del proyecto ──
     /** Lista ligera leída directamente de la base de datos (sin partidas ni dibujos): < 0,3 s. */
@@ -879,7 +982,14 @@
         if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = lista.length ? 'Abre un presupuesto de la lista o crea uno nuevo.' : 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.'; }
       });
     }
+    /** En el Resumen, solo «Nuevo presupuesto» y «Fusionar»: los presupuestos son tarjetas en Documentos. */
     function pintarLista() {
+      if (opts.embebido) {
+        $('#prLista').innerHTML = '<div class="ng-card-cab"><h2>Presupuestos</h2><span class="pa-btns"><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos en Documentos">Fusionar</button><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></span></div>' +
+          '<p class="pa-muted" style="font-size:12px;margin:6px 0 0">Cada presupuesto es una tarjeta en «Documentos»: ahí se ve, se descarga, se cambia su estado o se abre para editarlo aquí. Marca dos o más para fusionarlos. Puede haber varios aceptados (fases, extras): se suman en las métricas.</p>';
+        actualizarFus();
+        return;
+      }
       $('#prLista').innerHTML = '<div class="ng-card-cab"><h2>Presupuestos del proyecto</h2><span class="pa-btns"><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos">Fusionar</button><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></span></div>' +
         (lista.length ? '<table class="pr-tabla"><thead><tr><th></th><th>N.º</th><th>Fecha</th><th>Importe</th><th>Estado</th><th></th></tr></thead><tbody>' + lista.map(function (x) {
           return '<tr class="' + (x.id === sel ? 'on' : '') + '"><td>' + (x.importado ? '' : '<input type="checkbox" data-fus="' + x.id + '" title="Para fusionar">') + '</td><td><b>' + esc(x.numero || '—') + '</b>' + (x.importado ? ' <span class="pr-tag">histórico</span>' : '') + (x.comision ? ' <span class="pr-tag">interiorista ' + numOut(x.comision.pct) + ' %</span>' : '') + '</td>' +
@@ -949,8 +1059,8 @@
       if (!x) return;
       var acept = x.estado === 'aceptado', m = document.createElement('div'); m.className = 'eu-modal';
       m.innerHTML = '<form class="eu-modal-caja"><h2>Borrar presupuesto ' + esc(x.numero || '') + '</h2>' +
-        (acept ? '<p class="pr-nota" style="font-size:13px">Es el presupuesto <b>aceptado</b>: al borrarlo el proyecto se queda sin facturación en métricas y se quitan los plazos pendientes de cobro.</p>' : '<p class="pa-muted" style="font-size:13px">No se puede deshacer.</p>') +
-        '<label style="font-size:13px;display:block;margin:8px 0"><input type="checkbox" id="bpDocs"> Borrar también sus documentos (PDF y Excel en «Documentos»)</label>' +
+        (acept ? '<p class="pr-nota" style="font-size:13px">Es el presupuesto <b>aceptado</b>: mientras esté en la papelera, el proyecto se queda sin su facturación en las métricas.</p>' : '') +
+        '<p class="pa-muted" style="font-size:13px">Va a la papelera con sus PDF y Excel: se puede restaurar durante 30 días.</p>' +
         (acept ? '<label style="font-size:13px;display:block;margin:8px 0"><input type="checkbox" id="bpOk"> Entiendo que afecta a facturación y métricas</label>' : '') +
         '<div class="eu-modal-bot"><button type="button" class="pa-btn" data-bp="no">Cancelar</button><button type="submit" class="pa-btn primary pr-borrar-ok">Borrar</button></div></form>';
       document.body.appendChild(m);
@@ -959,12 +1069,16 @@
         e.preventDefault();
         if (acept && !m.querySelector('#bpOk').checked) { m.querySelector('#bpOk').parentNode.style.color = '#b42318'; return; }
         var b = m.querySelector('.pr-borrar-ok'); b.disabled = true; b.textContent = 'Borrando…';
-        api(ctx, { action: 'presupuesto_borrar', presupuesto_id: x.id, borrar_documentos: m.querySelector('#bpDocs').checked, confirmar_aceptado: acept })
-          .then(function () { m.remove(); if (sel === x.id) { sel = null; doc = null; $('#prZona').innerHTML = ''; } return refrescarLista(); })
+        api(ctx, { action: 'presupuesto_borrar', presupuesto_id: x.id, confirmar_aceptado: acept })
+          .then(function () { m.remove(); if (sel === x.id) { sel = null; doc = null; $('#prZona').innerHTML = ''; } if (ctx.alPapelera) ctx.alPapelera(); return refrescarLista(); })
           .catch(function (err) { b.disabled = false; b.textContent = 'Borrar'; alert(err.message); });
       });
     }
-    function abrir(id) { sel = id; $('#prNuevo').hidden = true; pintarLista(); $('#prZona').innerHTML = '<div class="pr-card pa-muted">Abriendo…</div>'; return api(ctx, { action: 'presupuesto', presupuesto_id: id }).then(cargar); }
+    function abrir(id) {
+      sel = id; $('#prNuevo').hidden = true; pintarLista(); $('#prZona').innerHTML = '<div class="pr-card pa-muted">Abriendo…</div>';
+      if (opts.embebido) $('#prZona').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return api(ctx, { action: 'presupuesto', presupuesto_id: id }).then(cargar);
+    }
     function cargar(d) {
       doc = d.presupuesto; importado = d.importado || null; importes = d.importes || null; iva = d.iva_pct == null ? 21 : Number(d.iva_pct); versionActual = d.version_actual; estadoP = d.estado || 'borrador';
       if (d.id && d.id !== sel) { sel = d.id; }
@@ -986,7 +1100,7 @@
       var html = '<div class="pr-barra"><button class="pa-btn primary" id="prGuardar">Guardar</button>' + (hayDiseno ? '<button class="pa-btn" id="prTextos">Redactar textos con IA</button>' : '') +
         '<button class="pa-btn" id="prPdf">Descargar PDF</button><button class="pa-btn" id="prExcel">Descargar Excel</button>' +
         (hayDiseno ? '<button class="pa-btn" id="prGenerar">Recalcular con la tarifa</button>' : '') +
-        '<span id="prMsg" class="pr-msg"></span></div>';
+        '<button class="pa-btn" data-cerrar="1">Cerrar</button><span id="prMsg" class="pr-msg"></span></div>';
       html += '<div class="pr-card pr-f"><div class="pr-cab">' + cab.map(function (c) {
         return '<div><label>' + c[1] + '</label><input data-c="' + c[0] + '" type="' + (c[2] || 'text') + '" value="' + esc(doc[c[0]] || '') + '"></div>';
       }).join('') + '</div>' +
@@ -1126,7 +1240,7 @@
       if (doc && e.target.closest('.pr-ed')) vistaPrevia();
       if (e.target.id === 'prVistaVar') { varVista = e.target.value; vistaPrevia(0); }
       if (e.target.classList.contains('ng-estado')) cambiarEstado(ctx, e.target, function () { refrescarLista(); if (ctx.alCambiar) ctx.alCambiar(); });
-      if (e.target.dataset && e.target.dataset.fus !== undefined) { var b = $('#prFusionar'); if (b) b.disabled = el.querySelectorAll('[data-fus]:checked').length < 2; }
+      if (e.target.dataset && e.target.dataset.fus !== undefined) actualizarFus();
       var mz = e.target.closest && e.target.closest('[data-mpr]');
       if (mz) {
         var body = { action: 'proyecto_montaje', proyecto_id: pid, presupuesto_id: mz.dataset.mpr };
@@ -1156,17 +1270,17 @@
       if (id === 'prNuevoBtn') return pintarNuevo(null);
       if (id === 'pnCancelar') { $('#prNuevo').hidden = true; return; }
       if (id === 'pnCrear') return bloquear(function () {
-        return crearNuevo().then(function (d) { $('#prNuevo').hidden = true; sel = d.id; if (ctx.alCambiar) ctx.alCambiar(); return cargarLista(true).then(function () { return 'Presupuesto ' + (d.numero || '') + ' creado'; }); });
+        return crearNuevo().then(function (d) { $('#prNuevo').hidden = true; sel = d.id; if (ctx.alCambiar) ctx.alCambiar(); if (ctx.alCambiarPres) ctx.alCambiarPres(); return cargarLista(true).then(function () { return 'Presupuesto ' + (d.numero || '') + ' creado'; }); });
       }, 'Creando…');
       if (t.dataset.abrir) return abrir(t.dataset.abrir);
       if (t.dataset.cerrar) { sel = null; doc = null; nVista++; $('#prZona').innerHTML = ''; pintarLista(); return; }
       if (t.dataset.ver) { var dos = el.querySelector('.pr-dos'); if (dos) dos.dataset.modo = t.dataset.ver; el.querySelectorAll('[data-ver]').forEach(function (b) { b.classList.toggle('on', b === t); }); return; }
       if (t.dataset.borrarPr) return borrarPresupuesto(lista.filter(function (x) { return x.id === t.dataset.borrarPr; })[0]);
       if (id === 'prFusionar') {
-        var ids = Array.prototype.map.call(el.querySelectorAll('[data-fus]:checked'), function (c) { return c.dataset.fus; });
+        var ids = Array.prototype.map.call(document.querySelectorAll('[data-fus]:checked'), function (c) { return c.dataset.fus; });
         if (ids.length < 2) return;
         return bloquear(function () {
-          return api(ctx, { action: 'presupuesto_fusionar', proyecto_id: pid, ids: ids }).then(function (d) { sel = d.id; return cargarLista(true).then(function () { return 'Fusionados ' + (d.fusionados || []).join(' + ') + ' en ' + (d.numero || ''); }); });
+          return api(ctx, { action: 'presupuesto_fusionar', proyecto_id: pid, ids: ids }).then(function (d) { sel = d.id; if (ctx.alCambiarPres) ctx.alCambiarPres(); return cargarLista(true).then(function () { return 'Fusionados ' + (d.fusionados || []).join(' + ') + ' en ' + (d.numero || ''); }); });
         }, 'Fusionando…');
       }
       if (t.dataset.duplicar) return bloquear(function () {
