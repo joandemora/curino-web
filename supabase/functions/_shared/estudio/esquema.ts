@@ -41,13 +41,17 @@ export type Formato = 'A3' | 'A4';
 export type LadoTirador = 'izq' | 'der';
 export type ModeloPuerta = 'moldurada' | 'lisa';
 
+/** Cajones: frente cerrado (def.) o abierto (cajón interior: frente bajo —def.— o con escote); agarre propio, independiente de las puertas. */
+export type FrenteCajon = 'cerrado' | 'abierto';
+export type CajonAbierto = 'frente_bajo' | 'escote';
+export type AgarreCajon = 'tirador' | 'unero' | 'ninguno';
 // Todas las zonas salvo la primera admiten «grosor_balda_encima» (cm).
 type ConBalda = { grosor_balda_encima?: number };
 export type Zona = ConBalda & (
   | { tipo: 'altillo'; alto: number; etiqueta?: string }
   | { tipo: 'perchero'; alto?: number; prendas?: 'cortas' | 'largas'; etiqueta?: string }
   | { tipo: 'perchero_extraible'; alto?: number; etiqueta?: string }
-  | { tipo: 'cajonera'; cajones: number; alto?: number; etiqueta?: string }
+  | { tipo: 'cajonera'; cajones: number; alto?: number; etiqueta?: string; frente?: FrenteCajon; abierto?: CajonAbierto; agarre?: AgarreCajon }
   | { tipo: 'estantes'; estantes: number; alto?: number; etiqueta?: string; grosor_estantes?: number }
   | { tipo: 'hueco'; alto?: number; etiqueta?: string }
   | { tipo: 'balda_inferior'; alto?: number; etiqueta?: string });
@@ -206,7 +210,10 @@ export const ESQUEMA_JSON = {
                             { type: 'object', additionalProperties: false, required: ['tipo', 'alto'], properties: { tipo: { const: 'altillo' }, alto: num(15, 120, 'Cota del altillo: desde arriba del cuerpo hasta debajo de su balda.'), etiqueta } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero' }, alto: altoLibre, prendas: { enum: ['cortas', 'largas'] }, etiqueta, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero_extraible' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
-                            { type: 'object', additionalProperties: false, required: ['tipo', 'cajones'], properties: { tipo: { const: 'cajonera' }, cajones: { type: 'integer', minimum: 1, maximum: 8 }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
+                            { type: 'object', additionalProperties: false, required: ['tipo', 'cajones'], properties: { tipo: { const: 'cajonera' }, cajones: { type: 'integer', minimum: 1, maximum: 8 }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima,
+                              frente: { enum: ['cerrado', 'abierto'], description: 'abierto = cajón interior que deja ver el contenido («cajones abiertos», «cajón interior», «frente rebajado», «con escote»). Omitir si es cerrado.' },
+                              abierto: { enum: ['frente_bajo', 'escote'], description: 'Solo con frente abierto: frente_bajo (por defecto, frente rebajado) o escote (frente con escote / hueco en U).' },
+                              agarre: { enum: ['tirador', 'unero', 'ninguno'], description: 'Agarre de los cajones, independiente del de las puertas: tirador (def.), unero o ninguno («sin tirador», push). Omitir si es tirador.' } } },
                             { type: 'object', additionalProperties: false, required: ['tipo', 'estantes'], properties: { tipo: { const: 'estantes' }, estantes: { type: 'integer', minimum: 1, maximum: 12 }, alto: altoLibre, etiqueta, grosor_estantes: grosorEstantes, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'hueco' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'balda_inferior' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } }
@@ -369,7 +376,12 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
             if (numero(z, 'alto', rz, 15, 120, true) === undefined) zonasOk = false;
           } else {
             if (tipo === 'perchero') { campos(z, rz, [...base, 'prendas']); opcion(z, 'prendas', rz, ['cortas', 'largas']); }
-            else if (tipo === 'cajonera') { campos(z, rz, [...base, 'cajones']); if (entero(z, 'cajones', rz, 1, 8) === undefined) zonasOk = false; }
+            else if (tipo === 'cajonera') {
+              campos(z, rz, [...base, 'cajones', 'frente', 'abierto', 'agarre']);
+              if (entero(z, 'cajones', rz, 1, 8) === undefined) zonasOk = false;
+              opcion(z, 'frente', rz, ['cerrado', 'abierto']); opcion(z, 'abierto', rz, ['frente_bajo', 'escote']); opcion(z, 'agarre', rz, ['tirador', 'unero', 'ninguno']);
+              if (z.abierto !== undefined && z.frente !== 'abierto') err(`${rz}.abierto`, 'solo con frente «abierto»');
+            }
             else if (tipo === 'estantes') {
               campos(z, rz, [...base, 'estantes', 'grosor_estantes']);
               if (entero(z, 'estantes', rz, 1, 12) === undefined) zonasOk = false;

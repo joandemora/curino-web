@@ -76,6 +76,10 @@ export const ESTILO = {
   tablero: '#ece6dc',
   zocalo: '#d9d3c8',
   cajon: '#e3ddd2',
+  cajonInterior: '#efeae1',
+  cajon_frente_bajo: 0.35,   // × alto del cajón (cajón abierto, frente bajo)
+  cajon_escote: 0.45,        // profundidad del escote × alto del cajón
+  cajon_escote_ancho: 0.4,   // ancho del escote × ancho del cajón
   puerta: '#f6f4ef',
   barra: '#444444',
   gancho: '#666666',
@@ -160,9 +164,10 @@ const A3_DESDE_CM = 480;     // ancho de vistas a partir del cual se usa A3
 
 // ── Utilidades ──────────────────────────────────────────────────────
 /** 47,5 · 95 · 0,3 — coma decimal española. */
+/** 47,5 · 95 · 54,75 — coma decimal, hasta dos decimales (los parciales de una cota suman el total). */
 export function fmtCm(n: number): string {
-  const r = Math.round(n * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ',');
+  const r = Math.round(n * 100) / 100;
+  return Number.isInteger(r) ? String(r) : String(r).replace('.', ',');
 }
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
@@ -201,16 +206,15 @@ export function modelosPuertas(f: Frente): ('moldurada' | 'lisa')[] {
   return [...m];
 }
 
+/** «Puertas abatibles lisas · Blanco Soft III»: el acabado tal cual viene en el esquema (sin plurales ni mayúsculas cambiadas). */
 export function descripcionFrente(f: Frente): string {
-  const pl = (s: string) => s.split(' ').map((w, i) => (i === 0 && /[aeiou]$/i.test(w) ? w + 's' : w)).join(' ');
   const modelos = modelosPuertas(f);
   const modelo = modelos.length > 1 ? 'molduradas y lisas' : (modelos[0] ?? f.modelo) === 'moldurada' ? 'molduradas' : 'lisas';
   return [
     'Puertas',
     ({ abatible: 'abatibles', corredera: 'correderas', coplanar: 'coplanares', escamoteable: 'escamoteables' } as Record<string, string>)[f.apertura] ?? 'abatibles',
-    modelo,
-    f.acabado ? pl(f.acabado.trim()) : ''
-  ].filter(Boolean).join(' ');
+    modelo
+  ].join(' ') + (f.acabado && f.acabado.trim() ? ` · ${f.acabado.trim()}` : '');
 }
 
 /** Lado del tirador de cada pieza: por parejas desde la izquierda; la última puerta suelta, hacia su vecina. */
@@ -496,13 +500,35 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
             const n = zona.cajones;
             capas.dentro.push(() => {
               const h = (zm.libre - E.cajon_holgura * 2 - (n - 1) * E.cajon_separacion) / n;
+              const abierto = zona.frente === 'abierto', escote = abierto && zona.abierto === 'escote', ag = zona.agarre ?? 'tirador';
               for (let i = 0; i < n; i++) {
                 const dy = zt + cm(E.cajon_holgura + i * (h + E.cajon_separacion));
-                rect(ix0 + cm(E.cajon_holgura) / 1.5, dy, iw - (2 * cm(E.cajon_holgura)) / 1.5, cm(h), { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
-                const tl = Math.min(cm(E.cajon_tirador), iw * 0.4);
-                line(cx - tl / 2, dy + cm(E.cajon_tirador_baja), cx + tl / 2, dy + cm(E.cajon_tirador_baja), E.tinta, 1.2);
+                const x0c = ix0 + cm(E.cajon_holgura) / 1.5, wc = iw - (2 * cm(E.cajon_holgura)) / 1.5, hc = cm(h);
+                let topFrente = dy;
+                if (!abierto) rect(x0c, dy, wc, hc, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+                else {
+                  // Cajón interior: se ve el hueco y la caja del cajón por encima del frente
+                  rect(x0c, dy, wc, hc, { fill: E.fondoInterior, stroke: E.tinta, sw: 0.4 });
+                  rect(x0c + cm(1.5), dy + hc * 0.12, wc - cm(3), hc * 0.88, { fill: E.cajonInterior, stroke: E.suave, sw: 0.4 });
+                  if (escote) {
+                    const ew = wc * E.cajon_escote_ancho, ex = x0c + (wc - ew) / 2, ed = hc * E.cajon_escote;
+                    prims.push({ k: 'poly', pts: [[x0c, dy], [ex, dy], [ex, dy + ed], [ex + ew, dy + ed], [ex + ew, dy], [x0c + wc, dy], [x0c + wc, dy + hc], [x0c, dy + hc]], fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+                    topFrente = dy + ed;
+                  } else {
+                    topFrente = dy + hc * (1 - E.cajon_frente_bajo);
+                    rect(x0c, topFrente, wc, dy + hc - topFrente, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+                  }
+                }
+                // Agarre propio de los cajones (con escote, el escote ya es el agarre si no se pide otro)
+                if (ag === 'tirador' && !escote) {
+                  const tl = Math.min(cm(E.cajon_tirador), iw * 0.4);
+                  const ty = Math.min(topFrente + cm(E.cajon_tirador_baja), dy + hc - 2);
+                  line(cx - tl / 2, ty, cx + tl / 2, ty, E.tinta, 1.2);
+                } else if (ag === 'unero') {
+                  rect(x0c + 0.4, topFrente + 0.4, wc - 0.8, Math.min(2.2, hc * 0.2), { fill: E.uneroDm, stroke: E.tinta, sw: 0.3 });
+                }
               }
-              const t = zona.etiqueta ?? `Cajonera ${plural(n, 'cajón', 'cajones')}`;
+              const t = zona.etiqueta ?? `Cajonera ${plural(n, 'cajón', 'cajones')}${abierto ? (escote ? ' abiertos con escote' : ' abiertos') : ''}${ag === 'ninguno' ? ' sin tirador' : ag === 'unero' ? ' con uñero' : ''}`;
               const cy = zm.balda_encima ? zt - cm(zm.balda_encima) - (7 * 1.53) / 2 : zt + 7;
               etiqueta(cx, cy, t, 7);
             });
@@ -592,7 +618,15 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
       const altoPuerta = c.alto - sep;
       const travesano = bajo - cm(altoPuerta * E.travesano_altura);
       if (pz.tipo === 'fijo') {
-        etiqueta((d0 + d1) / 2, (arriba + bajo) / 2, pz.etiqueta ?? 'FRENTE FIJO\nLISO', 6.5, false, E.suave);
+        // Etiqueta del frente fijo: dentro si cabe (en horizontal o en vertical); si no, fuera con línea de referencia
+        const t = pz.etiqueta ?? 'FRENTE FIJO\nLISO';
+        const lineas = t.split('\n'), wTxt = Math.max(...lineas.map((l) => medir(l, 6.5, false)));
+        const cxp = (d0 + d1) / 2, cyp = (arriba + bajo) / 2, una = lineas.join(' ');
+        if (wTxt + 4 <= d1 - d0) etiqueta(cxp, cyp, t, 6.5, false, E.suave);
+        else if (d1 - d0 >= 9 && medir(una, 6.5, false) + 8 <= bajo - arriba) text(cxp + 2.3, cyp, una, 6.5, E.suave, 'middle', false, true);
+        else if (i === 0) { line(d0, cyp, d0 - 12, cyp, E.cota, 0.5); text(d0 - 14, cyp + 2.3, una, 6.5, E.suave, 'end'); }
+        else if (i === f.piezas.length - 1) { line(d1, cyp, d1 + 12, cyp, E.cota, 0.5); text(d1 + 14, cyp + 2.3, una, 6.5, E.suave, 'start'); }
+        else { line(cxp, arriba, cxp, arriba - 7, E.cota, 0.5); text(cxp, arriba - 9, una, 6, E.suave, 'middle'); }
       } else {
         if (mat === 'moldurada_lacada' || (!pz.material && !f.material && (pz.modelo ?? f.modelo) === 'moldurada')) {
           const mg = cm(pz.ancho * E.moldura), mi = cm(pz.ancho * E.moldura_interior);
@@ -683,10 +717,14 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
         case 'cajonera': {
           const n = zona.cajones;
           const h = (zm.libre - E.cajon_holgura * 2 - (n - 1) * E.cajon_separacion) / n;
+          const abierto = zona.frente === 'abierto', escote = abierto && zona.abierto === 'escote';
           for (let i = 0; i < n; i++) {
             const dy = zt + cm(E.cajon_holgura + i * (h + E.cajon_separacion));
             rect(ix0 + cm(2), dy + cm(h * 0.3), ix1 - cm(g) - ix0 - cm(2), cm(h * 0.7), { fill: E.cajon, stroke: E.tinta, sw: 0.6 });
-            rect(ix1 - cm(g), dy, cm(g), cm(h), { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+            // Frente de canto: entero; abierto con frente bajo, solo la parte baja; con escote, entero en los lados y el escote en línea fina
+            const fy = abierto && !escote ? dy + cm(h * (1 - E.cajon_frente_bajo)) : dy;
+            rect(ix1 - cm(g), fy, cm(g), dy + cm(h) - fy, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+            if (escote) line(ix1 - cm(g), dy + cm(h * E.cajon_escote), ix1, dy + cm(h * E.cajon_escote), E.suave, 0.5);
           }
           break;
         }

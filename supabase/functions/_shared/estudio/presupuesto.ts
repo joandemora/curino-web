@@ -284,7 +284,11 @@ export function textoModulo(zonas: Zona[]): string {
   const partes: string[] = [];
   const percheros = zonas.filter((z) => z.tipo === 'perchero');
   const cajonera = zonas.find((z) => z.tipo === 'cajonera');
-  if (cajonera && cajonera.tipo === 'cajonera') partes.push(`cajonera de ${plural(cajonera.cajones, 'cajón', 'cajones')}`);
+  if (cajonera && cajonera.tipo === 'cajonera') {
+    const ab = cajonera.frente === 'abierto' ? (cajonera.abierto === 'escote' ? ' abiertos con escote' : ' abiertos (frente bajo)') : '';
+    const ag = cajonera.agarre === 'ninguno' ? ' sin tirador' : cajonera.agarre === 'unero' ? ' con uñero' : '';
+    partes.push(`cajonera de ${plural(cajonera.cajones, 'cajón', 'cajones')}${ab}${ag}`);
+  }
   const largas = percheros.filter((z) => z.tipo === 'perchero' && z.prendas === 'largas').length;
   const cortas = percheros.length - largas;
   if (cortas >= 2) partes.push(cortas === 2 ? 'doble perchero' : `${cortas} percheros`);

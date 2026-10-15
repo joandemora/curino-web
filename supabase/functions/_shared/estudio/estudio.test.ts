@@ -76,7 +76,7 @@ test('tiradores por parejas, la puerta suelta hacia su vecina', () => {
 test('textos automáticos', () => {
   const p = ejemplo();
   assert.equal(subtituloAuto(p.armarios[2]), '2 módulos de 104 cm + 1 módulo de 52 cm · 260 × 248 × 60 cm · 5 puertas de 52 cm');
-  assert.equal(descripcionFrente(p.armarios[0].cuerpos[0].frente), 'Puertas abatibles molduradas lacadas');
+  assert.equal(descripcionFrente(p.armarios[0].cuerpos[0].frente), 'Puertas abatibles molduradas · lacada');
   assert.equal(fmtCm(47.5), '47,5');
   assert.equal(fmtCm(95), '95');
 });
@@ -104,7 +104,7 @@ test('puertas lisas y molduradas en el mismo frente', () => {
   (f.piezas[0] as any).modelo = 'lisa';
   (f.piezas[1] as any).modelo = 'lisa';
   assert.deepEqual(errores(p), []);
-  assert.equal(descripcionFrente(f), 'Puertas abatibles molduradas y lisas lacadas');
+  assert.equal(descripcionFrente(f), 'Puertas abatibles molduradas y lisas · lacada');
   // 2 puertas molduradas × 2 paneles × 2 líneas de moldura = 8 rectángulos sin relleno
   const molduras = laminasProyecto(p)[1].prims.filter((x) => x.k === 'rect' && !x.fill && x.stroke === '#1d1d1b').length;
   assert.equal(molduras, 8);
@@ -116,4 +116,27 @@ test('SVG bien formado', () => {
   const svg = laminaSvg(laminasProyecto(ejemplo())[1]);
   assert.ok(svg.startsWith('<svg') && svg.endsWith('</svg>'));
   assert.ok(svg.includes('ARMARIO A MEDIDA 200 cm'));
+});
+
+test('cabecera: el acabado tal cual (sin plurales ni minúsculas); cotas con dos decimales', async () => {
+  const { descripcionFrente: df, fmtCm: f } = await import('./alzado.ts');
+  assert.equal(df({ apertura: 'abatible', modelo: 'lisa', acabado: 'Blanco Soft III', piezas: [{ tipo: 'puerta', ancho: 50 }] }), 'Puertas abatibles lisas · Blanco Soft III');
+  assert.equal(f(54.75), '54,75');
+  assert.equal(f(112.5), '112,5');
+  assert.equal(f(3), '3');
+});
+
+test('cajones abiertos (frente bajo / escote) y sin tirador: se dibujan y se validan', async () => {
+  const { laminasProyecto: lp } = await import('./alzado.ts');
+  const { validarProyecto: v } = await import('./esquema.ts');
+  const p = (cajonera: Record<string, unknown>) => ({ version: 1, armarios: [{ codigo: 'A.01', titulo: 'X', vistas: ['lateral'], cuerpos: [{ ancho: 80, alto: 250, fondo: 60, frente: { apertura: 'abatible', modelo: 'lisa', piezas: [{ tipo: 'puerta', ancho: 40 }, { tipo: 'puerta', ancho: 40 }] },
+    modulos: [{ ancho: 80, interior: [{ tipo: 'altillo', alto: 45 }, { tipo: 'hueco' }, { tipo: 'cajonera', cajones: 3, ...cajonera }] }] }] }] });
+  for (const c of [{}, { frente: 'abierto' }, { frente: 'abierto', abierto: 'escote', agarre: 'ninguno' }, { agarre: 'unero' }]) assert.equal(v(p(c)).ok, true, JSON.stringify(c));
+  assert.equal(v(p({ abierto: 'escote' })).ok, false);           // escote sin frente abierto
+  const textos = (c: Record<string, unknown>) => lp(p(c) as never).flatMap((l) => l.prims).filter((x) => x.k === 'text').map((x) => (x as { t: string }).t);
+  assert.ok(textos({ frente: 'abierto', agarre: 'ninguno' }).includes('Cajonera 3 cajones abiertos sin tirador'));
+  assert.ok(textos({ frente: 'abierto', abierto: 'escote' }).includes('Cajonera 3 cajones abiertos con escote'));
+  // Sin tirador: no se dibuja la raya (líneas gruesas de 1.2 pt dentro de los cajones)
+  const rayas = (c: Record<string, unknown>) => lp(p(c) as never)[0].prims.filter((x) => x.k === 'line' && (x as { sw: number }).sw === 1.2).length;
+  assert.ok(rayas({}) - rayas({ agarre: 'ninguno' }) === 3);
 });
