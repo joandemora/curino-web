@@ -451,3 +451,10 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .dc-ico-coste{font-size:22px;color:#F08C00}
 .dc-sus-op{display:block;padding:4px 0;font-size:13px}
 .rs-previsto{color:#999 !important;border-top:1px dashed #e5e2da;padding-top:3px;margin-top:2px}
+
+.rs-mont-f{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;padding:3px 0}
+.rs-mont-f input[type=date]{font-size:12.5px;padding:2px 4px}
+.rs-pie{display:flex;justify-content:flex-end;margin:14px 0 6px}
+.rs-borrar{background:none;border:0;color:#b42318;font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;text-decoration:underline;text-underline-offset:2px}
+.rs-borrar:hover{color:#8a1a12}
+.rb-ok:not(:disabled){background:#b42318;border-color:#b42318;color:#fff}

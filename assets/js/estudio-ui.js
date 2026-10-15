@@ -111,52 +111,16 @@
     var TABS = [['resumen', 'Resumen'], ['diseno', 'Diseño'], ['presupuesto', 'Presupuesto']];
     el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
-      '</nav></div><div class="pj-montaje" id="pjMontaje"></div><div id="pjCuerpo"></div></div>';
-    var proy = null;
+      '</nav></div><div id="pjCuerpo"></div></div>';
+    // Cabecera: solo el nombre (el montaje está en el bloque «Montaje» del Resumen; «Borrar proyecto», al final del Resumen)
     var cargarCab = function () {
-      return Promise.all([
-        ctx.supa.from('estudio_proyectos').select('nombre, referencia, montaje_previsto, montado, montado_at, montaje_nota').eq('id', pid).maybeSingle(),
-        ctx.supa.from('estudio_presupuestos').select('id, numero, montaje_previsto, montado, montado_at, montaje_nota').eq('proyecto_id', pid).eq('estado', 'aceptado').order('created_at')
-      ]).then(function (rs) {
-        if (!rs[0].data) return;
-        proy = rs[0].data;
-        document.getElementById('pjTitulo').innerHTML = esc(proy.nombre) + (proy.referencia ? ' <span class="pa-muted">· ' + esc(proy.referencia) + '</span>' : '');
-        pintarMontaje(proy, rs[1].data || []);
+      return ctx.supa.from('estudio_proyectos').select('nombre, referencia').eq('id', pid).maybeSingle().then(function (r) {
+        if (!r.data) return;
+        document.getElementById('pjTitulo').innerHTML = esc(r.data.nombre) + (r.data.referencia ? ' <span class="pa-muted">· ' + esc(r.data.referencia) + '</span>' : '');
       });
     };
     cargarCab();
-    // Montaje: uno por presupuesto aceptado; sin aceptados, el del proyecto (datos de antes)
-    function pintarMontaje(d, aceptados) {
-      var z = document.getElementById('pjMontaje'); if (!z) return;
-      var fila = function (x, k) {
-        return '<div class="pm-fila" data-mk="' + k + '">' + (x.numero !== undefined ? '<b>' + esc(x.numero || 'Aceptado') + '</b>' : '') +
-          '<label>Fecha prevista de montaje <input type="date" data-pm="prev" value="' + (x.montaje_previsto || '') + '"></label>' +
-          '<label class="pm-chk"><input type="checkbox" data-pm="mont"' + (x.montado ? ' checked' : '') + '> Montado</label>' +
-          '<label' + (x.montado ? '' : ' hidden') + '>Fecha real <input type="date" data-pm="real" value="' + (x.montado_at || '') + '"></label>' +
-          (x.montaje_nota ? '<small class="pa-muted">' + esc(x.montaje_nota) + '</small>' : '') + '</div>';
-      };
-      var filas = aceptados.length ? aceptados.map(function (x) { return fila(x, x.id); }).join('')
-        : (d.montaje_previsto || d.montado ? fila(d, '') : '<span class="pa-muted" style="font-size:13px">Montaje: se pide al aceptar cada presupuesto.</span>');
-      z.innerHTML = '<div class="pm-filas">' + filas + '</div><span class="pr-msg" id="pmMsg"></span>' +
-        '<button type="button" class="pa-btn pm-borrar" id="pmBorrar">Borrar proyecto</button>';
-      z.onchange = function (e) {
-        var f = e.target.closest('[data-mk]'), k = e.target.dataset.pm; if (!f || !k) return;
-        var body = { action: 'proyecto_montaje', proyecto_id: pid };
-        if (f.dataset.mk) body.presupuesto_id = f.dataset.mk;
-        if (k === 'prev') body.montaje_previsto = e.target.value || null;
-        if (k === 'mont') { body.montado = e.target.checked; body.montado_at = e.target.checked ? ((f.querySelector('[data-pm=real]') || {}).value || new Date().toLocaleDateString('sv-SE')) : undefined; }
-        if (k === 'real') body.montado_at = e.target.value || null;
-        api(ctx, body).then(function () { return cargarCab(); }).then(function () { var m = document.getElementById('pmMsg'); if (m) m.textContent = 'Guardado'; })
-          .catch(function (err) { alert(err.message); });
-      };
-      z.querySelector('#pmBorrar').addEventListener('click', function () {
-        if (!this.dataset.ok) { this.dataset.ok = '1'; this.textContent = '¿Seguro? Se borra todo el proyecto · pulsa otra vez'; this.classList.add('on'); return; }
-        api(ctx, { action: 'borrar', proyecto_id: pid }).then(function () { location.href = ctx.rutas.estudio(); if (ctx.alNavegar) ctx.alNavegar(); }).catch(function (e) { alert(e.message); });
-      });
-    }
     var cuerpo = el.querySelector('#pjCuerpo');
-    // Cambios en presupuestos (aceptar, montaje) refrescan el montaje de la cabecera
-    var ctx0 = ctx; ctx = Object.assign({}, ctx0, { alCambiar: function () { if (ctx0.alCambiar) ctx0.alCambiar(); cargarCab(); } });
     if (tab === 'resumen') return resumenProyecto(cuerpo, ctx, pid);
     if (tab === 'presupuesto') return presupuesto(cuerpo, ctx, pid, { embebido: true });
     return disenoProyecto(cuerpo, ctx, pid);
@@ -509,7 +473,8 @@
     function cargar() {
       return api(ctx, { action: 'documentos_ficha', proyecto_id: pid }).then(function (d) { tiposCoste = d.tipos_coste || []; v2 = d.costes_v2 !== false; return [{ disenos: d.disenos }, { documentos: d.documentos }, { ficheros: d.ficheros, almacenamiento: d.almacenamiento }]; }).then(function (rs) {
         var a = rs[2].almacenamiento;
-        el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1048576).toFixed(1).replace('.', ',') + ' MB de ' + Math.round(a.limite / 1048576) + ' MB';
+        var gb = function (b) { return (b / 1073741824).toFixed(1).replace('.', ',').replace(/,0$/, '') + ' GB'; };
+        el.querySelector('#arUso').textContent = 'Almacenamiento: ' + (a.usado / 1073741824).toFixed(1).replace('.', ',') + ' GB de ' + gb(a.limite);
         items = rs[0].disenos.map(function (x) { return Object.assign({ kind: 'diseno' }, x); })
           .concat(rs[1].documentos.filter(function (x) { return !x.diseno_id; }).map(function (x) { return Object.assign({ kind: 'doc', mime: /\.xlsx$/i.test(x.nombre) ? 'xlsx' : 'application/pdf' }, x); }))
           .concat(rs[2].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
@@ -674,14 +639,52 @@
           '<div class="rs-fila"><div class="rs-bloque"><h3>Coste por tipo</h3>' + (tipos.length ? '<ul class="rs-tipos">' + tipos.map(function (c) {
             return '<li><span>' + esc(c.tipo) + '</span><i><em style="width:' + Math.max(2, c.importe / maxT * 100) + '%"></em></i><b>' + eur(c.importe) + '</b></li>';
           }).join('') + '</ul>' : '<p class="pa-muted">Aún no hay costes con importe. Sube facturas o presupuestos de proveedor en Documentos.</p>') + '</div>' +
-          '<div class="rs-bloque"><h3>Montaje</h3>' + ((m.montajes || []).length ? '<ul class="rs-mont">' + m.montajes.map(function (x) {
-            return '<li>' + (x.numero ? '<b>' + esc(x.numero) + '</b> ' : '') + (x.montado ? '<em class="rs-ok">montado' + (x.montado_at ? ' el ' + dia(x.montado_at) : '') + '</em>' : x.montaje_previsto ? 'previsto el ' + dia(x.montaje_previsto) : '<em class="rs-mal">sin fecha</em>') + '</li>';
-          }).join('') + '</ul>' : '<p class="pa-muted">Se pide al aceptar cada presupuesto.</p>') + '</div></div>' +
+          // Montaje: una línea por presupuesto aceptado (n.º · fecha prevista · Montado · fecha real), se guarda en ese presupuesto
+          '<div class="rs-bloque"><h3>Montaje</h3>' + ((m.montajes || []).filter(function (x) { return x.id; }).length ? '<div class="rs-mont">' + m.montajes.filter(function (x) { return x.id; }).map(function (x) {
+            return '<div class="rs-mont-f" data-mpr="' + x.id + '"><b>' + esc(x.numero || 'Aceptado') + '</b>' +
+              '<input type="date" data-pm="prev" value="' + (x.montaje_previsto || '') + '" title="Fecha prevista de montaje">' +
+              '<label class="pm-chk"><input type="checkbox" data-pm="mont"' + (x.montado ? ' checked' : '') + '> Montado</label>' +
+              (x.montado ? '<input type="date" data-pm="real" value="' + (x.montado_at || '') + '" title="Fecha real de montaje">' : '') + '</div>';
+          }).join('') + '<span class="pr-msg" id="rsMontMsg"></span></div>' : '<p class="pa-muted">Sin presupuesto aceptado</p>') + '</div></div>' +
           (m.v2 ? '' : '<p class="pa-muted" style="font-size:12px;margin:8px 0 0">Costes con las reglas de antes (facturas de proveedor + costes manuales) hasta que se migre este proyecto.</p>');
       }).catch(function (e) { var z = el.querySelector('#rsMet'); if (z) z.innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     };
     pintarMet();
+    el.querySelector('#rsMet').addEventListener('change', function (e) {
+      var f = e.target.closest('[data-mpr]'), k = e.target.dataset.pm; if (!f || !k) return;
+      var body = { action: 'proyecto_montaje', proyecto_id: pid, presupuesto_id: f.dataset.mpr };
+      if (k === 'prev') body.montaje_previsto = e.target.value || null;
+      if (k === 'mont') { body.montado = e.target.checked; body.montado_at = e.target.checked ? new Date().toLocaleDateString('sv-SE') : undefined; }
+      if (k === 'real') body.montado_at = e.target.value || null;
+      api(ctx, body).then(pintarMet).then(function () { var mm = el.querySelector('#rsMontMsg'); if (mm) { mm.className = 'pr-msg ok'; mm.textContent = 'Guardado'; } })
+        .catch(function (err) { alert(err.message); });
+    });
     documentosProyecto(el.querySelector('#rsDocs'), Object.assign({}, ctx, { alCambiarDocs: pintarMet }), pid);
+    // «Borrar proyecto»: al final, con confirmación escribiendo el nombre
+    var pie = document.createElement('div'); pie.className = 'rs-pie';
+    pie.innerHTML = '<button type="button" class="rs-borrar">Borrar proyecto</button>';
+    el.appendChild(pie);
+    pie.querySelector('.rs-borrar').addEventListener('click', function () {
+      ctx.supa.from('estudio_proyectos').select('nombre').eq('id', pid).maybeSingle().then(function (r) {
+        var nombre = (r.data && r.data.nombre) || '';
+        var m = document.createElement('div'); m.className = 'eu-modal';
+        m.innerHTML = '<form class="eu-modal-caja" style="max-width:480px"><h2>Borrar proyecto</h2>' +
+          '<p style="font-size:13px;margin:6px 0 10px">Se borran el proyecto y <b>todos sus documentos, diseños y presupuestos</b>. No se puede deshacer.</p>' +
+          '<label style="font-size:13px">Para confirmarlo, escribe el nombre del proyecto: <b>' + esc(nombre) + '</b><input id="rbNombre" autocomplete="off" style="width:100%;padding:8px;border:1px solid #d9d3c8;border-radius:8px;margin-top:6px"></label>' +
+          '<div class="eu-modal-bot"><button type="button" class="pa-btn" id="rbCancelar">Cancelar</button><button type="submit" class="pa-btn rb-ok" id="rbOk" disabled>Borrar definitivamente</button></div></form>';
+        document.body.appendChild(m);
+        var inp = m.querySelector('#rbNombre'), ok = m.querySelector('#rbOk');
+        inp.focus();
+        inp.addEventListener('input', function () { ok.disabled = inp.value.trim() !== nombre.trim(); });
+        m.querySelector('#rbCancelar').addEventListener('click', function () { m.remove(); });
+        m.querySelector('form').addEventListener('submit', function (e) {
+          e.preventDefault(); if (ok.disabled) return;
+          ok.disabled = true; ok.textContent = 'Borrando…';
+          api(ctx, { action: 'borrar', proyecto_id: pid }).then(function () { m.remove(); location.href = ctx.rutas.estudio(); if (ctx.alNavegar) ctx.alNavegar(); })
+            .catch(function (err) { alert(err.message); ok.disabled = false; ok.textContent = 'Borrar definitivamente'; });
+        });
+      });
+    });
   }
 
   // ── Métricas del proyecto ──

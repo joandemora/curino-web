@@ -421,8 +421,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'borrar') {
-      const { data: archivos } = await supa.from('estudio_archivos').select('path').eq('proyecto_id', proyectoId);
-      if (archivos?.length) await supa.storage.from('estudio').remove(archivos.map((a) => a.path));
+      // Todos sus archivos del almacenamiento: adjuntos del chat, documentos, archivos subidos y sus miniaturas
+      const [ar, dc, fi] = await Promise.all([
+        supa.from('estudio_archivos').select('path').eq('proyecto_id', proyectoId),
+        supa.from('estudio_documentos').select('path, miniatura_path').eq('proyecto_id', proyectoId),
+        supa.from('estudio_ficheros').select('path, miniatura_path').eq('proyecto_id', proyectoId)
+      ]);
+      // deno-lint-ignore no-explicit-any
+      const paths = [...(ar.data ?? []), ...(dc.data ?? []), ...(fi.data ?? [])].flatMap((x: any) => [x.path, x.miniatura_path]).filter(Boolean);
+      for (let i = 0; i < paths.length; i += 500) await supa.storage.from('estudio').remove(paths.slice(i, i + 500));
       await supa.from('estudio_proyectos').delete().eq('id', proyectoId);
       return json({ ok: true });
     }

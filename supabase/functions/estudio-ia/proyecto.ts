@@ -418,7 +418,7 @@ export async function accionProyecto(action: string, ctx: {
     const cuenta = (e: string) => d.todos.filter((x: Any) => x.estado === e).length;
     const aceptados = d.todos.filter((x: Any) => x.estado === 'aceptado');
     const montajes = aceptados.length
-      ? aceptados.map((x: Any) => ({ numero: x.numero || x.datos?.numero || null, importe: x.importe ?? null, montaje_previsto: x.montaje_previsto ?? null, montado: !!x.montado, montado_at: x.montado_at ?? null }))
+      ? aceptados.map((x: Any) => ({ id: x.id, numero: x.numero || x.datos?.numero || null, importe: x.importe ?? null, montaje_previsto: x.montaje_previsto ?? null, montado: !!x.montado, montado_at: x.montado_at ?? null }))
       : (proyecto.montaje_previsto || proyecto.montado ? [{ numero: null, importe: null, montaje_previsto: proyecto.montaje_previsto ?? null, montado: !!proyecto.montado, montado_at: proyecto.montado_at ?? null }] : []);
     return json({
       ...m, v2, iva_pct: Number(proyecto.iva_pct ?? 21),
