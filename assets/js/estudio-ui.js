@@ -1395,7 +1395,10 @@
       var FD = d.fila || { x0: 42.8, ancho: 508.7, alto: 380, separacion: 8 };
       var dibs = p.libre ? [] : d.dibujos.filter(function (x) { return x.codigo === (p.clave || p.codigo); });
       dibs.forEach(function (dib) {
-        var kk = Math.min(FD.ancho / dib.ancho, FD.alto / dib.alto), w = dib.ancho * kk, h = dib.alto * kk;
+        // Misma escala en todas las vistas del armario / cocina: la menor de su grupo (como grupoDibujo del servidor)
+        var grupo = function (x) { return x.codigo.replace(/^((?:v\d+:)?[AC]\.\d+).*$/, '$1'); };
+        var kk = d.dibujos.filter(function (x) { return grupo(x) === grupo(dib); }).reduce(function (m, x) { return Math.min(m, FD.ancho / x.ancho, FD.alto / x.alto); }, Infinity);
+        var w = dib.ancho * kk, h = dib.alto * kk;
         if (enPagina + FD.separacion + h + 2 > XL.alto - 12) { cerrarPagina(false); linea(fila + 1, 0, 11, 'top', 'thin'); nueva(16); }
         nueva(FD.separacion);
         var rd = nueva(h + 2), tl = colDe(FD.x0 + (FD.ancho - w) / 2);

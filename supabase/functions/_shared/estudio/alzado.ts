@@ -35,6 +35,7 @@ export interface Lamina {
   prims: Prim[];
   inicioDibujo: number;  // prims[0..inicioDibujo) = cabecera y pie; el resto, el dibujo
   pagina?: number;       // 2 = página extra del armario (sección / planta que no caben en la primera)
+  grupo?: string;        // presupuesto: filas del mismo armario / cocina (van todas a la misma escala)
 }
 
 /** Caja (pt) que ocupa una lista de primitivas. */
@@ -352,15 +353,31 @@ export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[
 export function laminasPresupuesto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
   const armarios = p.armarios.flatMap((a) => {
     const lateral = !!a.vistas?.includes('lateral'), planta = !!a.vistas?.includes('planta');
-    const filas = [laminaArmario(a, p, medir, SOLO_PRINCIPAL, true)];
-    if (lateral || planta) filas.push(laminaArmario(a, p, medir, { principal: false, lateral, planta }, true));
-    return filas;
+    const extra: Composicion = { principal: false, lateral, planta };
+    // Todas las vistas del armario a la misma escala: la de la fila que más reduce
+    const s = Math.min(escala(a, SOLO_PRINCIPAL, 'PRES'), lateral || planta ? escala(a, extra, 'PRES') : Infinity);
+    const filas = [laminaArmario(a, p, medir, SOLO_PRINCIPAL, true, s)];
+    if (lateral || planta) filas.push(laminaArmario(a, p, medir, extra, true, s));
+    return filas.map((l) => ({ ...l, grupo: a.codigo }));
   });
   return [...armarios, ...(p.cocinas ?? []).flatMap((c) => laminasCocinaPresupuesto(c, p, medir, true))];
 }
 /** Tamaño de una fila de dibujo en el presupuesto: a todo el ancho, sin pasar del alto máximo, en proporción. */
 export function escalaFila(caja: { w: number; h: number }): number {
   return Math.min(FILA_DIBUJO.ancho / caja.w, FILA_DIBUJO.alto / caja.h);
+}
+/**
+ * Reducción de cada fila: la menor de su grupo (mismo armario / cocina), para que
+ * todas las vistas salgan a la misma escala (la planta nunca más grande que el alzado).
+ */
+export function escalasPorGrupo<T extends { caja: { w: number; h: number }; grupo?: string; codigo: string }>(filas: T[]): Map<T, number> {
+  const min = new Map<string, number>();
+  for (const f of filas) { const g = grupoDibujo(f); min.set(g, Math.min(min.get(g) ?? Infinity, escalaFila(f.caja))); }
+  return new Map(filas.map((f) => [f, min.get(grupoDibujo(f))!]));
+}
+/** Grupo de una fila por la clave de su partida: «v2:A.01» → «v2:A.01»; tramos de cocina «v1:C.01.2» → «v1:C.01». */
+export function grupoDibujo(f: { grupo?: string; codigo: string }): string {
+  return f.grupo ?? f.codigo.replace(/^((?:v\d+:)?[AC]\.\d+).*$/, '$1');
 }
 
 /** Láminas de un armario: una, o dos si la sección / planta no caben con el alzado. */
@@ -373,7 +390,7 @@ export function laminasArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cli
   return [laminaArmario(a, p, medir), laminaArmario(a, p, medir, { principal: false, lateral, planta })];
 }
 
-export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, comp: Composicion = SOLO_PRINCIPAL, presupuesto = false): Lamina {
+export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, comp: Composicion = SOLO_PRINCIPAL, presupuesto = false, escalaFija?: number): Lamina {
   const formato: Hoja = presupuesto ? 'PRES' : formatoArmario(a);
   const pg = paginaDe(formato);
   const prims: Prim[] = [];
@@ -383,7 +400,7 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
   // (la página extra no amplía más que la principal).
   const anchoCm = anchoFila(a, comp);
   const altoMax = Math.max(...a.cuerpos.map((c) => c.alto));
-  const s = comp.principal ? escala(a, comp, formato) : Math.min(escala(a, comp, formato), escala(a, SOLO_PRINCIPAL, formato));
+  const s = escalaFija ?? (comp.principal ? escala(a, comp, formato) : Math.min(escala(a, comp, formato), escala(a, SOLO_PRINCIPAL, formato)));
   const cm = (v: number) => v * s;
   const centro = (pg.ml + pg.mr) / 2;
   let x = centro - cm(anchoCm) / 2 + cm(E.margen_izq_cm - E.margen_der_cm) / 2;

@@ -139,17 +139,20 @@ export function laminasCocina(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 
  */
 export function laminasCocinaPresupuesto(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, pres = false): Lamina[] {
   const c = completarCocina(entrada);
-  const out = c.tramos.map((t, i) => ({ ...lamina({ ...c, tramos: [t] }, p, medir, SOLO, pres), codigo: `${c.codigo}.${i + 1}` }));
   const lateral = !!c.vistas?.includes('lateral'), planta = !!c.vistas?.includes('planta');
-  if (lateral || planta) out.push({ ...lamina(c, p, medir, { principal: false, lateral, planta }, pres), codigo: `${c.codigo}.${c.tramos.length}` });
+  const extra: Composicion = { principal: false, lateral, planta };
+  // Presupuesto: todos los tramos, la sección y la planta a la misma escala (la que más reduce)
+  const s = pres ? Math.min(...c.tramos.map((t) => escala({ ...c, tramos: [t] }, SOLO, true)), lateral || planta ? escala(c, extra, true) : Infinity) : undefined;
+  const out = c.tramos.map((t, i) => ({ ...lamina({ ...c, tramos: [t] }, p, medir, SOLO, pres, s), codigo: `${c.codigo}.${i + 1}`, grupo: pres ? c.codigo : undefined }));
+  if (lateral || planta) out.push({ ...lamina(c, p, medir, extra, pres, s), codigo: `${c.codigo}.${c.tramos.length}`, grupo: pres ? c.codigo : undefined });
   return out;
 }
 
-function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir, comp: Composicion, pres = false): Lamina {
+function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir, comp: Composicion, pres = false, escalaFija?: number): Lamina {
   const E = ESTILO;
   const pg = pres ? PAGINA_PRESUPUESTO : PAGINA.A4, prims: Prim[] = [];
   const H = alturas(c);
-  const s = comp.principal ? escala(c, comp, pres) : Math.min(escala(c, comp, pres), escala(c, SOLO, pres));
+  const s = escalaFija ?? (comp.principal ? escala(c, comp, pres) : Math.min(escala(c, comp, pres), escala(c, SOLO, pres)));
   const cm = (v: number) => v * s;
   let x = (pg.ml + pg.mr) / 2 - cm(anchoFila(c, comp)) / 2 + cm(E.margen_izq_cm - E.margen_der_cm) / 2;
   const suelo = pg.h * CENTRO_VERTICAL + cm(H.techo) / 2;
