@@ -985,7 +985,7 @@
     /** En el Resumen, solo «Nuevo presupuesto» y «Fusionar»: los presupuestos son tarjetas en Documentos. */
     function pintarLista() {
       if (opts.embebido) {
-        $('#prLista').innerHTML = '<div class="ng-card-cab"><h2>Presupuestos</h2><span class="pa-btns"><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos en Documentos">Fusionar</button><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></span></div>' +
+        $('#prLista').innerHTML = '<div class="ng-card-cab"><span></span><span class="pa-btns"><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos en Documentos">Fusionar</button><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></span></div>' +
           '<p class="pa-muted" style="font-size:12px;margin:6px 0 0">Cada presupuesto es una tarjeta en «Documentos»: ahí se ve, se descarga, se cambia su estado o se abre para editarlo aquí. Marca dos o más para fusionarlos. Puede haber varios aceptados (fases, extras): se suman en las métricas.</p>';
         actualizarFus();
         return;
