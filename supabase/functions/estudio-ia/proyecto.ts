@@ -26,7 +26,7 @@ import { PLANTILLA_ADMIN, PLANTILLA_ALUMNO, type Plantilla } from '../_shared/es
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
 import { descontarSaldo, sinCredito, type EstadoAlumno } from './acceso.ts'
 import { agregado, agregadosPorProyecto } from '../_shared/estudio/aceptados.ts'
-import { aPapelera, purgar, restaurar } from './papelera.ts'
+import { aPapelera, purgar, restaurar } from '../_shared/estudio-papelera.ts'
 
 // deno-lint-ignore no-explicit-any
 type Any = any;

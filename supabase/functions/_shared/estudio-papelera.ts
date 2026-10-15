@@ -1,10 +1,11 @@
-// supabase/functions/estudio-ia/papelera.ts
+// supabase/functions/_shared/estudio-papelera.ts
 //
 // Estudio Curino · papelera (30 días). Borrar un presupuesto, un diseño o un
 // documento guarda la copia de sus filas (y de las que caen con él) en
 // estudio_papelera, borra las filas y deja sus archivos en el almacenamiento.
 // Restaurar vuelve a insertar las filas con los mismos ids. Lo caducado se
-// purga (archivos + fila) al listar la papelera o al mandar algo a ella.
+// purga (archivos + fila) cada día con pg_cron (función estudio-papelera) y,
+// además, al listar la papelera o al mandar algo a ella.
 
 // deno-lint-ignore no-explicit-any
 type Any = any;

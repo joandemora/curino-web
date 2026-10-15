@@ -44,7 +44,7 @@ import { openSansRegular, openSansBold } from '../_shared/estudio/fuentes/opensa
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
 import { numeroEnProyecto, partirNumero, incrementarSerie } from '../_shared/estudio/aceptados.ts'
 import { TIPOS_COSTE_DEF } from '../_shared/estudio/metricas.ts'
-import { aPapelera } from './papelera.ts'
+import { aPapelera } from '../_shared/estudio-papelera.ts'
 import { ENTRADAS_MODULO, puntosBaseCocina, revisarCocina, claveEncimera, claveTablero } from '../_shared/estudio/cocina-puntos.ts'
 import { PROVEEDOR_COCINA, FECHA_TARIFA_COCINA, FECHAS_HOJAS, ENCIMERAS_COCINA, HERRAJES_COCINA, CAJON_ADVANCED, CAJON_LEGRABOX, TABLEROS_COCINA, SERVICIO_COCINA, ALTOS_PUERTA, ANCHOS_PUERTA, GRUPOS_PUERTA, REVISAR_COCINA } from '../_shared/estudio/cocina-tarifa.ts'
 
