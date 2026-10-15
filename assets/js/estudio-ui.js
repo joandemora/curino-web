@@ -480,6 +480,7 @@
           .concat(rs[2].ficheros.map(function (x) { return Object.assign({ kind: 'fich' }, x); }));
         pintar();
         if (!primeraCarga && ctx.alCambiarDocs) ctx.alCambiarDocs();
+        if (primeraCarga && ctx.alDocsCargados) ctx.alDocsCargados();
         primeraCarga = false;
       }).catch(function (e) { el.querySelector('#dcLista').innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     }
@@ -663,12 +664,13 @@
     });
     // Presupuestos al final: al cambiar uno (aceptar, importe, montaje) se refrescan las cajas de arriba
     var pres = null;
-    var ctxPres = Object.assign({}, ctx, { alCambiarPres: pintarMet, alListo: function (api2) { pres = api2; } });
+    var irASeccion = function (suave) { var z = el.querySelector('#rsPres'); if (z) z.scrollIntoView({ block: 'start', behavior: suave ? 'smooth' : 'auto' }); };
+    // Enlace a la antigua pestaña Presupuesto: baja a la sección cuando ya está la lista y otra vez al cargar los documentos (empujan hacia abajo)
+    var bajarAlCargar = function () { if (ropts.irPresupuestos) irASeccion(false); };
+    var ctxPres = Object.assign({}, ctx, { alCambiarPres: pintarMet, alListo: function (api2) { pres = api2; }, alListaCargada: bajarAlCargar });
     presupuesto(el.querySelector('#rsPresCuerpo'), ctxPres, pid, { embebido: true });
-    var irASeccion = function () { var z = el.querySelector('#rsPres'); if (z) z.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
-    if (ropts.irPresupuestos) setTimeout(irASeccion, 600);
     // «Crear presupuesto» de una tarjeta: baja a la sección y abre el asistente con ese documento, sin recargar
-    var ctxDocs = Object.assign({}, ctx, { alCambiarDocs: pintarMet, abrirPresupuesto: function (preSel) { irASeccion(); if (pres) pres.nuevo(preSel); } });
+    var ctxDocs = Object.assign({}, ctx, { alCambiarDocs: pintarMet, alDocsCargados: bajarAlCargar, abrirPresupuesto: function (preSel) { irASeccion(true); if (pres) pres.nuevo(preSel); } });
     documentosProyecto(el.querySelector('#rsDocs'), ctxDocs, pid);
     // «Borrar proyecto»: al final, con confirmación escribiendo el nombre
     var pie = document.createElement('div'); pie.className = 'rs-pie';
@@ -852,7 +854,7 @@
       if (!proyecto) { $('#prLista').innerHTML = 'Proyecto no encontrado.'; return; }
       if ($('#prTitulo')) $('#prTitulo').textContent = 'Presupuestos · ' + proyecto.nombre;
       // Al entrar: solo la lista (ninguno abierto); desde «Crear presupuesto» de un documento, el asistente
-      return cargarLista(false).then(function () { if (pre) pintarNuevo(pre); });
+      return cargarLista(false).then(function () { if (pre) pintarNuevo(pre); if (ctx.alListaCargada) ctx.alListaCargada(); });
     });
     // Dentro del Resumen: «Crear presupuesto» de una tarjeta abre el asistente aquí mismo
     if (ctx.alListo) ctx.alListo({ nuevo: function (preSel) { return pintarNuevo(preSel); } });
