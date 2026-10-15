@@ -8,10 +8,10 @@
 // Sin imports de pdf-lib: el llamador pasa documento, fuentes, helpers e
 // imágenes ya incrustadas (logo/firma de la plantilla).
 
-import type { Prim } from './alzado.ts';
+import { FILA_DIBUJO, escalaFila, type Prim } from './alzado.ts';
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from './logo.ts';
 import { colorPdf, pintarPrims, type Documento, type Fuente, type FuentesPdf, type LibPdf, type Pagina } from './pdf.ts';
-import { claveDe, fechaCorta, fechaLarga, precioTxt, totales, type DocPresupuesto, type Plantilla } from './presupuesto.ts';
+import { claveDe, fechaCorta, fechaLarga, formaPagoDe, importesPlazos, precioTxt, totales, type DocPresupuesto, type Plantilla } from './presupuesto.ts';
 import { eur, importeLinea } from './tarifa.ts';
 
 export interface ImagenPdf { width: number; height: number }
@@ -143,16 +143,17 @@ export function pintarPresupuesto(
     if (conDto) txt(pg, 470, ym, `${Math.round(pt.dto_pct * 100) / 100}%`, s, NEGRO, false, 'middle');
     txt(pg, 545, ym, precioTxt(linea.importe), s, NEGRO, true, 'end');
 
-    // Dibujo(s) debajo de la partida: alzado y, si el armario tiene hoja extra (sección / planta), debajo
+    // Dibujos debajo de la partida, por filas a todo el ancho: interior + cerrado; sección + planta.
+    // Si una fila no cabe en lo que queda de página, pasa a una página nueva.
     const ds = pt.libre ? [] : o.dibujos.filter((x) => x.codigo === claveDe(pt));
-    let y0 = top + alto + 4;
+    let pgD = pg, y0 = top + alto + FILA_DIBUJO.separacion;
     const limite = MARCO.bottom - 12;
     for (const d of ds) {
-      const hMax = Math.max(ds.length > 1 ? 90 : 120, Math.min(260, (limite - y0) / (ds.length > 1 ? ds.length - ds.indexOf(d) : 1) - 4));
-      const k = Math.min(461 / d.caja.w, hMax / d.caja.h);
-      const dx = 85 + (461 - d.caja.w * k) / 2 - d.caja.x * k;
-      pintarPrims(pg, d.prims, H, f.inter, lib, { s: k, dx, dy: y0 - d.caja.y * k });
-      y0 += d.caja.h * k + 8;
+      const k = escalaFila(d.caja), h = d.caja.h * k;
+      if (y0 + h > limite) { pgD = doc.addPage([W, H]); marco(pgD, MARCO.bottom, false, false); y0 = MARCO.top + 16; }
+      const dx = FILA_DIBUJO.x0 + (FILA_DIBUJO.ancho - d.caja.w * k) / 2 - d.caja.x * k;
+      pintarPrims(pgD, d.prims, H, f.inter, lib, { s: k, dx, dy: y0 - d.caja.y * k });
+      y0 += h + FILA_DIBUJO.separacion;
     }
   });
 
@@ -160,10 +161,18 @@ export function pintarPresupuesto(
   let pg = doc.addPage([W, H]);
   let bottom = 770.4;
   const s = 6.8;
+  // Forma de pago del presupuesto: concepto, % e importe sobre el total con IVA
+  const fps = formaPagoDe(p, pl);
+  const imps = importesPlazos(fps, ivaTot.pendientes ? null : ivaTot.total);
   txt(pg, 45, 111, 'FORMA DE PAGO', s, NEGRO, true);
+  txt(pg, 330, 111, 'IMPORTE (IVA INCL.)', 5.4, GRIS_T, false, 'end');
   barra(pg, X0, 117, X1, 117.6);
-  pl.forma_pago.forEach((fp, k) => { txt(pg, 45, 125 + k * 12, fp.concepto.toUpperCase(), s); txt(pg, 235, 125 + k * 12, `${fp.pct}%`, s); });
-  let yb = 125 + pl.forma_pago.length * 12 + 6;
+  fps.forEach((fp, k) => {
+    txt(pg, 45, 125 + k * 12, fp.concepto.toUpperCase(), s);
+    txt(pg, 235, 125 + k * 12, `${String(fp.pct).replace('.', ',')}%`, s);
+    txt(pg, 330, 125 + k * 12, imps[k] === null ? 'PENDIENTE' : eur(imps[k]!), s, NEGRO, false, 'end');
+  });
+  let yb = 125 + fps.length * 12 + 6;
   if (pl.iban) {
     txt(pg, 45, yb, 'TRANSFERENCIA BANCARIA', s, NEGRO, true);
     barra(pg, X0, yb + 6, 250.9, yb + 6.6);

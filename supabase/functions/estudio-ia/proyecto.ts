@@ -60,8 +60,33 @@ export function miniaturaSvg(datos: Proyecto): string | null {
 }
 
 /** Guarda en Documentos un PDF generado en el servidor. */
+/**
+ * Documento generado de un presupuesto (PDF / Excel): si el presupuesto está en
+ * borrador, sustituye a los anteriores de la misma variante (sin variante ↔ el
+ * par cliente/interiorista se sustituyen entre sí); si está enviado o aceptado,
+ * se conservan y el nombre del nuevo lleva la fecha y la hora.
+ */
+export async function versionarDocumento(supa: Any, presupuestoId: string | null | undefined, tipo: string, variante: string | null | undefined, nombre: string): Promise<string> {
+  if (!presupuestoId) return nombre;
+  const { data: pres } = await supa.from('estudio_presupuestos').select('estado').eq('id', presupuestoId).maybeSingle();
+  if (pres && pres.estado !== 'borrador') {
+    const ahora = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date()).replace(' ', '_').replace(':', '');
+    return nombre.replace(/(\.[a-z]+)$/i, `_${ahora}$1`);
+  }
+  const variantes = variante === 'interiorista' ? ['interiorista'] : variante === 'cliente' ? ['cliente', null] : [null, 'cliente', 'interiorista'];
+  const { data: viejos } = await supa.from('estudio_documentos').select('id, path, miniatura_path, variante').eq('presupuesto_id', presupuestoId).eq('tipo', tipo);
+  const borrar = (viejos ?? []).filter((d: Any) => variantes.includes(d.variante ?? null));
+  if (borrar.length) {
+    const paths = borrar.flatMap((d: Any) => [d.path, d.miniatura_path]).filter(Boolean);
+    if (paths.length) await supa.storage.from('estudio').remove(paths);
+    await supa.from('estudio_documentos').delete().in('id', borrar.map((d: Any) => d.id));
+  }
+  return nombre;
+}
+
 export async function guardarDocumento(supa: Any, o: { proyecto_id: string; user_id: string; tipo: string; version?: number | null; numero?: string | null; nombre: string; bytes: Uint8Array; presupuesto_id?: string | null; variante?: string | null; diseno_id?: string | null }) {
   try {
+    if (o.presupuesto_id && (o.tipo === 'presupuesto_pdf' || o.tipo === 'presupuesto_xlsx')) o = { ...o, nombre: await versionarDocumento(supa, o.presupuesto_id, o.tipo, o.variante, o.nombre) };
     const path = `${o.user_id}/${o.proyecto_id}/documentos/${crypto.randomUUID()}.pdf`;
     const up = await supa.storage.from('estudio').upload(path, o.bytes, { contentType: 'application/pdf' });
     if (up.error) throw up.error;
@@ -296,8 +321,12 @@ export async function accionProyecto(action: string, ctx: {
     const path = `${proyecto.user_id}/${pid}/documentos/${crypto.randomUUID()}.xlsx`;
     const { data: s, error } = await supa.storage.from('estudio').createSignedUploadUrl(path);
     if (error) throw error;
-    await supa.from('estudio_documentos').insert({ proyecto_id: pid, user_id: proyecto.user_id, tipo, version: Number(body?.version) || null, numero: String(body?.numero || '').slice(0, 40) || null, nombre: String(body?.nombre || 'Presupuesto.xlsx').slice(0, 120), path, bytes,
-      presupuesto_id: /^[0-9a-f-]{36}$/i.test(String(body?.presupuesto_id || '')) ? body.presupuesto_id : null, variante: ['cliente', 'interiorista'].includes(body?.variante) ? body.variante : null });
+    const presupuestoId = /^[0-9a-f-]{36}$/i.test(String(body?.presupuesto_id || '')) ? body.presupuesto_id : null;
+    const variante = ['cliente', 'interiorista'].includes(body?.variante) ? body.variante : null;
+    // Borrador: sustituye al Excel anterior; enviado / aceptado: se conserva y el nuevo lleva fecha
+    const nombre = await versionarDocumento(supa, presupuestoId, tipo, variante, String(body?.nombre || 'Presupuesto.xlsx').slice(0, 100));
+    await supa.from('estudio_documentos').insert({ proyecto_id: pid, user_id: proyecto.user_id, tipo, version: Number(body?.version) || null, numero: String(body?.numero || '').slice(0, 40) || null, nombre, path, bytes,
+      presupuesto_id: presupuestoId, variante });
     return json({ path, token: s.token });
   }
   if (action === 'ficheros') {

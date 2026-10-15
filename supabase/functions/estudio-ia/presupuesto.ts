@@ -25,7 +25,7 @@
 
 import { PDFDocument, rgb, degrees } from 'https://esm.sh/pdf-lib@1.17.1'
 import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
-import { laminasPresupuesto, dibujoLamina } from '../_shared/estudio/alzado.ts'
+import { laminasPresupuesto, dibujoLamina, FILA_DIBUJO } from '../_shared/estudio/alzado.ts'
 import { medirConFuentes } from '../_shared/estudio/pdf.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from '../_shared/estudio/logo.ts'
@@ -33,7 +33,7 @@ import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tar
 import { ANCHOS, COSTADOS, EXTRAS, HERRAJES, MODELOS, PUERTAS, RECARGOS, REMATES, SUELTOS, VERSION_PUNTOS, puntosBase, type OpcionesPuntos } from '../_shared/estudio/puntos.ts'
 import {
   generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
-  claveDe, docVariante, importesNegocio, partidaLibre, lineasBloqueantes, contarSupuestos, paraCliente, type DocPresupuesto, type Partida, type Plantilla
+  claveDe, docVariante, importesNegocio, partidaLibre, lineasBloqueantes, contarSupuestos, paraCliente, formaPagoDe, formaPagoInicial, sumaPct, type DocPresupuesto, type Partida, type Plantilla
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos, proponerPartidas, type Adjunto } from '../_shared/estudio/ia.ts'
@@ -126,7 +126,7 @@ async function ibanesCurino(supa: Any): Promise<string[]> {
 }
 
 function limpiarPlantilla(d: Any, base: Plantilla): Plantilla {
-  const fp = Array.isArray(d?.forma_pago) ? d.forma_pago.slice(0, 6).map((x: Any) => ({ concepto: txt(x?.concepto, 40), pct: numOrNull(x?.pct, 0, 100) ?? 0 })).filter((x: Any) => x.concepto) : base.forma_pago;
+  const fp = Array.isArray(d?.forma_pago) ? d.forma_pago.slice(0, 10).map((x: Any) => ({ concepto: txt(x?.concepto, 60), pct: numOrNull(x?.pct, 0, 100) ?? 0 })).filter((x: Any) => x.concepto) : base.forma_pago;
   return {
     tipo: d?.tipo === 'propia' ? 'propia' : 'curino',
     empresa: txt(d?.empresa, 80), nif: txt(d?.nif, 20), direccion_1: txt(d?.direccion_1, 80), direccion_2: txt(d?.direccion_2, 80),
@@ -349,7 +349,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   const versionDatos = async (n: number) => (await supa.from('estudio_versiones').select('numero, datos').eq('proyecto_id', proyectoId).eq('numero', n).maybeSingle()).data as { numero: number; datos: Proyecto } | null;
   const respuesta = (d: DocPresupuesto | null) => ({
     id: fila?.id ?? null, numero: fila?.numero ?? d?.numero ?? null,
-    presupuesto: d, importado: d || !fila ? null : { numero: fila.datos?.numero ?? fila.numero ?? null, importe: fila.importe ?? null },
+    // Los presupuestos sin forma de pago propia muestran la de la plantilla (se guarda al guardar)
+    presupuesto: d ? { ...d, forma_pago: formaPagoDe(d, plantilla) } : null, importado: d || !fila ? null : { numero: fila.datos?.numero ?? fila.numero ?? null, importe: fila.importe ?? null },
     totales: d ? totales(d, iva) : null, importes: d ? importesNegocio(d, iva) : null,
     iva_pct: tarifa.iva_pct, tarifa_propia: tarifa.propia, version_actual: proyecto.version_actual,
     estado: fila?.estado ?? 'borrador', estado_nota: fila?.estado_nota ?? null, estado_at: fila?.estado_at ?? null,
@@ -358,7 +359,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   const cabecera = (numero: string): Omit<DocPresupuesto, 'version' | 'partidas'> => ({
     numero, fecha: hoy, atencion: proyecto.cliente_nombre || String(proyecto.nombre || '').replace(/^\d{1,4}\s*-\s*/, ''),
     cliente_nif: proyecto.cliente_nif || '', direccion_facturacion: proyecto.cliente_direccion || '',
-    proyecto: 'MOBILIARIO A MEDIDA', proyecto_2: proyecto.obra_direccion || '', validez: '30 DÍAS', seccion: ''
+    proyecto: 'MOBILIARIO A MEDIDA', proyecto_2: proyecto.obra_direccion || '', validez: '30 DÍAS', seccion: '',
+    forma_pago: formaPagoInicial(plantilla)
   });
   /**
    * N.º para un presupuesto nuevo del proyecto: la base de los suyos y la
@@ -598,7 +600,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       }
       if (typeof e.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.fecha)) d.fecha = e.fecha;
       if (e.comision && typeof e.comision === 'object') {
-        d.comision = { activa: e.comision.activa === true, pct: numOrNull(e.comision.pct, 0, 100) ?? 0, paga: e.comision.paga === 'interiorista' ? 'interiorista' : 'cliente' };
+        // Siempre paga el cliente del presupuesto, a PVP (la comisión es coste del proyecto)
+        d.comision = { activa: e.comision.activa === true, pct: numOrNull(e.comision.pct, 0, 100) ?? 0, paga: 'cliente' };
+      }
+      if (Array.isArray(e.forma_pago)) {
+        d.forma_pago = e.forma_pago.slice(0, 10).map((x: Any) => ({ concepto: txt(x?.concepto, 60), pct: numOrNull(x?.pct, 0, 100) ?? 0 })).filter((x: Any) => x.concepto || x.pct);
       }
       if (Array.isArray(e.partidas)) {
         const prev = new Map(doc.partidas.map((p) => [claveDe(p), p]));
@@ -722,6 +728,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (action === 'presupuesto_dibujos' || action === 'presupuesto_pdf') {
     const bloquean = lineasBloqueantes(doc);
     if (bloquean.length) return json({ error: `No se puede generar el presupuesto para el cliente: ${bloquean.length === 1 ? 'hay una línea' : `hay ${bloquean.length} líneas`} a 0 puntos. Revísalas en la tarifa o pon el precio de la partida a mano.`, bloqueantes: bloquean }, 409);
+    const suma = sumaPct(formaPagoDe(doc, plantilla));
+    if (Math.abs(suma - 100) > 0.001) return json({ error: `No se puede generar el presupuesto para el cliente: la forma de pago suma ${String(suma).replace('.', ',')} % y tiene que sumar 100 %.` }, 409);
   }
 
   if (action === 'presupuesto_dibujos') {
@@ -734,7 +742,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json({
       logo, plantilla, iva_pct: tarifa.iva_pct, presupuesto_id: fila.id,
       // Excel del cliente: textos sin «supuesto»; aviso (no bloquea) de cuántos valores lo son
-      presupuesto_cliente: paraCliente(doc), supuestos: contarSupuestos(doc),
+      presupuesto_cliente: paraCliente(doc), supuestos: contarSupuestos(doc), fila: FILA_DIBUJO,
       firma_url: await firmar(plantilla.firma_path), logo_url: plantilla.tipo === 'propia' ? await firmar(plantilla.logo_path) : null,
       dibujos: await dibujosDe(medir, (l, clave) => { const d = dibujoLamina(l, medir); return { codigo: clave, svg: dibujoSvg(d.prims, d.caja, css), ancho: d.caja.w, alto: d.caja.h }; })
     });

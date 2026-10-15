@@ -164,9 +164,37 @@ test('comisión que paga el cliente: facturación = PVP y comisión como coste; 
   assert.ok(docVariante(d, 'interiorista').partidas.every((p) => p.dto_pct === 15));
 });
 
-test('comisión con el interiorista comprando a neto: facturación = neto, sin coste', () => {
+test('comisión: siempre paga el cliente a PVP (un «interiorista» antiguo cuenta igual) y la comisión es coste', () => {
   const d = { ...docLibre(), comision: { activa: true, pct: 15, paga: 'interiorista' as const } };
-  assert.deepEqual(importesNegocio(d, 21), { importe: 1700, pvp: 2000, comision: 0 });
+  assert.deepEqual(importesNegocio(d, 21), { importe: 2000, pvp: 2000, comision: 300 });
+});
+
+test('forma de pago: la del presupuesto o la de la plantilla (o 50/40/10); importes con IVA que cuadran el total', async () => {
+  const { formaPagoDe, formaPagoInicial, importesPlazos, sumaPct, FORMA_PAGO_DEF } = await import('./presupuesto.ts');
+  assert.deepEqual(formaPagoInicial({ forma_pago: [] }), FORMA_PAGO_DEF);
+  const pl = { forma_pago: [{ concepto: 'Señal', pct: 30 }, { concepto: 'Final', pct: 70 }] };
+  assert.deepEqual(formaPagoDe({}, pl), pl.forma_pago);
+  assert.deepEqual(formaPagoDe({ forma_pago: [{ concepto: 'Todo', pct: 100 }] }, pl), [{ concepto: 'Todo', pct: 100 }]);
+  assert.equal(sumaPct([{ concepto: 'a', pct: 50 }, { concepto: 'b', pct: 40 }]), 90);
+  // 4.596 € + 21 % = 5.561,16 → 2.780,58 / 2.224,46 / 556,12 (el último cuadra)
+  assert.deepEqual(importesPlazos(FORMA_PAGO_DEF, 5561.16), [2780.58, 2224.46, 556.12]);
+  assert.deepEqual(importesPlazos(FORMA_PAGO_DEF, null), [null, null, null]);
+  // Un presupuesto nuevo copia la de la plantilla
+  const d = generarPresupuesto({ proyecto: ejemplo(), version: 1, tarifa: TARIFA_PENDIENTE, plantilla: { ...PLANTILLA_ADMIN, ...pl }, nombre: 'X', hoy: '2026-10-15' });
+  assert.deepEqual(d.forma_pago, pl.forma_pago);
+});
+
+test('dibujos del presupuesto en filas: interior + cerrado juntos y sección + planta en otra, cotas ≥ 5 pt', async () => {
+  const { laminasPresupuesto, dibujoLamina, escalaFila, COTA_MIN_PT } = await import('./alzado.ts');
+  const p = ejemplo();
+  p.armarios.forEach((a) => { a.vistas = ['lateral', 'planta']; });
+  const ls = laminasPresupuesto(p);
+  for (const a of p.armarios) assert.equal(ls.filter((l) => l.codigo === a.codigo).length, 2, a.codigo);
+  for (const l of ls) {
+    const d = dibujoLamina(l), k = escalaFila(d.caja);
+    const cotas = d.prims.filter((x) => x.k === 'text' && (x as { size: number }).size === 7.5);
+    if (cotas.length) assert.ok(7.5 * k >= COTA_MIN_PT - 0.05, `${l.codigo} p${l.pagina}: cotas de ${(7.5 * k).toFixed(2)} pt`);
+  }
 });
 
 test('partida sin precio: importes pendientes', () => {
