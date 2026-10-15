@@ -62,26 +62,52 @@ export function cobrosPorDefecto(formaPago: { concepto: string; pct: number }[],
  * Sin v2: reglas de antes (facturas de proveedor + costes manuales).
  */
 /**
- * Venta prevista de un proyecto sin presupuesto aceptado: el importe del último
- * enviado o, si no hay ninguno enviado, del último borrador (solo para la ficha;
- * no cuenta en «Mi negocio»). Con coste previsto, margen previsto = venta −
- * (costes + coste previsto).
+ * Cajas de la ficha del proyecto (solo la ficha; «Mi negocio» sigue con
+ * metricasProyecto):
+ * - importe presupuestado = suma de los aceptados; sin aceptados, el último
+ *   enviado (o el último borrador), marcado «previsto», con su n.º;
+ * - coste = real (facturas de proveedor, costes manuales en proyectos sin v2 y
+ *   comisión de los aceptados) + previsto (presupuestos de proveedor sin factura
+ *   que los sustituya), con su desglose;
+ * - margen = importe − coste; no fiable si falta importe, no hay costes o hay
+ *   alguno sin importe;
+ * - cerrado = hay aceptados, todos «Montado» y ningún presupuesto de proveedor
+ *   pendiente de factura. Mientras no lo esté, las cifras son «previstas».
  */
-export function ventaPrevista(
-  pres: { numero?: string | null; estado: string; importe?: number | string | null; enviado_at?: string | null; estado_at?: string | null; updated_at?: string | null; datos?: { numero?: string } | null }[],
-  costes: number, costePrevisto: number
-): { venta_prevista: { importe: number; numero: string | null } | null; margen_previsto: number | null; margen_previsto_pct: number | null } {
-  const vacio = { venta_prevista: null, margen_previsto: null, margen_previsto_pct: null };
-  if (pres.some((p) => p.estado === 'aceptado')) return vacio;
-  const ultimo = (estado: string, fecha: (p: typeof pres[number]) => string) =>
-    pres.filter((p) => p.estado === estado && p.importe != null && Number(p.importe) > 0).sort((a, b) => fecha(b).localeCompare(fecha(a)))[0];
-  const p = ultimo('enviado', (x) => String(x.enviado_at ?? x.estado_at ?? x.updated_at ?? '')) ?? ultimo('borrador', (x) => String(x.updated_at ?? ''));
-  if (!p) return vacio;
-  const venta = r2(Number(p.importe));
-  const venta_prevista = { importe: venta, numero: p.numero || p.datos?.numero || null };
-  if (!(costePrevisto > 0)) return { ...vacio, venta_prevista };
-  const margen = r2(venta - costes - costePrevisto);
-  return { venta_prevista, margen_previsto: margen, margen_previsto_pct: venta ? Math.round((margen / venta) * 1000) / 10 : null };
+export interface PresupuestoFicha {
+  numero?: string | null; estado: string; importe?: number | string | null; comision_importe?: number | string | null; montado?: boolean | null;
+  enviado_at?: string | null; estado_at?: string | null; updated_at?: string | null; datos?: { numero?: string } | null;
+}
+export function resumenFicha(o: { presupuestos: PresupuestoFicha[]; ficheros: Fichero[]; costes: Coste[]; v2: boolean }) {
+  const aceptados = o.presupuestos.filter((p) => p.estado === 'aceptado');
+  const numeroDe = (p: PresupuestoFicha) => p.numero || p.datos?.numero || null;
+  let importe: number | null = null, numero: string | null = null, origen: 'aceptados' | 'enviado' | 'borrador' | null = null;
+  if (aceptados.length) { importe = suma(aceptados.map((p) => Number(p.importe ?? 0))); origen = 'aceptados'; numero = aceptados.length === 1 ? numeroDe(aceptados[0]) : null; }
+  else {
+    const ultimo = (estado: string, fecha: (p: PresupuestoFicha) => string) =>
+      o.presupuestos.filter((p) => p.estado === estado && p.importe != null && Number(p.importe) > 0).sort((a, b) => fecha(b).localeCompare(fecha(a)))[0];
+    const env = ultimo('enviado', (x) => String(x.enviado_at ?? x.estado_at ?? x.updated_at ?? ''));
+    const p = env ?? ultimo('borrador', (x) => String(x.updated_at ?? ''));
+    if (p) { importe = r2(Number(p.importe)); numero = numeroDe(p); origen = env ? 'enviado' : 'borrador'; }
+  }
+  const facturado = suma(o.ficheros.filter((f) => f.tipo === 'factura_cliente').map((f) => Number(f.base ?? 0)));
+  const facturas = o.ficheros.filter((f) => f.tipo === 'factura_proveedor');
+  const pendientes = o.ficheros.filter((f) => f.tipo === 'presupuesto_proveedor' && !f.sustituido_por);
+  const comision = suma(aceptados.map((p) => Number(p.comision_importe ?? 0)));
+  const real = r2(suma(facturas.filter((f) => !sinImporte(f, o.v2)).map((f) => Number(f.base))) + (o.v2 ? 0 : suma(o.costes.map((c) => c.importe))) + comision);
+  const previsto = suma(pendientes.filter((f) => !sinImporte(f, o.v2)).map((f) => Number(f.base)));
+  const coste = r2(real + previsto);
+  const nSinImporte = [...facturas, ...pendientes].filter((f) => sinImporte(f, o.v2)).length;
+  const hayCostes = facturas.length + pendientes.length + (o.v2 ? 0 : o.costes.length) + (comision > 0 ? 1 : 0) > 0;
+  const margen = importe === null ? null : r2(importe - coste);
+  const margenPct = margen === null || !importe ? null : Math.round((margen / importe) * 1000) / 10;
+  const motivo = !importe ? 'sin importe presupuestado' : !hayCostes ? 'sin costes' : nSinImporte ? (nSinImporte === 1 ? '1 coste sin importe' : `${nSinImporte} costes sin importe`) : null;
+  const cerrado = aceptados.length > 0 && aceptados.every((p) => !!p.montado) && pendientes.length === 0;
+  return {
+    importe, importe_numero: numero, importe_origen: origen, aceptados: aceptados.length, facturado_cliente: facturado || null,
+    coste, coste_real: real, coste_previsto: previsto, costes_sin_importe: nSinImporte,
+    margen, margen_pct: margenPct, fiable: motivo === null, motivo, cerrado
+  };
 }
 
 export function metricasProyecto(o: {

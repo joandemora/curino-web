@@ -199,7 +199,8 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .pj-vacio{grid-column:1/-1}
 .pj-cab{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:14px}
 .pj-cab h1{font-family:'Schibsted Grotesk','Open Sans',Arial,sans-serif;font-weight:800;font-size:22px;margin:0;flex:1;min-width:200px}
-.pj-volver{color:#5f5b52;text-decoration:none;font-size:13px}
+.pj-volver{color:#5f5b52;text-decoration:none;font-size:22px;line-height:1;padding:2px 8px 4px;border-radius:8px}
+.pj-volver:hover{background:#eceae4;color:#161616}
 .pj-tabs{display:inline-flex;flex-wrap:wrap;background:#fff;border:1px solid #e5e2da;border-radius:999px;padding:3px}
 .pj-tabs a{font-size:13px;padding:6px 14px;border-radius:999px;color:#5f5b52;text-decoration:none}
 .pj-tabs a.on{background:#161616;color:#fff}
@@ -286,7 +287,7 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .ng-incompletos li{opacity:.8}
 
 /* Documentos unificados: filtros por tipo */
-.dc-filtros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 10px}
+.dc-filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0 18px}
 .dc-filtros button{border:1px solid #d9d3c8;background:#fff;border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;color:#161616}
 .dc-filtros button.on{background:#161616;color:#fff;border-color:#161616}
 .dc-filtros button.vacio:not(.on){color:#b9b6ad}
@@ -454,9 +455,9 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 
 .rs-mont-f{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;padding:3px 0}
 .rs-mont-f input[type=date]{font-size:12.5px;padding:2px 4px}
-.rs-pie{display:flex;justify-content:flex-end;margin:14px 0 6px}
-.rs-borrar{background:none;border:0;color:#b42318;font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;text-decoration:underline;text-underline-offset:2px}
-.rs-borrar:hover{color:#8a1a12}
+.rs-pie{display:flex;justify-content:flex-end;margin:22px 0 10px}
+.rs-borrar{background:#b42318;border:0;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:9px 16px;border-radius:8px}
+.rs-borrar:hover{background:#8a1a12}
 .rb-ok:not(:disabled){background:#b42318;border-color:#b42318;color:#fff}
 
 /* Resumen: cajas alineadas arriba; «Montaje» crece hacia abajo */
@@ -465,3 +466,13 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .rs-kpi-mont .rs-mont-f b{font-size:12.5px;line-height:1.4}
 .rs-pres{margin-top:14px}
 .rs-pres-h{margin:0 0 8px;font-size:18px}
+
+/* Documentos: franja con «Nuevo presupuesto» / «Fusionar» y la zona de archivos en una línea (2026-10-15) */
+.dc-franja{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.dc-franja .pa-btns{display:flex;gap:8px;flex:none}
+.dc-drop.dc-drop-mini{flex:1;min-width:240px;flex-direction:row;gap:8px;padding:0 12px;height:34px;border-width:1px;border-radius:8px;margin-top:0;justify-content:flex-start}
+.dc-drop.dc-drop-mini b{font-size:12.5px;font-weight:500;color:#5f5b52;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-drop.dc-drop-mini .dc-drop-ico{font-size:15px}
+#dcPresZona:not(:empty){margin-top:16px}
+/* Etiqueta «previsto» en las cajas mientras el proyecto no esté cerrado */
+.rs-prev{font-style:normal;font-size:10.5px;font-weight:600;color:#8a6234;background:#f6efe2;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}

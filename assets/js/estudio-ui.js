@@ -110,7 +110,7 @@
     var irPresupuestos = tab === 'presupuesto';
     if (tab === 'archivos' || tab === 'documentos' || tab === 'metricas' || tab === 'presupuesto') tab = 'resumen';
     var TABS = [['resumen', 'Resumen'], ['diseno', 'Diseño']];
-    el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
+    el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '" title="Proyectos" aria-label="Volver a Proyectos">←</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
       '</nav></div><div id="pjCuerpo"></div></div>';
     // Cabecera: solo el nombre (el montaje está en el bloque «Montaje» del Resumen; «Borrar proyecto», al final del Resumen)
@@ -384,13 +384,16 @@
     var supa = ctx.supa, items = [], cola = [];
     var tiposCoste = [], v2 = true, primeraCarga = true;
     el.innerHTML = '<div class="ng-card"><div class="ng-card-cab"><h2>Documentos</h2><span class="pa-btns"><span class="pa-muted" id="arUso" style="font-size:12px"></span><button type="button" class="pa-btn" id="dcCoste">+ Coste sin archivo</button></span></div>' +
-      '<label class="dc-drop" id="dcDrop"><input type="file" id="dcFile" multiple accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" hidden>' +
-      '<span class="dc-drop-ico">⇪</span><b>Arrastra aquí tus archivos o pulsa para seleccionarlos</b><small>PDF, fotos o Excel · varios a la vez · te proponemos el tipo de cada uno</small></label>' +
+      // Una sola franja: «Nuevo presupuesto» y «Fusionar» (#prLista, los pinta presupuesto()) y la zona de archivos en pequeño
+      '<div class="dc-franja">' + (ctx.conPresupuestos ? '<span id="prLista" class="pa-btns"></span>' : '') +
+      '<label class="dc-drop dc-drop-mini" id="dcDrop" title="PDF, fotos o Excel · varios a la vez · te proponemos el tipo de cada uno"><input type="file" id="dcFile" multiple accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls" hidden>' +
+      '<span class="dc-drop-ico">⇪</span><b>Arrastra aquí tus archivos o pulsa para seleccionarlos</b></label></div>' +
       '<div id="dcCola"></div>' +
       '<div class="dc-filtros" id="dcFiltros">' + [['', 'Todo']].concat(Object.keys(NOM_TIPO).map(function (k) { return [k, NOM_TIPO[k]]; })).map(function (f) {
         return '<button type="button" data-f="' + f[0] + '"' + (f[0] === filtroDoc.tipo ? ' class="on"' : '') + (f[0] ? ' style="--c:' + COL_TIPO[f[0]] + '"' : '') + '>' + (f[0] ? '<i></i>' : '') + f[1] + '</button>';
       }).join('') + '<select id="dcOrden"><option value="reciente">Más recientes</option><option value="antiguo">Más antiguos</option></select></div>' +
-      '<div id="arMsg" class="pr-msg"></div><div class="dc-grid" id="dcLista"><p class="pa-muted">Cargando…</p></div></div>';
+      '<div id="arMsg" class="pr-msg"></div><div class="dc-grid" id="dcLista"><p class="pa-muted">Cargando…</p></div>' +
+      (ctx.conPresupuestos ? '<div id="dcPresZona"></div>' : '') + '</div>';
     el.querySelector('#dcOrden').value = filtroDoc.orden;
     var msg = function (t, tipo) { var m = el.querySelector('#arMsg'); m.className = 'pr-msg ' + (tipo || ''); m.textContent = t || ''; };
     var grupo = function (x) { return x.kind === 'pres' ? 'presupuesto' : x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? (x.tipo === 'alzados_pdf' ? 'diseno' : 'presupuesto') : x.tipo; };
@@ -676,7 +679,7 @@
       if (a === 'borrar') {
         if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro?'; b.classList.add('on'); return; }
         var accion = x.kind === 'diseno' ? { action: 'diseno_borrar', proyecto_id: pid, diseno_id: x.id } : x.kind === 'doc' ? { action: 'doc_borrar', id: x.id } : { action: 'fichero_borrar', id: x.id };
-        api(ctx, accion).then(function () { msg('Movido a la papelera (se puede restaurar durante 30 días)', 'ok'); if (ctx.alPapelera) ctx.alPapelera(); if (ctx.alCambiarDocs) ctx.alCambiarDocs(); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
+        api(ctx, accion).then(function () { msg('Borrado', 'ok'); if (ctx.alCambiarDocs) ctx.alCambiarDocs(); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
       }
     });
     cargar();
@@ -686,8 +689,8 @@
   // ── Resumen del proyecto: métricas (arriba) + documentos (debajo) ──
   function resumenProyecto(el, ctx, pid, ropts) {
     ropts = ropts || {};
-    el.innerHTML = '<div class="ng-card rs-met" id="rsMet"><p class="pa-muted">Cargando…</p></div><div id="rsDocs"></div>' +
-      '<section class="ng-card rs-pres" id="rsPres"><h2 class="rs-pres-h">Presupuestos</h2><div id="rsPresCuerpo"></div></section>';
+    // Cajas de métricas y Documentos (con «Nuevo presupuesto» / «Fusionar» en su franja y el editor debajo de las tarjetas)
+    el.innerHTML = '<div class="ng-card rs-met" id="rsMet"><p class="pa-muted">Cargando…</p></div><div id="rsDocs"></div>';
     var pintarMet = function () {
       return api(ctx, { action: 'metricas_proyecto', proyecto_id: pid }).then(function (m) {
         var z = el.querySelector('#rsMet'); if (!z) return;
@@ -696,14 +699,18 @@
         var nDocs = (m.costes_por_tipo || []).length;
         var tipos = (m.costes_por_tipo || []).filter(function (c) { return c.importe > 0; });
         var maxT = Math.max.apply(null, tipos.map(function (c) { return c.importe; }).concat([1]));
+        // Cajas: importe presupuestado, coste (real + previsto), margen; «previsto» mientras el proyecto no esté cerrado
+        var R = m.resumen || {}, prev = R.cerrado ? '' : ' <em class="rs-prev">previsto</em>';
+        var origenR = R.importe_origen === 'aceptados' ? (R.aceptados > 1 ? 'suma de ' + R.aceptados + ' presupuestos aceptados' : 'presupuesto aceptado' + (R.importe_numero ? ' · ' + R.importe_numero : ''))
+          : R.importe_origen === 'enviado' ? 'sin aceptado · último enviado: ' + (R.importe_numero || '') : R.importe_origen === 'borrador' ? 'sin aceptado · último borrador: ' + (R.importe_numero || '') : 'sin presupuestos';
+        var pctR = R.margen_pct == null ? '' : ' · ' + numOut(R.margen_pct) + ' %';
         z.innerHTML =
           '<div class="rs-kpis">' +
-          '<div class="rs-kpi"><span>Facturación</span><b>' + eur(m.facturacion || 0) + '</b><small>' + esc(origen) + '</small>' +
-            (m.venta_prevista ? '<small class="rs-previsto" title="Sin presupuesto aceptado: importe del último enviado (o del último borrador). No cuenta en la facturación ni en «Mi negocio»">Venta prevista: ' + eur(m.venta_prevista.importe) + (m.venta_prevista.numero ? ' · ' + esc(m.venta_prevista.numero) : '') + '</small>' : '') + '</div>' +
-          '<div class="rs-kpi"><span>Coste total</span><b>' + eur(m.costes || 0) + '</b><small>' + (m.costes_sin_importe ? '<em class="rs-mal">' + m.costes_sin_importe + (m.costes_sin_importe === 1 ? ' coste' : ' costes') + ' sin importe</em>' : m.hay_costes ? 'documentos de coste' : 'sin documentos de coste') + '</small>' +
-            (m.coste_previsto ? '<small class="rs-previsto" title="Presupuestos de proveedor de un proyecto sin presupuesto aceptado: no cuentan como coste ni en el margen">Coste previsto: ' + eur(m.coste_previsto) + '</small>' : '') + '</div>' +
-          '<div class="rs-kpi"><span>Margen</span><b class="' + (m.margen != null && m.margen < 0 ? 'rs-mal' : '') + '">' + (m.margen == null ? '—' : eur(m.margen)) + pct + '</b><small>' + (m.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(m.motivo || '') + '</em>') + '</small>' +
-            (m.margen_previsto != null ? '<small class="rs-previsto" title="Venta prevista − costes (incluido el coste previsto). No cuenta en «Mi negocio»">Margen previsto: ' + eur(m.margen_previsto) + (m.margen_previsto_pct != null ? ' · ' + numOut(m.margen_previsto_pct) + ' %' : '') + '</small>' : '') + '</div>' +
+          '<div class="rs-kpi"><span>Importe presupuestado' + prev + '</span><b>' + (R.importe == null ? '—' : eur(R.importe)) + '</b><small>' + esc(origenR) + '</small>' +
+            (R.facturado_cliente ? '<small class="rs-previsto">Facturado a cliente: ' + eur(R.facturado_cliente) + '</small>' : '') + '</div>' +
+          '<div class="rs-kpi"><span>Coste' + prev + '</span><b>' + eur(R.coste || 0) + '</b><small>Real ' + eur(R.coste_real || 0) + ' · previsto ' + eur(R.coste_previsto || 0) + '</small>' +
+            (R.costes_sin_importe ? '<small><em class="rs-mal">' + R.costes_sin_importe + (R.costes_sin_importe === 1 ? ' coste' : ' costes') + ' sin importe</em></small>' : '') + '</div>' +
+          '<div class="rs-kpi"><span>Margen' + prev + '</span><b class="' + (R.margen != null && R.margen < 0 ? 'rs-mal' : '') + '">' + (R.margen == null ? '—' : eur(R.margen)) + pctR + '</b><small>' + (R.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(R.motivo || '') + '</em>') + '</small></div>' +
           // Montaje: una línea por presupuesto aceptado (n.º · fecha prevista · Montado · fecha real), se guarda en ese presupuesto
           '<div class="rs-kpi rs-kpi-mont"><span>Montaje</span>' + ((m.montajes || []).filter(function (x) { return x.id; }).length ? m.montajes.filter(function (x) { return x.id; }).map(function (x) {
             return '<div class="rs-mont-f" data-mpr="' + x.id + '"><b>' + esc(x.numero || 'Aceptado') + '</b>' +
@@ -725,55 +732,24 @@
       api(ctx, body).then(pintarMet).then(function () { var mm = el.querySelector('#rsMontMsg'); if (mm) { mm.className = 'pr-msg ok'; mm.textContent = 'Guardado'; } })
         .catch(function (err) { alert(err.message); });
     });
-    // Presupuestos al final: al cambiar uno (aceptar, importe, montaje) se refrescan las cajas de arriba
+    // Presupuestos dentro de Documentos: al cambiar uno (aceptar, importe, montaje) se refrescan las cajas de arriba
     var pres = null;
-    var irASeccion = function (suave) { var z = el.querySelector('#rsPres'); if (z) z.scrollIntoView({ block: 'start', behavior: suave ? 'smooth' : 'auto' }); };
+    var irASeccion = function (suave) { var z = el.querySelector('#dcPresZona'); if (z) z.scrollIntoView({ block: 'start', behavior: suave ? 'smooth' : 'auto' }); };
     // Enlace a la antigua pestaña Presupuesto: baja a la sección cuando ya está la lista y otra vez al cargar los documentos (empujan hacia abajo)
     var bajarAlCargar = function () { if (ropts.irPresupuestos) irASeccion(false); };
     var docsApi = null;
-    var ctxPres = Object.assign({}, ctx, { alCambiarPres: function () { pintarMet(); if (docsApi) docsApi.cargar(); }, alListo: function (api2) { pres = api2; }, alListaCargada: bajarAlCargar, alPapelera: function () { pintarPapelera(); } });
-    presupuesto(el.querySelector('#rsPresCuerpo'), ctxPres, pid, { embebido: true });
-    // «Crear presupuesto» de una tarjeta: baja a la sección y abre el asistente con ese documento, sin recargar
-    var ctxDocs = Object.assign({}, ctx, { alCambiarDocs: pintarMet, alDocsCargados: bajarAlCargar, abrirPresupuesto: function (preSel) { irASeccion(true); if (pres) pres.nuevo(preSel); },
-      alDocsListo: function (a) { docsApi = a; }, alFusMarcados: function () { if (pres) pres.actualizarFus(); }, alPapelera: function () { pintarPapelera(); },
+    var ctxPres = Object.assign({}, ctx, { alCambiarPres: function () { pintarMet(); if (docsApi) docsApi.cargar(); }, alListo: function (api2) { pres = api2; }, alListaCargada: bajarAlCargar });
+    // «Crear presupuesto» de una tarjeta: abre el asistente debajo de las tarjetas, sin recargar
+    var ctxDocs = Object.assign({}, ctx, { conPresupuestos: true, alCambiarDocs: pintarMet, alDocsCargados: bajarAlCargar, abrirPresupuesto: function (preSel) { irASeccion(true); if (pres) pres.nuevo(preSel); },
+      alDocsListo: function (a) { docsApi = a; }, alFusMarcados: function () { if (pres) pres.actualizarFus(); },
       editarPresupuesto: function (id) { if (pres) pres.abrir(id); }, duplicarPresupuesto: function (id) { if (pres) pres.duplicar(id); }, borrarPresupuesto: function (x) { if (pres) pres.borrar(x); } });
+    // Primero Documentos (crea la franja con los botones y la zona del editor) y después el presupuesto
     documentosProyecto(el.querySelector('#rsDocs'), ctxDocs, pid);
+    presupuesto(el.querySelector('#dcPresZona'), ctxPres, pid, { embebido: true });
     // «Borrar proyecto»: al final, con confirmación escribiendo el nombre
     var pie = document.createElement('div'); pie.className = 'rs-pie';
-    pie.innerHTML = '<button type="button" class="pa-btn" id="rsPapelera">Papelera</button><button type="button" class="rs-borrar">Borrar proyecto</button>';
+    pie.innerHTML = '<button type="button" class="rs-borrar">Borrar proyecto</button>';
     el.appendChild(pie);
-    // Papelera: lo borrado (presupuestos, diseños, documentos) se puede restaurar durante 30 días
-    function pintarPapelera() {
-      return api(ctx, { action: 'papelera', proyecto_id: pid }).then(function (d) { var b = pie.querySelector('#rsPapelera'); var n = (d.papelera || []).length; b.textContent = 'Papelera' + (n ? ' (' + n + ')' : ''); return d.papelera || []; }).catch(function () { return []; });
-    }
-    pintarPapelera();
-    pie.querySelector('#rsPapelera').addEventListener('click', function () {
-      var NOM = { presupuesto: 'Presupuesto', diseno: 'Diseño', documento: 'Documento', fichero: 'Archivo' };
-      var m = document.createElement('div'); m.className = 'eu-modal';
-      m.innerHTML = '<div class="eu-modal-caja" style="max-width:620px"><h2>Papelera</h2><p class="pa-muted" style="font-size:13px;margin:4px 0 10px">Lo borrado se guarda 30 días; después se borra definitivamente.</p><div id="ppLista"><p class="pa-muted">Cargando…</p></div><span class="pr-msg" id="ppMsg"></span><div class="eu-modal-bot"><button class="pa-btn" data-pp="cerrar">Cerrar</button></div></div>';
-      document.body.appendChild(m);
-      var pintarPp = function () {
-        return pintarPapelera().then(function (xs) {
-          m.querySelector('#ppLista').innerHTML = xs.length ? '<table class="pr-tabla"><tbody>' + xs.map(function (x) {
-            var dias = Math.max(0, Math.ceil((new Date(x.caduca_at) - new Date()) / 86400000));
-            return '<tr><td><span class="pr-tag">' + (NOM[x.tipo] || x.tipo) + '</span> <b>' + esc(x.nombre) + '</b><br><small class="pa-muted">Borrado el ' + dia(String(x.borrado_at).slice(0, 10)) + ' · se borra definitivamente en ' + dias + (dias === 1 ? ' día' : ' días') + '</small></td><td class="pr-acc"><button class="pa-btn" data-restaurar="' + x.id + '">Restaurar</button></td></tr>';
-          }).join('') + '</tbody></table>' : '<p class="pa-muted">La papelera está vacía.</p>';
-        });
-      };
-      pintarPp();
-      m.addEventListener('click', function (e) {
-        var t = e.target;
-        if (t === m || t.dataset.pp === 'cerrar') return m.remove();
-        if (t.dataset.restaurar) {
-          t.disabled = true; t.textContent = 'Restaurando…';
-          api(ctx, { action: 'papelera_restaurar', id: t.dataset.restaurar }).then(function (r) {
-            var q = m.querySelector('#ppMsg'); q.className = 'pr-msg ok'; q.textContent = 'Restaurado: ' + (r.nombre || '');
-            pintarMet(); if (docsApi) docsApi.cargar();
-            return pintarPp();
-          }).catch(function (err) { t.disabled = false; t.textContent = 'Restaurar'; var q = m.querySelector('#ppMsg'); q.className = 'pr-msg err'; q.textContent = err.message; });
-        }
-      });
-    });
     pie.querySelector('.rs-borrar').addEventListener('click', function () {
       ctx.supa.from('estudio_proyectos').select('nombre').eq('id', pid).maybeSingle().then(function (r) {
         var nombre = (r.data && r.data.nombre) || '';
@@ -945,7 +921,9 @@
     var supa = ctx.supa, proyecto, doc = null, iva = 21, versionActual = 0, ocupado = false;
     var lista = [], info = { versiones: [], disenos: [], documentos: [], siguiente: '' }, sel = null;
     var pre = null; try { pre = JSON.parse(sessionStorage.getItem(CLAVE_PRE) || 'null'); sessionStorage.removeItem(CLAVE_PRE); } catch (e) { /* */ }
-    el.innerHTML = (opts.embebido ? '<p id="prSub" class="pa-muted" style="margin:0 0 8px"></p>' : '<div class="pa-hero"><div><h1 id="prTitulo">Presupuestos</h1><p id="prSub" class="pa-muted"></p></div></div>') +
+    // Embebido en el Resumen: los botones van en la franja de Documentos (#prLista ya existe) y aquí el asistente y el editor
+    el.innerHTML = opts.embebido ? '<p id="prSub" class="pa-muted" style="margin:12px 0 6px"></p><div class="pr-card" id="prNuevo" hidden></div><div id="prZona"></div>'
+      : '<div class="pa-hero"><div><h1 id="prTitulo">Presupuestos</h1><p id="prSub" class="pa-muted"></p></div></div>' +
       '<div class="pr-card" id="prLista"><p class="pa-muted">Cargando…</p></div><div class="pr-card" id="prNuevo" hidden></div><div id="prZona"></div>';
     supa.from('estudio_proyectos').select('*').eq('id', pid).maybeSingle().then(function (r) {
       proyecto = r && r.data;
@@ -981,14 +959,17 @@
       return leerLista().then(function () {
         pintarLista();
         if (reabrir && sel) return abrir(sel);
-        if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = !lista.length ? 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.' : opts.embebido ? '' : 'Abre un presupuesto de la lista o crea uno nuevo.'; }
+        if (!sel) { $('#prZona').innerHTML = ''; $('#prSub').textContent = opts.embebido ? '' : !lista.length ? 'Aún no hay presupuestos. Crea el primero desde tus documentos (diseños incluidos) o en blanco.' : 'Abre un presupuesto de la lista o crea uno nuevo.'; }
       });
     }
     /** En el Resumen, solo «Nuevo presupuesto» y «Fusionar»: los presupuestos son tarjetas en Documentos. */
     function pintarLista() {
       if (opts.embebido) {
-        $('#prLista').innerHTML = '<div class="ng-card-cab"><span></span><span class="pa-btns"><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos en Documentos">Fusionar</button><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></span></div>' +
-          '<p class="pa-muted" style="font-size:12px;margin:6px 0 0">Cada presupuesto es una tarjeta en «Documentos»: ahí se ve, se descarga, se cambia su estado o se abre para editarlo aquí. Marca dos o más para fusionarlos. Puede haber varios aceptados (fases, extras): se suman en las métricas.</p>';
+        var zl = $('#prLista'); if (!zl) return;
+        zl.innerHTML = '<button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos en Documentos">Fusionar</button>';
+        // Los botones están fuera de este componente: se enlazan aquí
+        zl.querySelector('#prNuevoBtn').onclick = function () { pintarNuevo(null); };
+        zl.querySelector('#prFusionar').onclick = fusionarMarcados;
         actualizarFus();
         return;
       }
@@ -1061,8 +1042,8 @@
       if (!x) return;
       var acept = x.estado === 'aceptado', m = document.createElement('div'); m.className = 'eu-modal';
       m.innerHTML = '<form class="eu-modal-caja"><h2>Borrar presupuesto ' + esc(x.numero || '') + '</h2>' +
-        (acept ? '<p class="pr-nota" style="font-size:13px">Es el presupuesto <b>aceptado</b>: mientras esté en la papelera, el proyecto se queda sin su facturación en las métricas.</p>' : '') +
-        '<p class="pa-muted" style="font-size:13px">Va a la papelera con sus PDF y Excel: se puede restaurar durante 30 días.</p>' +
+        (acept ? '<p class="pr-nota" style="font-size:13px">Es el presupuesto <b>aceptado</b>: al borrarlo el proyecto se queda sin su facturación en las métricas y se quitan los plazos pendientes de cobro.</p>' : '') +
+        '<p class="pa-muted" style="font-size:13px">Se borran también sus PDF y Excel. No se puede deshacer.</p>' +
         (acept ? '<label style="font-size:13px;display:block;margin:8px 0"><input type="checkbox" id="bpOk"> Entiendo que afecta a facturación y métricas</label>' : '') +
         '<div class="eu-modal-bot"><button type="button" class="pa-btn" data-bp="no">Cancelar</button><button type="submit" class="pa-btn primary pr-borrar-ok">Borrar</button></div></form>';
       document.body.appendChild(m);
@@ -1072,7 +1053,7 @@
         if (acept && !m.querySelector('#bpOk').checked) { m.querySelector('#bpOk').parentNode.style.color = '#b42318'; return; }
         var b = m.querySelector('.pr-borrar-ok'); b.disabled = true; b.textContent = 'Borrando…';
         api(ctx, { action: 'presupuesto_borrar', presupuesto_id: x.id, confirmar_aceptado: acept })
-          .then(function () { m.remove(); if (sel === x.id) { sel = null; doc = null; $('#prZona').innerHTML = ''; } if (ctx.alPapelera) ctx.alPapelera(); return refrescarLista(); })
+          .then(function () { m.remove(); if (sel === x.id) { sel = null; doc = null; $('#prZona').innerHTML = ''; } return refrescarLista(); })
           .catch(function (err) { b.disabled = false; b.textContent = 'Borrar'; alert(err.message); });
       });
     }
@@ -1254,6 +1235,14 @@
     });
 
     function guardar() { return api(ctx, { action: 'presupuesto_guardar', presupuesto_id: sel, datos: leer() }).then(function (d) { cargar(d); return d; }); }
+    /** Fusiona en uno nuevo los presupuestos marcados (en las tarjetas de Documentos). */
+    function fusionarMarcados() {
+      var ids = Array.prototype.map.call(document.querySelectorAll('[data-fus]:checked'), function (c) { return c.dataset.fus; });
+      if (ids.length < 2) return;
+      return bloquear(function () {
+        return api(ctx, { action: 'presupuesto_fusionar', proyecto_id: pid, ids: ids }).then(function (d) { sel = d.id; if (ctx.alCambiarPres) ctx.alCambiarPres(); return cargarLista(true).then(function () { return 'Fusionados ' + (d.fusionados || []).join(' + ') + ' en ' + (d.numero || ''); }); });
+      }, 'Fusionando…');
+    }
     function bloquear(fn, t) {
       if (ocupado) return; ocupado = true;
       var m = $('#prMsg') || $('#pnMsg'); if (m) { m.className = 'pr-msg pr-trab'; m.textContent = t; }
@@ -1278,13 +1267,7 @@
       if (t.dataset.cerrar) { sel = null; doc = null; nVista++; $('#prZona').innerHTML = ''; pintarLista(); return; }
       if (t.dataset.ver) { var dos = el.querySelector('.pr-dos'); if (dos) dos.dataset.modo = t.dataset.ver; el.querySelectorAll('[data-ver]').forEach(function (b) { b.classList.toggle('on', b === t); }); return; }
       if (t.dataset.borrarPr) return borrarPresupuesto(lista.filter(function (x) { return x.id === t.dataset.borrarPr; })[0]);
-      if (id === 'prFusionar') {
-        var ids = Array.prototype.map.call(document.querySelectorAll('[data-fus]:checked'), function (c) { return c.dataset.fus; });
-        if (ids.length < 2) return;
-        return bloquear(function () {
-          return api(ctx, { action: 'presupuesto_fusionar', proyecto_id: pid, ids: ids }).then(function (d) { sel = d.id; if (ctx.alCambiarPres) ctx.alCambiarPres(); return cargarLista(true).then(function () { return 'Fusionados ' + (d.fusionados || []).join(' + ') + ' en ' + (d.numero || ''); }); });
-        }, 'Fusionando…');
-      }
+      if (id === 'prFusionar') return fusionarMarcados();
       if (t.dataset.duplicar) return bloquear(function () {
         return api(ctx, { action: 'presupuesto_duplicar', presupuesto_id: t.dataset.duplicar }).then(function (d) { sel = d.id; return cargarLista(true).then(function () { return 'Duplicado como ' + (d.numero || ''); }); });
       }, 'Duplicando…');
