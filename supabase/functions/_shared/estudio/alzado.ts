@@ -907,7 +907,8 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
       cota(uf, 0, uf, c.fondo, `fondo ${fmtCm(c.fondo)}`);
       if (a.cuerpos.length > 1 && c.nombre) { const [cxp, cyp] = P(c.ancho / 2, D / 2); etiqueta(cxp, cyp, c.nombre, 6.5); }
     }
-    const pie = Math.max(suelo, top + hPlanta) + cm(E.pie_vista);
+    // Con otras vistas en la hoja, el título se alinea con el suelo; la planta sola, justo debajo
+    const pie = (comp.principal || comp.lateral ? Math.max(suelo, top + hPlanta) : top + hPlanta) + cm(E.pie_vista);
     const ap = new Set(geo.cuerpos.map((q) => q.c.frente.apertura));
     const AP: Record<string, string> = { abatible: 'abatibles', corredera: 'correderas', coplanar: 'coplanares', escamoteable: 'escamoteables' };
     text(x + cm(k.x1 - k.x0) / 2, pie, 'PLANTA', 8.5, E.tinta, 'middle', true);
