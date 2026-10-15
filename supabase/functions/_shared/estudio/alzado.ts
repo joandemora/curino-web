@@ -15,7 +15,7 @@
 import { LOGO_ALTO, LOGO_ANCHO } from './logo.ts';
 import {
   type Armario, type Cuerpo, type Frente, type PiezaFrente, type Proyecto, type Zona, type Formato,
-  repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, fmtMm
+  repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, fmtMm, huecoMano, tapetasCajonera
 } from './esquema.ts';
 import { laminasCocina, laminasCocinaPresupuesto } from './cocina-alzado.ts';
 
@@ -399,6 +399,19 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
     line(x0, b, x0 - 2, b - 4, c, 0.7); line(x0, b, x0 + 2, b - 4, c, 0.7);
     text(x0 - 6.9, (ya + yb) / 2, t, 7.5, c, 'middle', false, true);
   }
+  /** Cota pequeña (hueco de mano, tapeta): marcas oblicuas sin flechas y el texto al lado. */
+  function cotaMini(xa: number, ya: number, xb: number, yb: number, t: string, lado: 'izq' | 'der' | 'arriba' = 'der') {
+    const c = E.cota, vertical = Math.abs(xa - xb) < 0.01;
+    line(xa, ya, xb, yb, c, 0.5);
+    for (const [px, py] of [[xa, ya], [xb, yb]]) {
+      line(px - 1.4, py + 1.4, px + 1.4, py - 1.4, c, 0.6);
+      if (vertical) line(px - 2.5, py, px + 2.5, py, c, 0.4); else line(px, py - 2.5, px, py + 2.5, c, 0.4);
+    }
+    const mx = (xa + xb) / 2, my = (ya + yb) / 2, w = medir(t, 6, false);
+    const tx = lado === 'arriba' ? mx : lado === 'der' ? Math.max(xa, xb) + 2.5 + w / 2 : Math.min(xa, xb) - 2.5 - w / 2;
+    const ty = lado === 'arriba' ? Math.min(ya, yb) - 4.5 : my;
+    etiqueta(tx, ty, t, 6, true, c);
+  }
 
   // ── Cabecera y pie ──
   const logoAlto = (LOGO_ANCHO_PT * LOGO_ALTO) / LOGO_ANCHO;
@@ -498,14 +511,28 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
           }
           case 'cajonera': {
             const n = zona.cajones;
+            const tap = tapetasCajonera(zona, c.frente.apertura), hm = huecoMano(zona);
+            // Tapetas laterales (para las bisagras de las puertas abatibles): de la balda de arriba a la de abajo
+            if (tap > 0) capas.tableros.push(() => {
+              tablero(ix0, zt, cm(tap), zb - zt);
+              tablero(ix1 - cm(tap), zt, cm(tap), zb - zt);
+            });
             capas.dentro.push(() => {
               const h = (zm.libre - E.cajon_holgura * 2 - (n - 1) * E.cajon_separacion) / n;
-              const abierto = zona.frente === 'abierto', escote = abierto && zona.abierto === 'escote', ag = zona.agarre ?? 'tirador';
+              const abierto = zona.frente === 'abierto', escote = abierto && zona.abierto === 'escote';
+              const ag = hm ? 'ninguno' : zona.agarre ?? 'tirador';
+              const cx0 = ix0 + cm(tap), cw = iw - 2 * cm(tap);
               for (let i = 0; i < n; i++) {
                 const dy = zt + cm(E.cajon_holgura + i * (h + E.cajon_separacion));
-                const x0c = ix0 + cm(E.cajon_holgura) / 1.5, wc = iw - (2 * cm(E.cajon_holgura)) / 1.5, hc = cm(h);
+                const x0c = cx0 + cm(E.cajon_holgura) / 1.5, wc = cw - (2 * cm(E.cajon_holgura)) / 1.5, hc = cm(h);
                 let topFrente = dy;
-                if (!abierto) rect(x0c, dy, wc, hc, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+                if (hm) {
+                  // Hueco de mano: frente completo con el hueco libre encima
+                  topFrente = dy + cm(Math.min(hm, h - 1));
+                  rect(x0c, dy, wc, topFrente - dy, { fill: E.fondoInterior, stroke: E.suave, sw: 0.3 });
+                  rect(x0c, topFrente, wc, dy + hc - topFrente, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+                  if (i === 0) cotaMini(x0c + wc - cm(4), dy, x0c + wc - cm(4), topFrente, fmtCm(hm), 'izq');
+                } else if (!abierto) rect(x0c, dy, wc, hc, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
                 else {
                   // Cajón interior: se ve el hueco y la caja del cajón por encima del frente
                   rect(x0c, dy, wc, hc, { fill: E.fondoInterior, stroke: E.tinta, sw: 0.4 });
@@ -521,14 +548,15 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
                 }
                 // Agarre propio de los cajones (con escote, el escote ya es el agarre si no se pide otro)
                 if (ag === 'tirador' && !escote) {
-                  const tl = Math.min(cm(E.cajon_tirador), iw * 0.4);
+                  const tl = Math.min(cm(E.cajon_tirador), cw * 0.4);
                   const ty = Math.min(topFrente + cm(E.cajon_tirador_baja), dy + hc - 2);
                   line(cx - tl / 2, ty, cx + tl / 2, ty, E.tinta, 1.2);
                 } else if (ag === 'unero') {
                   rect(x0c + 0.4, topFrente + 0.4, wc - 0.8, Math.min(2.2, hc * 0.2), { fill: E.uneroDm, stroke: E.tinta, sw: 0.3 });
                 }
               }
-              const t = zona.etiqueta ?? `Cajonera ${plural(n, 'cajón', 'cajones')}${abierto ? (escote ? ' abiertos con escote' : ' abiertos') : ''}${ag === 'ninguno' ? ' sin tirador' : ag === 'unero' ? ' con uñero' : ''}`;
+              if (tap > 0) cotaMini(ix0, zb - cm(4), ix0 + cm(tap), zb - cm(4), fmtCm(tap), 'der');
+              const t = zona.etiqueta ?? `Cajonera ${plural(n, 'cajón', 'cajones')}${hm ? ' con hueco de mano' : abierto ? (escote ? ' abiertos con escote' : ' (zapatero abierto)') : ''}${hm ? '' : ag === 'ninguno' ? ' sin tirador' : ag === 'unero' ? ' con uñero' : ''}`;
               const cy = zm.balda_encima ? zt - cm(zm.balda_encima) - (7 * 1.53) / 2 : zt + 7;
               etiqueta(cx, cy, t, 7);
             });
@@ -717,13 +745,14 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
         case 'cajonera': {
           const n = zona.cajones;
           const h = (zm.libre - E.cajon_holgura * 2 - (n - 1) * E.cajon_separacion) / n;
-          const abierto = zona.frente === 'abierto', escote = abierto && zona.abierto === 'escote';
+          const abierto = zona.frente === 'abierto', escote = abierto && zona.abierto === 'escote', hm = huecoMano(zona);
           for (let i = 0; i < n; i++) {
             const dy = zt + cm(E.cajon_holgura + i * (h + E.cajon_separacion));
-            rect(ix0 + cm(2), dy + cm(h * 0.3), ix1 - cm(g) - ix0 - cm(2), cm(h * 0.7), { fill: E.cajon, stroke: E.tinta, sw: 0.6 });
-            // Frente de canto: entero; abierto con frente bajo, solo la parte baja; con escote, entero en los lados y el escote en línea fina
-            const fy = abierto && !escote ? dy + cm(h * (1 - E.cajon_frente_bajo)) : dy;
+            rect(ix0 + cm(2), dy + cm(Math.max(h * 0.3, hm + 1)), ix1 - cm(g) - ix0 - cm(2), dy + cm(h) - (dy + cm(Math.max(h * 0.3, hm + 1))), { fill: E.cajon, stroke: E.tinta, sw: 0.6 });
+            // Frente de canto: entero; zapatero abierto, solo la parte baja; con escote, entero en los lados y el escote en línea fina; con hueco de mano, bajo el hueco
+            const fy = hm ? dy + cm(Math.min(hm, h - 1)) : abierto && !escote ? dy + cm(h * (1 - E.cajon_frente_bajo)) : dy;
             rect(ix1 - cm(g), fy, cm(g), dy + cm(h) - fy, { fill: E.cajon, stroke: E.tinta, sw: 0.8 });
+            if (hm && i === 0) cotaMini(ix1 - cm(g) - 3, dy, ix1 - cm(g) - 3, fy, fmtCm(hm), 'izq');
             if (escote) line(ix1 - cm(g), dy + cm(h * E.cajon_escote), ix1, dy + cm(h * E.cajon_escote), E.suave, 0.5);
           }
           break;
@@ -786,6 +815,14 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
       for (const m of c.modulos) {
         rectL(mu, 0, mu + g, D, { fill: E.tablero, stroke: E.tinta, sw: 0.6 });
         rectL(mu + m.ancho - g, 0, mu + m.ancho, D, { fill: E.tablero, stroke: E.tinta, sw: 0.6 });
+        // Tapetas laterales de la cajonera (la más gruesa del módulo), con su cota
+        const tap = Math.max(0, ...m.interior.map((z) => (z.tipo === 'cajonera' ? tapetasCajonera(z, f.apertura) : 0)));
+        if (tap > 0) {
+          rectL(mu + g, E.trasera, mu + g + tap, D, { fill: E.tablero, stroke: E.tinta, sw: 0.5 });
+          rectL(mu + m.ancho - g - tap, E.trasera, mu + m.ancho - g, D, { fill: E.tablero, stroke: E.tinta, sw: 0.5 });
+          const [ax, ay] = P(mu + g, D * 0.45), [bx, by] = P(mu + g + tap, D * 0.45);
+          cotaMini(ax, ay, bx, by, fmtCm(tap), 'der');
+        }
         mu += m.ancho;
       }
       // Puertas y apertura

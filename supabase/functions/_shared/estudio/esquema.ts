@@ -41,8 +41,13 @@ export type Formato = 'A3' | 'A4';
 export type LadoTirador = 'izq' | 'der';
 export type ModeloPuerta = 'moldurada' | 'lisa';
 
-/** Cajones: frente cerrado (def.) o abierto (cajón interior: frente bajo —def.— o con escote); agarre propio, independiente de las puertas. */
-export type FrenteCajon = 'cerrado' | 'abierto';
+/**
+ * Cajones: frente cerrado (def.), abierto (zapatero abierto —«frente_bajo», def.— o
+ * con escote) o con hueco de mano (frente completo con un hueco libre encima,
+ * sin tirador); agarre propio, independiente de las puertas. Detrás de puertas
+ * abatibles la cajonera lleva tapetas laterales (def. 3 cm) para salvar las bisagras.
+ */
+export type FrenteCajon = 'cerrado' | 'abierto' | 'hueco_mano';
 export type CajonAbierto = 'frente_bajo' | 'escote';
 export type AgarreCajon = 'tirador' | 'unero' | 'ninguno';
 // Todas las zonas salvo la primera admiten «grosor_balda_encima» (cm).
@@ -51,7 +56,7 @@ export type Zona = ConBalda & (
   | { tipo: 'altillo'; alto: number; etiqueta?: string }
   | { tipo: 'perchero'; alto?: number; prendas?: 'cortas' | 'largas'; etiqueta?: string }
   | { tipo: 'perchero_extraible'; alto?: number; etiqueta?: string }
-  | { tipo: 'cajonera'; cajones: number; alto?: number; etiqueta?: string; frente?: FrenteCajon; abierto?: CajonAbierto; agarre?: AgarreCajon }
+  | { tipo: 'cajonera'; cajones: number; alto?: number; etiqueta?: string; frente?: FrenteCajon; abierto?: CajonAbierto; agarre?: AgarreCajon; hueco?: number; tapetas?: number }
   | { tipo: 'estantes'; estantes: number; alto?: number; etiqueta?: string; grosor_estantes?: number }
   | { tipo: 'hueco'; alto?: number; etiqueta?: string }
   | { tipo: 'balda_inferior'; alto?: number; etiqueta?: string });
@@ -146,6 +151,14 @@ export const ZOCALO_DEF = 10;
 export const GROSOR_DEF = 1.9;
 export const SEPARACION_SUELO_DEF = 2;
 export const CAJON_ALTO_DEF = 19.5;
+export const HUECO_MANO_DEF = 3;        // cm libres encima de cada frente (cajón con hueco de mano)
+export const TAPETA_CAJONERA_DEF = 3;   // cm de tapeta a cada lado de una cajonera detrás de puertas abatibles
+
+type Cajonera = Extract<Zona, { tipo: 'cajonera' }>;
+/** Hueco de mano de una cajonera (0 si no es de ese tipo). */
+export const huecoMano = (z: Cajonera): number => (z.frente === 'hueco_mano' ? z.hueco ?? HUECO_MANO_DEF : 0);
+/** Tapeta lateral de una cajonera (cm por lado): la suya o, detrás de puertas abatibles, la de por defecto. */
+export const tapetasCajonera = (z: Cajonera, apertura?: string): number => z.tapetas ?? (apertura === 'abatible' ? TAPETA_CAJONERA_DEF : 0);
 export const HUECO_ESTANTE_MIN = 5;   // cm libres entre estantes
 
 const TIPOS_ZONA: TipoZona[] = ['altillo', 'perchero', 'perchero_extraible', 'cajonera', 'estantes', 'hueco', 'balda_inferior'];
@@ -211,9 +224,11 @@ export const ESQUEMA_JSON = {
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero' }, alto: altoLibre, prendas: { enum: ['cortas', 'largas'] }, etiqueta, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'perchero_extraible' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo', 'cajones'], properties: { tipo: { const: 'cajonera' }, cajones: { type: 'integer', minimum: 1, maximum: 8 }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima,
-                              frente: { enum: ['cerrado', 'abierto'], description: 'abierto = cajón interior que deja ver el contenido («cajones abiertos», «cajón interior», «frente rebajado», «con escote»). Omitir si es cerrado.' },
-                              abierto: { enum: ['frente_bajo', 'escote'], description: 'Solo con frente abierto: frente_bajo (por defecto, frente rebajado) o escote (frente con escote / hueco en U).' },
-                              agarre: { enum: ['tirador', 'unero', 'ninguno'], description: 'Agarre de los cajones, independiente del de las puertas: tirador (def.), unero o ninguno («sin tirador», push). Omitir si es tirador.' } } },
+                              frente: { enum: ['cerrado', 'abierto', 'hueco_mano'], description: 'abierto = cajón interior que deja ver el contenido («zapatero abierto», «cajones abiertos», «frente rebajado», «con escote»); hueco_mano = frente completo sin tirador con un hueco libre encima para meter la mano («hueco para la mano», «separación de 3 cm para abrir»). Omitir si es cerrado.' },
+                              abierto: { enum: ['frente_bajo', 'escote'], description: 'Solo con frente abierto: frente_bajo (zapatero abierto, por defecto) o escote (frente con escote / hueco en U).' },
+                              hueco: num(1, 10, 'Solo con frente hueco_mano: cm libres encima de cada frente (def. 3); se descuentan del frente.'),
+                              agarre: { enum: ['tirador', 'unero', 'ninguno'], description: 'Agarre de los cajones, independiente del de las puertas: tirador (def.), unero o ninguno («sin tirador», push). Omitir si es tirador. Con hueco_mano, omitir (siempre ninguno).' },
+                              tapetas: num(0, 10, 'Tapeta a cada lado de la cajonera en cm para que los cajones no choquen con las bisagras. Omitir: 3 detrás de puertas abatibles, 0 con el resto. 0 = sin tapetas.') } },
                             { type: 'object', additionalProperties: false, required: ['tipo', 'estantes'], properties: { tipo: { const: 'estantes' }, estantes: { type: 'integer', minimum: 1, maximum: 12 }, alto: altoLibre, etiqueta, grosor_estantes: grosorEstantes, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'hueco' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } },
                             { type: 'object', additionalProperties: false, required: ['tipo'], properties: { tipo: { const: 'balda_inferior' }, alto: altoLibre, etiqueta, grosor_balda_encima: baldaEncima } }
@@ -377,10 +392,21 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
           } else {
             if (tipo === 'perchero') { campos(z, rz, [...base, 'prendas']); opcion(z, 'prendas', rz, ['cortas', 'largas']); }
             else if (tipo === 'cajonera') {
-              campos(z, rz, [...base, 'cajones', 'frente', 'abierto', 'agarre']);
+              campos(z, rz, [...base, 'cajones', 'frente', 'abierto', 'agarre', 'hueco', 'tapetas']);
               if (entero(z, 'cajones', rz, 1, 8) === undefined) zonasOk = false;
-              opcion(z, 'frente', rz, ['cerrado', 'abierto']); opcion(z, 'abierto', rz, ['frente_bajo', 'escote']); opcion(z, 'agarre', rz, ['tirador', 'unero', 'ninguno']);
+              opcion(z, 'frente', rz, ['cerrado', 'abierto', 'hueco_mano']); opcion(z, 'abierto', rz, ['frente_bajo', 'escote']); opcion(z, 'agarre', rz, ['tirador', 'unero', 'ninguno']);
               if (z.abierto !== undefined && z.frente !== 'abierto') err(`${rz}.abierto`, 'solo con frente «abierto»');
+              if (z.hueco !== undefined) {
+                if (z.frente !== 'hueco_mano') err(`${rz}.hueco`, 'solo con frente «hueco_mano»');
+                else numero(z, 'hueco', rz, 1, 10, false);
+              }
+              if (z.frente === 'hueco_mano' && z.agarre !== undefined && z.agarre !== 'ninguno') err(`${rz}.agarre`, 'el cajón con hueco de mano no lleva tirador ni uñero: omite el agarre');
+              const t = numero(z, 'tapetas', rz, 0, 10, false);
+              if (t !== undefined && am !== undefined && am - 2 * grosor - 2 * t < 20) err(`${rz}.tapetas`, `con tapetas de ${t} cm el cajón se queda en ${r1(am - 2 * grosor - 2 * t)} cm (mín. 20)`);
+              if (typeof z.cajones === 'number' && z.frente === 'hueco_mano') {
+                const h = (typeof z.alto === 'number' ? z.alto : z.cajones * CAJON_ALTO_DEF) / z.cajones, hm = typeof z.hueco === 'number' ? z.hueco : HUECO_MANO_DEF;
+                if (h - hm < 8) err(`${rz}.hueco`, `con un hueco de ${hm} cm el frente se queda en ${r1(h - hm)} cm (mín. 8)`);
+              }
             }
             else if (tipo === 'estantes') {
               campos(z, rz, [...base, 'estantes', 'grosor_estantes']);

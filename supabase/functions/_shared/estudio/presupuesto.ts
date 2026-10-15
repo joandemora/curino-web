@@ -18,7 +18,7 @@
 // introducción, sin tocar medidas.
 
 import type { Armario, Cuerpo, Frente, Proyecto, Zona } from './esquema.ts';
-import { agarrePuerta, materialPieza } from './esquema.ts';
+import { agarrePuerta, materialPieza, huecoMano, tapetasCajonera } from './esquema.ts';
 import { modelosPuertas } from './alzado.ts';
 import { eur, importeLinea, precioArmario } from './tarifa.ts';
 import type { LineaDesglose, Tarifa } from './tarifa.ts';
@@ -280,14 +280,15 @@ function textoPuertas(f: Frente): string {
   return t;
 }
 
-export function textoModulo(zonas: Zona[]): string {
+export function textoModulo(zonas: Zona[], apertura?: string): string {
   const partes: string[] = [];
   const percheros = zonas.filter((z) => z.tipo === 'perchero');
   const cajonera = zonas.find((z) => z.tipo === 'cajonera');
   if (cajonera && cajonera.tipo === 'cajonera') {
-    const ab = cajonera.frente === 'abierto' ? (cajonera.abierto === 'escote' ? ' abiertos con escote' : ' abiertos (frente bajo)') : '';
-    const ag = cajonera.agarre === 'ninguno' ? ' sin tirador' : cajonera.agarre === 'unero' ? ' con uñero' : '';
-    partes.push(`cajonera de ${plural(cajonera.cajones, 'cajón', 'cajones')}${ab}${ag}`);
+    const hm = huecoMano(cajonera), tap = tapetasCajonera(cajonera, apertura);
+    const ab = hm ? ` con hueco de mano de ${cmTxt(hm)} cm` : cajonera.frente === 'abierto' ? (cajonera.abierto === 'escote' ? ' abiertos con escote' : ' (zapatero abierto)') : '';
+    const ag = hm ? '' : cajonera.agarre === 'ninguno' ? ' sin tirador' : cajonera.agarre === 'unero' ? ' con uñero' : '';
+    partes.push(`cajonera de ${plural(cajonera.cajones, 'cajón', 'cajones')}${ab}${ag}${tap > 0 ? ` y tapetas laterales ${cmTxt(tap)} cm para bisagras` : ''}`);
   }
   const largas = percheros.filter((z) => z.tipo === 'perchero' && z.prendas === 'largas').length;
   const cortas = percheros.length - largas;
@@ -321,7 +322,7 @@ function lineasCuerpo(c: Cuerpo, varios: boolean): string[] {
     out.push(`Distribución: ${grupos(c.modulos.map((m) => m.ancho))}`);
   }
   out.push(`Puertas: ${textoPuertas(c.frente)}`);
-  c.modulos.forEach((m, i) => out.push(`Módulo ${i + 1} – ${cmTxt(m.ancho)} cm: ${textoModulo(m.interior)}`));
+  c.modulos.forEach((m, i) => out.push(`Módulo ${i + 1} – ${cmTxt(m.ancho)} cm: ${textoModulo(m.interior, c.frente.apertura)}`));
   return out;
 }
 
@@ -395,7 +396,9 @@ export function generarPresupuesto(o: {
     const t = textosArmario(a, o.plantilla.materiales);
     const clave = `v${o.version}:${a.codigo}`;
     const ant = prev?.partidas.find((x) => x.clave === clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === a.codigo);
-    const precio = precioArmario(a, o.tarifa, ant?.opciones ?? {});
+    // Presupuesto nuevo: cuenta las tapetas de cajonera por defecto; uno guardado, solo si se recalculó después (opciones.tapetas)
+    const opcionesArmario = ant ? ant.opciones ?? {} : { tapetas: true };
+    const precio = precioArmario(a, o.tarifa, opcionesArmario);
     return {
       codigo: a.codigo, version: o.version, clave,
       cantidad: ant?.cantidad ?? 1,
@@ -409,7 +412,7 @@ export function generarPresupuesto(o: {
       dto_pct: ant?.dto_pct ?? (o.tarifa.descuento_pct ?? 0),
       desglose: precio.desglose,
       pendientes: precio.pendientes,
-      opciones: ant?.opciones ?? {}, puntos: precio.puntos_total, modulos: precio.modulos, avisos: precio.avisos
+      opciones: opcionesArmario, puntos: precio.puntos_total, modulos: precio.modulos, avisos: precio.avisos
     };
   });
   for (const c0 of cocinas) {

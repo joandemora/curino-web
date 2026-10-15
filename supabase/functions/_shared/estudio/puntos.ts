@@ -15,7 +15,7 @@
 // extras (cajones, estantes, barras) suman o restan sobre ese modelo.
 
 import type { Armario, Zona } from './esquema.ts';
-import { repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta } from './esquema.ts';
+import { repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, tapetasCajonera } from './esquema.ts';
 
 export const VERSION_PUNTOS = 'OTG 2026';
 export const ANCHOS = [400, 500, 600, 700, 800, 900, 1000];
@@ -46,8 +46,12 @@ export function conceptoGrosor(cm: number): { clave: 'estante25' | 'estante30'; 
 }
 export const SUELTOS: Record<string, { nombre: string; puntos: number }> = {
   rinconero: { nombre: 'Módulo rinconero 1100 × 1100 mm', puntos: 830 },
-  division: { nombre: 'División vertical interior (1500 a 2000 × 19)', puntos: 59 }
+  division: { nombre: 'División vertical interior (1500 a 2000 × 19)', puntos: 59 },
+  // No está en la tabla OTG: valor propio (½ división vertical) hasta que lo confirme el proveedor
+  tapeta_cajonera: { nombre: 'Tapeta lateral cajonera (por unidad)', puntos: 30 }
 };
+/** Conceptos propios pendientes de confirmar con OTG: sus líneas salen con «revisar». */
+export const REVISAR_PUNTOS: Record<string, string> = { tapeta_cajonera: 'valor propio, pendiente de confirmar con OTG: revisar' };
 // Puertas: puntos fijos por puerta hasta 2800 × 650 × 19 mm (frente fijo = su material, sin bisagras)
 export const PUERTA_MAX = { alto: 2800, ancho: 650 };
 export const PUERTAS: Record<string, { nombre: string; puntos: number }> = {
@@ -110,6 +114,7 @@ export interface OpcionesPuntos {
   inclinacion?: boolean;
   divisiones?: number;
   rinconeros?: number;
+  tapetas?: boolean;   // cuenta las tapetas de cajonera por defecto (presupuestos nuevos o recalculados)
 }
 
 export interface LineaPuntos {
@@ -181,6 +186,17 @@ export function puntosArmario(a: Armario, puntos: Record<string, number>, op: Op
         const pts = grueso.puntos - fino.puntos;
         lineas.push({ clave: `grueso_${id}_${clave}`, nombre: `${e.balda ? (e.n === 1 ? 'Balda' : 'Baldas') : 'Estantes'} ${k.slice(-2)} mm · módulo ${mi + 1} · ${grueso.tramo} mm (diferencia sobre 19 mm)`, cantidad: e.n, puntos: pts, aviso: [grueso.fuera ? 'fuera de tabla: revisar' : '', e.aviso ?? ''].filter(Boolean).join(' · ') || undefined });
         interior += pts * e.n;
+      }
+      // Tapetas laterales de las cajoneras (2 por cajonera); las de por defecto, solo si la partida las cuenta
+      const tapetas = new Map<number, number>();
+      for (const z of m.interior) {
+        if (z.tipo !== 'cajonera') continue;
+        const t = tapetasCajonera(z, c.frente.apertura);
+        if (t > 0 && (z.tapetas !== undefined || op.tapetas)) tapetas.set(t, (tapetas.get(t) ?? 0) + 2);
+      }
+      for (const [t, n] of tapetas) {
+        lineas.push({ clave: `tapeta_cajonera_${clave}${tapetas.size > 1 ? `_${t}` : ''}`, nombre: `${SUELTOS.tapeta_cajonera.nombre} · ${String(t).replace('.', ',')} cm · módulo ${mi + 1}`, cantidad: n, puntos: puntos.tapeta_cajonera, aviso: REVISAR_PUNTOS.tapeta_cajonera });
+        interior += puntos.tapeta_cajonera * n;
       }
       // Extras solo con el modelo asignado automáticamente (si el usuario cambia el modelo, no se recalculan)
       if (modelo === auto.modelo) {

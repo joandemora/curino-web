@@ -583,6 +583,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   if (action === 'presupuesto_generar') {
     // «Recalcular con la tarifa»: textos técnicos y precios de tarifa desde cada versión
     const d: DocPresupuesto = JSON.parse(JSON.stringify(doc));
+    // Al recalcular entran también las tapetas de cajonera por defecto
+    for (const p of d.partidas) if (!p.libre && p.tipo !== 'cocina') p.opciones = { ...(p.opciones ?? {}), tapetas: true };
     await recalcularDesdeVersiones(d);
     await guardar(d);
     return json(respuesta(d));
@@ -614,7 +616,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
           if (p && !p.libre) {
             const precioManual = x?.precio_manual === true;
             return { ...p, ...comunes, precio_manual: precioManual, precio: precioManual ? numOrNull(x?.precio, 0, 10_000_000) : p.precio_manual ? null : p.precio,
-            opciones: x?.opciones !== undefined ? limpiarOpciones(x.opciones) : p.opciones };
+            // «tapetas» no se edita en el formulario: se conserva (solo la activa recalcular o un presupuesto nuevo)
+            opciones: x?.opciones !== undefined ? { ...limpiarOpciones(x.opciones), ...(p.opciones?.tapetas ? { tapetas: true } : {}) } : p.opciones };
           }
           // Partida libre (nueva o existente): todo a mano
           return {

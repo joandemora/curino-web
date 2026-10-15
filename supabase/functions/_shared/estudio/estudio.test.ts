@@ -134,9 +134,39 @@ test('cajones abiertos (frente bajo / escote) y sin tirador: se dibujan y se val
   for (const c of [{}, { frente: 'abierto' }, { frente: 'abierto', abierto: 'escote', agarre: 'ninguno' }, { agarre: 'unero' }]) assert.equal(v(p(c)).ok, true, JSON.stringify(c));
   assert.equal(v(p({ abierto: 'escote' })).ok, false);           // escote sin frente abierto
   const textos = (c: Record<string, unknown>) => lp(p(c) as never).flatMap((l) => l.prims).filter((x) => x.k === 'text').map((x) => (x as { t: string }).t);
-  assert.ok(textos({ frente: 'abierto', agarre: 'ninguno' }).includes('Cajonera 3 cajones abiertos sin tirador'));
+  assert.ok(textos({ frente: 'abierto', agarre: 'ninguno' }).includes('Cajonera 3 cajones (zapatero abierto) sin tirador'));
   assert.ok(textos({ frente: 'abierto', abierto: 'escote' }).includes('Cajonera 3 cajones abiertos con escote'));
   // Sin tirador: no se dibuja la raya (líneas gruesas de 1.2 pt dentro de los cajones)
   const rayas = (c: Record<string, unknown>) => lp(p(c) as never)[0].prims.filter((x) => x.k === 'line' && (x as { sw: number }).sw === 1.2).length;
   assert.ok(rayas({}) - rayas({ agarre: 'ninguno' }) === 3);
+});
+
+test('cajón con hueco de mano y tapetas laterales: validación, dibujo, ficha y puntos', async () => {
+  const { laminasProyecto: lp } = await import('./alzado.ts');
+  const { validarProyecto: v, tapetasCajonera, huecoMano } = await import('./esquema.ts');
+  const { puntosArmario, puntosBase } = await import('./puntos.ts');
+  const { textoModulo } = await import('./presupuesto.ts');
+  const p = (cajonera: Record<string, unknown>, apertura = 'abatible') => ({ version: 1, armarios: [{ codigo: 'A.01', titulo: 'X', vistas: ['lateral', 'planta'], cuerpos: [{ ancho: 80, alto: 250, fondo: 60, frente: { apertura, modelo: 'lisa', piezas: [{ tipo: 'puerta', ancho: 40 }, { tipo: 'puerta', ancho: 40 }] },
+    modulos: [{ ancho: 80, interior: [{ tipo: 'altillo', alto: 45 }, { tipo: 'hueco' }, { tipo: 'cajonera', cajones: 3, alto: 75, ...cajonera }] }] }] }] });
+  for (const c of [{ frente: 'hueco_mano' }, { frente: 'hueco_mano', hueco: 4, agarre: 'ninguno' }, { tapetas: 0 }, { tapetas: 2.5 }]) assert.equal(v(p(c)).ok, true, JSON.stringify(c));
+  assert.equal(v(p({ hueco: 3 })).ok, false);                                   // hueco sin hueco_mano
+  assert.equal(v(p({ frente: 'hueco_mano', agarre: 'tirador' })).ok, false);    // siempre sin tirador
+  assert.equal(v(p({ tapetas: 25 })).ok, false);                                // fuera de rango
+  // Valores por defecto: 3 cm detrás de abatibles, 0 con correderas; hueco 3 → frente de 22 en un cajón de 25
+  const z = { tipo: 'cajonera' as const, cajones: 3 };
+  assert.equal(tapetasCajonera(z, 'abatible'), 3); assert.equal(tapetasCajonera(z, 'corredera'), 0); assert.equal(tapetasCajonera({ ...z, tapetas: 0 }, 'abatible'), 0);
+  assert.equal(huecoMano({ ...z, frente: 'hueco_mano' }), 3); assert.equal(huecoMano(z), 0);
+  const textos = (c: Record<string, unknown>) => lp(p(c) as never).flatMap((l) => l.prims).filter((x) => x.k === 'text').map((x) => (x as { t: string }).t);
+  assert.ok(textos({ frente: 'hueco_mano' }).includes('Cajonera 3 cajones con hueco de mano'));
+  assert.equal(textos({ frente: 'hueco_mano' }).filter((t) => t === '3').length >= 3, true);   // hueco (alzado + sección) y tapeta
+  assert.equal(textoModulo([{ tipo: 'cajonera', cajones: 3, frente: 'hueco_mano' }], 'abatible'), 'cajonera de 3 cajones con hueco de mano de 3 cm y tapetas laterales 3 cm para bisagras.');
+  assert.equal(textoModulo([{ tipo: 'cajonera', cajones: 3, frente: 'abierto' }], 'corredera'), 'cajonera de 3 cajones (zapatero abierto).');
+  // Puntos: las de por defecto solo con opciones.tapetas; las explícitas, siempre; 30 pt «revisar»
+  const arm = (c: Record<string, unknown>) => (p(c) as never as { armarios: never[] }).armarios[0];
+  const tap = (c: Record<string, unknown>, op = {}) => puntosArmario(arm(c), puntosBase(), op).lineas.filter((l) => l.clave.startsWith('tapeta_cajonera'));
+  assert.equal(tap({}).length, 0);
+  const l = tap({}, { tapetas: true });
+  assert.equal(l.length, 1); assert.equal(l[0].cantidad, 2); assert.equal(l[0].puntos, 30); assert.match(l[0].aviso!, /revisar/);
+  assert.equal(tap({ tapetas: 3 }).length, 1);
+  assert.equal(tap({ tapetas: 0 }, { tapetas: true }).length, 0);
 });
