@@ -156,6 +156,22 @@ export const PAGINA: Record<Formato, {
   A3: { w: 1190.88, h: 841.68, ml: 59.5, mr: 1143.3, logo: [59.8, 41.8], titulo: 88.3, subtitulo: 109.4, der1: 66.7, der2: 76.4, pie: 799.6 },
   A4: { w: 841.68, h: 595.44, ml: 42.1, mr: 808.0, logo: [41.8, 23.0], titulo: 62.5, subtitulo: 77.4, der1: 49.5, der2: 59.1, pie: 565.7 }
 };
+/**
+ * «Página» de los dibujos del presupuesto: cada fila (interior + cerrado; sección +
+ * planta) se dibuja en un ancho útil tal que, reducida al ancho de la fila del PDF
+ * (FILA_DIBUJO.ancho), las cotas de 7,5 pt queden en COTA_MIN_PT (5 pt). El alto
+ * útil limita las filas altas a FILA_DIBUJO.alto.
+ */
+export const FILA_DIBUJO = { x0: 42.8, ancho: 508.7, alto: 380, separacion: 8 };
+export const COTA_MIN_PT = 5;
+const K_MIN = COTA_MIN_PT / 7.5;
+const ANCHO_PRES = (FILA_DIBUJO.ancho / K_MIN) * 0.92;   // holgura para cotas y etiquetas que sobresalen del dibujo
+export const PAGINA_PRESUPUESTO = {
+  w: ANCHO_PRES + 80, h: (FILA_DIBUJO.alto / K_MIN / 0.531) * 0.85 /* ALTO_UTIL; holgura para cotas */, ml: 40, mr: ANCHO_PRES + 40,
+  logo: [40, 20] as [number, number], titulo: 50, subtitulo: 60, der1: 30, der2: 40, pie: 0
+};
+type Hoja = Formato | 'PRES';
+export const paginaDe = (f: Hoja) => (f === 'PRES' ? PAGINA_PRESUPUESTO : PAGINA[f]);
 export const LOGO_ANCHO_PT = 77.7;  // caja del logo en los alzados de referencia
 export const LOGO_CAJA_ALTO = 21.6;
 export const ALTO_UTIL = 0.531;     // × alto de página para el cuerpo más alto
@@ -313,8 +329,8 @@ function anchoFila(a: Armario, o: Composicion): number {
   return w;
 }
 
-function escala(a: Armario, o: Composicion, formato: Formato): number {
-  const pg = PAGINA[formato], E = ESTILO;
+function escala(a: Armario, o: Composicion, formato: Hoja): number {
+  const pg = paginaDe(formato), E = ESTILO;
   const altoMax = Math.max(...a.cuerpos.map((c) => c.alto));
   const k = o.planta ? geometriaPlanta(a).caja : null;
   const alto = Math.max(o.principal || o.lateral ? altoMax : 0, k ? k.y1 - k.y0 : 0);
@@ -328,8 +344,23 @@ export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[
 
 
 /** Láminas para el presupuesto: las de cada armario y, en cocinas, una por tramo (código de su partida). */
+/**
+ * Láminas para el presupuesto, una por fila de dibujos a todo el ancho: interior +
+ * cerrado juntos y, si hay vistas, sección + planta en una segunda fila. En cocinas,
+ * una fila por tramo (código de su partida) y sección + planta bajo la última.
+ */
 export function laminasPresupuesto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
-  return [...p.armarios.flatMap((a) => laminasArmario(a, p, medir)), ...(p.cocinas ?? []).flatMap((c) => laminasCocinaPresupuesto(c, p, medir))];
+  const armarios = p.armarios.flatMap((a) => {
+    const lateral = !!a.vistas?.includes('lateral'), planta = !!a.vistas?.includes('planta');
+    const filas = [laminaArmario(a, p, medir, SOLO_PRINCIPAL, true)];
+    if (lateral || planta) filas.push(laminaArmario(a, p, medir, { principal: false, lateral, planta }, true));
+    return filas;
+  });
+  return [...armarios, ...(p.cocinas ?? []).flatMap((c) => laminasCocinaPresupuesto(c, p, medir, true))];
+}
+/** Tamaño de una fila de dibujo en el presupuesto: a todo el ancho, sin pasar del alto máximo, en proporción. */
+export function escalaFila(caja: { w: number; h: number }): number {
+  return Math.min(FILA_DIBUJO.ancho / caja.w, FILA_DIBUJO.alto / caja.h);
 }
 
 /** Láminas de un armario: una, o dos si la sección / planta no caben con el alzado. */
@@ -342,9 +373,9 @@ export function laminasArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cli
   return [laminaArmario(a, p, medir), laminaArmario(a, p, medir, { principal: false, lateral, planta })];
 }
 
-export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, comp: Composicion = SOLO_PRINCIPAL): Lamina {
-  const formato = formatoArmario(a);
-  const pg = PAGINA[formato];
+export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, comp: Composicion = SOLO_PRINCIPAL, presupuesto = false): Lamina {
+  const formato: Hoja = presupuesto ? 'PRES' : formatoArmario(a);
+  const pg = paginaDe(formato);
   const prims: Prim[] = [];
   const E = ESTILO;
 
@@ -895,7 +926,7 @@ export function laminaArmario(a: Armario, p: Pick<Proyecto, 'referencia' | 'clie
     for (const d of [0.45, -0.45]) line(x2, y2, x2 - l * Math.cos(ang + d), y2 - l * Math.sin(ang + d), E.tinta, 0.6);
   }
 
-  return { codigo: a.codigo, formato, ancho: pg.w, alto: pg.h, prims, inicioDibujo, pagina: comp.principal ? 1 : 2 };
+  return { codigo: a.codigo, formato: formato === 'PRES' ? 'A4' : formato, ancho: pg.w, alto: pg.h, prims, inicioDibujo, pagina: comp.principal ? 1 : 2 };
 }
 
 /** «Estantes» o «Estantes 30 mm» si no son del grosor del tablero. */

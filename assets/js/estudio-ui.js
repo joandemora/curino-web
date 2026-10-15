@@ -992,7 +992,6 @@
       }).join('') + '</div>' +
         '<div class="pr-com"><label><input type="checkbox" id="prComOn"' + (cm.activa ? ' checked' : '') + ' style="width:auto"> <b>Comisión interiorista</b></label>' +
         '<span' + (cm.activa ? '' : ' hidden') + ' id="prComDet"><label>% <input id="prComPct" inputmode="decimal" value="' + numOut(cm.pct) + '" style="width:64px"></label>' +
-        '<label>¿Quién paga a Curino? <select id="prComPaga"><option value="cliente"' + (cm.paga !== 'interiorista' ? ' selected' : '') + '>Cliente (PVP)</option><option value="interiorista"' + (cm.paga === 'interiorista' ? ' selected' : '') + '>Interiorista (neto)</option></select></label>' +
         '<small class="pa-muted">Al descargar se generan dos versiones: «_cliente» (PVP, sin descuento) e «_interiorista» (con DTO. PROFESIONAL).</small></span></div></div>';
       html += doc.partidas.map(function (p, i) {
         return '<div class="pr-card pr-f" data-i="' + i + '"><div class="pr-partida"><div>' +
@@ -1012,6 +1011,9 @@
           (p.libre ? '' : desglosePuntos(p, i)) + '</div>';
       }).join('');
       html += '<div class="pr-barra"><button class="pa-btn" id="prAnadir">+ Añadir partida</button></div><div class="pr-card"><div class="pr-tot" id="prTot"></div></div>';
+      // Forma de pago del presupuesto (se copia de la plantilla al crearlo): filas concepto + %, importe con IVA
+      html += '<div class="pr-card pr-f" id="prFp"><label><b>Forma de pago</b></label><div id="prFpFilas">' + filasFp(doc.forma_pago || []) + '</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="pa-btn" type="button" data-fp="add">+ Añadir plazo</button><span id="prFpAviso" class="pa-muted" style="font-size:12.5px"></span></div></div>';
       var vistaCab = '<div class="pr-vista-cab"><b>Vista previa</b>' + (cm.activa ? '<select id="prVistaVar"><option value="cliente">Cliente</option><option value="interiorista">Interiorista</option></select>' : '') + '<span id="prVistaEst" class="pa-muted"></span></div>';
       $('#prZona').innerHTML = '<div class="pr-alternar"><button class="pa-btn on" data-ver="editor">Editor</button><button class="pa-btn" data-ver="vista">Vista previa</button></div>' +
         '<div class="pr-dos" data-modo="editor"><div class="pr-ed">' + html + '</div><aside class="pr-vista">' + vistaCab + '<div id="prVistaPags"><p class="pa-muted">Generando…</p></div></aside></div>';
@@ -1043,11 +1045,39 @@
       }, retardo === undefined ? 1500 : retardo);
     }
 
+    function filasFp(fp) {
+      return fp.map(function (x, k) {
+        var b = function (a, t, dis) { return '<button type="button" class="pa-btn" data-fp="' + a + '" data-k="' + k + '"' + (dis ? ' disabled' : '') + ' style="padding:2px 8px">' + t + '</button>'; };
+        return '<div class="pr-fp" data-fpi="' + k + '" style="display:flex;gap:6px;align-items:center;margin:4px 0"><input data-fpc value="' + esc(x.concepto || '') + '" placeholder="Concepto" style="flex:1">' +
+          '<input data-fpp inputmode="decimal" value="' + numOut(x.pct) + '" style="width:58px"> %<span data-fpimp class="pa-muted" style="min-width:210px;text-align:right;font-size:12.5px"></span>' +
+          b('up', '↑', k === 0) + b('down', '↓', k === fp.length - 1) + b('del', '✕') + '</div>';
+      }).join('');
+    }
+    function leerFpEd() {
+      return [].map.call(document.querySelectorAll('#prFpFilas .pr-fp'), function (r) { return { concepto: r.querySelector('[data-fpc]').value.trim(), pct: numIn(r.querySelector('[data-fpp]').value) || 0 }; });
+    }
+    /** Importe de cada plazo (base + IVA) y aviso si los % no suman 100. */
+    function pintarFp(base) {
+      var fp = leerFpEd(), suma = r2(fp.reduce(function (s, x) { return s + x.pct; }, 0)), filas = document.querySelectorAll('#prFpFilas .pr-fp');
+      var total = base === null ? null : r2(base * (1 + iva / 100)), acum = 0;
+      fp.forEach(function (x, k) {
+        var span = filas[k] && filas[k].querySelector('[data-fpimp]');
+        if (!span) return;
+        if (base === null) { span.textContent = 'PENDIENTE'; return; }
+        var b = r2(base * x.pct / 100), t = r2(total * x.pct / 100);
+        if (k === fp.length - 1 && Math.abs(suma - 100) < 0.001) t = r2(total - acum);   // el último cuadra el total
+        acum += t;
+        span.textContent = eur(b) + ' + IVA = ' + eur(t);
+      });
+      var av = $('#prFpAviso');
+      if (av) { var ok = Math.abs(suma - 100) < 0.001; av.style.color = ok ? '' : '#b42318'; av.textContent = ok ? 'Suma 100 %' : 'Los % suman ' + numOut(suma) + ' %: tienen que sumar 100 % (sin eso no se descarga el PDF ni el Excel del cliente)'; }
+    }
     function leer() {
       var d = { partidas: [] };
       document.querySelectorAll('#prZona [data-c]').forEach(function (i) { d[i.dataset.c] = i.value; });
       var on = $('#prComOn');
-      if (on) d.comision = { activa: on.checked, pct: numIn($('#prComPct').value) || 0, paga: $('#prComPaga').value };
+      if (on) d.comision = { activa: on.checked, pct: numIn($('#prComPct').value) || 0, paga: 'cliente' };
+      if ($('#prFpFilas')) d.forma_pago = leerFpEd();
       document.querySelectorAll('#prZona [data-i]').forEach(function (card) {
         var p = doc.partidas[Number(card.dataset.i)], x = { codigo: p.codigo, clave: p.clave }, op = leerOpciones(card);
         if (op) x.opciones = op;
@@ -1079,11 +1109,12 @@
         if (cm) netoInt += r2(l * (1 - cm.pct / 100));   // neto por línea, como el PDF «interiorista»
         res.innerHTML = 'PVP <span class="pr-pvp">' + eur(l) + '</span><br>Importe <b>' + eur(m) + '</b>';
       });
+      pintarFp(pend ? null : cm ? r2(pvp) : r2(imp));
       if (pend) { $('#prTot').innerHTML = '<span>PVP sin IVA: PENDIENTE</span><span>Importe total: <b>PENDIENTE</b></span><span class="pr-tag">' + pend + (pend === 1 ? ' partida' : ' partidas') + ' sin precio</span>'; return; }
       if (cm) {
-        var neto = r2(netoInt), com = r2(pvp - neto), fact = cm.paga === 'interiorista' ? neto : r2(pvp);
+        var neto = r2(netoInt), com = r2(pvp - neto), fact = r2(pvp);
         $('#prTot').innerHTML = '<span>PVP cliente: <b>' + eur(r2(pvp)) + '</b></span><span>Comisión interiorista (' + numOut(cm.pct) + ' %): ' + eur(com) + '</span><span>Neto interiorista: ' + eur(neto) + '</span>' +
-          '<span class="pa-muted">Facturación en métricas: ' + eur(fact) + (cm.paga === 'interiorista' ? ' (el interiorista paga el neto)' : ' · la comisión cuenta como coste') + '</span>';
+          '<span class="pa-muted">Facturación en métricas: ' + eur(fact) + ' (paga el cliente, a PVP) · la comisión cuenta como coste</span>';
         return;
       }
       $('#prTot').innerHTML = '<span>PVP sin IVA: ' + eur(r2(pvp)) + '</span>' + (imp !== pvp ? '<span>Dto. profesional: ' + eur(r2(imp - pvp)) + '</span>' : '') + '<span>Importe total: <b>' + eur(r2(imp)) + '</b></span><span class="pa-muted">IVA ' + numOut(iva) + '%: ' + eur(r2(imp * iva / 100)) + '</span>';
@@ -1115,6 +1146,13 @@
     }
     el.addEventListener('click', function (e) {
       var id = e.target.id, t = e.target;
+      if (doc && t.dataset && t.dataset.fp) {
+        var fp = leerFpEd(), k = Number(t.dataset.k);
+        if (t.dataset.fp === 'add') fp.push({ concepto: '', pct: Math.max(0, r2(100 - fp.reduce(function (s, x) { return s + x.pct; }, 0))) });
+        else if (t.dataset.fp === 'del') fp.splice(k, 1);
+        else { var j = t.dataset.fp === 'up' ? k - 1 : k + 1; if (j >= 0 && j < fp.length) { var x = fp[k]; fp[k] = fp[j]; fp[j] = x; } }
+        $('#prFpFilas').innerHTML = filasFp(fp); recalcular(); vistaPrevia(); return;
+      }
       if (id === 'prNuevoBtn') return pintarNuevo(null);
       if (id === 'pnCancelar') { $('#prNuevo').hidden = true; return; }
       if (id === 'pnCrear') return bloquear(function () {
@@ -1290,6 +1328,8 @@
       nueva(6);   // sin fila de «sección»
     }
     function png64(o) { return o.data.split(',')[1]; }
+    /** Columna (con fracción) de una x en pt del PDF: la columna A empieza en 17,7 pt. */
+    function colDe(xpt) { var x = xpt - 17.7; for (var k = 0; k < XL.cols.length; k++) { if (x < XL.cols[k]) return k + x / XL.cols[k]; x -= XL.cols[k]; } return XL.cols.length; }
 
     // ── Página 1: cabecera ──
     var rb = nueva(4.8); relleno(rb, 0, 11, acento);
@@ -1350,18 +1390,17 @@
         texto('J' + r, { formula: fPct('N' + r), result: String(Math.round(p.dto_pct * 100) / 100).replace('.', ',') + '%' }, { al: med });
         ws.getCell('J' + r).alignment = { vertical: 'middle', horizontal: 'center' };
       }
-      // Dibujo (mismo tamaño que en el PDF)
-      // Alzado y, si el armario tiene hoja extra (sección / planta), debajo: mismo reparto que el PDF
+      // Dibujos por filas a todo el ancho (interior + cerrado; sección + planta), igual que el PDF:
+      // escala = la menor entre el ancho de la fila y su alto máximo; si no cabe, página nueva
+      var FD = d.fila || { x0: 42.8, ancho: 508.7, alto: 380, separacion: 8 };
       var dibs = p.libre ? [] : d.dibujos.filter(function (x) { return x.codigo === (p.clave || p.codigo); });
-      dibs.forEach(function (dib, j) {
-        var y0 = enPagina + 4, resto = dibs.length - j;
-        var hMax = Math.max(dibs.length > 1 ? 90 : 120, Math.min(260, (XL.alto - 12 - y0) / resto - 4));
-        var kk = Math.min(461 / dib.ancho, hMax / dib.alto), w = dib.ancho * kk, h = dib.alto * kk;
-        nueva(j ? 8 : 4);
-        var rd = nueva(h + 2);
-        var colOff = (87 - 87) + (461 - w) / 2 - 2;   // centrado en 85 → 546 como el PDF
-        tareas.push(png(dib.svg, 1600).then(function (im) {
-          ws.addImage(wb.addImage({ base64: png64(im), extension: 'png' }), { tl: { col: 2 + colOff / 88, row: rd - 1 }, ext: { width: w * 96 / 72, height: h * 96 / 72 }, editAs: 'absolute' });
+      dibs.forEach(function (dib) {
+        var kk = Math.min(FD.ancho / dib.ancho, FD.alto / dib.alto), w = dib.ancho * kk, h = dib.alto * kk;
+        if (enPagina + FD.separacion + h + 2 > XL.alto - 12) { cerrarPagina(false); linea(fila + 1, 0, 11, 'top', 'thin'); nueva(16); }
+        nueva(FD.separacion);
+        var rd = nueva(h + 2), tl = colDe(FD.x0 + (FD.ancho - w) / 2);
+        tareas.push(png(dib.svg, 2000).then(function (im) {
+          ws.addImage(wb.addImage({ base64: png64(im), extension: 'png' }), { tl: { col: tl, row: rd - 1 }, ext: { width: w * 96 / 72, height: h * 96 / 72 }, editAs: 'absolute' });
         }));
       });
       cerrarPagina(false);
@@ -1383,10 +1422,20 @@
     var rFp = nueva(11);
     texto('B' + rFp, 'FORMA DE PAGO', { font: { bold: true } }); linea(rFp, 1, 10, 'bottom', 'thin');
     etq(rFp, 'PVP SIN IVA'); valor(rFp, 'O' + rFp, sum('O'), tot.pvp, { font: { size: 8, color: { argb: 'FF808080' } } });
-    var plazos = pl.forma_pago || [];
+    // Forma de pago del presupuesto (o la de la plantilla): concepto, % e importe con IVA (el último cuadra el total)
+    var plazos = (doc.forma_pago && doc.forma_pago.length ? doc.forma_pago : pl.forma_pago) || [];
     var rows = [];
     for (var j = 0; j < Math.max(3, plazos.length); j++) rows.push(nueva(j === 2 ? 16 : 12));
-    plazos.forEach(function (fp, j) { ws.mergeCells('B' + rows[j] + ':C' + rows[j]); texto('B' + rows[j], (fp.concepto || '').toUpperCase()); texto('D' + rows[j], fp.pct + '%', { al: { horizontal: 'right' } }); });
+    var totIva = r2(tot.imp * (1 + ivaPct / 100)), sumPct = plazos.reduce(function (s, x) { return s + Number(x.pct || 0); }, 0), acum = 0;
+    ws.mergeCells('E' + rFp + ':F' + rFp); texto('E' + rFp, 'IMPORTE (IVA INCL.)', { font: { size: 5.5, color: { argb: 'FF434343' } }, al: { horizontal: 'right' } });
+    plazos.forEach(function (fp, j) {
+      ws.mergeCells('B' + rows[j] + ':C' + rows[j]); texto('B' + rows[j], (fp.concepto || '').toUpperCase());
+      texto('D' + rows[j], String(fp.pct).replace('.', ',') + '%', { al: { horizontal: 'right' } });
+      var imp = r2(totIva * Number(fp.pct || 0) / 100);
+      if (j === plazos.length - 1 && Math.abs(sumPct - 100) < 0.001) imp = r2(totIva - acum);
+      acum += imp;
+      ws.mergeCells('E' + rows[j] + ':F' + rows[j]); texto('E' + rows[j], hayPend ? 'PENDIENTE' : eurTxt(imp), { al: { horizontal: 'right' } });
+    });
     if (conDto) { etq(rows[1], 'DTO.  PROFESIONAL'); valor(rows[1], 'O' + rows[1], sum('P') + '-' + sum('O'), r2(tot.imp - tot.pvp), { font: { size: 8 } }); }
     etq(rows[2], 'IMPORTE TOTAL', true); valor(rows[2], 'O' + rows[2], sum('P'), tot.imp, { font: { size: 8, bold: true } });
     var rIva = nueva(14);

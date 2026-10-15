@@ -17,7 +17,7 @@
 // Misma regla que armarios para pasar a una hoja 2.
 
 import {
-  type Lamina, type Prim, type Medir, medirAprox, fmtCm, ESTILO, PAGINA, LOGO_ANCHO_PT, LOGO_CAJA_ALTO, ALTO_UTIL, CENTRO_VERTICAL, ladosTirador
+  type Lamina, type Prim, type Medir, medirAprox, fmtCm, ESTILO, PAGINA, PAGINA_PRESUPUESTO, LOGO_ANCHO_PT, LOGO_CAJA_ALTO, ALTO_UTIL, CENTRO_VERTICAL, ladosTirador
 } from './alzado.ts';
 import { LOGO_ALTO, LOGO_ANCHO } from './logo.ts';
 import type { Proyecto } from './esquema.ts';
@@ -112,9 +112,9 @@ function anchoFila(c: Cocina, o: Composicion): number {
   if (o.planta) { const k = geometriaCocina(c).caja; gap(); w += k.x1 - k.x0; }
   return w;
 }
-function escala(c: Cocina, o: Composicion): number {
+function escala(c: Cocina, o: Composicion, pres = false): number {
   const E = ESTILO;
-  const pg = PAGINA.A4;
+  const pg = pres ? PAGINA_PRESUPUESTO : PAGINA.A4;
   const k = o.planta ? geometriaCocina(c).caja : null;
   const alto = Math.max(o.principal || o.lateral ? alturas(c).techo : 0, k ? k.y1 - k.y0 : 0);
   return Math.min((pg.mr - pg.ml) / (anchoFila(c, o) + E.margen_izq_cm + E.margen_der_cm), (pg.h * ALTO_UTIL) / alto);
@@ -137,19 +137,19 @@ export function laminasCocina(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 
  * con el código de su partida («C.01.1», «C.01.2»…) y, si la cocina tiene
  * vistas, la sección y la planta con el código de la última partida.
  */
-export function laminasCocinaPresupuesto(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox): Lamina[] {
+export function laminasCocinaPresupuesto(entrada: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir = medirAprox, pres = false): Lamina[] {
   const c = completarCocina(entrada);
-  const out = c.tramos.map((t, i) => ({ ...lamina({ ...c, tramos: [t] }, p, medir, SOLO), codigo: `${c.codigo}.${i + 1}` }));
+  const out = c.tramos.map((t, i) => ({ ...lamina({ ...c, tramos: [t] }, p, medir, SOLO, pres), codigo: `${c.codigo}.${i + 1}` }));
   const lateral = !!c.vistas?.includes('lateral'), planta = !!c.vistas?.includes('planta');
-  if (lateral || planta) out.push({ ...lamina(c, p, medir, { principal: false, lateral, planta }), codigo: `${c.codigo}.${c.tramos.length}` });
+  if (lateral || planta) out.push({ ...lamina(c, p, medir, { principal: false, lateral, planta }, pres), codigo: `${c.codigo}.${c.tramos.length}` });
   return out;
 }
 
-function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir, comp: Composicion): Lamina {
+function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: Medir, comp: Composicion, pres = false): Lamina {
   const E = ESTILO;
-  const pg = PAGINA.A4, prims: Prim[] = [];
+  const pg = pres ? PAGINA_PRESUPUESTO : PAGINA.A4, prims: Prim[] = [];
   const H = alturas(c);
-  const s = comp.principal ? escala(c, comp) : Math.min(escala(c, comp), escala(c, SOLO));
+  const s = comp.principal ? escala(c, comp, pres) : Math.min(escala(c, comp, pres), escala(c, SOLO, pres));
   const cm = (v: number) => v * s;
   let x = (pg.ml + pg.mr) / 2 - cm(anchoFila(c, comp)) / 2 + cm(E.margen_izq_cm - E.margen_der_cm) / 2;
   const suelo = pg.h * CENTRO_VERTICAL + cm(H.techo) / 2;

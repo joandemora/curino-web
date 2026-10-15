@@ -51,7 +51,8 @@ export interface Partida {
 }
 
 /** Comisión del interiorista: dos versiones del PDF/Excel (cliente PVP / interiorista con DTO). */
-export interface Comision { activa: boolean; pct: number; paga: 'cliente' | 'interiorista' }
+/** Comisión del interiorista. Siempre paga el cliente del presupuesto, a PVP; la comisión es coste. «paga» queda por compatibilidad (siempre «cliente»). */
+export interface Comision { activa: boolean; pct: number; paga?: 'cliente' | 'interiorista' }
 
 export interface DocPresupuesto {
   numero: string;
@@ -66,6 +67,7 @@ export interface DocPresupuesto {
   version: number;         // versión del proyecto de la que sale (la primera si hay varias)
   versiones?: number[];    // versiones del diseño usadas
   comision?: Comision;
+  forma_pago?: FormaPago[];  // del presupuesto (se copia de la plantilla al crearlo); sin ella, la de la plantilla
   partidas: Partida[];
 }
 
@@ -119,8 +121,8 @@ export function docVariante(d: DocPresupuesto, v: 'cliente' | 'interiorista' | n
 
 /**
  * Importes para métricas: facturación (sin IVA), PVP y comisión que cuenta como
- * coste. Comisión con «paga el cliente»: facturación = PVP y la comisión es coste;
- * «paga el interiorista» (compra a neto): facturación = neto, sin comisión.
+ * coste. Con comisión, el cliente paga el PVP (facturación = PVP) y la comisión
+ * es coste del proyecto.
  */
 export function importesNegocio(d: DocPresupuesto, ivaPct: number): { importe: number | null; pvp: number | null; comision: number | null } {
   if (d.comision?.activa) {
@@ -129,9 +131,7 @@ export function importesNegocio(d: DocPresupuesto, ivaPct: number): { importe: n
     // Mismo redondeo que el PDF/Excel «interiorista»: neto redondeado por línea; comisión = PVP − neto
     const neto = totales(docVariante(d, 'interiorista'), ivaPct).importe;
     const comision = Math.round((t.pvp - neto) * 100) / 100;
-    return d.comision.paga === 'interiorista'
-      ? { importe: neto, pvp: t.pvp, comision: 0 }
-      : { importe: t.pvp, pvp: t.pvp, comision };
+    return { importe: t.pvp, pvp: t.pvp, comision };
   }
   const t = totales(d, ivaPct);
   return t.pendientes ? { importe: null, pvp: null, comision: null } : { importe: t.importe, pvp: t.pvp, comision: 0 };
@@ -187,6 +187,20 @@ VALIDEZ DE LA OFERTA:
 ACUERDO DE REVISIÓN DE PRECIO DE LA EJECUCIÓN DE OBRA POR AUMENTO DEL PRECIO DE LOS MATERIALES:
 DADO QUE LA EJECUCIÓN DE LA OBRA TIENE UNA DURACIÓN PROLONGADA EN EL TIEMPO Y EL PRECIO DE LAS MATERIAS PRIMAS PUEDE VARIAR, AMBAS PARTES ACUERDAN QUE EN CASO DE QUE EL PRECIO DE LOS MATERIALES SE INCREMENTE (EN MÁS DE UN 5%) RESPECTO DEL TOMADO EN CONSIDERACIÓN EN LA ELABORACIÓN DEL PRESUPUESTO, DICHO AUMENTO DE PRECIO SE REPERCUTIRÁ EN EL PRESUPUESTO, QUEDANDO OBLIGADO EL CLIENTE A SATISFACER ESTE INCREMENTO.`;
 
+/** Forma de pago de un presupuesto nuevo: la de la plantilla del usuario o, si no tiene, 50/40/10. */
+export const formaPagoInicial = (pl: Pick<Plantilla, 'forma_pago'>): FormaPago[] =>
+  (pl.forma_pago?.length ? pl.forma_pago : FORMA_PAGO_DEF).map((x) => ({ concepto: x.concepto, pct: x.pct }));
+/** La forma de pago que vale para un presupuesto (la suya; los antiguos, la de la plantilla). */
+export const formaPagoDe = (d: Pick<DocPresupuesto, 'forma_pago'>, pl: Pick<Plantilla, 'forma_pago'>): FormaPago[] =>
+  d.forma_pago?.length ? d.forma_pago : formaPagoInicial(pl);
+export const sumaPct = (fp: FormaPago[]) => Math.round(fp.reduce((s, x) => s + (Number(x.pct) || 0), 0) * 100) / 100;
+/** Importe de cada plazo sobre el total con IVA; el último se ajusta para que sumen el total exacto. */
+export function importesPlazos(fp: FormaPago[], total: number | null): (number | null)[] {
+  if (total === null) return fp.map(() => null);
+  const r = fp.map((x) => Math.round(total * (Number(x.pct) || 0)) / 100);
+  if (fp.length && Math.abs(sumaPct(fp) - 100) < 0.001) r[r.length - 1] = Math.round((total - r.slice(0, -1).reduce((s, v) => s + v, 0)) * 100) / 100;
+  return r;
+}
 export const FORMA_PAGO_DEF: FormaPago[] = [
   { concepto: 'CONFIRMACIÓN PRESUPUESTO', pct: 50 },
   { concepto: 'ENTREGA MATERIALES', pct: 40 },
@@ -247,7 +261,6 @@ export function faltanPlantilla(p: Plantilla): string[] {
   if (vacio(p.firmante)) f.push('Firmante');
   if (!p.firma_path) f.push('Firma');
   if (vacio(p.condiciones)) f.push('Condiciones');
-  if (!p.forma_pago?.length) f.push('Forma de pago');
   if (p.tipo === 'propia' && !p.logo_path) f.push('Logo (plantilla propia)');
   return f;
 }
@@ -481,6 +494,7 @@ export function generarPresupuesto(o: {
     });
   }
   return {
+    forma_pago: prev?.forma_pago ?? formaPagoInicial(o.plantilla),
     numero: prev?.numero || (o.referencia ?? ''),
     fecha: prev?.fecha || o.hoy,
     atencion: prev?.atencion || o.nombre,
