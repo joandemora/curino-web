@@ -107,8 +107,9 @@
 
   function fichaProyecto(el, ctx, pid, tab) {
     // Pestañas antiguas (Archivos, Documentos, Métricas): ahora todo está en «Resumen»
-    if (tab === 'archivos' || tab === 'documentos' || tab === 'metricas') tab = 'resumen';
-    var TABS = [['resumen', 'Resumen'], ['diseno', 'Diseño'], ['presupuesto', 'Presupuesto']];
+    var irPresupuestos = tab === 'presupuesto';
+    if (tab === 'archivos' || tab === 'documentos' || tab === 'metricas' || tab === 'presupuesto') tab = 'resumen';
+    var TABS = [['resumen', 'Resumen'], ['diseno', 'Diseño']];
     el.innerHTML = '<div class="pj-ficha"><div class="pj-cab"><a class="pj-volver" href="' + ctx.rutas.estudio() + '">← Proyectos</a><h1 id="pjTitulo">…</h1>' +
       '<nav class="pj-tabs">' + TABS.map(function (t) { return '<a href="' + ctx.rutas.estudio(pid, t[0]) + '" class="' + (t[0] === tab ? 'on' : '') + '">' + t[1] + '</a>'; }).join('') +
       '</nav></div><div id="pjCuerpo"></div></div>';
@@ -121,8 +122,7 @@
     };
     cargarCab();
     var cuerpo = el.querySelector('#pjCuerpo');
-    if (tab === 'resumen') return resumenProyecto(cuerpo, ctx, pid);
-    if (tab === 'presupuesto') return presupuesto(cuerpo, ctx, pid, { embebido: true });
+    if (tab === 'resumen') return resumenProyecto(cuerpo, ctx, pid, { irPresupuestos: irPresupuestos });
     return disenoProyecto(cuerpo, ctx, pid);
   }
 
@@ -603,7 +603,11 @@
       var x = vistas[Number(b.dataset.i)]; if (!x) return;
       var a = b.dataset.a;
       if (a === 'editar') { try { sessionStorage.setItem(CLAVE_EDITAR, x.id); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'diseno'); if (ctx.alNavegar) ctx.alNavegar(); return; }
-      if (a === 'presupuesto') { try { sessionStorage.setItem(CLAVE_PRE, JSON.stringify({ tabla: x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? 'doc' : 'fichero', id: x.id })); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'presupuesto'); if (ctx.alNavegar) ctx.alNavegar(); return; }
+      if (a === 'presupuesto') {
+        var preSel = { tabla: x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? 'doc' : 'fichero', id: x.id };
+        if (ctx.abrirPresupuesto) return ctx.abrirPresupuesto(preSel);
+        try { sessionStorage.setItem(CLAVE_PRE, JSON.stringify(preSel)); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'presupuesto'); if (ctx.alNavegar) ctx.alNavegar(); return;
+      }
       if (a === 'json') return api(ctx, { action: 'diseno_json', proyecto_id: pid, diseno_id: x.id }).then(function (d) { descargar(new Blob([JSON.stringify(d.datos, null, 2)], { type: 'application/json' }), (x.nombre || 'diseno').replace(/[^\wÀ-ÿ-]+/g, '_') + '.json'); });
       if (a === 'datos') return datos(x);
       if (a === 'sustituye') return sustituye(x);
@@ -618,8 +622,10 @@
   var CLAVE_PRE = 'estudio-presupuesto-desde';
 
   // ── Resumen del proyecto: métricas (arriba) + documentos (debajo) ──
-  function resumenProyecto(el, ctx, pid) {
-    el.innerHTML = '<div class="ng-card rs-met" id="rsMet"><p class="pa-muted">Cargando…</p></div><div id="rsDocs"></div>';
+  function resumenProyecto(el, ctx, pid, ropts) {
+    ropts = ropts || {};
+    el.innerHTML = '<div class="ng-card rs-met" id="rsMet"><p class="pa-muted">Cargando…</p></div><div id="rsDocs"></div>' +
+      '<section class="ng-card rs-pres" id="rsPres"><h2 class="rs-pres-h">Presupuestos</h2><div id="rsPresCuerpo"></div></section>';
     var pintarMet = function () {
       return api(ctx, { action: 'metricas_proyecto', proyecto_id: pid }).then(function (m) {
         var z = el.querySelector('#rsMet'); if (!z) return;
@@ -634,18 +640,14 @@
           '<div class="rs-kpi"><span>Coste total</span><b>' + eur(m.costes || 0) + '</b><small>' + (m.costes_sin_importe ? '<em class="rs-mal">' + m.costes_sin_importe + (m.costes_sin_importe === 1 ? ' coste' : ' costes') + ' sin importe</em>' : m.hay_costes ? 'documentos de coste' : 'sin documentos de coste') + '</small>' +
             (m.coste_previsto ? '<small class="rs-previsto" title="Presupuestos de proveedor de un proyecto sin presupuesto aceptado: no cuentan como coste ni en el margen">Coste previsto: ' + eur(m.coste_previsto) + '</small>' : '') + '</div>' +
           '<div class="rs-kpi"><span>Margen</span><b class="' + (m.margen != null && m.margen < 0 ? 'rs-mal' : '') + '">' + (m.margen == null ? '—' : eur(m.margen)) + pct + '</b><small>' + (m.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(m.motivo || '') + '</em>') + '</small></div>' +
-          '<div class="rs-kpi"><span>Presupuestos</span><b>' + (P.aceptados || 0) + (P.aceptados === 1 ? ' aceptado' : ' aceptados') + '</b><small>' + [(P.pendientes || 0) + ' pendientes', (P.rechazados || 0) + ' rechazados', P.borradores ? P.borradores + ' en borrador' : ''].filter(Boolean).join(' · ') + '</small></div>' +
-          '</div>' +
-          '<div class="rs-fila"><div class="rs-bloque"><h3>Coste por tipo</h3>' + (tipos.length ? '<ul class="rs-tipos">' + tipos.map(function (c) {
-            return '<li><span>' + esc(c.tipo) + '</span><i><em style="width:' + Math.max(2, c.importe / maxT * 100) + '%"></em></i><b>' + eur(c.importe) + '</b></li>';
-          }).join('') + '</ul>' : '<p class="pa-muted">Aún no hay costes con importe. Sube facturas o presupuestos de proveedor en Documentos.</p>') + '</div>' +
           // Montaje: una línea por presupuesto aceptado (n.º · fecha prevista · Montado · fecha real), se guarda en ese presupuesto
-          '<div class="rs-bloque"><h3>Montaje</h3>' + ((m.montajes || []).filter(function (x) { return x.id; }).length ? '<div class="rs-mont">' + m.montajes.filter(function (x) { return x.id; }).map(function (x) {
+          '<div class="rs-kpi rs-kpi-mont"><span>Montaje</span>' + ((m.montajes || []).filter(function (x) { return x.id; }).length ? m.montajes.filter(function (x) { return x.id; }).map(function (x) {
             return '<div class="rs-mont-f" data-mpr="' + x.id + '"><b>' + esc(x.numero || 'Aceptado') + '</b>' +
               '<input type="date" data-pm="prev" value="' + (x.montaje_previsto || '') + '" title="Fecha prevista de montaje">' +
               '<label class="pm-chk"><input type="checkbox" data-pm="mont"' + (x.montado ? ' checked' : '') + '> Montado</label>' +
               (x.montado ? '<input type="date" data-pm="real" value="' + (x.montado_at || '') + '" title="Fecha real de montaje">' : '') + '</div>';
-          }).join('') + '<span class="pr-msg" id="rsMontMsg"></span></div>' : '<p class="pa-muted">Sin presupuesto aceptado</p>') + '</div></div>' +
+          }).join('') + '<small class="pr-msg" id="rsMontMsg"></small>' : '<small>Sin presupuesto aceptado</small>') + '</div>' +
+          '</div>' +
           (m.v2 ? '' : '<p class="pa-muted" style="font-size:12px;margin:8px 0 0">Costes con las reglas de antes (facturas de proveedor + costes manuales) hasta que se migre este proyecto.</p>');
       }).catch(function (e) { var z = el.querySelector('#rsMet'); if (z) z.innerHTML = '<p class="tf-err">' + esc(e.message) + '</p>'; });
     };
@@ -659,7 +661,15 @@
       api(ctx, body).then(pintarMet).then(function () { var mm = el.querySelector('#rsMontMsg'); if (mm) { mm.className = 'pr-msg ok'; mm.textContent = 'Guardado'; } })
         .catch(function (err) { alert(err.message); });
     });
-    documentosProyecto(el.querySelector('#rsDocs'), Object.assign({}, ctx, { alCambiarDocs: pintarMet }), pid);
+    // Presupuestos al final: al cambiar uno (aceptar, importe, montaje) se refrescan las cajas de arriba
+    var pres = null;
+    var ctxPres = Object.assign({}, ctx, { alCambiarPres: pintarMet, alListo: function (api2) { pres = api2; } });
+    presupuesto(el.querySelector('#rsPresCuerpo'), ctxPres, pid, { embebido: true });
+    var irASeccion = function () { var z = el.querySelector('#rsPres'); if (z) z.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+    if (ropts.irPresupuestos) setTimeout(irASeccion, 600);
+    // «Crear presupuesto» de una tarjeta: baja a la sección y abre el asistente con ese documento, sin recargar
+    var ctxDocs = Object.assign({}, ctx, { alCambiarDocs: pintarMet, abrirPresupuesto: function (preSel) { irASeccion(); if (pres) pres.nuevo(preSel); } });
+    documentosProyecto(el.querySelector('#rsDocs'), ctxDocs, pid);
     // «Borrar proyecto»: al final, con confirmación escribiendo el nombre
     var pie = document.createElement('div'); pie.className = 'rs-pie';
     pie.innerHTML = '<button type="button" class="rs-borrar">Borrar proyecto</button>';
@@ -844,6 +854,8 @@
       // Al entrar: solo la lista (ninguno abierto); desde «Crear presupuesto» de un documento, el asistente
       return cargarLista(false).then(function () { if (pre) pintarNuevo(pre); });
     });
+    // Dentro del Resumen: «Crear presupuesto» de una tarjeta abre el asistente aquí mismo
+    if (ctx.alListo) ctx.alListo({ nuevo: function (preSel) { return pintarNuevo(preSel); } });
 
     // ── Lista de presupuestos del proyecto ──
     /** Lista ligera leída directamente de la base de datos (sin partidas ni dibujos): < 0,3 s. */
@@ -868,14 +880,11 @@
     function pintarLista() {
       $('#prLista').innerHTML = '<div class="ng-card-cab"><h2>Presupuestos del proyecto</h2><span class="pa-btns"><button class="pa-btn" id="prFusionar" disabled title="Marca dos o más presupuestos">Fusionar</button><button class="pa-btn primary" id="prNuevoBtn">Nuevo presupuesto</button></span></div>' +
         (lista.length ? '<table class="pr-tabla"><thead><tr><th></th><th>N.º</th><th>Fecha</th><th>Importe</th><th>Estado</th><th></th></tr></thead><tbody>' + lista.map(function (x) {
-          // Cada aceptado: su fecha prevista de montaje y «montado»
-          var montaje = x.estado === 'aceptado' ? '<div class="pr-mont" data-mpr="' + x.id + '"><label>Montaje <input type="date" data-mprev value="' + (x.montaje_previsto || '') + '"></label><label class="pm-chk"><input type="checkbox" data-mmont' + (x.montado ? ' checked' : '') + '> Montado</label>' +
-            (x.montado ? '<label>el <input type="date" data-mreal value="' + (x.montado_at || '') + '"></label>' : '') + '</div>' : '';
           return '<tr class="' + (x.id === sel ? 'on' : '') + '"><td>' + (x.importado ? '' : '<input type="checkbox" data-fus="' + x.id + '" title="Para fusionar">') + '</td><td><b>' + esc(x.numero || '—') + '</b>' + (x.importado ? ' <span class="pr-tag">histórico</span>' : '') + (x.comision ? ' <span class="pr-tag">interiorista ' + numOut(x.comision.pct) + ' %</span>' : '') + '</td>' +
             '<td>' + dia(x.fecha) + '</td><td>' + (x.importe == null ? '—' : eur(Number(x.importe))) + '</td>' +
-            '<td>' + selectEstado(pid, x.estado, x.id) + (x.estado_nota ? '<br><small class="pr-nota">' + esc(x.estado_nota) + '</small>' : '') + montaje + '</td>' +
+            '<td>' + selectEstado(pid, x.estado, x.id) + (x.estado_nota ? '<br><small class="pr-nota">' + esc(x.estado_nota) + '</small>' : '') + '</td>' +
             '<td class="pr-acc">' + (x.id === sel ? '<button class="pa-btn" data-cerrar="1">Cerrar</button>' : '<button class="pa-btn" data-abrir="' + x.id + '">Abrir</button>') + (x.importado ? '' : '<button class="pa-btn" data-duplicar="' + x.id + '">Duplicar</button>') + '<button class="pa-btn pr-borrar" data-borrar-pr="' + x.id + '">Borrar</button></td></tr>';
-        }).join('') + '</tbody></table><p class="pa-muted" style="font-size:12px;margin:6px 0 0">Puede haber varios aceptados (fases, extras): se suman para la facturación y las métricas, y cada uno lleva su fecha de montaje. Marca dos o más para fusionarlos en uno nuevo.</p>' : '<p class="pa-muted">Aún no hay presupuestos.</p>');
+        }).join('') + '</tbody></table><p class="pa-muted" style="font-size:12px;margin:6px 0 0">Puede haber varios aceptados (fases, extras): se suman para la facturación y las métricas; su montaje está en la caja «Montaje» de arriba. Marca dos o más para fusionarlos en uno nuevo.</p>' : '<p class="pa-muted">Aún no hay presupuestos.</p>');
     }
 
     // ── Nuevo presupuesto: desde el diseño, desde documentos o en blanco ──
@@ -932,7 +941,7 @@
 
     function aviso(t, tipo, html) { var m = $('#prMsg'); if (!m) return; m.className = 'pr-msg ' + (tipo || ''); m[html ? 'innerHTML' : 'textContent'] = t || ''; }
     var estadoP = 'borrador', importado = null, importes = null;
-    function refrescarLista() { return leerLista().then(pintarLista); }
+    function refrescarLista() { return leerLista().then(pintarLista).then(function () { if (ctx.alCambiarPres) ctx.alCambiarPres(); }); }
     /** Borrar con confirmación (doble si está aceptado); los PDF/Excel se quedan salvo que se marque lo contrario. */
     function borrarPresupuesto(x) {
       if (!x) return;

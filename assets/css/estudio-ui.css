@@ -458,3 +458,10 @@ a.pj-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);transform:translateY(-1px)
 .rs-borrar{background:none;border:0;color:#b42318;font:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px;text-decoration:underline;text-underline-offset:2px}
 .rs-borrar:hover{color:#8a1a12}
 .rb-ok:not(:disabled){background:#b42318;border-color:#b42318;color:#fff}
+
+/* Resumen: cajas alineadas arriba; «Montaje» crece hacia abajo */
+.rs-kpis{align-items:start}
+.rs-kpi-mont .rs-mont-f{gap:4px 8px;padding:2px 0;font-size:12.5px}
+.rs-kpi-mont .rs-mont-f b{font-size:12.5px;line-height:1.4}
+.rs-pres{margin-top:14px}
+.rs-pres-h{margin:0 0 8px;font-size:18px}
