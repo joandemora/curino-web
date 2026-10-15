@@ -352,7 +352,9 @@ export async function accionProyecto(action: string, ctx: {
   if (action === 'cobros_regenerar') {
     const { pres, cobros } = await datosProyecto(supa, pid);
     if (pres?.estado !== 'aceptado') return json({ error: 'Los cobros se calculan cuando el presupuesto está aceptado.' }, 400);
-    return json({ cobros: await asegurarCobros(supa, proyecto, pres, cobros, true) });
+    // Los plazos de cobro ya no se crean (no se ven): se devuelven los que existían
+    void pres; void asegurarCobros;
+    return json({ cobros });
   }
   if (action === 'miniatura_subida' || action === 'miniatura_guardar') {
     // Miniatura (JPEG pequeño) que genera el navegador la primera vez que ve la tarjeta
@@ -408,7 +410,8 @@ export async function accionProyecto(action: string, ctx: {
   }
   if (action === 'metricas_proyecto') {
     const d = await datosProyecto(supa, pid);
-    const cobros = await asegurarCobros(supa, proyecto, d.pres, d.cobros);
+    // Sin plazos nuevos al aceptar: solo los cobros antiguos que ya existían
+    const cobros = d.cobros;
     const v2 = !!proyecto.costes_v2;
     const m = metricasProyecto({ presupuesto: d.pres, ficheros: d.ficheros, costes: d.costes, cobros, hoy: hoyMadrid(), v2 });
     // Presupuestos por estado y montajes (uno por aceptado; sin aceptados, el del proyecto)
