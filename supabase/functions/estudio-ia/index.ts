@@ -37,7 +37,7 @@ import { accionAdminAcceso, accionEnlace, accionYo, descontarSaldo, esAccionAdmi
 import { accionTienda, accionSinAcceso, esAccionTienda } from './tienda.ts'
 import { accionNegocio, esAccionNegocio } from './negocio.ts'
 import { accionProyecto, esAccionProyecto, guardarDocumento, miniaturaSvg } from './proyecto.ts'
-import { aPapelera } from './papelera.ts'
+import { aPapelera } from '../_shared/estudio-papelera.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
