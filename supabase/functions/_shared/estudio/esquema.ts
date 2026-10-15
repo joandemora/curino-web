@@ -135,8 +135,11 @@ export interface Armario {
   formato?: Formato;           // si falta, A3 o A4 según el ancho
   notas?: string;              // pie izquierdo
   vistas?: Vista[];            // además de interior + cerrado
+  materiales?: MaterialesArmario;   // lo que diga el usuario, tal cual (lo que falte: «a definir» en el presupuesto)
   cuerpos: Cuerpo[];
 }
+export interface MaterialesArmario { interior?: string; exterior?: string; cantos?: string; herrajes?: string }
+export const CAMPOS_MATERIALES = ['interior', 'exterior', 'cantos', 'herrajes'] as const;
 
 export interface Proyecto {
   version: 1;
@@ -192,6 +195,16 @@ export const ESQUEMA_JSON = {
           subtitulo: { type: 'string', maxLength: 140 },
           formato: { enum: ['A3', 'A4'] },
           notas: { type: 'string', maxLength: 220 },
+          materiales: {
+            type: 'object', additionalProperties: false,
+            description: 'Solo lo que diga el usuario, copiado tal cual (material, marca, color). Omite lo que no diga: nunca inventes ni pongas un ejemplo.',
+            properties: {
+              interior: { type: 'string', maxLength: 120, description: 'Material / acabado del interior («textil Lino Sand», «melamina blanca»).' },
+              exterior: { type: 'string', maxLength: 120, description: 'Material / acabado exterior si da más detalle que frente.acabado («Blanco Soft III Finsa»).' },
+              cantos: { type: 'string', maxLength: 120 },
+              herrajes: { type: 'string', maxLength: 120, description: 'Marca o tipo de herrajes, solo si lo dice («Blum con cierre amortiguado»).' }
+            }
+          },
           vistas: { type: 'array', uniqueItems: true, items: { enum: ['lateral', 'planta'] }, description: 'Vistas extra además de interior + cerrado: lateral (sección) y/o planta. Solo si el usuario las pide.' },
           cuerpos: {
             type: 'array', minItems: 1, maxItems: 4,
@@ -336,7 +349,7 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
   lista(entrada, 'armarios', 'proyecto', 0, 30).forEach((a, ia) => {
     const ra = `armarios[${ia}]`;
     if (!esObj(a)) { err(ra, 'debe ser un objeto'); return; }
-    campos(a, ra, ['codigo', 'titulo', 'subtitulo', 'formato', 'notas', 'vistas', 'cuerpos']);
+    campos(a, ra, ['codigo', 'titulo', 'subtitulo', 'formato', 'notas', 'vistas', 'materiales', 'cuerpos']);
     if (a.vistas !== undefined) {
       if (!Array.isArray(a.vistas) || a.vistas.some((v) => !VISTAS.includes(v as Vista)) || new Set(a.vistas).size !== a.vistas.length) err(`${ra}.vistas`, `lista sin repetir de ${VISTAS.join(' / ')}`);
     }
@@ -347,6 +360,10 @@ export function validarProyecto(entrada: unknown): ResultadoValidacion {
     texto(a, 'subtitulo', ra, 140);
     texto(a, 'notas', ra, 220);
     opcion(a, 'formato', ra, ['A3', 'A4']);
+    if (a.materiales !== undefined) {
+      if (!esObj(a.materiales)) err(`${ra}.materiales`, 'debe ser un objeto');
+      else { campos(a.materiales, `${ra}.materiales`, [...CAMPOS_MATERIALES]); for (const k of CAMPOS_MATERIALES) texto(a.materiales, k, `${ra}.materiales`, 120); }
+    }
 
     lista(a, 'cuerpos', ra, 1, 4).forEach((c, ic) => {
       const rc = `${ra}.cuerpos[${ic}]`;

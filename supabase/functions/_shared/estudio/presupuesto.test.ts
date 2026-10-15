@@ -91,14 +91,44 @@ test('textos técnicos como en el presupuesto de referencia', () => {
   assert.equal(doc.partidas[1].tecnico, [
     'Medidas: 2000 x 2740 x 600 mm',
     'Distribución: 2 módulos de 1000 mm',
-    'Puertas: 4 puertas abatibles molduradas lacadas de 500 mm',
+    'Puertas: 4 puertas abatibles molduradas de 500 mm · acabado lacada',
     'Módulo 1 – 100 cm: doble perchero + altillo 50 cm.',
     'Módulo 2 – 100 cm: cajonera de 4 cajones y tapetas laterales 3 cm para bisagras + barra de colgar + altillo 50 cm.'
   ].join('\n'));
   assert.match(doc.partidas[0].tecnico, /^Cuerpo principal: 1900 x 2800 x 600 mm · 2 módulos de 950 mm/);
   assert.match(doc.partidas[0].tecnico, /Lateral: 1000 x 2800 x 400 mm/);
   assert.equal(textoModulo([{ tipo: 'hueco', alto: 36, etiqueta: 'Estante' }, { tipo: 'hueco', etiqueta: 'Estante' }, { tipo: 'perchero_extraible' }]), '2 estantes + perchero extraíble.');
-  assert.equal(doc.partidas[2].subtitulo, 'Armario a medida de 260 cm con puertas molduradas lacadas');
+  assert.equal(doc.partidas[2].subtitulo, 'Armario a medida de 260 cm con puertas molduradas, acabado lacada');
+});
+
+test('materiales siempre del diseño: tal cual, «a definir» si falta, nada de ejemplo; mm con decimales', async () => {
+  const { MATERIALES_EJEMPLO, contarSupuestos, paraCliente } = await import('./presupuesto.ts');
+  const p = ejemplo();
+  const a = p.armarios[1];
+  a.cuerpos[0].frente.acabado = 'Blanco Soft III';
+  a.cuerpos[0].frente.piezas.forEach((x) => { if (x.tipo === 'puerta') x.ancho = 54.75; });
+  a.notas = 'Interior textil Lino Sand, exterior Blanco Soft III Finsa.';
+  a.materiales = { interior: 'textil Lino Sand' };
+  const d = generarPresupuesto({ proyecto: p, version: 1, tarifa: TARIFA_PENDIENTE, plantilla: { ...PLANTILLA_ADMIN, materiales: MATERIALES_EJEMPLO }, nombre: 'X', hoy: '2026-10-15', armarios: [a.codigo] });
+  const m = d.partidas[0].materiales;
+  assert.doesNotMatch(m, /Egger|Roble Vicenza|Blum|ABS/);
+  assert.match(m, /^Interior: textil Lino Sand$/m);
+  assert.match(m, /^Exterior: puertas molduradas · acabado Blanco Soft III$/m);
+  assert.match(m, /^Cantos: a definir$/m);
+  assert.match(m, /^Herrajes: a definir$/m);
+  assert.match(m, /^Notas del diseño: Interior textil Lino Sand, exterior Blanco Soft III Finsa\.$/m);
+  assert.match(d.partidas[0].tecnico, /de 547,5 mm/);
+  // Recalcular: el texto de ejemplo antiguo se rehace; lo editado a mano se conserva
+  const viejo = { ...d, partidas: d.partidas.map((x) => ({ ...x, materiales: MATERIALES_EJEMPLO + '\nAcabado exterior: puertas lisas' })) };
+  const r1 = generarPresupuesto({ proyecto: p, version: 1, tarifa: TARIFA_PENDIENTE, plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-15', previo: viejo, armarios: [a.codigo] });
+  assert.equal(r1.partidas[0].materiales, m);
+  const editado = { ...d, partidas: d.partidas.map((x) => ({ ...x, materiales: 'Interior: lo que diga el cliente' })) };
+  const r2 = generarPresupuesto({ proyecto: p, version: 1, tarifa: TARIFA_PENDIENTE, plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-15', previo: editado, armarios: [a.codigo] });
+  assert.equal(r2.partidas[0].materiales, 'Interior: lo que diga el cliente');
+  // Supuestos (cocina): se cuentan; al cliente, sin la palabra
+  const s = { ...d, partidas: [{ ...d.partidas[0], materiales: 'Cuerpo: Blanco 16 (supuesto)\nSupuestos: bajos de 70 de alto · cajones Advänced' }] };
+  assert.equal(contarSupuestos(s), 3);
+  assert.equal(paraCliente(s).partidas[0].materiales, 'Cuerpo: Blanco 16\nOtros datos: bajos de 70 de alto · cajones Advänced');
 });
 
 test('un alumno no puede emitir con los datos de SISTEMA & CURINO', () => {
