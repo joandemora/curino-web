@@ -167,8 +167,9 @@ test('puntos: tramo inmediatamente superior y extrapolación por encima de 1000 
   assert.deepEqual(porAncho(m3, 400), { puntos: 259, tramo: 400, fuera: false });
   assert.deepEqual(porAncho(m3, 450), { puntos: 275, tramo: 500, fuera: false });   // 450 → tramo 500
   assert.deepEqual(porAncho(m3, 350), { puntos: 259, tramo: 400, fuera: false });
-  // 1150 mm: 395 + 2 × (395 − 370) = 445, fuera de tabla
-  assert.deepEqual(porAncho(m3, 1150), { puntos: 445, tramo: 1200, fuera: true });
+  // 1150 mm → 1200: 395 + 2 × subida media de los 3 últimos escalones ((395 − 319) / 3 = 25,33) = 445,67
+  assert.deepEqual(porAncho(m3, 1150), { puntos: 445.67, tramo: 1200, fuera: true });
+  assert.deepEqual(porAncho(MODELOS.m1.puntos, 1125), { puntos: 578, tramo: 1200, fuera: true });   // 512 + 2 × 33
 });
 
 test('puntos: modelo de interior por las zonas del módulo y extras', () => {
@@ -231,20 +232,21 @@ test('cocina: una partida por tramo, dibujo en la primera, precio con el punto d
   assert.ok(sin.partidas[0].puntos! > 0);
 });
 
-test('bloqueo: líneas a 0 puntos o fuera de tarifa (también en armarios); el precio a mano manda', () => {
+test('bloqueo: solo líneas a 0 puntos (cocina fuera de tarifa); extrapoladas no; el precio a mano manda', () => {
   const p = conCocina();
   p.cocinas![0].tramos[1].bajos[0].ancho = 120;   // bajo de 120: fuera de tarifa
   const d = generarPresupuesto({ proyecto: p, version: 1, tarifa: { ...tarifaPrueba(), precio_punto_cocina: 2 }, plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14' });
   const soloCocina = (x: DocPresupuesto): DocPresupuesto => ({ ...x, partidas: x.partidas.filter((q) => q.tipo === 'cocina') });
   const b = lineasBloqueantes(soloCocina(d));
   assert.equal(b.length, 1);
-  assert.match(b[0], /PARED 2 · Cuerpo Bajo 70 × 120 .*: fuera de tarifa/);
+  assert.match(b[0], /PARED 2 · Cuerpo Bajo 70 × 120 .*: 0 puntos \(fuera de tarifa\)/);
   const manual = { ...d, partidas: d.partidas.map((x) => x.codigo === 'C.01.2' ? { ...x, precio_manual: true, precio: 500 } : x) };
   assert.deepEqual(lineasBloqueantes(soloCocina(manual)), []);
-  // Armario con un módulo de más de 1000 mm (fuera de tabla) también bloquea
+  // Armario con un módulo de más de 1000 mm: valor extrapolado con aviso, no bloquea
   const a = ejemplo(); a.armarios[0].cuerpos[0].modulos[0].ancho = 110;
   const da = generarPresupuesto({ proyecto: a, version: 1, tarifa: tarifaPrueba(), plantilla: PLANTILLA_ADMIN, nombre: 'X', hoy: '2026-10-14', armarios: ['A.01'] });
-  assert.ok(lineasBloqueantes(da).some((l) => /fuera de tarifa/.test(l)));
+  assert.ok(da.partidas[0].desglose!.some((l) => l.aviso === 'fuera de tabla, valor extrapolado: revisar'));
+  assert.deepEqual(lineasBloqueantes(da), []);
 });
 
 test('dibujos del presupuesto: un alzado por tramo y sección + planta bajo el último', async () => {

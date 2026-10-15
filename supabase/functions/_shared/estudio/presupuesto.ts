@@ -73,7 +73,7 @@ export const claveDe = (p: Partida) => p.clave || p.codigo;
 
 /**
  * Líneas que impiden dar el presupuesto al cliente (PDF / Excel): a 0 puntos
- * o fuera de tarifa / de tabla, en partidas con precio de tarifa (un precio
+ * (incluidas las de cocina fuera de tarifa), en partidas con precio de tarifa (un precio
  * puesto a mano manda). La vista interna sí se puede ver.
  */
 export function lineasBloqueantes(d: DocPresupuesto): string[] {
@@ -81,9 +81,8 @@ export function lineasBloqueantes(d: DocPresupuesto): string[] {
   for (const p of d.partidas) {
     if (p.libre || p.precio_manual) continue;
     for (const l of p.desglose ?? []) {
-      const cero = l.puntos !== undefined && l.puntos === 0;
-      const fuera = /fuera de (tarifa|tabla)/.test(l.aviso ?? '');
-      if (cero || fuera) out.push(`${p.titulo} · ${l.nombre}: ${fuera ? 'fuera de tarifa' : '0 puntos'}`);
+      // Solo las líneas a 0 puntos (las de cocina «fuera de tarifa» lo están); las extrapoladas no bloquean
+      if (l.puntos !== undefined && l.puntos === 0) out.push(`${p.titulo} · ${l.nombre}: 0 puntos${/fuera de tarifa/.test(l.aviso ?? '') ? ' (fuera de tarifa)' : ''}`);
     }
   }
   return out;

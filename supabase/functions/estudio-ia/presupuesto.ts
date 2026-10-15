@@ -718,10 +718,10 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return out;
   };
 
-  // PDF y Excel del cliente: no con líneas a 0 puntos o fuera de tarifa (la vista interna sí)
+  // PDF y Excel del cliente: no con líneas a 0 puntos (la vista interna sí); las extrapoladas no bloquean
   if (action === 'presupuesto_dibujos' || action === 'presupuesto_pdf') {
     const bloquean = lineasBloqueantes(doc);
-    if (bloquean.length) return json({ error: `No se puede generar el presupuesto para el cliente: ${bloquean.length === 1 ? 'hay una línea' : `hay ${bloquean.length} líneas`} a 0 puntos o fuera de tarifa. Revísalas en la tarifa o pon el precio de la partida a mano.`, bloqueantes: bloquean }, 409);
+    if (bloquean.length) return json({ error: `No se puede generar el presupuesto para el cliente: ${bloquean.length === 1 ? 'hay una línea' : `hay ${bloquean.length} líneas`} a 0 puntos. Revísalas en la tarifa o pon el precio de la partida a mano.`, bloqueantes: bloquean }, 409);
   }
 
   if (action === 'presupuesto_dibujos') {

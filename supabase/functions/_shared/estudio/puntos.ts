@@ -7,8 +7,9 @@
 //
 // Reglas de medida:
 //   - ancho del módulo en mm → tramo inmediatamente superior (400…1000);
-//   - más de 1000 mm: «fuera de tabla», se extrapola con el último incremento
-//     (1000 − 900) por cada 100 mm y la línea queda marcada para revisar;
+//   - más de 1000 mm: se prolonga la tabla con la subida media de sus últimos
+//     escalones (EXTRAPOLAR_ESCALONES) por cada 100 mm; la línea queda marcada
+//     «fuera de tabla, valor extrapolado: revisar» (no bloquea el PDF);
 //   - la tabla es para 2600 mm de alto y fondo 550 (650 con puertas): más alto
 //     → aviso «altura fuera de tabla» (sin recargo inventado).
 // Cada módulo recibe el modelo de interior que más se parece (1–6) y los
@@ -123,12 +124,16 @@ export interface LineaPuntos {
 }
 export interface ModuloAsignado { clave: string; cuerpo: number; modulo: number; ancho_mm: number; modelo: string; automatico: string; nota?: string }
 
-/** Puntos por tramo de ancho: tramo superior; > 1000 mm extrapola con el último incremento por 100 mm. */
+/** Escalones de la tabla (de 100 mm) cuya subida media prolonga la tabla por encima de 1000 mm. */
+export const EXTRAPOLAR_ESCALONES = 3;
+export const AVISO_EXTRAPOLADO = 'fuera de tabla, valor extrapolado: revisar';
+/** Puntos por tramo de ancho: tramo superior; > 1000 mm, + subida media de los últimos escalones por cada 100 mm. */
 export function porAncho(serie: number[], mm: number): { puntos: number; tramo: number; fuera: boolean } {
   const i = ANCHOS.findIndex((a) => mm <= a);
   if (i >= 0) return { puntos: serie[i], tramo: ANCHOS[i], fuera: false };
-  const n = ANCHOS.length - 1, inc = serie[n] - serie[n - 1], pasos = Math.ceil((mm - ANCHOS[n]) / 100);
-  return { puntos: serie[n] + inc * pasos, tramo: ANCHOS[n] + 100 * pasos, fuera: true };
+  const n = ANCHOS.length - 1, k = Math.min(EXTRAPOLAR_ESCALONES, n);
+  const inc = (serie[n] - serie[n - k]) / k, pasos = Math.ceil((mm - ANCHOS[n]) / 100);
+  return { puntos: Math.round((serie[n] + inc * pasos) * 100) / 100, tramo: ANCHOS[n] + 100 * pasos, fuera: true };
 }
 
 const serieDe = (p: Record<string, number>, k: string) => ANCHOS.map((a) => p[`${k}_${a}`]);
@@ -163,7 +168,7 @@ export function puntosArmario(a: Armario, puntos: Record<string, number>, op: Op
       const auto = asignarModelo(zonas.length ? zonas : m.interior);
       const modelo = op.modelos?.[clave] && MODELOS[op.modelos[clave]] ? op.modelos[clave] : auto.modelo;
       const base = porAncho(serieDe(puntos, modelo), mm);
-      const fuera = base.fuera ? `fuera de tabla (${mm} mm): extrapolado, revisar` : undefined;
+      const fuera = base.fuera ? AVISO_EXTRAPOLADO : undefined;
       const nota = auto.altillo ? undefined : 'sin altillo (la tabla incluye altillo): revisar';
       modulos.push({ clave, cuerpo: ci, modulo: mi, ancho_mm: mm, modelo, automatico: auto.modelo, nota });
       lineas.push({ clave: `int_${clave}`, nombre: `Interior módulo ${mi + 1}${a.cuerpos.length > 1 ? ` (cuerpo ${ci + 1})` : ''} · ${MODELOS[modelo].nombre} · ${base.tramo} mm`, cantidad: 1, puntos: base.puntos, aviso: [fuera, nota].filter(Boolean).join(' · ') || undefined });
@@ -183,8 +188,8 @@ export function puntosArmario(a: Armario, puntos: Record<string, number>, op: Op
       for (const [id, e] of gruesos) {
         const k = id.replace('_balda', '');
         const grueso = porAncho(serieDe(puntos, k), mm), fino = porAncho(serieDe(puntos, 'estante'), mm);
-        const pts = grueso.puntos - fino.puntos;
-        lineas.push({ clave: `grueso_${id}_${clave}`, nombre: `${e.balda ? (e.n === 1 ? 'Balda' : 'Baldas') : 'Estantes'} ${k.slice(-2)} mm · módulo ${mi + 1} · ${grueso.tramo} mm (diferencia sobre 19 mm)`, cantidad: e.n, puntos: pts, aviso: [grueso.fuera ? 'fuera de tabla: revisar' : '', e.aviso ?? ''].filter(Boolean).join(' · ') || undefined });
+        const pts = Math.round((grueso.puntos - fino.puntos) * 100) / 100;
+        lineas.push({ clave: `grueso_${id}_${clave}`, nombre: `${e.balda ? (e.n === 1 ? 'Balda' : 'Baldas') : 'Estantes'} ${k.slice(-2)} mm · módulo ${mi + 1} · ${grueso.tramo} mm (diferencia sobre 19 mm)`, cantidad: e.n, puntos: pts, aviso: [grueso.fuera ? AVISO_EXTRAPOLADO : '', e.aviso ?? ''].filter(Boolean).join(' · ') || undefined });
         interior += pts * e.n;
       }
       // Tapetas laterales de las cajoneras (2 por cajonera); las de por defecto, solo si la partida las cuenta
@@ -203,7 +208,7 @@ export function puntosArmario(a: Armario, puntos: Record<string, number>, op: Op
         for (const [k, n] of Object.entries(auto.extras)) {
           if (!n) continue;
           const e = porAncho(serieDe(puntos, k), mm);
-          lineas.push({ clave: `ext_${k}_${clave}`, nombre: `${EXTRAS[k].nombre} ${n > 0 ? 'extra' : 'de menos'} · módulo ${mi + 1} · ${e.tramo} mm`, cantidad: n, puntos: e.puntos, aviso: e.fuera ? 'fuera de tabla: revisar' : undefined });
+          lineas.push({ clave: `ext_${k}_${clave}`, nombre: `${EXTRAS[k].nombre} ${n > 0 ? 'extra' : 'de menos'} · módulo ${mi + 1} · ${e.tramo} mm`, cantidad: n, puntos: e.puntos, aviso: e.fuera ? AVISO_EXTRAPOLADO : undefined });
           interior += e.puntos * n;
         }
       }
