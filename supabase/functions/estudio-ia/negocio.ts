@@ -172,12 +172,15 @@ async function extras(supa: Any, proyectos: Any[], presupuestos: Any[], serie: A
       a.f += m.facturacion; a.c += m.costes; porMes.set(k, a);
     }
     // Una entrada por presupuesto aceptado, con su montaje
-    const cobro = m.cobros.total > 0 && m.cobros.pendiente <= 0.5 ? 'cobrado' : 'pendiente';
+    // Cobrado si lo cobrado (facturas a cliente con IVA, o los cobros antiguos marcados) llega al total con IVA
+    const esperado = Math.round(m.facturacion * (1 + Number(p.iva_pct ?? 21) / 100) * 100) / 100;
+    const cobro = esperado > 0 && m.cobros.cobrado >= esperado - 0.5 ? 'cobrado' : 'pendiente';
+    const pendienteCobro = Math.max(0, Math.round((esperado - m.cobros.cobrado) * 100) / 100);
     for (const x of presupuestos.filter((q) => q.proyecto_id === p.id && q.estado === 'aceptado')) {
       calendario.push({
         id: p.id, presupuesto_id: x.id, numero: p.numero ?? null, presupuesto: x.numero || x.datos?.numero || null, nombre: p.nombre, importe: x.importe ?? null,
         montaje_previsto: x.montaje_previsto ?? null, montado: !!x.montado, montado_at: x.montado_at ?? null, montaje_nota: x.montaje_nota ?? null,
-        cobro, pendiente: m.cobros.pendiente
+        cobro, pendiente: pendienteCobro
       });
     }
   }
@@ -231,7 +234,7 @@ export async function accionNegocio(action: string, o: {
   }
 
   if (action === 'negocio') {
-    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, created_at, user_id, montaje_previsto, montado, montado_at, montaje_nota, costes_v2').eq('user_id', userId);
+    const { data: proyectos } = await supa.from('estudio_proyectos').select('id, numero, nombre, created_at, user_id, montaje_previsto, montado, montado_at, montaje_nota, costes_v2, iva_pct').eq('user_id', userId);
     const ids = (proyectos ?? []).map((p: Any) => p.id);
     // Todos los presupuestos: métricas de envío con los «relevantes» (aceptados o, si no hay, el último), margen y calendario con todos los aceptados
     const { data: pres } = ids.length ? await supa.from('estudio_presupuestos').select(campos).in('proyecto_id', ids) : { data: [] };
