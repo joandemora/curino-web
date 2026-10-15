@@ -517,7 +517,7 @@ function lamina(c: Cocina, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
       }
     }
     const forma = c.tramos.some((t) => t.colocacion === 'isla') ? 'con isla' : c.tramos.filter((t) => t.colocacion === 'esquina_izq' || t.colocacion === 'esquina_der').length === 2 ? 'en U' : c.tramos.some((t) => t.colocacion === 'esquina_izq' || t.colocacion === 'esquina_der') ? 'en L' : 'lineal';
-    const pieY = Math.max(suelo, top + hPl) + cm(E.pie_vista);
+    const pieY = (comp.principal || comp.lateral ? Math.max(suelo, top + hPl) : top + hPl) + cm(E.pie_vista);
     text(x + cm(k.x1 - k.x0) / 2, pieY, 'PLANTA', 8.5, E.tinta, 'middle', true);
     text(x + cm(k.x1 - k.x0) / 2, pieY + 10, `cocina ${forma}`, 7.5, E.cota, 'middle');
     x += cm(k.x1 - k.x0);
