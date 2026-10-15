@@ -708,9 +708,9 @@
           '<div class="rs-kpis">' +
           '<div class="rs-kpi"><span>Importe presupuestado' + prev + '</span><b>' + (R.importe == null ? '—' : eur(R.importe)) + '</b><small>' + esc(origenR) + '</small>' +
             (R.facturado_cliente ? '<small class="rs-previsto">Facturado a cliente: ' + eur(R.facturado_cliente) + '</small>' : '') + '</div>' +
-          '<div class="rs-kpi"><span>Coste' + prev + '</span><b>' + eur(R.coste || 0) + '</b><small>Real ' + eur(R.coste_real || 0) + ' · previsto ' + eur(R.coste_previsto || 0) + '</small>' +
+          '<div class="rs-kpi"><span>Coste' + prev + '</span><b>' + eur(R.coste || 0) + '</b><small>Real ' + eur(R.coste_real || 0) + ' · previsto ' + eur(R.coste_previsto || 0) + (R.comision_prevista ? ' (incl. comisión ' + eur(R.comision_prevista) + ')' : '') + '</small>' +
             (R.costes_sin_importe ? '<small><em class="rs-mal">' + R.costes_sin_importe + (R.costes_sin_importe === 1 ? ' coste' : ' costes') + ' sin importe</em></small>' : '') + '</div>' +
-          '<div class="rs-kpi"><span>Margen' + prev + '</span><b class="' + (R.margen != null && R.margen < 0 ? 'rs-mal' : '') + '">' + (R.margen == null ? '—' : eur(R.margen)) + pctR + '</b><small>' + (R.fiable ? '<em class="rs-ok">✓ fiable</em>' : '<em class="rs-mal">no fiable · ' + esc(R.motivo || '') + '</em>') + '</small></div>' +
+          '<div class="rs-kpi"><span>Margen' + prev + '</span><b class="' + (R.margen != null && R.margen < 0 ? 'rs-mal' : '') + '">' + (R.margen == null ? '—' : eur(R.margen)) + pctR + '</b><small>' + (R.motivo ? '<em class="rs-mal">no fiable · ' + esc(R.motivo) + '</em>' : R.cerrado ? '<em class="rs-ok">✓ fiable</em>' : '<em class="pa-muted">previsto · proyecto sin cerrar</em>') + '</small></div>' +
           // Montaje: una línea por presupuesto aceptado (n.º · fecha prevista · Montado · fecha real), se guarda en ese presupuesto
           '<div class="rs-kpi rs-kpi-mont"><span>Montaje</span>' + ((m.montajes || []).filter(function (x) { return x.id; }).length ? m.montajes.filter(function (x) { return x.id; }).map(function (x) {
             return '<div class="rs-mont-f" data-mpr="' + x.id + '"><b>' + esc(x.numero || 'Aceptado') + '</b>' +

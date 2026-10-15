@@ -126,12 +126,15 @@ test('cajas de la ficha: importe presupuestado, coste real + previsto, margen y 
   ];
   // Sin aceptados: el último enviado, previsto; coste = facturas + presupuestos de proveedor sin sustituir
   const r = resumenFicha({ presupuestos: pres, ficheros: [f('factura_proveedor', 1000), f('presupuesto_proveedor', 300), f('presupuesto_proveedor', 500, { sustituido_por: 'x' }), f('factura_cliente', 200)], costes: [], v2: true });
-  assert.deepEqual([r.importe, r.importe_numero, r.importe_origen, r.coste, r.coste_real, r.coste_previsto, r.margen, r.margen_pct, r.cerrado, r.facturado_cliente, r.fiable],
-    [4596, 'Z1-B', 'enviado', 1300, 1000, 300, 3296, 71.7, false, 200, true]);
+  assert.deepEqual([r.importe, r.importe_numero, r.importe_origen, r.coste, r.coste_real, r.coste_previsto, r.margen, r.margen_pct, r.cerrado, r.facturado_cliente, r.fiable, r.motivo],
+    [4596, 'Z1-B', 'enviado', 1300, 1000, 300, 3296, 71.7, false, 200, false, null]);
+  // La comisión del presupuesto que se usa como importe cuenta como coste previsto (proyecto 76: 4.596 − 300 − 919,20)
+  const c76 = resumenFicha({ presupuestos: [{ numero: 'Z2606963-B', estado: 'enviado', importe: 4596, comision_importe: 919.2, enviado_at: '2026-10-15' }], ficheros: [f('presupuesto_proveedor', 300)], costes: [], v2: true });
+  assert.deepEqual([c76.coste, c76.coste_previsto, c76.margen, c76.margen_pct, c76.fiable], [1219.2, 1219.2, 3376.8, 73.5, false]);
   // Aceptados: suma (con su comisión como coste real); cerrado solo si todos montados y nada de proveedor pendiente
   const ac = [{ numero: 'Z2-A', estado: 'aceptado', importe: 3000, comision_importe: 300, montado: true }, { numero: 'Z2-B', estado: 'aceptado', importe: 1000, montado: true }];
   const c = resumenFicha({ presupuestos: ac, ficheros: [f('factura_proveedor', 2000)], costes: [], v2: true });
-  assert.deepEqual([c.importe, c.importe_origen, c.coste_real, c.margen, c.cerrado], [4000, 'aceptados', 2300, 1700, true]);
+  assert.deepEqual([c.importe, c.importe_origen, c.coste_real, c.margen, c.cerrado, c.fiable], [4000, 'aceptados', 2300, 1700, true, true]);
   assert.equal(resumenFicha({ presupuestos: ac, ficheros: [f('factura_proveedor', 2000), f('presupuesto_proveedor', 100)], costes: [], v2: true }).cerrado, false);
   assert.equal(resumenFicha({ presupuestos: [{ ...ac[0], montado: false }], ficheros: [], costes: [], v2: true }).cerrado, false);
   // Un coste sin importe: margen no fiable
