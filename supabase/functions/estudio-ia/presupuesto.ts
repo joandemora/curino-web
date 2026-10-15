@@ -33,7 +33,7 @@ import { CONCEPTOS, TARIFA_PENDIENTE, type Tarifa } from '../_shared/estudio/tar
 import { ANCHOS, COSTADOS, EXTRAS, HERRAJES, MODELOS, PUERTAS, RECARGOS, REMATES, SUELTOS, VERSION_PUNTOS, puntosBase, type OpcionesPuntos } from '../_shared/estudio/puntos.ts'
 import {
   generarPresupuesto, totales, validarPlantilla, faltanPlantilla, PLANTILLA_ADMIN, PLANTILLA_ALUMNO,
-  claveDe, docVariante, importesNegocio, partidaLibre, lineasBloqueantes, type DocPresupuesto, type Partida, type Plantilla
+  claveDe, docVariante, importesNegocio, partidaLibre, lineasBloqueantes, contarSupuestos, paraCliente, type DocPresupuesto, type Partida, type Plantilla
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos, proponerPartidas, type Adjunto } from '../_shared/estudio/ia.ts'
@@ -733,6 +733,8 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const firmar = async (path: string | null) => path ? (await supa.storage.from('estudio').createSignedUrl(path, 600)).data?.signedUrl ?? null : null;
     return json({
       logo, plantilla, iva_pct: tarifa.iva_pct, presupuesto_id: fila.id,
+      // Excel del cliente: textos sin «supuesto»; aviso (no bloquea) de cuántos valores lo son
+      presupuesto_cliente: paraCliente(doc), supuestos: contarSupuestos(doc),
       firma_url: await firmar(plantilla.firma_path), logo_url: plantilla.tipo === 'propia' ? await firmar(plantilla.logo_path) : null,
       dibujos: await dibujosDe(medir, (l, clave) => { const d = dibujoLamina(l, medir); return { codigo: clave, svg: dibujoSvg(d.prims, d.caja, css), ancho: d.caja.w, alto: d.caja.h }; })
     });
@@ -760,7 +762,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         const b = new Uint8Array(await data.arrayBuffer());
         return b[0] === 0x89 ? await pdf.embedPng(b) : await pdf.embedJpg(b);
       };
-      pintarPresupuesto(pdf, { presupuesto: docVariante(doc, variante), plantilla, dibujos, ivaPct: iva }, { os, inter }, { rgb, degrees },
+      pintarPresupuesto(pdf, { presupuesto: docVariante(paraCliente(doc), variante), plantilla, dibujos, ivaPct: iva }, { os, inter }, { rgb, degrees },
         { logo: plantilla.tipo === 'propia' ? await imagen(plantilla.logo_path) : undefined, firma: await imagen(plantilla.firma_path) });
       pdf.setTitle(`Presupuesto ${doc.numero || proyecto.nombre}${variante ? ` (${variante})` : ''}`);
       pdf.setCreator('Estudio Curino');
@@ -769,7 +771,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       await guardarDocumento(supa, { proyecto_id: proyectoId, user_id: proyecto.user_id, tipo: 'presupuesto_pdf', version: doc.version || null, numero: doc.numero || null, nombre, bytes, presupuesto_id: fila.id, variante });
       archivos.push({ nombre, base64: ctx.base64(bytes), variante });
     }
-    return json({ archivos, nombre: archivos[0].nombre, base64: archivos[0].base64 });
+    return json({ archivos, nombre: archivos[0].nombre, base64: archivos[0].base64, supuestos: contarSupuestos(doc) });
   }
 
   return json({ error: 'accion_desconocida' }, 400);

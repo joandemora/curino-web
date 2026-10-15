@@ -55,6 +55,7 @@ FORMATO
 - frente.agarre: «tirador» (por defecto), «tirador_premium» (latón u otro premium), «unero_dm» («uñero», «uñero fresado», «uñero lacado»), «unero_madera» («uñero de madera maciza») o «ninguno» (push o sin tirador). El uñero sustituye al tirador. Si una puerta es distinta, ponle «agarre» solo a esa.
 - Si en un mismo frente hay puertas lisas y molduradas, pon el modelo general en el frente y «modelo» solo en las puertas que sean distintas.
 - notas solo si aportan algo técnico (máx. una frase).
+- materiales (interior, exterior, cantos, herrajes): solo lo que diga el usuario, copiado tal cual con sus mayúsculas («interior textil Lino Sand», «exterior Blanco Soft III Finsa», «herrajes Blum»). Lo que no diga, omítelo: en el presupuesto saldrá «a definir». NUNCA inventes materiales, marcas ni colores, ni pongas uno de ejemplo.
 - vistas del armario: siempre salen «Interior» y «Cerrado». Añade «lateral» (sección) y/o «planta» en «vistas» solo cuando el alumno las pida («añade vista en planta», «quiero la sección»); quítalas si lo pide. Al hacer otros cambios, conserva las vistas que ya tenga.
 - Solo existe lo que está en el esquema. Los tiradores los coloca el dibujo (por parejas, en las puertas que se juntan; «tirador» de una puerta solo para cambiar el lado). No prometas en el mensaje detalles que el esquema no recoge (colores, herrajes concretos, iluminación…): si el alumno los pide, dile que van en las notas o en el presupuesto.
 
@@ -296,7 +297,7 @@ export function textoRevision(p: Proyecto): string {
 export const SISTEMA_TEXTOS = `Redactas los textos comerciales de las partidas de un presupuesto de armarios a medida (Curino Partners). Para cada partida devuelves:
 - subtitulo: una frase de máximo 90 caracteres del estilo «Armario a medida de 200 cm con puertas molduradas lacadas» o «Armario en L a medida con puertas molduradas lacadas».
 - intro: 1 o 2 frases (máximo 300 caracteres) que describan el conjunto para el cliente final, con tono sobrio y profesional. Puede quedar vacía si no aporta.
-Reglas: español de España; no inventes medidas, materiales, marcas ni prestaciones que no estén en la ficha; las medidas, si las citas, en cm y exactamente como en la ficha. Responde SIEMPRE con la herramienta redactar_textos.`;
+Reglas: español de España; no inventes medidas, materiales, marcas, colores ni prestaciones que no estén en la ficha (lo que ponga «a definir» sigue a definir); las medidas, si las citas, en cm y exactamente como en la ficha. Responde SIEMPRE con la herramienta redactar_textos.`;
 
 const HERRAMIENTA_TEXTOS = {
   name: 'redactar_textos',
@@ -412,7 +413,7 @@ const HERRAMIENTA_PARTIDAS = {
           type: 'object',
           properties: {
             titulo: { type: 'string', description: 'Nombre corto en mayúsculas: «ARMARIO DORMITORIO PRINCIPAL», «MUEBLE TV»…' },
-            descripcion: { type: 'string', description: 'Medidas (mm), distribución, puertas, acabados y materiales que se ven en los documentos. Sin inventar.' },
+            descripcion: { type: 'string', description: 'Medidas (mm), distribución, puertas, acabados y materiales que se ven en los documentos, tal cual. Nunca inventes materiales, marcas ni colores: lo que no se vea, «a definir».' },
             cantidad: { type: 'integer', minimum: 1 },
             precio_unitario: { type: ['number', 'null'], description: 'PVP sin IVA si aparece en los documentos; si no, null.' }
           },

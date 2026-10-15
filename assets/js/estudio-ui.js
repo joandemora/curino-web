@@ -1146,7 +1146,7 @@
       }, 'Claude está redactando…');
       if (id === 'prPdf') bloquear(function () {
         return guardar().then(function () { return api(ctx, { action: 'presupuesto_pdf', presupuesto_id: sel }); })
-          .then(function (d) { (d.archivos || [d]).forEach(function (a) { descargar(base64Blob(a.base64, 'application/pdf'), a.nombre); }); return (d.archivos && d.archivos.length > 1 ? 'PDF cliente e interiorista descargados' : 'PDF descargado') + ' y guardados en Documentos'; });
+          .then(function (d) { (d.archivos || [d]).forEach(function (a) { descargar(base64Blob(a.base64, 'application/pdf'), a.nombre); }); return (d.archivos && d.archivos.length > 1 ? 'PDF cliente e interiorista descargados' : 'PDF descargado') + ' y guardados en Documentos' + avisoSupuestos(d.supuestos); });
       }, 'Generando PDF…');
       if (id === 'prExcel') bloquear(function () {
         return guardar().then(function () { return api(ctx, { action: 'presupuesto_dibujos', presupuesto_id: sel }); }).then(function (d) {
@@ -1157,13 +1157,15 @@
                 return api(ctx, { action: 'doc_subida', proyecto_id: pid, tipo: 'presupuesto_xlsx', version: dd.version, numero: dd.numero, nombre: nombre, bytes: blob.size, presupuesto_id: sel, variante: v })
                   .then(function (r) { return ctx.supa.storage.from('estudio').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type }); });
               };
-              return excel(d, varianteDoc(doc, v), proyecto, v);
+              return excel(d, varianteDoc(d.presupuesto_cliente || doc, v), proyecto, v);
             });
-          }, Promise.resolve()).then(function () { return vars.length > 1 ? 'Excel cliente e interiorista descargados y guardados en Documentos' : 'Excel descargado y guardado en Documentos'; });
+          }, Promise.resolve()).then(function () { return (vars.length > 1 ? 'Excel cliente e interiorista descargados y guardados en Documentos' : 'Excel descargado y guardado en Documentos') + avisoSupuestos(d.supuestos); });
         });
       }, 'Generando Excel…');
     });
   }
+  /** Aviso (no bloquea) de valores supuestos sin confirmar: en el documento del cliente salen sin la palabra «supuesto». */
+  function avisoSupuestos(n) { return n > 0 ? ' · Aviso: hay ' + n + (n === 1 ? ' valor supuesto' : ' valores supuestos') + ' sin confirmar' : ''; }
   /** Variante del presupuesto para descargar (igual que docVariante del servidor). */
   function varianteDoc(d, v) {
     if (!v || !d.comision || !d.comision.activa) return d;
@@ -1609,7 +1611,7 @@
   // ════════════════════════════════════════════════════════════════
   // Datos del emisor y plantilla
   // ════════════════════════════════════════════════════════════════
-  var CAMPOS = { plEmpresa: 'empresa', plNif: 'nif', plDir1: 'direccion_1', plDir2: 'direccion_2', plEmail: 'email', plTel: 'telefono', plLema: 'lema', plIban: 'iban', plFirmante: 'firmante', plCargo: 'cargo', plCiudad: 'ciudad_firma', plColor: 'color', plMateriales: 'materiales', plCondiciones: 'condiciones' };
+  var CAMPOS = { plEmpresa: 'empresa', plNif: 'nif', plDir1: 'direccion_1', plDir2: 'direccion_2', plEmail: 'email', plTel: 'telefono', plLema: 'lema', plIban: 'iban', plFirmante: 'firmante', plCargo: 'cargo', plCiudad: 'ciudad_firma', plColor: 'color', plCondiciones: 'condiciones' };
   function plantilla(el, ctx) {
     var alumno = ctx.modo === 'alumno', supa = ctx.supa, rutas = { logo: null, firma: null };
     var req = function (t) { return '<label' + (alumno ? ' class="tf-req"' : '') + '>' + t + '</label>'; };
@@ -1634,7 +1636,6 @@
       '<div><label>Color (plantilla propia)</label><input type="text" id="plColor" maxlength="7" placeholder="#1d1d1b"></div></div>' +
       '<label><input type="checkbox" id="plIva"> Mostrar IVA y total con IVA (si no: «IMPUESTOS IVA NO INCLUIDOS»)</label>' +
       req('Forma de pago') + '<div id="plFp"></div><button type="button" class="pa-btn" id="plFpMas">+ Plazo</button>' +
-      '<label>Materiales (se añaden a cada partida)</label><textarea id="plMateriales"></textarea>' +
       req('Condiciones (las líneas que acaban en «:» son títulos)') + '<textarea id="plCondiciones" style="min-height:180px"></textarea>' +
       '<label>Logo (plantilla propia) · PNG o JPG</label><div class="tf-img"><img id="plLogoVer" alt="" hidden><input type="file" id="plLogo" accept="image/png,image/jpeg"></div>' +
       req('Firma · PNG o JPG (mejor con fondo transparente)') + '<div class="tf-img"><img id="plFirmaVer" alt="" hidden><input type="file" id="plFirma" accept="image/png,image/jpeg"></div>' +

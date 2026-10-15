@@ -71,6 +71,25 @@ export interface DocPresupuesto {
 
 export const claveDe = (p: Partida) => p.clave || p.codigo;
 
+// ── Valores supuestos (cocinas): en la vista interna llevan «(supuesto)»; al cliente, sin la palabra ──
+const SUPUESTO = / \(supuesto\)/g, LINEA_SUPUESTOS = /^Supuestos: (.*)$/gm;
+/** Cuántos valores supuestos sin confirmar hay en los textos del presupuesto. */
+export function contarSupuestos(d: DocPresupuesto): number {
+  let n = 0;
+  for (const p of d.partidas) for (const t of [p.tecnico, p.materiales]) {
+    n += (t?.match(SUPUESTO) ?? []).length;
+    for (const m of (t ?? '').matchAll(LINEA_SUPUESTOS)) n += m[1].split(' · ').filter((x) => x.trim()).length;
+  }
+  return n;
+}
+/** Textos para el PDF / Excel del cliente: el valor sin la palabra «supuesto». */
+export function textoCliente(t: string): string {
+  return (t || '').replace(SUPUESTO, '').replace(LINEA_SUPUESTOS, 'Otros datos: $1');
+}
+export function paraCliente(d: DocPresupuesto): DocPresupuesto {
+  return { ...d, partidas: d.partidas.map((p) => ({ ...p, subtitulo: textoCliente(p.subtitulo), intro: textoCliente(p.intro), tecnico: textoCliente(p.tecnico), materiales: textoCliente(p.materiales) })) };
+}
+
 /**
  * Líneas que impiden dar el presupuesto al cliente (PDF / Excel): a 0 puntos
  * (incluidas las de cocina fuera de tarifa), en partidas con precio de tarifa (un precio
@@ -174,8 +193,16 @@ export const FORMA_PAGO_DEF: FormaPago[] = [
   { concepto: 'FINAL DE OBRA', pct: 10 }
 ];
 
-export const MATERIALES_DEF = `Interior: melamina Egger Roble Vicenza, cantos ABS
+/**
+ * Texto de ejemplo que llevaban antes las plantillas (y se copiaba en cada partida).
+ * Ya no se usa: los materiales salen del diseño. Se conserva para reconocerlo al
+ * recalcular: una partida que aún empieza así se rehace desde el diseño.
+ */
+export const MATERIALES_EJEMPLO = `Interior: melamina Egger Roble Vicenza, cantos ABS
 Herrajes: Blum con cierre amortiguado`;
+export const esMaterialesEjemplo = (t: string | null | undefined) => !!t && t.trim().startsWith(MATERIALES_EJEMPLO);
+/** Campo de la plantilla que ya no se usa (los materiales salen siempre del diseño). */
+export const MATERIALES_DEF = '';
 
 /** Emisor de los presupuestos hechos desde la cuenta de admin (como Z2606941 v2). El IBAN lo pone Juan en el panel. */
 export const PLANTILLA_ADMIN: Plantilla = {
@@ -239,7 +266,8 @@ export function validarPlantilla(p: Plantilla, esAdmin: boolean, ibanCurino = ''
 }
 
 // ── Textos técnicos desde el JSON ───────────────────────────────────
-const mm = (cm: number) => String(Math.round(cm * 10));
+// mm con los mismos decimales que el dibujo (54,75 cm → 547,5 mm)
+const mm = (cm: number) => String(Math.round(cm * 100) / 10).replace('.', ',');
 const cmTxt = (cm: number) => (Number.isInteger(cm) ? String(cm) : String(Math.round(cm * 10) / 10).replace('.', ','));
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 const capital = (s: string) => s.toLowerCase().replace(/^./, (c) => c.toUpperCase());
@@ -257,6 +285,7 @@ const MAT_TXT: Record<string, string> = {
 };
 const AP_TXT: Record<string, [string, string]> = { abatible: ['abatible', 'abatibles'], corredera: ['corredera', 'correderas'], coplanar: ['coplanar', 'coplanares'], escamoteable: ['escamoteable', 'escamoteables'] };
 const AGARRE_TXT: Record<string, string> = { tirador: 'tiradores', tirador_premium: 'tiradores en latón', unero_dm: 'uñero fresado en DM lacado', unero_madera: 'uñero en madera maciza', ninguno: '' };
+/** Modelo o material de las puertas (sin el acabado, que va aparte y tal cual). */
 function adjetivos(f: Frente): string {
   // Material indicado en el frente o en alguna puerta: se describe por material
   if (f.material || f.piezas.some((p) => p.material)) {
@@ -264,10 +293,10 @@ function adjetivos(f: Frente): string {
     return mats.map((m) => MAT_TXT[m]).join(' y ');
   }
   const mods = modelosPuertas(f);
-  const modelo = mods.length > 1 ? 'molduradas y lisas' : (mods[0] ?? f.modelo) === 'moldurada' ? 'molduradas' : 'lisas';
-  const acabado = (f.acabado || '').trim().split(' ').map((w, i) => (i === 0 && /[aeiou]$/i.test(w) ? w + 's' : w)).join(' ');
-  return [modelo, acabado].filter(Boolean).join(' ');
+  return mods.length > 1 ? 'molduradas y lisas' : (mods[0] ?? f.modelo) === 'moldurada' ? 'molduradas' : 'lisas';
 }
+/** Acabado del frente tal como está en el diseño (sin plurales ni minúsculas). */
+const acabadoFrente = (f: Frente) => (f.acabado || '').trim();
 
 function textoPuertas(f: Frente): string {
   const puertas = f.piezas.filter((p) => p.tipo === 'puerta');
@@ -276,6 +305,7 @@ function textoPuertas(f: Frente): string {
   let t = `${plural(puertas.length, 'puerta', 'puertas')} ${(AP_TXT[f.apertura] ?? AP_TXT.abatible)[puertas.length === 1 ? 0 : 1]} ${adjetivos(f)}`;
   if (iguales) t += ` de ${mm(puertas[0].ancho)} mm`;
   if (fijos.length) t += ` + ${plural(fijos.length, 'frente fijo liso', 'frentes fijos lisos')}`;
+  if (acabadoFrente(f)) t += ` · acabado ${acabadoFrente(f)}`;
   return t;
 }
 
@@ -325,29 +355,42 @@ function lineasCuerpo(c: Cuerpo, varios: boolean): string[] {
   return out;
 }
 
-export function textosArmario(a: Armario, materiales: string): Pick<Partida, 'titulo' | 'subtitulo' | 'intro' | 'tecnico' | 'materiales'> {
+/**
+ * Textos de la partida de un armario, siempre desde el diseño (esquema + notas).
+ * Materiales: lo que diga el diseño tal cual; lo que no, «a definir» (nunca un
+ * material o una marca de ejemplo).
+ */
+export function textosArmario(a: Armario): Pick<Partida, 'titulo' | 'subtitulo' | 'intro' | 'tecnico' | 'materiales'> {
   const c0 = a.cuerpos[0];
   const varios = a.cuerpos.length > 1;
   const ancho = a.cuerpos.reduce((s, c) => s + c.ancho, 0);
+  const puertasTxt = `puertas ${adjetivos(c0.frente)}${acabadoFrente(c0.frente) ? `, acabado ${acabadoFrente(c0.frente)}` : ''}`;
   const subtitulo = varios
-    ? `Armario en ${a.cuerpos.length === 2 ? 'L' : 'U'} a medida con puertas ${adjetivos(c0.frente)}`
-    : `Armario a medida de ${cmTxt(ancho)} cm con puertas ${adjetivos(c0.frente)}`;
+    ? `Armario en ${a.cuerpos.length === 2 ? 'L' : 'U'} a medida con ${puertasTxt}`
+    : `Armario a medida de ${cmTxt(ancho)} cm con ${puertasTxt}`;
   const tecnico = a.cuerpos.map((c) => lineasCuerpo(c, varios).join('\n')).join('\n\n');
   const sep = c0.frente.separacion_suelo ?? 2;
-  const extra = [
-    `Acabado exterior: puertas ${adjetivos(c0.frente)}`,
+  const m = a.materiales ?? {};
+  const def = (v?: string) => (v && v.trim()) || 'a definir';
+  const acabados = [...new Set(a.cuerpos.map((c) => acabadoFrente(c.frente)).filter(Boolean))];
+  const lineasMat = [
+    `Interior: ${def(m.interior)}`,
+    `Exterior: puertas ${adjetivos(c0.frente)} · acabado ${m.exterior?.trim() || acabados.join(' / ') || 'a definir'}`,
+    `Cantos: ${def(m.cantos)}`,
+    `Herrajes: ${def(m.herrajes)}`,
     (() => {
       const pz = c0.frente.piezas.find((p) => p.tipo === 'puerta');
       const ag = pz ? AGARRE_TXT[agarrePuerta(c0.frente, pz)] : '';
       return `Puertas hasta suelo con ${cmTxt(sep)} cm de separación${ag ? ' · ' + ag : ''}`;
-    })()
+    })(),
+    a.notas?.trim() ? `Notas del diseño: ${a.notas.trim()}` : ''
   ];
   return {
     titulo: `${a.codigo} ${a.titulo.replace(/\s+\d+([.,]\d+)?\s*cm$/i, '')}`.toUpperCase(),
     subtitulo,
     intro: '',
     tecnico,
-    materiales: [materiales.trim(), ...extra].filter(Boolean).join('\n')
+    materiales: lineasMat.filter(Boolean).join('\n')
   };
 }
 
@@ -392,7 +435,7 @@ export function generarPresupuesto(o: {
   // Cocinas: «C.01» o un tramo «C.01.2» las incluye
   const cocinas = cocinasDe(o.proyecto).filter((c) => !o.armarios?.length || o.armarios.some((k) => k === c.codigo || k.startsWith(c.codigo + '.')));
   const partidas = elegidos.map((a): Partida => {
-    const t = textosArmario(a, o.plantilla.materiales);
+    const t = textosArmario(a);
     const clave = `v${o.version}:${a.codigo}`;
     const ant = prev?.partidas.find((x) => x.clave === clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === a.codigo);
     // Presupuesto nuevo: cuenta las tapetas de cajonera por defecto; uno guardado, solo si se recalculó después (opciones.tapetas)
@@ -405,7 +448,8 @@ export function generarPresupuesto(o: {
       subtitulo: ant?.subtitulo || t.subtitulo,
       intro: ant?.intro ?? '',
       tecnico: t.tecnico,
-      materiales: ant?.materiales || t.materiales,
+      // Lo editado a mano se conserva; el texto de ejemplo antiguo se rehace desde el diseño
+      materiales: ant?.materiales && !esMaterialesEjemplo(ant.materiales) ? ant.materiales : t.materiales,
       precio: ant?.precio_manual ? ant.precio : precio.pvp,
       precio_manual: !!ant?.precio_manual,
       dto_pct: ant?.dto_pct ?? (o.tarifa.descuento_pct ?? 0),
