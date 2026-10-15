@@ -185,15 +185,23 @@ test('forma de pago: la del presupuesto o la de la plantilla (o 50/40/10); impor
 });
 
 test('dibujos del presupuesto en filas: interior + cerrado juntos y sección + planta en otra, cotas ≥ 5 pt', async () => {
-  const { laminasPresupuesto, dibujoLamina, escalaFila, COTA_MIN_PT } = await import('./alzado.ts');
+  const { laminasPresupuesto, dibujoLamina, escalaFila, escalasPorGrupo, COTA_MIN_PT } = await import('./alzado.ts');
   const p = ejemplo();
   p.armarios.forEach((a) => { a.vistas = ['lateral', 'planta']; });
   const ls = laminasPresupuesto(p);
   for (const a of p.armarios) assert.equal(ls.filter((l) => l.codigo === a.codigo).length, 2, a.codigo);
-  for (const l of ls) {
-    const d = dibujoLamina(l), k = escalaFila(d.caja);
-    const cotas = d.prims.filter((x) => x.k === 'text' && (x as { size: number }).size === 7.5);
-    if (cotas.length) assert.ok(7.5 * k >= COTA_MIN_PT - 0.05, `${l.codigo} p${l.pagina}: cotas de ${(7.5 * k).toFixed(2)} pt`);
+  const filas = ls.map((l) => ({ ...dibujoLamina(l), codigo: `v1:${l.codigo}`, pagina: l.pagina }));
+  const ks = escalasPorGrupo(filas);
+  for (const f of filas) {
+    const k = ks.get(f)!;
+    assert.ok(k <= escalaFila(f.caja) + 1e-9);                    // nunca más grande de lo que cabe
+    const cotas = f.prims.filter((x) => x.k === 'text' && (x as { size: number }).size === 7.5);
+    if (cotas.length) assert.ok(7.5 * k >= COTA_MIN_PT - 0.05, `${f.codigo} p${f.pagina}: cotas de ${(7.5 * k).toFixed(2)} pt`);
+  }
+  // Las dos filas de un armario, a la misma escala (misma reducción y mismo dibujo por cm)
+  for (const a of p.armarios) {
+    const [f1, f2] = filas.filter((f) => f.codigo === `v1:${a.codigo}`);
+    assert.equal(ks.get(f1), ks.get(f2), a.codigo);
   }
 });
 

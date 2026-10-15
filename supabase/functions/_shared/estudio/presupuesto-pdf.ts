@@ -8,7 +8,7 @@
 // Sin imports de pdf-lib: el llamador pasa documento, fuentes, helpers e
 // imágenes ya incrustadas (logo/firma de la plantilla).
 
-import { FILA_DIBUJO, escalaFila, type Prim } from './alzado.ts';
+import { FILA_DIBUJO, escalasPorGrupo, type Prim } from './alzado.ts';
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from './logo.ts';
 import { colorPdf, pintarPrims, type Documento, type Fuente, type FuentesPdf, type LibPdf, type Pagina } from './pdf.ts';
 import { claveDe, fechaCorta, fechaLarga, formaPagoDe, importesPlazos, precioTxt, totales, type DocPresupuesto, type Plantilla } from './presupuesto.ts';
@@ -87,6 +87,7 @@ export function pintarPresupuesto(
 
   // ── Partidas ──
   const ivaTot = totales(p, o.ivaPct);
+  const kFila = escalasPorGrupo(o.dibujos);   // todas las vistas de un armario / cocina a la misma escala
   p.partidas.forEach((pt, i) => {
     const pg = doc.addPage([W, H]);
     marco(pg, MARCO.bottom, i === 0, false);
@@ -149,7 +150,7 @@ export function pintarPresupuesto(
     let pgD = pg, y0 = top + alto + FILA_DIBUJO.separacion;
     const limite = MARCO.bottom - 12;
     for (const d of ds) {
-      const k = escalaFila(d.caja), h = d.caja.h * k;
+      const k = kFila.get(d)!, h = d.caja.h * k;
       if (y0 + h > limite) { pgD = doc.addPage([W, H]); marco(pgD, MARCO.bottom, false, false); y0 = MARCO.top + 16; }
       const dx = FILA_DIBUJO.x0 + (FILA_DIBUJO.ancho - d.caja.w * k) / 2 - d.caja.x * k;
       pintarPrims(pgD, d.prims, H, f.inter, lib, { s: k, dx, dy: y0 - d.caja.y * k });
