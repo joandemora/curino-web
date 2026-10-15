@@ -61,6 +61,29 @@ export function cobrosPorDefecto(formaPago: { concepto: string; pct: number }[],
  * tipo de coste; los costes manuales ya no cuentan (se migraron a documentos).
  * Sin v2: reglas de antes (facturas de proveedor + costes manuales).
  */
+/**
+ * Venta prevista de un proyecto sin presupuesto aceptado: el importe del último
+ * enviado o, si no hay ninguno enviado, del último borrador (solo para la ficha;
+ * no cuenta en «Mi negocio»). Con coste previsto, margen previsto = venta −
+ * (costes + coste previsto).
+ */
+export function ventaPrevista(
+  pres: { numero?: string | null; estado: string; importe?: number | string | null; enviado_at?: string | null; estado_at?: string | null; updated_at?: string | null; datos?: { numero?: string } | null }[],
+  costes: number, costePrevisto: number
+): { venta_prevista: { importe: number; numero: string | null } | null; margen_previsto: number | null; margen_previsto_pct: number | null } {
+  const vacio = { venta_prevista: null, margen_previsto: null, margen_previsto_pct: null };
+  if (pres.some((p) => p.estado === 'aceptado')) return vacio;
+  const ultimo = (estado: string, fecha: (p: typeof pres[number]) => string) =>
+    pres.filter((p) => p.estado === estado && p.importe != null && Number(p.importe) > 0).sort((a, b) => fecha(b).localeCompare(fecha(a)))[0];
+  const p = ultimo('enviado', (x) => String(x.enviado_at ?? x.estado_at ?? x.updated_at ?? '')) ?? ultimo('borrador', (x) => String(x.updated_at ?? ''));
+  if (!p) return vacio;
+  const venta = r2(Number(p.importe));
+  const venta_prevista = { importe: venta, numero: p.numero || p.datos?.numero || null };
+  if (!(costePrevisto > 0)) return { ...vacio, venta_prevista };
+  const margen = r2(venta - costes - costePrevisto);
+  return { venta_prevista, margen_previsto: margen, margen_previsto_pct: venta ? Math.round((margen / venta) * 1000) / 10 : null };
+}
+
 export function metricasProyecto(o: {
   presupuesto: { estado: string; importe: number | null; aceptado_at: string | null; comision_importe?: number | null } | null;
   ficheros: Fichero[]; costes: Coste[]; cobros: Cobro[]; hoy: string; v2?: boolean;

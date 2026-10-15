@@ -20,7 +20,7 @@
 
 import { laminasProyecto, dibujoLamina, medirAprox } from '../_shared/estudio/alzado.ts'
 import { dibujoSvg } from '../_shared/estudio/svg.ts'
-import { cobrosPorDefecto, metricasProyecto, TIPOS_COSTE_DEF } from '../_shared/estudio/metricas.ts'
+import { cobrosPorDefecto, metricasProyecto, TIPOS_COSTE_DEF, ventaPrevista } from '../_shared/estudio/metricas.ts'
 import { costeUsd, leerFactura } from '../_shared/estudio/ia.ts'
 import { PLANTILLA_ADMIN, PLANTILLA_ALUMNO, type Plantilla } from '../_shared/estudio/presupuesto.ts'
 import type { Proyecto } from '../_shared/estudio/esquema.ts'
@@ -106,7 +106,7 @@ async function usoAlmacenamiento(supa: Any, userId: string): Promise<number> {
 
 async function datosProyecto(supa: Any, pid: string) {
   const [pres, fich, cost, cob] = await Promise.all([
-    supa.from('estudio_presupuestos').select('id, numero, estado, importe, pvp, aceptado_at, updated_at, datos, comision_importe, montaje_previsto, montado, montado_at').eq('proyecto_id', pid),
+    supa.from('estudio_presupuestos').select('id, numero, estado, importe, pvp, aceptado_at, enviado_at, estado_at, updated_at, datos, comision_importe, montaje_previsto, montado, montado_at').eq('proyecto_id', pid),
     supa.from('estudio_ficheros').select('id, tipo, base, iva, total, fecha, proveedor, tipo_coste, sustituido_por, nombre, concepto').eq('proyecto_id', pid),
     supa.from('estudio_costes').select('id, categoria, concepto, fecha, importe, created_at').eq('proyecto_id', pid).order('fecha', { nullsFirst: false }),
     supa.from('estudio_cobros').select('*').eq('proyecto_id', pid).order('orden')
@@ -476,7 +476,9 @@ export async function accionProyecto(action: string, ctx: {
       presupuesto: d.pres ? { estado: d.pres.estado, importe: d.pres.importe, numero: d.pres.numero || d.pres.datos?.numero || null } : null,
       presupuestos: { aceptados: cuenta('aceptado'), pendientes: cuenta('enviado'), borradores: cuenta('borrador'), rechazados: cuenta('rechazado'), total: d.todos.length,
         importe_aceptado: Math.round(aceptados.reduce((s: number, x: Any) => s + Number(x.importe ?? 0), 0) * 100) / 100 },
-      montajes, costes_lista: d.costes, cobros_lista: cobros
+      montajes, costes_lista: d.costes, cobros_lista: cobros,
+      // Sin aceptados: venta (último enviado o borrador) y margen previstos, solo en la ficha
+      ...ventaPrevista(d.todos, Number(m.costes ?? 0), Number(m.coste_previsto ?? 0))
     });
   }
   return json({ error: 'accion_desconocida' }, 400);

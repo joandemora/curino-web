@@ -115,3 +115,20 @@ test('v2: sin presupuesto aceptado, los presupuestos de proveedor son «coste pr
   const a = metricasProyecto({ presupuesto: { estado: 'aceptado', importe: 9000, aceptado_at: '2026-10-01' }, ficheros, costes: [], cobros: [], hoy: '2026-10-14', v2: true });
   assert.deepEqual([a.costes, a.coste_previsto], [2800, 0]);
 });
+
+test('venta prevista: último enviado (si no, último borrador); margen previsto con coste previsto; nada con un aceptado', async () => {
+  const { ventaPrevista } = await import('./metricas.ts');
+  const pres = [
+    { numero: 'Z1-A', estado: 'borrador', importe: 1000, updated_at: '2026-10-10' },
+    { numero: 'Z1-B', estado: 'enviado', importe: 4596, enviado_at: '2026-10-15', updated_at: '2026-10-15' },
+    { numero: 'Z1-C', estado: 'enviado', importe: 3000, enviado_at: '2026-10-12', updated_at: '2026-10-16' },
+    { numero: 'Z1-D', estado: 'rechazado', importe: 9000, updated_at: '2026-10-17' }
+  ];
+  assert.deepEqual(ventaPrevista(pres, 0, 0), { venta_prevista: { importe: 4596, numero: 'Z1-B' }, margen_previsto: null, margen_previsto_pct: null });
+  // Con coste previsto (presupuestos de proveedor): margen = venta − costes − coste previsto
+  assert.deepEqual(ventaPrevista(pres, 0, 2000), { venta_prevista: { importe: 4596, numero: 'Z1-B' }, margen_previsto: 2596, margen_previsto_pct: 56.5 });
+  // Sin enviados: el último borrador
+  assert.equal(ventaPrevista(pres.filter((p) => p.estado !== 'enviado'), 0, 0).venta_prevista?.numero, 'Z1-A');
+  // Con un aceptado no hay nada previsto
+  assert.equal(ventaPrevista([...pres, { numero: 'Z1-E', estado: 'aceptado', importe: 500 }], 0, 2000).venta_prevista, null);
+});
