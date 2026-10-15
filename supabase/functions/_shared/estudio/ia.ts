@@ -40,7 +40,7 @@ INTERIOR DE CADA MÓDULO: zonas de arriba abajo; entre dos zonas hay siempre una
 - altillo: primera zona; «alto» es la cota desde arriba del cuerpo hasta debajo de su balda (40–50 habitual en armarios de más de 240 cm).
 - perchero: barra de colgar. prendas «largas» para vestidos y abrigos. Dos percheros seguidos = colgar doble.
 - perchero_extraible: barra extraíble frontal, para fondos menores de 50.
-- cajonera: N cajones (alto por defecto 19,5 × N); suele ir abajo.
+- cajonera: N cajones (alto por defecto 19,5 × N); suele ir abajo. «cajones abiertos» / «cajón interior» / «frente rebajado» → frente «abierto» (abierto «frente_bajo», por defecto); «con escote» → frente «abierto» y abierto «escote». Agarre de los cajones, independiente de las puertas: «sin tirador» / «push» → agarre «ninguno»; «uñero» → «unero». Ponlo en el esquema (el dibujo lo muestra), no solo en las notas.
 - estantes: N estantes repartidos en la zona. «grosor_estantes» en cm solo si no son de 1,9: «estantes de 30» / «balda gruesa de 3 cm» → 3; «de 25» → 2,5.
 - grosor_balda_encima (cm): solo si la balda que separa esta zona de la de arriba es gruesa («balda de 30 sobre la cajonera» → en la cajonera, 3). Nunca en la primera zona.
 - hueco: espacio libre (con «etiqueta» si hace falta, p. ej. «Estante»).
@@ -49,7 +49,7 @@ INTERIOR DE CADA MÓDULO: zonas de arriba abajo; entre dos zonas hay siempre una
 
 FORMATO
 - codigo A.01, A.02… en orden; titulo en mayúsculas tipo «ARMARIO A MEDIDA 200 cm» o «ARMARIO A MEDIDA EN L»; sin subtítulo ni formato (se generan solos).
-- frente.acabado en singular y minúsculas («lacada», «roble natural»); modelo «moldurada» o «lisa» (el de la mayoría de puertas).
+- frente.acabado en singular, tal como lo escribe el alumno, con sus mayúsculas («lacada», «roble natural», «Blanco Soft III»); modelo «moldurada» o «lisa» (el de la mayoría de puertas).
 - frente.apertura: «abatible» (bisagras), «corredera», «coplanar» (correderas enrasadas, «coplanares», «puertas coplanares») o «escamoteable» (puertas que se esconden en el lateral, «escamoteables»).
 - frente.material (el de la mayoría de puertas): «lisa_melamina», «lisa_lacada», «moldurada_lacada», «chapa_madera» (madera natural barnizada: roble, nogal…), «textil» (bastidor tapizado, tela) o «ratan» (bastidor de madera con rejilla, «ratán», «rejilla»). Si una puerta es distinta, ponle «material» solo a esa.
 - frente.agarre: «tirador» (por defecto), «tirador_premium» (latón u otro premium), «unero_dm» («uñero», «uñero fresado», «uñero lacado»), «unero_madera» («uñero de madera maciza») o «ninguno» (push o sin tirador). El uñero sustituye al tirador. Si una puerta es distinta, ponle «agarre» solo a esa.
