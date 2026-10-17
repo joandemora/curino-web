@@ -120,6 +120,7 @@ Reglas:
 - Ancho total: si no hay cota total, súmalo en cadena con las cotas parciales del propio mueble (cuerpos y montantes, p. ej. 4 + 100 + 4 + 150 + 4 + 100 + 4 = 366) y ponlas en cotas_ancho. Eso no es medir sobre plano. No cuentes huecos ajenos al mueble (cortinas, paredes, pasos). Si dudas de alguna, «revisar».
 - Estantes: cuéntalos por las cotas del plano. Cada cota de 2–3 cm entre dos huecos es un estante (p. ej. 32 · 2 · 32 = dos huecos y 1 estante; 30 · 3 · 30 · 3 · 40 = 2 estantes de 3 cm). Pon su grosor en grosor. Las etiquetas («Estantes para vajilla», «Estante») dicen qué es, no cuántos hay. Si una cota no está clara, seguro = false y «revisar».
 - Cubertero: es siempre un cajón con su inserto. Ponlo como tipo «cubertero» (una entrada por cubertero) y no lo cuentes además como «cajon».
+- Compartimentos: si un cuerpo tiene varios compartimentos separados por una división vertical (p. ej. dos rotulados «Estantes para vajilla»), cuenta los estantes de cada compartimento por separado, cada uno con su ancho (ancho del compartimento) y la división como tipo «division». Si no está claro, seguro = false y «revisar».
 - Cuerpos: cada columna vertical del mueble con su ancho de cota, de izquierda a derecha (una vitrina arriba y un bajo con puertas en la misma columna son un cuerpo). Cuenta los elementos de cada cuerpo con sus etiquetas («Cajón servilletas», «Balda extraíble manteles», «Cubertero», «Estante», «Apertura push», «Fondo de espejo»).
 - Puertas: una entrada por grupo igual, con cantidad, apertura y si son en arco, vitrina o push. Cajones con push si lo pone.
 - Materiales y acabados SOLO si el plano los escribe; si no, null. Nunca inventes materiales, marcas ni colores.
@@ -222,8 +223,10 @@ export function puntosMueble(m: MueblePlano, puntos: Record<string, number>): { 
         case 'costado': add('costado', `${COSTADOS.melamina.nombre}${det}`, n, puntos.costado_melamina, 'material a definir (costado visto en melamina): revisar'); break;
         case 'estante': {
           // Con cota de grosor: 25 / 30 mm (puntos completos: aquí cada estante se suma entero)
+          // En un compartimento, por su propio ancho (tramo de la tabla de ese ancho)
           const g = e.grosor ?? null, k = g && g > 2.55 ? 'estante30' : g && g > 2.05 ? 'estante25' : 'estante';
-          add('estante', `${EXTRAS[k].nombre}${det}`, n, porAnchoExtra(k), dudoso(e), !!g && g > 3.05 && `grosor ${g} cm: con la tarifa de 30 mm, revisar`);
+          const pts = e.ancho ? porAncho(serieDe(puntos, k), Math.round(e.ancho * 10)).puntos : porAnchoExtra(k);
+          add('estante', `${EXTRAS[k].nombre}${e.ancho ? ` · ${cmTxt(e.ancho)} cm` : ''}${det}`, n, pts, dudoso(e), !!g && g > 3.05 && `grosor ${g} cm: con la tarifa de 30 mm, revisar`);
           break;
         }
         case 'estante_vidrio': add('estvid', `${EXTRAS_MUEBLE.mueble_estante_vidrio.nombre}${det}`, n, puntos.mueble_estante_vidrio, AVISO_EXTRA_MUEBLE, dudoso(e)); break;

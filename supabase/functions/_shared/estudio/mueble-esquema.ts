@@ -10,7 +10,9 @@ export interface CajonesZona { alturas: number[]; agarre?: AgarreMueble; cuberte
 export interface InteriorZona {
   estantes?: number; grosor_estantes?: number; estantes_vidrio?: number; cajones?: number; baldas_extraibles?: number; cuberteros?: number; led?: boolean;
   etiquetas?: string[];          // rótulos del plano («Cajón servilletas», «Estantes para vajilla»)
+  compartimentos?: CompartimentoZona[];   // zona partida por divisiones verticales: estantes de cada uno por separado
 }
+export interface CompartimentoZona { ancho: number; estantes?: number; grosor_estantes?: number; etiqueta?: string }
 export interface ZonaMueble {
   alto: number; tipo: 'puertas' | 'abierta' | 'cajones';
   puertas?: PuertasZona; cajones?: CajonesZona; fondo?: 'espejo' | 'madera' | 'lacado'; interior?: InteriorZona;
@@ -42,7 +44,11 @@ const interior = {
     estantes: { type: 'integer', minimum: 1, maximum: 12, description: 'Contados por las cotas: cada cota de 2–3 cm entre huecos es un estante (32 · 2 · 32 = 1).' }, grosor_estantes: num(1, 6, 'cm, solo si lo dicen o se acota (p. ej. 3).'),
     estantes_vidrio: { type: 'integer', minimum: 1, maximum: 12 }, cajones: { type: 'integer', minimum: 1, maximum: 8, description: 'Cajones interiores (detrás de las puertas).' },
     baldas_extraibles: { type: 'integer', minimum: 1, maximum: 8 }, cuberteros: { type: 'integer', minimum: 1, maximum: 6, description: 'Cada cubertero ya es un cajón con su inserto: no lo cuentes también en cajones.' }, led: { type: 'boolean' },
-    etiquetas: { type: 'array', items: { type: 'string', maxLength: 40 }, maxItems: 6, description: 'Rótulos tal cual («Cajón servilletas», «Balda extraíble manteles»).' }
+    etiquetas: { type: 'array', items: { type: 'string', maxLength: 40 }, maxItems: 6, description: 'Rótulos tal cual («Cajón servilletas», «Balda extraíble manteles»).' },
+    compartimentos: {
+      type: 'array', minItems: 2, maxItems: 4, description: 'Si la zona está partida por divisiones verticales (p. ej. dos compartimentos «Estantes para vajilla»): uno por compartimento, de izquierda a derecha, con su ancho y SUS estantes. Entonces no pongas «estantes» en la zona.',
+      items: { type: 'object', additionalProperties: false, required: ['ancho'], properties: { ancho: { type: 'number', minimum: 5, maximum: 300 }, estantes: { type: 'integer', minimum: 1, maximum: 12 }, grosor_estantes: { type: 'number', minimum: 1, maximum: 6 }, etiqueta: { type: 'string', maxLength: 40 } } }
+    }
   }
 };
 export const ESQUEMA_MUEBLE_JSON = {
@@ -154,7 +160,21 @@ export function validarMuebles(lista: unknown, err: (ruta: string, mensaje: stri
           if (!esObj(z.interior)) err(`${rz}.interior`, 'debe ser un objeto');
           else {
             const ri = `${rz}.interior`; const zi = z.interior;
-            campos(zi, ri, ['estantes', 'grosor_estantes', 'estantes_vidrio', 'cajones', 'baldas_extraibles', 'cuberteros', 'led', 'etiquetas']);
+            campos(zi, ri, ['estantes', 'grosor_estantes', 'estantes_vidrio', 'cajones', 'baldas_extraibles', 'cuberteros', 'led', 'etiquetas', 'compartimentos']);
+            if (zi.compartimentos !== undefined) {
+              if (!Array.isArray(zi.compartimentos) || zi.compartimentos.length < 2) err(`${ri}.compartimentos`, 'lista de 2 a 4 compartimentos');
+              else {
+                let suma = 0;
+                zi.compartimentos.forEach((k, ik) => {
+                  const rk = `${ri}.compartimentos[${ik}]`;
+                  if (!esObj(k)) return err(rk, 'debe ser un objeto');
+                  campos(k, rk, ['ancho', 'estantes', 'grosor_estantes', 'etiqueta']); numero(k, 'ancho', rk, 5, 300, true); entero(k, 'estantes', rk, 1, 12); numero(k, 'grosor_estantes', rk, 1, 6); texto(k, 'etiqueta', rk, 40);
+                  if (esNum(k.ancho)) suma += k.ancho;
+                });
+                if (esNum(c.ancho) && suma > (c.ancho as number) + 0.5) err(`${ri}.compartimentos`, `los compartimentos suman ${suma} cm y el cuerpo mide ${c.ancho}`);
+                if (zi.estantes !== undefined) err(`${ri}.estantes`, 'con compartimentos, los estantes van en cada compartimento');
+              }
+            }
             entero(zi, 'estantes', ri, 1, 12); numero(zi, 'grosor_estantes', ri, 1, 6); entero(zi, 'estantes_vidrio', ri, 1, 12); entero(zi, 'cajones', ri, 1, 8); entero(zi, 'baldas_extraibles', ri, 1, 8); entero(zi, 'cuberteros', ri, 1, 6);
             if (zi.etiquetas !== undefined && (!Array.isArray(zi.etiquetas) || zi.etiquetas.some((e) => typeof e !== 'string'))) err(`${ri}.etiquetas`, 'lista de textos');
           }

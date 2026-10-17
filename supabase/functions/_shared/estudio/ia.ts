@@ -66,6 +66,7 @@ MUEBLES A MEDIDA (proyecto.muebles; si el proyecto es solo un mueble, armarios =
 - interior de cada zona: estantes (+ grosor_estantes si lo dicen o se acota: «3» = 3 cm), estantes_vidrio, cajones (interiores, detrás de puertas), baldas_extraibles, cuberteros, led; etiquetas con los rótulos tal cual («Cajón servilletas», «Balda extraíble manteles»).
 - Estantes de un plano: cuéntalos por las cotas. Cada cota de 2–3 cm entre dos huecos es un estante (32 · 2 · 32 = dos huecos y 1 estante; 30 · 3 · 30 · 3 · 40 = 2 estantes de 3 cm). Las etiquetas dicen qué es, no cuántos hay. Si una cota no está clara, ponlo en «revisar» del mueble.
 - Cubertero: es siempre un cajón con su inserto. Cuéntalo solo en «cuberteros» (o en «cubertero» de una zona de cajones), nunca además en «cajones».
+- Compartimentos: si una zona está partida por divisiones verticales (p. ej. dos compartimentos rotulados «Estantes para vajilla»), usa interior.compartimentos (de izquierda a derecha, con su ancho) y cuenta los estantes de cada compartimento por separado; no pongas «estantes» en la zona. Si no está claro, «revisar».
 - revisar (del mueble): lo que no se lee con seguridad del plano, en frases cortas.
 - zocalo, tapa (tapa / encimera con grosor), costados_vistos y fondo. Materiales solo si los dicen: si no, omítelos («a definir»). Nunca inventes materiales, marcas ni colores.
 - vistas: «lateral» y «planta» solo si las piden.
