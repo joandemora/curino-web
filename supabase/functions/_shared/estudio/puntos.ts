@@ -136,7 +136,7 @@ export function porAncho(serie: number[], mm: number): { puntos: number; tramo: 
   return { puntos: Math.round((serie[n] + inc * pasos) * 100) / 100, tramo: ANCHOS[n] + 100 * pasos, fuera: true };
 }
 
-const serieDe = (p: Record<string, number>, k: string) => ANCHOS.map((a) => p[`${k}_${a}`]);
+export const serieDe = (p: Record<string, number>, k: string) => ANCHOS.map((a) => p[`${k}_${a}`]);
 
 /** Modelo de interior que más se parece a las zonas del módulo, y extras sobre ese modelo. */
 export function asignarModelo(zonas: Zona[]): { modelo: string; extras: Record<string, number>; altillo: boolean } {

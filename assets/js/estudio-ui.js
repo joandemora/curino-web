@@ -449,7 +449,8 @@
       var ver = x.kind === 'diseno' ? (x.pdf && x.pdf.url) : sinArchivo ? null : x.url;
       var acciones = (ver ? '<a class="dc-a" href="' + esc(ver) + '" target="_blank" rel="noopener">Ver</a><a class="dc-a" href="' + esc(ver) + '&download=' + encodeURIComponent(x.kind === 'diseno' ? x.pdf.nombre : x.nombre) + '">Descargar</a>' : '') +
         (x.kind === 'diseno' ? '<button class="dc-a" data-a="editar" data-i="' + i + '">Editar diseño</button>' : '') +
-        (((x.kind === 'diseno' && x.guardado) || esPdf || esImg) && !(x.kind === 'doc' && /^presupuesto/.test(x.tipo)) ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
+        (x.kind === 'fich' && x.tipo === 'plano' && (esPdf || esImg) ? '<button class="dc-a" data-a="plano" data-i="' + i + '" title="Claude lee el plano (≈ 4–5 créditos) y la tarifa pone el precio">Crear presupuesto</button>'
+          : ((x.kind === 'diseno' && x.guardado) || esPdf || esImg) && !(x.kind === 'doc' && /^presupuesto/.test(x.tipo)) ? '<button class="dc-a" data-a="presupuesto" data-i="' + i + '">Crear presupuesto</button>' : '') +
         (x.kind === 'fich' ? '<button class="dc-a" data-a="datos" data-i="' + i + '">Datos</button>' : '') +
         (x.kind === 'fich' && x.tipo === 'factura_proveedor' ? '<button class="dc-a" data-a="sustituye" data-i="' + i + '">Sustituye a…' + (sustituidos(x).length ? ' (' + sustituidos(x).length + ')' : '') + '</button>' : '') +
         '<button class="dc-a dc-borrar" data-a="borrar" data-i="' + i + '">Borrar</button>';
@@ -534,10 +535,23 @@
     // ── Subida: arrastrar o elegir varios, con tipo sugerido para cada uno ──
     function pintarCola() {
       el.querySelector('#dcCola').innerHTML = cola.length ? '<div class="dc-cola">' + cola.map(function (c, i) {
-        return '<div class="dc-cola-f"><span>' + esc(c.f.name) + ' <small class="pa-muted">' + Math.max(1, Math.round(c.f.size / 1024)) + ' KB</small></span><select data-cola="' + i + '">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === c.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select><button type="button" class="pa-btn" data-quitar-cola="' + i + '">×</button></div>';
+        var esPlano = c.tipo === 'plano' && /pdf|image\//i.test(c.f.type || '') && ctx.editarPresupuesto;
+        return '<div class="dc-cola-f"><span>' + esc(c.f.name) + ' <small class="pa-muted">' + Math.max(1, Math.round(c.f.size / 1024)) + ' KB</small></span><select data-cola="' + i + '">' + Object.keys(TIPO_F).map(function (k) { return '<option value="' + k + '"' + (k === c.tipo ? ' selected' : '') + '>' + TIPO_F[k] + '</option>'; }).join('') + '</select>' +
+          (esPlano ? '<label class="pa-muted" style="font-size:12px;white-space:nowrap" title="Claude lee el plano (≈ 4–5 créditos) y la tarifa pone el precio"><input type="checkbox" data-cola-pres="' + i + '"' + (c.presupuesto ? ' checked' : '') + ' style="width:auto"> Crear presupuesto</label>' : '') +
+          '<button type="button" class="pa-btn" data-quitar-cola="' + i + '">×</button></div>';
       }).join('') + '<div class="pr-barra"><button type="button" class="pa-btn primary" id="dcSubir">Subir ' + cola.length + (cola.length === 1 ? ' archivo' : ' archivos') + '</button><button type="button" class="pa-btn" id="dcVaciar">Cancelar</button></div></div>' : '';
     }
     function anadir(files) { [].slice.call(files || []).forEach(function (f) { cola.push({ f: f, tipo: tipoSugerido(f) }); }); pintarCola(); }
+    /** Presupuesto directo desde un plano: Claude lee cada mueble y la tarifa pone el precio; se abre en el editor. */
+    function presupuestoDesdePlano(ficheroId) {
+      msg('Claude está leyendo el plano…');
+      return api(ctx, { action: 'presupuesto_plano', proyecto_id: pid, fichero_id: ficheroId }).then(function (d) {
+        var n = (d.presupuesto && d.presupuesto.partidas || []).length;
+        msg('Presupuesto ' + (d.numero || '') + ' creado desde el plano: ' + n + (n === 1 ? ' mueble' : ' muebles') + '. Revisa las medidas leídas antes de enviarlo.', 'ok');
+        if (ctx.alCambiar) ctx.alCambiar();
+        return cargar().then(function () { if (ctx.editarPresupuesto && d.id) ctx.editarPresupuesto(d.id); });
+      });
+    }
     var drop = el.querySelector('#dcDrop');
     ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('sobre'); }); });
     ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('sobre'); }); });
@@ -545,7 +559,7 @@
     el.querySelector('#dcFile').addEventListener('change', function () { anadir(this.files); this.value = ''; });
     function subirCola() {
       var lote = cola.slice(); cola = []; pintarCola();
-      var hechos = 0, errores = [];
+      var hechos = 0, errores = [], planos = [];
       return lote.reduce(function (p, c) {
         return p.then(function () {
           msg('Subiendo ' + (hechos + 1) + ' de ' + lote.length + '…');
@@ -553,11 +567,16 @@
           return api(ctx, { action: 'fichero_subida', proyecto_id: pid, nombre: f.name, mime: mime, bytes: f.size, tipo: c.tipo }).then(function (d) {
             return supa.storage.from('estudio').uploadToSignedUrl(d.path, d.token, f, { contentType: mime }).then(function (r) {
               if (r.error) throw new Error('No se ha podido subir «' + f.name + '».');
-              return api(ctx, { action: 'fichero_guardar', id: d.id, subido: true, tipo: c.tipo });
+              return api(ctx, { action: 'fichero_guardar', id: d.id, subido: true, tipo: c.tipo }).then(function () { if (c.presupuesto && c.tipo === 'plano') planos.push(d.id); });
             });
           }).then(function () { hechos++; }, function (err) { errores.push(f.name + ': ' + err.message); });
         });
-      }, Promise.resolve()).then(function () { msg(errores.length ? errores.join(' · ') : hechos + (hechos === 1 ? ' archivo subido' : ' archivos subidos'), errores.length ? 'err' : 'ok'); return cargar(); });
+      }, Promise.resolve()).then(function () {
+        msg(errores.length ? errores.join(' · ') : hechos + (hechos === 1 ? ' archivo subido' : ' archivos subidos'), errores.length ? 'err' : 'ok');
+        // Planos marcados «Crear presupuesto»: uno detrás de otro
+        return cargar().then(function () { return planos.reduce(function (pr, id) { return pr.then(function () { return presupuestoDesdePlano(id); }); }, Promise.resolve()); })
+          .catch(function (err) { msg(err.message, 'err'); });
+      });
     }
     // ── Datos de un archivo (base, IVA, proveedor…) y «Leer con IA» ──
     function datos(x) {
@@ -634,7 +653,8 @@
     el.addEventListener('change', function (e) {
       if (e.target.classList.contains('ng-estado')) return cambiarEstado(ctx, e.target, function () { cargar(); if (ctx.alCambiarDocs) ctx.alCambiarDocs(); });
       if (e.target.dataset.fus !== undefined) { if (ctx.alFusMarcados) ctx.alFusMarcados(); return; }
-      if (e.target.dataset.cola !== undefined) { cola[Number(e.target.dataset.cola)].tipo = e.target.value; return; }
+      if (e.target.dataset.cola !== undefined) { cola[Number(e.target.dataset.cola)].tipo = e.target.value; pintarCola(); return; }
+      if (e.target.dataset.colaPres !== undefined) { cola[Number(e.target.dataset.colaPres)].presupuesto = e.target.checked; return; }
       if (e.target.dataset.tcoste !== undefined) {
         var xc = vistas[Number(e.target.dataset.tcoste)];
         api(ctx, { action: 'fichero_guardar', id: xc.id, tipo_coste: e.target.value }).then(function () { msg('Tipo de coste: ' + e.target.value, 'ok'); return cargar(); }).catch(function (err) { msg(err.message, 'err'); });
@@ -658,6 +678,11 @@
         var preSel = { tabla: x.kind === 'diseno' ? 'diseno' : x.kind === 'doc' ? 'doc' : 'fichero', id: x.id };
         if (ctx.abrirPresupuesto) return ctx.abrirPresupuesto(preSel);
         try { sessionStorage.setItem(CLAVE_PRE, JSON.stringify(preSel)); } catch (err) { /* */ } location.href = ctx.rutas.estudio(pid, 'presupuesto'); if (ctx.alNavegar) ctx.alNavegar(); return;
+      }
+      if (a === 'plano') {
+        if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = 'Gasta ≈ 4–5 créditos · ¿leer el plano?'; b.classList.add('on'); return; }
+        b.disabled = true; b.textContent = 'Claude está leyendo el plano…';
+        return presupuestoDesdePlano(x.id).catch(function (err) { b.disabled = false; b.textContent = 'Crear presupuesto'; delete b.dataset.ok; msg(err.message, 'err'); });
       }
       // Tarjeta de presupuesto
       if (a === 'peditar') { if (ctx.editarPresupuesto) ctx.editarPresupuesto(x.id); return; }
@@ -901,7 +926,7 @@
       '<table class="pr-des-t"><thead><tr><th>Concepto</th><th>Ud.</th><th>Pt/ud.</th><th>Puntos</th><th>Precio/ud.</th><th>Importe</th></tr></thead><tbody>' + filas + tot + '</tbody></table>' +
       (avisos ? '<ul class="pr-avisos">' + avisos + '</ul>' : '') +
       (p.tipo === 'cocina' ? '<p class="pa-muted" style="font-size:12px;margin:6px 0 0">Tarifa de cocinas · precio = puntos × precio del punto cocina' + (p.precio == null && !p.precio_manual ? ' (PENDIENTE: ponlo en la tarifa)' : '') + '.</p>' : '') +
-      (hayPuntos && p.tipo !== 'cocina' ? '<div class="pr-op" data-op="' + i + '"><b>Opciones de la tarifa por puntos</b>' + mods +
+      (hayPuntos && p.tipo !== 'cocina' && !p.plano ? '<div class="pr-op" data-op="' + i + '"><b>Opciones de la tarifa por puntos</b>' + mods +
         '<div class="pr-op-fila"><label>Costados vistos <input data-o="costado_n" inputmode="numeric" value="' + (cost.n || 0) + '" style="width:44px"></label>' +
         '<select data-o="costado_tipo">' + Object.keys(NOM_COSTADO).map(function (k) { return '<option value="' + k + '"' + (k === cost.tipo ? ' selected' : '') + '>' + NOM_COSTADO[k] + '</option>'; }).join('') + '</select>' +
         '<label>Remate <select data-o="remate"><option value="">Sin remate</option><option value="barniz"' + (op.remate === 'barniz' ? ' selected' : '') + '>Barniz</option><option value="lacado"' + (op.remate === 'lacado' ? ' selected' : '') + '>Lacado</option></select></label></div>' +
@@ -1297,7 +1322,7 @@
                 return api(ctx, { action: 'doc_subida', proyecto_id: pid, tipo: 'presupuesto_xlsx', version: dd.version, numero: dd.numero, nombre: nombre, bytes: blob.size, presupuesto_id: sel, variante: v })
                   .then(function (r) { return ctx.supa.storage.from('estudio').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type }); });
               };
-              return excel(d, varianteDoc(d.presupuesto_cliente || doc, v), proyecto, v);
+              return prepararPlanos(d).then(function () { return excel(d, varianteDoc(d.presupuesto_cliente || doc, v), proyecto, v); });
             });
           }, Promise.resolve()).then(function () { return (vars.length > 1 ? 'Excel cliente e interiorista descargados y guardados en Documentos' : 'Excel descargado y guardado en Documentos') + avisoSupuestos(d.supuestos); });
         });
@@ -1306,6 +1331,26 @@
   }
   /** Aviso (no bloquea) de valores supuestos sin confirmar: en el documento del cliente salen sin la palabra «supuesto». */
   function avisoSupuestos(n) { return n > 0 ? ' · Aviso: hay ' + n + (n === 1 ? ' valor supuesto' : ' valores supuestos') + ' sin confirmar' : ''; }
+  /** Recortes del plano para el Excel: pdf.js pinta la página (ya con su giro) y se recorta el recuadro de cada mueble. */
+  function prepararPlanos(d) {
+    if (d.recortesPlano || !(d.planos && d.planos.length)) { d.recortesPlano = d.recortesPlano || {}; return Promise.resolve(); }
+    d.recortesPlano = {};
+    return d.planos.reduce(function (pr, pl) {
+      return pr.then(function () {
+        var lienzo = /pdf$/i.test(pl.mime) ? pdfjs().then(function (lib) { return lib.getDocument(pl.url).promise; }).then(function (doc) { return doc.getPage(Math.max(1, pl.caja.pagina || 1)); }).then(function (pg) {
+          var v = pg.getViewport({ scale: 1 }), k = Math.min(3, 2400 / (v.width * (pl.caja.x1 - pl.caja.x0))), vp = pg.getViewport({ scale: k });
+          var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+          var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+          return pg.render({ canvasContext: g, viewport: vp, intent: 'print' }).promise.then(function () { return c; });
+        }) : new Promise(function (ok, ko) { var im = new Image(); im.crossOrigin = 'anonymous'; im.onload = function () { var c = document.createElement('canvas'); c.width = im.width; c.height = im.height; c.getContext('2d').drawImage(im, 0, 0); ok(c); }; im.onerror = ko; im.src = pl.url; });
+        return lienzo.then(function (c) {
+          var x0 = Math.round(pl.caja.x0 * c.width), y0 = Math.round(pl.caja.y0 * c.height), w = Math.round((pl.caja.x1 - pl.caja.x0) * c.width), h = Math.round((pl.caja.y1 - pl.caja.y0) * c.height);
+          var r = document.createElement('canvas'); r.width = w; r.height = h; r.getContext('2d').drawImage(c, x0, y0, w, h, 0, 0, w, h);
+          d.recortesPlano[pl.codigo] = { data: r.toDataURL('image/png'), ancho: w, alto: h };
+        }).catch(function () { /* sin recorte: la partida sale sin imagen */ });
+      });
+    }, Promise.resolve());
+  }
   /** Variante del presupuesto para descargar (igual que docVariante del servidor). */
   function varianteDoc(d, v) {
     if (!v || !d.comision || !d.comision.activa) return d;
@@ -1508,6 +1553,15 @@
           ws.addImage(wb.addImage({ base64: png64(im), extension: 'png' }), { tl: { col: tl, row: rd - 1 }, ext: { width: w * 96 / 72, height: h * 96 / 72 }, editAs: 'absolute' });
         }));
       });
+      // Partida leída de un plano: el recorte del propio plano, a todo el ancho (como en el PDF)
+      var rp = p.plano && d.recortesPlano ? d.recortesPlano[p.clave || p.codigo] : null;
+      if (rp) {
+        var kp = Math.min(FD.ancho / rp.ancho, (XL.alto - 40) / rp.alto), wp = rp.ancho * kp, hp = rp.alto * kp;
+        if (enPagina + FD.separacion + hp + 2 > XL.alto - 12) { cerrarPagina(false); linea(fila + 1, 0, 11, 'top', 'thin'); nueva(16); }
+        nueva(FD.separacion);
+        var rdp = nueva(hp + 2);
+        ws.addImage(wb.addImage({ base64: rp.data.split(',')[1], extension: 'png' }), { tl: { col: colDe(FD.x0 + (FD.ancho - wp) / 2), row: rdp - 1 }, ext: { width: wp * 96 / 72, height: hp * 96 / 72 }, editAs: 'absolute' });
+      }
       cerrarPagina(false);
     });
 
@@ -1633,6 +1687,9 @@
           '<tr><td>' + esc(P.sueltos.division.nombre) + '</td>' + celda('division') + '</tr>' +
           (P.sueltos.tapeta_cajonera ? '<tr><td>' + esc(P.sueltos.tapeta_cajonera.nombre) + ' <span class="pr-tag">revisar</span><br><span class="pa-muted" style="font-size:11px">No está en la tabla OTG: valor propio pendiente de confirmar</span></td>' + celda('tapeta_cajonera') + '</tr>' : '') +
           '</tbody></table></div>';
+        // Extras de mueble: lo que no tiene línea en la tabla OTG (presupuestos desde un plano)
+        if (P.extras_mueble) html += '<h4>Extras de mueble <span class="pr-tag">revisar</span></h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">No están en la tabla OTG: valores propios para los presupuestos hechos desde un plano. Salen marcados «revisar» hasta que los confirmes.</p><table class="tf-tabla tf-pts"><tbody>' +
+          Object.keys(P.extras_mueble).map(function (k) { var e = P.extras_mueble[k]; return '<tr><td>' + esc(e.nombre) + ' <span class="pa-muted" style="font-size:11px">· por ' + esc(e.unidad) + ' · ref.: ' + esc(e.referencia) + '</span></td>' + celda(k) + '</tr>'; }).join('') + '</tbody></table>';
         // Puertas y herrajes
         html += '<div class="tf-dos-col"><div><h4>Puertas (por puerta hasta 2800 × 650 × 19 mm)</h4><p class="pa-muted" style="font-size:11.5px;margin:0 0 4px">Frente fijo = su material, sin bisagras. Más grande: proporcional al exceso de superficie («revisar»).</p><table class="tf-tabla tf-pts"><tbody>' +
           Object.keys(P.puertas || {}).map(function (k) { return '<tr><td>' + esc(P.puertas[k].nombre.replace('Puerta ', '')) + '</td>' + celda('puerta_' + k) + '</tr>'; }).join('') + '</tbody></table></div>' +

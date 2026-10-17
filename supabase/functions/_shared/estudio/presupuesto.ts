@@ -46,8 +46,11 @@ export interface Partida {
   puntos?: number;             // total de puntos del armario
   modulos?: ModuloAsignado[];  // modelo de interior asignado a cada módulo
   avisos?: string[];           // altura/remate fuera de tabla…
-  tipo?: 'cocina';             // partida de un tramo de cocina (tarifa de cocinas)
+  tipo?: 'cocina' | 'plano';   // tramo de cocina (tarifa de cocinas) o mueble leído de un plano
   dibujo?: string;             // código de la lámina que va debajo (cocina: solo en el primer tramo)
+  // Partida leída de un plano: debajo va el recorte del propio plano (página + recuadro en fracciones)
+  plano?: { fichero_id: string; nombre: string; cajas: { pagina: number; x0: number; y0: number; x1: number; y1: number }[]; escala?: string | null; aviso_plano?: string | null; lectura?: unknown };
+  cuerpos_puntos?: { nombre: string; puntos: number }[];
 }
 
 /** Comisión del interiorista: dos versiones del PDF/Excel (cliente PVP / interiorista con DTO). */

@@ -37,6 +37,7 @@ import {
 } from '../_shared/estudio/presupuesto.ts'
 import { pintarPresupuesto } from '../_shared/estudio/presupuesto-pdf.ts'
 import { costeUsd, redactarTextos, proponerPartidas, type Adjunto } from '../_shared/estudio/ia.ts'
+import { leerPlano, partidaPlano, puntosMuebleBase, cajaUnion, recorteGirado, recalcularPlano, EXTRAS_MUEBLE, type AdjuntoPlano } from '../_shared/estudio/plano.ts'
 import { descontarSaldo, emisorCurinoDe, sinCredito, type EstadoAlumno } from './acceso.ts'
 import { guardarDocumento } from './proyecto.ts'
 import { interRegular, interBold, interCss } from '../_shared/estudio/fuentes/inter.ts'
@@ -56,7 +57,7 @@ export interface Ctx {
 }
 
 const ACCIONES = new Set(['tarifa', 'tarifa_guardar', 'tarifa_cocina', 'tarifa_cocina_guardar', 'plantilla', 'plantilla_guardar', 'plantilla_subida',
-  'presupuesto_borrar', 'presupuesto_asistente', 'presupuesto_vista', 'presupuestos', 'presupuesto_nuevo', 'presupuesto_duplicar', 'presupuesto_fusionar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
+  'presupuesto_borrar', 'presupuesto_asistente', 'presupuesto_vista', 'presupuestos', 'presupuesto_nuevo', 'presupuesto_plano', 'presupuesto_duplicar', 'presupuesto_fusionar', 'presupuesto', 'presupuesto_generar', 'presupuesto_guardar', 'presupuesto_textos', 'presupuesto_pdf', 'presupuesto_dibujos']);
 export const esAccionPresupuesto = (a: string) => ACCIONES.has(a);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -174,7 +175,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       // Tipos de coste del usuario (documentos de coste); vacío = lista inicial
       tipos_coste: deCurino ? null : ((await supa.from('estudio_tarifas').select('tipos_coste').eq('user_id', userId).maybeSingle()).data?.tipos_coste ?? null), tipos_coste_def: TIPOS_COSTE_DEF,
       serie: deCurino ? null : { guardada: (await supa.from('estudio_tarifas').select('serie_presupuesto').eq('user_id', userId).maybeSingle()).data?.serie_presupuesto ?? null, auto: await siguienteZUsuario(supa, userId) },
-      puntos: { version: VERSION_PUNTOS, base: puntosBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES, puertas: PUERTAS, herrajes: HERRAJES }
+      puntos: { version: VERSION_PUNTOS, base: puntosMuebleBase(), anchos: ANCHOS, modelos: MODELOS, extras: EXTRAS, sueltos: SUELTOS, costados: COSTADOS, recargos: RECARGOS, remates: REMATES, puertas: PUERTAS, herrajes: HERRAJES, extras_mueble: EXTRAS_MUEBLE }
     });
   }
   if (action === 'tarifa_guardar') {
@@ -183,7 +184,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     const valores: Record<string, number | null> = {};
     for (const c of CONCEPTOS) valores[c.clave] = numOrNull(body?.valores?.[c.clave], 0, c.unidad === '%' ? 500 : 1_000_000);
     // Puntos: solo se guardan los que difieren de la tabla original (restablecer = quitar)
-    const base = puntosBase(), cambiados: Record<string, number> = {};
+    const base = puntosMuebleBase(), cambiados: Record<string, number> = {};   // armarios OTG + «Extras de mueble»
     for (const [k, v] of Object.entries(body?.puntos ?? {})) {
       const n = numOrNull(v, 0, 100000);
       if (k in base && n !== null && n !== base[k]) cambiados[k] = n;
@@ -314,7 +315,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   const { data: proyecto } = await supa.from('estudio_proyectos').select('*').eq('id', proyectoId).maybeSingle();
   if (!proyecto || (proyecto.user_id !== userId && !esAdmin)) return json({ error: 'Proyecto no encontrado' }, 404);
   // Sin id: el principal del proyecto (el aceptado o el último modificado)
-  if (!fila && !['presupuestos', 'presupuesto_nuevo', 'presupuesto_asistente', 'presupuesto_borrar', 'presupuesto_fusionar'].includes(action)) {
+  if (!fila && !['presupuestos', 'presupuesto_nuevo', 'presupuesto_plano', 'presupuesto_asistente', 'presupuesto_borrar', 'presupuesto_fusionar'].includes(action)) {
     fila = (await supa.from('estudio_presupuesto_principal').select('*').eq('proyecto_id', proyectoId).maybeSingle()).data;
   }
   const duenoAdmin = await emisorCurinoDe(supa, proyecto.user_id);
@@ -515,6 +516,28 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json(respuesta(d));
   }
 
+  if (action === 'presupuesto_plano') {
+    // Presupuesto directo desde un plano: Claude lee cada mueble; el precio lo pone la tarifa (puntos), nunca Claude
+    const numero = txt(body?.numero, 40) || await numeroSugerido();
+    const { data: f } = await supa.from('estudio_ficheros').select('*').eq('id', String(body?.fichero_id || '')).eq('proyecto_id', proyectoId).maybeSingle();
+    if (!f) return json({ error: 'Plano no encontrado.' }, 404);
+    if (!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.mime || '')) return json({ error: 'El plano tiene que ser un PDF o una imagen.' }, 400);
+    if (!ctx.clave) return json({ error: 'La IA no está configurada.' }, 500);
+    if (!esAdmin) { const sin = sinCredito(ctx.alumno ?? null); if (sin) return json({ error: sin, sin_credito: true }, 402); }
+    const { data: blob } = await supa.storage.from('estudio').download(f.path);
+    if (!blob) return json({ error: 'No se ha podido leer el plano.' }, 500);
+    const u8 = new Uint8Array(await blob.arrayBuffer());
+    if (u8.length > 18 * 1024 * 1024) return json({ error: 'El plano pesa más de 18 MB.' }, 400);
+    const r = await leerPlano({ clave: ctx.clave, modelo: ctx.modelo, adjunto: { tipo: f.mime as AdjuntoPlano['tipo'], base64: ctx.base64(u8), nombre: f.nombre } });
+    const coste = await usar(ctx, proyectoId, r.llamadas, 'plano');
+    if (!r.lectura) return json({ error: `Claude no ha podido leer el plano (${r.error ?? 'sin datos'}).`, coste_usd: coste }, 502);
+    const puntos = { ...puntosMuebleBase(), ...(tarifa.puntos ?? {}) };
+    const partidas = r.lectura.muebles.map((m, i) => partidaPlano({ mueble: m, n: i + 1, lectura: r.lectura!, puntos, precioPunto: tarifa.precio_punto ?? null, dto: tarifa.descuento_pct ?? 0, plano: { fichero_id: f.id, nombre: f.nombre } }));
+    const d: DocPresupuesto = { ...cabecera(numero), version: proyecto.version_actual || 0, partidas };
+    await crear(d);
+    return json({ ...respuesta(d), lectura: r.lectura, coste_usd: coste, uso: r.llamadas[0]?.uso, cuerpos: partidas.map((p) => ({ titulo: p.titulo, puntos: p.puntos, cuerpos: p.cuerpos_puntos })) });
+  }
+
   if (action === 'presupuesto_fusionar') {
     // Dos o más presupuestos del proyecto → uno nuevo (borrador) con todas sus partidas, en orden. Los originales no se tocan.
     const ids = Array.isArray(body?.ids) ? [...new Set(body.ids.map(String))].filter((x) => UUID.test(x as string)).slice(0, 10) : [];
@@ -562,7 +585,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
   /** Recalcula desde su versión las partidas de diseño (las libres se quedan igual). */
   const recalcularDesdeVersiones = async (d: DocPresupuesto, soloSinPrecio: boolean | 'precio' = false) => {
     const porVersion = new Map<number, string[]>();
-    for (const p of d.partidas) if (!p.libre) { const n = p.version ?? d.version; porVersion.set(n, [...(porVersion.get(n) ?? []), p.codigo]); }
+    for (const p of d.partidas) if (!p.libre && !p.plano) { const n = p.version ?? d.version; porVersion.set(n, [...(porVersion.get(n) ?? []), p.codigo]); }
     const frescas = new Map<string, Partida>();
     for (const [n, cods] of porVersion) {
       const v = await versionDatos(n);
@@ -570,8 +593,17 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       const g = generarPresupuesto({ proyecto: v.datos, version: n, tarifa, plantilla, nombre: proyecto.nombre, hoy: d.fecha, previo: d, armarios: cods });
       for (const p of g.partidas) frescas.set(claveDe(p), p);
     }
-    d.partidas = d.partidas.map((p) => {
+    const puntosPlano = { ...puntosMuebleBase(), ...(tarifa.puntos ?? {}) };
+    d.partidas = d.partidas.map((p, i) => {
       if (p.libre) return p;
+      if (p.plano) {
+        // Mueble leído de un plano: se rehace desde lo que leyó Claude con la tarifa actual; los textos editados se conservan
+        const f = recalcularPlano(p, puntosPlano, tarifa.precio_punto ?? null, Number(String(p.codigo).replace(/\D/g, '')) || i + 1);
+        if (!f) return p;
+        const precio = p.precio_manual ? p.precio : f.precio;
+        const base = { ...p, precio, desglose: f.desglose, pendientes: f.pendientes, puntos: f.puntos, avisos: f.avisos, cuerpos_puntos: f.cuerpos_puntos, plano: f.plano };
+        return soloSinPrecio ? base : { ...base, tecnico: f.tecnico };
+      }
       const f = frescas.get(claveDe(p)) ?? frescas.get(`v${p.version ?? d.version}:${p.codigo}`);
       if (!f) return p;
       // 'precio': precio, desglose y puntos al día sin tocar los textos (opciones de puntos, cambios de tarifa)
@@ -651,6 +683,52 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json(respuesta(d));
   }
 
+
+
+  /** Excel: por cada partida leída de un plano, el archivo (URL firmada) y el recuadro a recortar (lo pinta el navegador). */
+  const planosExcel = async () => {
+    const out: Any[] = [];
+    for (const p of doc.partidas) {
+      const caja = p.plano?.cajas?.length ? cajaUnion(p.plano.cajas) : null;
+      if (!caja) continue;
+      const { data: f } = await supa.from('estudio_ficheros').select('path, mime').eq('id', p.plano!.fichero_id).maybeSingle();
+      if (!f) continue;
+      const url = (await supa.storage.from('estudio').createSignedUrl(f.path, 600)).data?.signedUrl ?? null;
+      if (url) out.push({ codigo: claveDe(p), url, mime: f.mime, caja });
+    }
+    return out;
+  };
+  /** Recortes del plano para las partidas leídas de un plano (página del PDF embebida con su recuadro, o la imagen entera). */
+  const recortesDe = async (pdf: Any, d: DocPresupuesto) => {
+    const out: Any[] = [];
+    const cache = new Map<string, Any>();
+    for (const p of d.partidas) {
+      if (!p.plano?.cajas?.length) continue;
+      const caja = cajaUnion(p.plano.cajas);
+      if (!caja) continue;
+      let src = cache.get(p.plano.fichero_id);
+      if (src === undefined) {
+        const { data: f } = await supa.from('estudio_ficheros').select('path, mime').eq('id', p.plano.fichero_id).maybeSingle();
+        const blob = f ? (await supa.storage.from('estudio').download(f.path)).data : null;
+        src = blob ? { mime: f.mime, bytes: new Uint8Array(await blob.arrayBuffer()) } : null;
+        if (src && src.mime === 'application/pdf') src.doc = await PDFDocument.load(src.bytes);
+        cache.set(p.plano.fichero_id, src);
+      }
+      if (!src) continue;
+      if (src.doc) {
+        const pag = src.doc.getPage(Math.min(src.doc.getPageCount(), Math.max(1, caja.pagina)) - 1);
+        const { width: w, height: h } = pag.getSize();
+        // Las cajas son de la hoja tal como se ve: se pasan a coordenadas sin girar (/Rotate)
+        const rc = recorteGirado(pag.getRotation().angle, w, h, caja);
+        out.push({ codigo: claveDe(p), pagina: await pdf.embedPage(pag, rc.bb), w: rc.w, h: rc.h, giro: { r: rc.r, bw: rc.bw, bh: rc.bh } });
+      } else {
+        const img = src.mime === 'image/png' ? await pdf.embedPng(src.bytes) : await pdf.embedJpg(src.bytes);
+        out.push({ codigo: claveDe(p), imagen: img, w: img.width, h: img.height });
+      }
+    }
+    return out;
+  };
+
   if (action === 'presupuesto_vista') {
     // Vista previa: el PDF tal cual saldría, con los cambios sin guardar y marca «VISTA PREVIA»
     const d = await fusionar(body?.datos ?? {});
@@ -675,7 +753,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       const b = new Uint8Array(await data.arrayBuffer());
       return b[0] === 0x89 ? await pdf.embedPng(b) : await pdf.embedJpg(b);
     };
-    pintarPresupuesto(pdf, { presupuesto: docV, plantilla, dibujos, ivaPct: iva }, { os, inter }, { rgb, degrees },
+    pintarPresupuesto(pdf, { presupuesto: docV, plantilla, dibujos, ivaPct: iva, recortes: await recortesDe(pdf, docV) }, { os, inter }, { rgb, degrees },
       { logo: plantilla.tipo === 'propia' ? await imagen(plantilla.logo_path) : undefined, firma: await imagen(plantilla.firma_path) });
     for (const pg of pdf.getPages()) pg.drawText('VISTA PREVIA', { x: 140, y: 330, size: 62, font: os.bold, color: rgb(0.85, 0.85, 0.85), rotate: degrees(35), opacity: 0.35 });
     return json({ base64: ctx.base64(await pdf.save()), variante });
@@ -740,7 +818,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     return json({
       logo, plantilla, iva_pct: tarifa.iva_pct, presupuesto_id: fila.id,
       // Excel del cliente: textos sin «supuesto»; aviso (no bloquea) de cuántos valores lo son
-      presupuesto_cliente: paraCliente(doc), supuestos: contarSupuestos(doc), fila: FILA_DIBUJO,
+      presupuesto_cliente: paraCliente(doc), supuestos: contarSupuestos(doc), fila: FILA_DIBUJO, planos: await planosExcel(),
       firma_url: await firmar(plantilla.firma_path), logo_url: plantilla.tipo === 'propia' ? await firmar(plantilla.logo_path) : null,
       dibujos: await dibujosDe(medir, (l, clave) => { const d = dibujoLamina(l, medir); return { codigo: clave, svg: dibujoSvg(d.prims, d.caja, css), ancho: d.caja.w, alto: d.caja.h }; })
     });
@@ -768,7 +846,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         const b = new Uint8Array(await data.arrayBuffer());
         return b[0] === 0x89 ? await pdf.embedPng(b) : await pdf.embedJpg(b);
       };
-      pintarPresupuesto(pdf, { presupuesto: docVariante(paraCliente(doc), variante), plantilla, dibujos, ivaPct: iva }, { os, inter }, { rgb, degrees },
+      pintarPresupuesto(pdf, { presupuesto: docVariante(paraCliente(doc), variante), plantilla, dibujos, ivaPct: iva, recortes: await recortesDe(pdf, doc) }, { os, inter }, { rgb, degrees },
         { logo: plantilla.tipo === 'propia' ? await imagen(plantilla.logo_path) : undefined, firma: await imagen(plantilla.firma_path) });
       pdf.setTitle(`Presupuesto ${doc.numero || proyecto.nombre}${variante ? ` (${variante})` : ''}`);
       pdf.setCreator('Estudio Curino');
