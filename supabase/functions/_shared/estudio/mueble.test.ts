@@ -60,3 +60,20 @@ test('zona de cajones con cubertero: el cajón con cubertero no se cuenta dos ve
   assert.equal(l.filter((x) => /^Cajón/.test(x.nombre)).reduce((s, x) => s + x.cantidad, 0), 3);   // 2 cajones + 1 cajón con cubertero
   assert.equal(l.filter((x) => /Tirador/.test(x.nombre)).reduce((s, x) => s + x.cantidad, 0), 3);   // un tirador por cajón, también el del cubertero
 });
+
+test('compartimentos: estantes de cada uno con su ancho y la división entre ellos', () => {
+  const p = mcC();
+  // Central: dos compartimentos «Estantes para vajilla» (50 y 100), 1 estante cada uno por las cotas 32 · 2 · 32
+  p.muebles[0].cuerpos[1].zonas[0] = { alto: 74, tipo: 'puertas', puertas: { n: 3, agarre: 'push' }, interior: { compartimentos: [{ ancho: 50, estantes: 1, etiqueta: 'Estantes para vajilla' }, { ancho: 100, estantes: 1, etiqueta: 'Estantes para vajilla' }] } } as never;
+  const v = validarProyecto(p); assert.equal(v.ok, true, JSON.stringify(!v.ok && v.errores));
+  const part = partidaMueble(v.ok ? v.proyecto.muebles![0] : null!, { version: 1, puntos: puntosMuebleBase(), precioPunto: null, dto: 0 });
+  const central = part.desglose.filter((l) => l.nombre.startsWith('Cuerpo central'));
+  const est = central.filter((l) => /Estante/.test(l.nombre));
+  assert.deepEqual(est.map((l) => l.puntos), [puntosMuebleBase().estante_500, puntosMuebleBase().estante_1000]);   // por el ancho de cada compartimento
+  assert.ok(central.some((l) => /División/.test(l.nombre) && l.cantidad === 1));
+  const textos = laminasProyecto(v.ok ? v.proyecto : null!).flatMap((l) => l.prims).filter((x) => x.k === 'text').map((x) => (x as { t: string }).t);
+  assert.equal(textos.filter((t) => t === 'Estantes para vajilla').length, 2);
+  // Con compartimentos, los estantes no van también en la zona
+  const mal = mcC(); (mal.muebles[0].cuerpos[1].zonas[0] as { interior: unknown }).interior = { estantes: 1, compartimentos: [{ ancho: 50 }, { ancho: 100 }] };
+  assert.equal(validarProyecto(mal).ok, false);
+});

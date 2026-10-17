@@ -46,6 +46,11 @@ export function elementosMueble(m: Mueble): MueblePlano {
       const it = z.interior;
       if (!it) continue;
       if (it.estantes) el.push({ tipo: 'estante', cantidad: it.estantes, grosor: it.grosor_estantes ?? null, detalle: etiquetaDe(z, /estante/i), seguro: true });
+      // Compartimentos: los estantes de cada uno, con su ancho, y las divisiones verticales entre ellos
+      if (it.compartimentos?.length) {
+        el.push({ tipo: 'division', cantidad: it.compartimentos.length - 1, detalle: 'División entre compartimentos', seguro: true });
+        for (const k of it.compartimentos) if (k.estantes) el.push({ tipo: 'estante', cantidad: k.estantes, ancho: k.ancho, grosor: k.grosor_estantes ?? null, detalle: k.etiqueta ?? etiquetaDe(z, /estante/i), seguro: true });
+      }
       if (it.estantes_vidrio) el.push({ tipo: 'estante_vidrio', cantidad: it.estantes_vidrio, seguro: true });
       if (it.cajones) el.push({ tipo: 'cajon', cantidad: it.cajones, detalle: etiquetaDe(z, /caj[oó]n/i), seguro: true });
       if (it.baldas_extraibles) el.push({ tipo: 'balda_extraible', cantidad: it.baldas_extraibles, detalle: etiquetaDe(z, /balda/i), seguro: true });
@@ -78,7 +83,8 @@ export function partidaMueble(m: Mueble, o: { version: number; puntos: Record<st
     const base = z.tipo === 'puertas' && p ? `${p.n} ${p.n === 1 ? 'puerta' : 'puertas'}${p.vitrina ? ' vitrina' : ''}${p.arco ? ' en arco' : ''}${p.apertura === 'corredera' ? ' correderas' : ''}${p.agarre === 'push' ? ' (push)' : p.agarre === 'unero' ? ' (uñero)' : ''}`
       : z.tipo === 'cajones' && z.cajones ? `${z.cajones.alturas.length} cajones${z.cajones.cubertero ? ' con cubertero' : ''}` : `hueco abierto${z.fondo ? ` con fondo de ${z.fondo}` : ''}`;
     const pl = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
-    const dentro = it ? [it.estantes ? `${pl(it.estantes, 'estante', 'estantes')}${it.grosor_estantes ? ` de ${Math.round(it.grosor_estantes * 10)} mm` : ''}` : '', it.estantes_vidrio ? pl(it.estantes_vidrio, 'estante de vidrio', 'estantes de vidrio') : '', it.cajones ? pl(it.cajones, 'cajón interior', 'cajones interiores') : '', it.baldas_extraibles ? pl(it.baldas_extraibles, 'balda extraíble', 'baldas extraíbles') : '', it.cuberteros ? pl(it.cuberteros, 'cubertero', 'cuberteros') : '', it.led ? 'iluminación LED' : ''].filter(Boolean) : [];
+    const comps = it?.compartimentos?.length ? `${it.compartimentos.length} compartimentos (${it.compartimentos.map((k) => `${cmTxt(k.ancho)} cm${k.estantes ? `, ${pl(k.estantes, 'estante', 'estantes')}` : ''}`).join(' + ')})` : '';
+    const dentro = it ? [comps, it.estantes ? `${pl(it.estantes, 'estante', 'estantes')}${it.grosor_estantes ? ` de ${Math.round(it.grosor_estantes * 10)} mm` : ''}` : '', it.estantes_vidrio ? pl(it.estantes_vidrio, 'estante de vidrio', 'estantes de vidrio') : '', it.cajones ? pl(it.cajones, 'cajón interior', 'cajones interiores') : '', it.baldas_extraibles ? pl(it.baldas_extraibles, 'balda extraíble', 'baldas extraíbles') : '', it.cuberteros ? pl(it.cuberteros, 'cubertero', 'cuberteros') : '', it.led ? 'iluminación LED' : ''].filter(Boolean) : [];
     return `${base} (${cmTxt(z.alto)} cm)${dentro.length ? ': ' + dentro.join(', ') : ''}`;
   };
   const tecnico = [

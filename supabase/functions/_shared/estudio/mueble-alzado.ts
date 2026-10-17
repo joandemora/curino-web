@@ -236,7 +236,22 @@ function lamina(m: Mueble, p: Pick<Proyecto, 'referencia' | 'cliente'>, medir: M
   }
 
   function estantes(zn: ZonaMueble, cx0: number, w: number, yTop: number, yBot: number, rotular = false) {
-    const it = zn.interior ?? {}, n = (it.estantes ?? 0) + (it.estantes_vidrio ?? 0);
+    const it = zn.interior ?? {};
+    if (it.compartimentos?.length) {
+      // Divisiones verticales y los estantes de cada compartimento
+      const total = it.compartimentos.reduce((s, k) => s + k.ancho, 0), ks = w / cm(total);
+      let xk = cx0;
+      it.compartimentos.forEach((k, i) => {
+        const wk = cm(k.ancho) * ks;
+        if (i > 0) tablero(xk - cm(1.9) / 2, yTop, cm(1.9), yBot - yTop);
+        const n = k.estantes ?? 0, g = cm(k.grosor_estantes ?? 1.9), paso = (yBot - yTop - n * g) / (n + 1);
+        for (let j = 1; j <= n; j++) tablero(xk + 1, yTop + j * paso + (j - 1) * g, wk - 2, g);
+        if (rotular && (k.etiqueta || it.etiquetas?.length)) etiqueta(xk + wk / 2, yTop + (n ? paso / 2 : (yBot - yTop) / 2), k.etiqueta ?? it.etiquetas!.find((e) => /estante/i.test(e)) ?? '');
+        xk += wk;
+      });
+      return;
+    }
+    const n = (it.estantes ?? 0) + (it.estantes_vidrio ?? 0);
     if (!n || yBot - yTop < 4) return;
     const g = cm(it.grosor_estantes ?? 1.9), paso = (yBot - yTop - n * g) / (n + 1);
     for (let k = 1; k <= n; k++) {
