@@ -308,15 +308,15 @@ Deno.serve(async (req) => {
       if (!v) return json({ error: 'Este diseño aún no tiene versiones.' }, 404);
       const pedidas = Array.isArray(body?.vistas) ? body.vistas.filter((x: unknown) => x === 'lateral' || x === 'planta') : [];
       const datos: Proyecto = JSON.parse(JSON.stringify(v.datos));
-      // Armario (A.0N) o cocina (C.0N)
-      const arm: { codigo: string; vistas?: ('lateral' | 'planta')[] } | undefined = [...datos.armarios, ...(datos.cocinas ?? [])].find((x) => x.codigo === String(body?.codigo || ''));
-      if (!arm) return json({ error: 'Armario o cocina no encontrado' }, 404);
+      // Armario (A.0N), cocina (C.0N) o mueble (M.0N)
+      const arm: { codigo: string; vistas?: ('lateral' | 'planta')[] } | undefined = [...datos.armarios, ...(datos.cocinas ?? []), ...(datos.muebles ?? [])].find((x) => x.codigo === String(body?.codigo || ''));
+      if (!arm) return json({ error: 'Armario, cocina o mueble no encontrado' }, 404);
       const vistas = (['lateral', 'planta'] as const).filter((x) => pedidas.includes(x));
       if (vistas.length) arm.vistas = [...vistas]; else delete arm.vistas;
       const val = validarProyecto(datos);
       if (!val.ok) return json({ error: 'El diseño no es válido.', errores: val.errores.slice(0, 30) }, 400);
       const nombres: Record<string, string> = { lateral: 'sección lateral', planta: 'planta' };
-      const nota = `${arm.codigo}: ${vistas.length ? vistas.map((x) => nombres[x]).join(' + ') : arm.codigo.startsWith('C.') ? 'solo alzado' : 'solo interior y cerrado'}`;
+      const nota = `${arm.codigo}: ${vistas.length ? vistas.map((x) => nombres[x]).join(' + ') : arm.codigo.startsWith('C.') ? 'solo alzado' : arm.codigo.startsWith('M.') ? 'solo interior y exterior' : 'solo interior y cerrado'}`;
       const numero = await nuevaVersion(val.proyecto, 'manual', `Vistas ${nota}`);
       const mensaje = `Vistas de ${nota}. Guardado como versión nueva.`;
       await supa.from('estudio_mensajes').insert({ proyecto_id: proyectoId, diseno_id: diseno?.id ?? null, rol: 'asistente', texto: mensaje, version: numero });

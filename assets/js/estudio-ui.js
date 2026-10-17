@@ -162,7 +162,7 @@
           // Vistas extra por armario (sobre su primera hoja): un clic = versión nueva
           var vistas = s.vistas || [], barra = '';
           if ((s.pagina || 1) === 1 && viendo) {
-            barra = '<div class="es-vistas" data-cod="' + esc(s.codigo) + '"><span>' + esc(s.codigo) + ' · vistas:</span><span class="pr-tag">' + (/^C\./.test(s.codigo) ? 'Alzado' : 'Interior + Cerrado') + '</span>' +
+            barra = '<div class="es-vistas" data-cod="' + esc(s.codigo) + '"><span>' + esc(s.codigo) + ' · vistas:</span><span class="pr-tag">' + (/^C\./.test(s.codigo) ? 'Alzado' : /^M\./.test(s.codigo) ? 'Interior + Exterior' : 'Interior + Cerrado') + '</span>' +
               [['lateral', 'Lateral'], ['planta', 'Planta']].map(function (x) {
                 var on = vistas.indexOf(x[0]) >= 0;
                 return '<button type="button" class="es-vista' + (on ? ' on' : '') + '" data-vista="' + x[0] + '" title="' + (on ? 'Quitar' : 'Añadir') + ' vista ' + (x[0] === 'lateral' ? 'lateral (sección)' : 'en planta') + '">' + (on ? '✓ ' : '+ ') + x[1] + '</button>';
@@ -1543,7 +1543,7 @@
       var dibs = p.libre ? [] : d.dibujos.filter(function (x) { return x.codigo === (p.clave || p.codigo); });
       dibs.forEach(function (dib) {
         // Misma escala en todas las vistas del armario / cocina: la menor de su grupo (como grupoDibujo del servidor)
-        var grupo = function (x) { return x.codigo.replace(/^((?:v\d+:)?[AC]\.\d+).*$/, '$1'); };
+        var grupo = function (x) { return x.codigo.replace(/^((?:v\d+:)?[ACM]\.\d+).*$/, '$1'); };
         var kk = d.dibujos.filter(function (x) { return grupo(x) === grupo(dib); }).reduce(function (m, x) { return Math.min(m, FD.ancho / x.ancho, FD.alto / x.alto); }, Infinity);
         var w = dib.ancho * kk, h = dib.alto * kk;
         if (enPagina + FD.separacion + h + 2 > XL.alto - 12) { cerrarPagina(false); linea(fila + 1, 0, 11, 'top', 'thin'); nueva(16); }

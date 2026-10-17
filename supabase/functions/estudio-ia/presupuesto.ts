@@ -411,7 +411,7 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
       siguiente: sig,
       disenos: (dis ?? []).map((d: Any) => {
         const v = (vers ?? []).find((x: Any) => x.numero === d.version_actual);
-        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: [...(v?.datos?.armarios ?? []), ...(v?.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
+        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: [...(v?.datos?.armarios ?? []), ...(v?.datos?.cocinas ?? []), ...(v?.datos?.muebles ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
       }),
       documentos: [
         ...(docs.data ?? []).map((x: Any) => ({ tabla: 'doc', id: x.id, nombre: x.nombre, tipo: x.tipo })),
@@ -436,11 +436,11 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         comision: x.datos?.comision?.activa ? x.datos.comision : null, partidas: x.datos?.partidas?.length ?? 0, actualizado: x.updated_at
       })),
       siguiente: await numeroSugerido(),
-      versiones: (vers ?? []).map((v: Any) => ({ numero: v.numero, armarios: [...(v.datos?.armarios ?? []), ...(v.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) })),
+      versiones: (vers ?? []).map((v: Any) => ({ numero: v.numero, armarios: [...(v.datos?.armarios ?? []), ...(v.datos?.cocinas ?? []), ...(v.datos?.muebles ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) })),
       // Diseños (los documentos de tipo «Diseño»): partidas con su dibujo desde su versión actual
       disenos: (dis ?? []).map((d: Any) => {
         const v = (vers ?? []).find((x: Any) => x.numero === d.version_actual);
-        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: [...(v?.datos?.armarios ?? []), ...(v?.datos?.cocinas ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
+        return { id: d.id, nombre: d.nombre, guardado: d.guardado, version: d.version_actual, miniatura: d.miniatura, armarios: [...(v?.datos?.armarios ?? []), ...(v?.datos?.cocinas ?? []), ...(v?.datos?.muebles ?? [])].map((a: Any) => ({ codigo: a.codigo, titulo: a.titulo })) };
       }),
       documentos: [
         ...(docs.data ?? []).map((x: Any) => ({ tabla: 'doc', id: x.id, nombre: x.nombre, tipo: x.tipo })),

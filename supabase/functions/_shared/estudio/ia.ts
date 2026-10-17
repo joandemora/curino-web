@@ -59,6 +59,14 @@ FORMATO
 - vistas del armario: siempre salen «Interior» y «Cerrado». Añade «lateral» (sección) y/o «planta» en «vistas» solo cuando el alumno las pida («añade vista en planta», «quiero la sección»); quítalas si lo pide. Al hacer otros cambios, conserva las vistas que ya tenga.
 - Solo existe lo que está en el esquema. Los tiradores los coloca el dibujo (por parejas, en las puertas que se juntan; «tirador» de una puerta solo para cambiar el lado). No prometas en el mensaje detalles que el esquema no recoge (colores, herrajes concretos, iluminación…): si el alumno los pide, dile que van en las notas o en el presupuesto.
 
+MUEBLES A MEDIDA (proyecto.muebles; si el proyecto es solo un mueble, armarios = [])
+- Aparadores, vitrinas, muebles de salón, comedor, TV o bar: van en «muebles» (M.01…), NUNCA forzados a armario. Un armario es para colgar ropa; un mueble con vitrinas, cajones de cubiertos o fondo de espejo es un mueble.
+- Cuerpos en fila de izquierda a derecha con su ancho libre; «montante» = grosor de los montantes entre cuerpos y en los extremos (si un plano acota 4 entre cuerpos, montante 4). Ancho total = cuerpos + montantes.
+- Cada cuerpo, en zonas de ABAJO ARRIBA con su altura (zona baja 74, zona alta 166…): «puertas» (n, arco + radio, vitrina con cristal, agarre push / tirador / uñero / ninguno, material solo si lo dicen), «abierta» (fondo espejo / madera / lacado) o «cajones» (alturas de cada cajón, agarre, cubertero). Todos los cuerpos miden lo mismo de alto.
+- interior de cada zona: estantes (+ grosor_estantes si lo dicen o se acota: «3» = 3 cm), estantes_vidrio, cajones (interiores, detrás de puertas), baldas_extraibles, cuberteros, led; etiquetas con los rótulos tal cual («Cajón servilletas», «Balda extraíble manteles»).
+- zocalo, tapa (tapa / encimera con grosor), costados_vistos y fondo. Materiales solo si los dicen: si no, omítelos («a definir»). Nunca inventes materiales, marcas ni colores.
+- vistas: «lateral» y «planta» solo si las piden.
+
 COCINAS (proyecto.cocinas; si el proyecto es solo una cocina, armarios = [])
 - Una cocina C.01 con tramos: uno por pared (el primero, la pared principal; «esquina_izq» / «esquina_der» para la otra pared de una cocina en L o U, como en armarios) y «isla» si hay isla. «Cocina en L, 3,20 + 2,10» = dos tramos.
 - Medidas de módulos que da el alumno («bajos de 60, 80 y 90», «fregadero de 90»): se respetan EXACTAMENTE, una por una; no cambies un 80 por un 70 para cuadrar.
