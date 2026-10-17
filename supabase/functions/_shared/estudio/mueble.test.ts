@@ -33,7 +33,7 @@ test('mueble: mismo desglose que el presupuesto directo desde plano (MC_C = 6.93
   assert.deepEqual(p.cuerpos_puntos, [{ nombre: 'Cuerpo izquierdo', puntos: 2492 }, { nombre: 'Cuerpo central', puntos: 1963 }, { nombre: 'Cuerpo derecho', puntos: 2484 }]);
   // Por construcción: el mismo cálculo que el plano
   assert.equal(puntosMueble(elementosMueble(m), puntosMuebleBase()).cuerpos.reduce((s, c) => s + c.puntos, 0), 6939);
-  assert.equal(p.tipo, 'mueble'); assert.equal(p.dibujo, 'M.01');
+  assert.equal(p.tipo, 'mueble'); assert.equal(p.dibujo, 'M.01'); assert.equal(p.subtitulo, 'Mueble comedor C a medida de 366 cm');
   assert.match(p.tecnico, /^Medidas: 3660 x 2400 x 400 mm/); assert.match(p.tecnico, /1 cajón interior/);
   assert.match(p.materiales, /Exterior: puertas lisas lacadas \(supuesto\)/);
 });
