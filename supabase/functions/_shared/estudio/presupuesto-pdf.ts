@@ -9,13 +9,16 @@
 // imágenes ya incrustadas (logo/firma de la plantilla).
 
 import { FILA_DIBUJO, escalasPorGrupo, type Prim } from './alzado.ts';
+import { colocarRecorte } from './plano.ts';
 import { LOGO_ALTO, LOGO_ANCHO, LOGO_PATH } from './logo.ts';
 import { colorPdf, pintarPrims, type Documento, type Fuente, type FuentesPdf, type LibPdf, type Pagina } from './pdf.ts';
 import { claveDe, fechaCorta, fechaLarga, formaPagoDe, importesPlazos, precioTxt, totales, type DocPresupuesto, type Plantilla } from './presupuesto.ts';
 import { eur, importeLinea } from './tarifa.ts';
 
 export interface ImagenPdf { width: number; height: number }
-interface PaginaImg extends Pagina { drawImage(img: ImagenPdf, o: Record<string, unknown>): void }
+interface PaginaImg extends Pagina { drawImage(img: ImagenPdf, o: Record<string, unknown>): void; drawPage(p: unknown, o: Record<string, unknown>): void }
+/** Recorte de un plano (página embebida con su recuadro) para dibujar bajo una partida leída del plano. */
+export interface RecortePlano { codigo: string; pagina?: unknown; imagen?: ImagenPdf; w: number; h: number; giro?: { r: number; bw: number; bh: number } }
 interface DocumentoImg extends Documento { addPage(size: [number, number]): PaginaImg }
 
 export interface DibujoPartida { codigo: string; prims: Prim[]; caja: { x: number; y: number; w: number; h: number } }
@@ -27,7 +30,7 @@ const NEGRO = '#000000', GRIS_T = '#434343', GRIS_V = '#666666', GRIS_C = '#4040
 
 export function pintarPresupuesto(
   doc: DocumentoImg,
-  o: { presupuesto: DocPresupuesto; plantilla: Plantilla; dibujos: DibujoPartida[]; ivaPct: number },
+  o: { presupuesto: DocPresupuesto; plantilla: Plantilla; dibujos: DibujoPartida[]; ivaPct: number; recortes?: RecortePlano[] },
   f: { os: FuentesPdf; inter: FuentesPdf },
   lib: LibPdf,
   img: { logo?: ImagenPdf; firma?: ImagenPdf } = {}
@@ -154,6 +157,19 @@ export function pintarPresupuesto(
       if (y0 + h > limite) { pgD = doc.addPage([W, H]); marco(pgD, MARCO.bottom, false, false); y0 = MARCO.top + 16; }
       const dx = FILA_DIBUJO.x0 + (FILA_DIBUJO.ancho - d.caja.w * k) / 2 - d.caja.x * k;
       pintarPrims(pgD, d.prims, H, f.inter, lib, { s: k, dx, dy: y0 - d.caja.y * k });
+      y0 += h + FILA_DIBUJO.separacion;
+    }
+    // Partida leída de un plano: el recorte del propio plano, a todo el ancho
+    for (const r of pt.libre ? [] : (o.recortes ?? []).filter((x) => x.codigo === claveDe(pt))) {
+      const k = Math.min(FILA_DIBUJO.ancho / r.w, (limite - MARCO.top - 30) / r.h), w = r.w * k, h = r.h * k;
+      if (y0 + h > limite) { pgD = doc.addPage([W, H]); marco(pgD, MARCO.bottom, false, false); y0 = MARCO.top + 16; }
+      const x = FILA_DIBUJO.x0 + (FILA_DIBUJO.ancho - w) / 2;
+      if (r.pagina) {
+        // La hoja puede venir girada (/Rotate): se dibuja con el mismo giro para que se vea derecha
+        const c = colocarRecorte(r.giro ?? { r: 0, bw: r.w, bh: r.h }, x, H - y0 - h, k);
+        pgD.drawPage(r.pagina, { x: c.x, y: c.y, width: c.width, height: c.height, rotate: lib.degrees(c.angulo) });
+      }
+      else if (r.imagen) pgD.drawImage(r.imagen, { x, y: H - y0 - h, width: w, height: h });
       y0 += h + FILA_DIBUJO.separacion;
     }
   });
