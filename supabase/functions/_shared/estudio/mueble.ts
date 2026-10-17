@@ -57,6 +57,9 @@ export function elementosMueble(m: Mueble): MueblePlano {
   return { nombre: m.titulo, vistas: [], ancho: anchoMueble(m), alto, fondo: m.fondo, medidas_seguras: true, materiales: m.materiales ?? {}, cuerpos, revisar: [] };
 }
 
+/** «MUEBLE COMEDOR C» → «Mueble comedor C» (las letras sueltas, como códigos, se quedan en mayúscula). */
+const frase = (t: string) => t.toLowerCase().replace(/^./, (c) => c.toUpperCase()).replace(/\b([a-zñ])\b/g, (c) => c.toUpperCase());
+
 /** Partida del presupuesto para un mueble del diseño (dibujo debajo; desglose igual que desde plano). */
 export function partidaMueble(m: Mueble, o: { version: number; puntos: Record<string, number>; precioPunto: number | null; dto: number }): Partida {
   const mp = elementosMueble(m), pp = typeof o.precioPunto === 'number' && o.precioPunto > 0 ? o.precioPunto : null;
@@ -86,7 +89,7 @@ export function partidaMueble(m: Mueble, o: { version: number; puntos: Record<st
   const materiales = [`Interior: ${def(mat.interior)}`, `Exterior: ${mat.exterior?.trim() || (supuesta ? 'puertas lisas lacadas (supuesto)' : 'a definir')}`, mat.encimera || m.tapa?.material ? `Encimera: ${mat.encimera || m.tapa?.material}` : '', 'Herrajes: a definir', mat.otros ? `Otros: ${mat.otros}` : '', m.notas?.trim() ? `Notas del diseño: ${m.notas.trim()}` : ''].filter(Boolean).join('\n');
   return {
     codigo: m.codigo, version: o.version, clave: `v${o.version}:${m.codigo}`, tipo: 'mueble', dibujo: m.codigo, cantidad: 1,
-    titulo: `${m.codigo} ${m.titulo}`.toUpperCase(), subtitulo: `${m.titulo.charAt(0).toUpperCase()}${m.titulo.slice(1).toLowerCase()} a medida de ${cmTxt(anchoMueble(m))} cm`, intro: '',
+    titulo: `${m.codigo} ${m.titulo}`.toUpperCase(), subtitulo: `${frase(m.titulo)} a medida de ${cmTxt(anchoMueble(m))} cm`, intro: '',
     tecnico, materiales, precio: pp === null ? null : Math.round(desglose.reduce((s, l) => s + (l.importe ?? 0), 0) * 100) / 100, precio_manual: false,
     dto_pct: o.dto, desglose, pendientes: pp === null ? ['Precio del punto'] : [], puntos: total, avisos: pm.avisos,
     cuerpos_puntos: pm.cuerpos.map((c) => ({ nombre: c.nombre, puntos: c.puntos }))
