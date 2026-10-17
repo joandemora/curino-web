@@ -20,6 +20,7 @@ export interface Mueble {
   codigo: string; titulo: string; notas?: string; vistas?: ('lateral' | 'planta')[];
   fondo: number; montante?: number; zocalo?: number; tapa?: { tipo: 'tapa' | 'encimera'; grosor: number; material?: string };
   costados_vistos?: number; materiales?: { interior?: string; exterior?: string; encimera?: string; otros?: string };
+  revisar?: string[];          // lo que no estaba claro en el plano o la descripción (vista interna del presupuesto)
   cuerpos: CuerpoMueble[];
 }
 
@@ -38,9 +39,9 @@ const agarre = { enum: ['push', 'tirador', 'unero', 'ninguno'], description: 'pu
 const interior = {
   type: 'object', additionalProperties: false, description: 'Lo que hay dentro de la zona.',
   properties: {
-    estantes: { type: 'integer', minimum: 1, maximum: 12 }, grosor_estantes: num(1, 6, 'cm, solo si lo dicen o se acota (p. ej. 3).'),
+    estantes: { type: 'integer', minimum: 1, maximum: 12, description: 'Contados por las cotas: cada cota de 2–3 cm entre huecos es un estante (32 · 2 · 32 = 1).' }, grosor_estantes: num(1, 6, 'cm, solo si lo dicen o se acota (p. ej. 3).'),
     estantes_vidrio: { type: 'integer', minimum: 1, maximum: 12 }, cajones: { type: 'integer', minimum: 1, maximum: 8, description: 'Cajones interiores (detrás de las puertas).' },
-    baldas_extraibles: { type: 'integer', minimum: 1, maximum: 8 }, cuberteros: { type: 'integer', minimum: 1, maximum: 6 }, led: { type: 'boolean' },
+    baldas_extraibles: { type: 'integer', minimum: 1, maximum: 8 }, cuberteros: { type: 'integer', minimum: 1, maximum: 6, description: 'Cada cubertero ya es un cajón con su inserto: no lo cuentes también en cajones.' }, led: { type: 'boolean' },
     etiquetas: { type: 'array', items: { type: 'string', maxLength: 40 }, maxItems: 6, description: 'Rótulos tal cual («Cajón servilletas», «Balda extraíble manteles»).' }
   }
 };
@@ -52,6 +53,7 @@ export const ESQUEMA_MUEBLE_JSON = {
     properties: {
       codigo: { type: 'string', pattern: '^M\\.\\d{2}$' }, titulo: { type: 'string', maxLength: 60, description: 'El nombre del plano o del usuario («MUEBLE COMEDOR C»).' },
       notas: { type: 'string', maxLength: 220 }, vistas: { type: 'array', uniqueItems: true, items: { enum: ['lateral', 'planta'] } },
+      revisar: { type: 'array', maxItems: 8, items: { type: 'string', maxLength: 160 }, description: 'Lo que no se lee con seguridad (una cota dudosa, un número de estantes), en frases cortas.' },
       fondo: num(10, 120, 'Fondo total en cm.'), montante: num(1, 10, 'Grosor de los montantes entre cuerpos y en los extremos (cm). Omitir si no se dice (1,9).'),
       zocalo: num(0, 30, 'cm, si lo hay.'), costados_vistos: { type: 'integer', minimum: 1, maximum: 2 },
       tapa: { type: 'object', additionalProperties: false, required: ['tipo', 'grosor'], properties: { tipo: { enum: ['tapa', 'encimera'] }, grosor: num(1, 10, 'cm'), material: { type: 'string', maxLength: 80 } } },
@@ -104,7 +106,8 @@ export function validarMuebles(lista: unknown, err: (ruta: string, mensaje: stri
   lista.forEach((m, im) => {
     const rm = `muebles[${im}]`;
     if (!esObj(m)) return err(rm, 'debe ser un objeto');
-    campos(m, rm, ['codigo', 'titulo', 'notas', 'vistas', 'fondo', 'montante', 'zocalo', 'tapa', 'costados_vistos', 'materiales', 'cuerpos']);
+    campos(m, rm, ['codigo', 'titulo', 'notas', 'vistas', 'fondo', 'montante', 'zocalo', 'tapa', 'costados_vistos', 'materiales', 'revisar', 'cuerpos']);
+    if (m.revisar !== undefined && (!Array.isArray(m.revisar) || m.revisar.some((x) => typeof x !== 'string'))) err(`${rm}.revisar`, 'lista de textos');
     if (typeof m.codigo !== 'string' || !/^M\.\d{2}$/.test(m.codigo)) err(`${rm}.codigo`, 'formato M.01, M.02…');
     else if (codigos.has(m.codigo)) err(`${rm}.codigo`, `código repetido ${m.codigo}`); else codigos.add(m.codigo);
     if (typeof m.titulo !== 'string' || !m.titulo.trim()) err(`${rm}.titulo`, 'falta el texto');

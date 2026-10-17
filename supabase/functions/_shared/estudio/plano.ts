@@ -59,7 +59,7 @@ const caja = { type: 'object', additionalProperties: false, required: ['pagina',
   properties: { pagina: { type: 'integer', minimum: 1 }, x0: { type: 'number' }, y0: { type: 'number' }, x1: { type: 'number' }, y1: { type: 'number' } } };
 export const HERRAMIENTA_PLANO = {
   name: 'leer_plano',
-  description: 'Devuelve lo que se lee en el plano: un elemento por mueble (aunque salga en varias vistas: alzado exterior, interior, sección).',
+  description: 'Devuelve lo que se lee en el plano: un elemento por mueble (aunque salga en varias vistas: alzado exterior, interior, sección). Estantes contados por las cotas; cubertero = cajón con inserto (solo como «cubertero»).',
   input_schema: {
     type: 'object', additionalProperties: false, required: ['muebles', 'aviso_plano', 'escala'],
     properties: {
@@ -118,7 +118,8 @@ Reglas:
 - Un mueble = un elemento de «muebles», aunque aparezca en varias vistas (alzado exterior, alzado interior, sección): junta lo que se ve en todas.
 - Medidas en cm, solo de las cotas del plano. Si una medida no tiene cota, pon null y explícalo en «revisar». Nunca la calcules a ojo ni la inventes.
 - Ancho total: si no hay cota total, súmalo en cadena con las cotas parciales del propio mueble (cuerpos y montantes, p. ej. 4 + 100 + 4 + 150 + 4 + 100 + 4 = 366) y ponlas en cotas_ancho. Eso no es medir sobre plano. No cuentes huecos ajenos al mueble (cortinas, paredes, pasos). Si dudas de alguna, «revisar».
-- Estantes: si el plano acota su grosor (p. ej. «3» entre huecos), ponlo en grosor.
+- Estantes: cuéntalos por las cotas del plano. Cada cota de 2–3 cm entre dos huecos es un estante (p. ej. 32 · 2 · 32 = dos huecos y 1 estante; 30 · 3 · 30 · 3 · 40 = 2 estantes de 3 cm). Pon su grosor en grosor. Las etiquetas («Estantes para vajilla», «Estante») dicen qué es, no cuántos hay. Si una cota no está clara, seguro = false y «revisar».
+- Cubertero: es siempre un cajón con su inserto. Ponlo como tipo «cubertero» (una entrada por cubertero) y no lo cuentes además como «cajon».
 - Cuerpos: cada columna vertical del mueble con su ancho de cota, de izquierda a derecha (una vitrina arriba y un bajo con puertas en la misma columna son un cuerpo). Cuenta los elementos de cada cuerpo con sus etiquetas («Cajón servilletas», «Balda extraíble manteles», «Cubertero», «Estante», «Apertura push», «Fondo de espejo»).
 - Puertas: una entrada por grupo igual, con cantidad, apertura y si son en arco, vitrina o push. Cajones con push si lo pone.
 - Materiales y acabados SOLO si el plano los escribe; si no, null. Nunca inventes materiales, marcas ni colores.
@@ -227,7 +228,14 @@ export function puntosMueble(m: MueblePlano, puntos: Record<string, number>): { 
         }
         case 'estante_vidrio': add('estvid', `${EXTRAS_MUEBLE.mueble_estante_vidrio.nombre}${det}`, n, puntos.mueble_estante_vidrio, AVISO_EXTRA_MUEBLE, dudoso(e)); break;
         case 'balda_extraible': add('balda', `${EXTRAS_MUEBLE.mueble_balda_extraible.nombre}${det}`, n, puntos.mueble_balda_extraible, AVISO_EXTRA_MUEBLE, dudoso(e)); break;
-        case 'cubertero': add('cubertero', `${EXTRAS_MUEBLE.mueble_cubertero.nombre}${det}`, n, puntos.mueble_cubertero, AVISO_EXTRA_MUEBLE, dudoso(e)); break;
+        case 'cubertero':
+          // Un cubertero es siempre un cajón con su inserto
+          add('cajon', `${EXTRAS.cajon.nombre} con cubertero${det}`, n, porAnchoExtra('cajon'), dudoso(e));
+          add('cubertero', `${EXTRAS_MUEBLE.mueble_cubertero.nombre}${det}`, n, puntos.mueble_cubertero, AVISO_EXTRA_MUEBLE, dudoso(e));
+          if (e.push) add('push', EXTRAS_MUEBLE.mueble_push.nombre, n, puntos.mueble_push, AVISO_EXTRA_MUEBLE);
+          else if (e.unero) add('unero', HERRAJES.unero_dm.nombre, n, puntos.unero_dm);
+          else if (e.tirador) add('tirador', HERRAJES.tirador.nombre, n, puntos.tirador);
+          break;
         case 'division': add('division', `${SUELTOS.division.nombre}${det}`, n, puntos.division, dudoso(e)); break;
         case 'fondo_espejo': {
           const an = e.ancho ?? c.ancho, al = e.alto;

@@ -64,6 +64,9 @@ MUEBLES A MEDIDA (proyecto.muebles; si el proyecto es solo un mueble, armarios =
 - Cuerpos en fila de izquierda a derecha con su ancho libre; «montante» = grosor de los montantes entre cuerpos y en los extremos (si un plano acota 4 entre cuerpos, montante 4). Ancho total = cuerpos + montantes.
 - Cada cuerpo, en zonas de ABAJO ARRIBA con su altura (zona baja 74, zona alta 166…): «puertas» (n, arco + radio, vitrina con cristal, agarre push / tirador / uñero / ninguno, material solo si lo dicen), «abierta» (fondo espejo / madera / lacado) o «cajones» (alturas de cada cajón, agarre, cubertero). Todos los cuerpos miden lo mismo de alto.
 - interior de cada zona: estantes (+ grosor_estantes si lo dicen o se acota: «3» = 3 cm), estantes_vidrio, cajones (interiores, detrás de puertas), baldas_extraibles, cuberteros, led; etiquetas con los rótulos tal cual («Cajón servilletas», «Balda extraíble manteles»).
+- Estantes de un plano: cuéntalos por las cotas. Cada cota de 2–3 cm entre dos huecos es un estante (32 · 2 · 32 = dos huecos y 1 estante; 30 · 3 · 30 · 3 · 40 = 2 estantes de 3 cm). Las etiquetas dicen qué es, no cuántos hay. Si una cota no está clara, ponlo en «revisar» del mueble.
+- Cubertero: es siempre un cajón con su inserto. Cuéntalo solo en «cuberteros» (o en «cubertero» de una zona de cajones), nunca además en «cajones».
+- revisar (del mueble): lo que no se lee con seguridad del plano, en frases cortas.
 - zocalo, tapa (tapa / encimera con grosor), costados_vistos y fondo. Materiales solo si los dicen: si no, omítelos («a definir»). Nunca inventes materiales, marcas ni colores.
 - vistas: «lateral» y «planta» solo si las piden.
 
