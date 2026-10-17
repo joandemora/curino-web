@@ -61,8 +61,9 @@ export const ESQUEMA_MUEBLE_JSON = {
       notas: { type: 'string', maxLength: 220 }, vistas: { type: 'array', uniqueItems: true, items: { enum: ['lateral', 'planta'] } },
       revisar: { type: 'array', maxItems: 8, items: { type: 'string', maxLength: 160 }, description: 'Lo que no se lee con seguridad (una cota dudosa, un número de estantes), en frases cortas.' },
       fondo: num(10, 120, 'Fondo total en cm.'), montante: num(1, 10, 'Grosor de los montantes entre cuerpos y en los extremos (cm). Omitir si no se dice (1,9).'),
-      zocalo: num(0, 30, 'cm, si lo hay.'), costados_vistos: { type: 'integer', minimum: 1, maximum: 2 },
-      tapa: { type: 'object', additionalProperties: false, required: ['tipo', 'grosor'], properties: { tipo: { enum: ['tapa', 'encimera'] }, grosor: num(1, 10, 'cm'), material: { type: 'string', maxLength: 80 } } },
+      // Zócalo y tapa: solo si se rotulan o se acotan fuera de la cadena de alturas
+      zocalo: num(0, 30, 'cm, solo si se rotula o se acota fuera de la cadena de alturas; los tableros de 2–4 cm de la cadena no son zócalo.'), costados_vistos: { type: 'integer', minimum: 1, maximum: 2 },
+      tapa: { type: 'object', additionalProperties: false, required: ['tipo', 'grosor'], description: 'Solo si se rotula o se acota fuera de la cadena de alturas (las cotas de 2–4 cm de la cadena son tableros del mueble).', properties: { tipo: { enum: ['tapa', 'encimera'] }, grosor: num(1, 10, 'cm'), material: { type: 'string', maxLength: 80 } } },
       materiales: { type: 'object', additionalProperties: false, properties: { interior: { type: 'string', maxLength: 120 }, exterior: { type: 'string', maxLength: 120 }, encimera: { type: 'string', maxLength: 120 }, otros: { type: 'string', maxLength: 120 } }, description: 'Solo lo que digan el usuario o el plano, tal cual. Nunca inventes.' },
       cuerpos: {
         type: 'array', minItems: 1, maxItems: 10, description: 'De izquierda a derecha.',

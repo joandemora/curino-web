@@ -141,7 +141,12 @@ function limpiarPlantilla(d: Any, base: Plantilla): Plantilla {
   };
 }
 
-async function usar(ctx: Ctx, proyectoId: string, llamadas: { uso: Any; ok: boolean }[], accion: string) {
+/**
+ * Registra las llamadas a Claude con su coste real. Solo se cobran (créditos del
+ * mes y saldo de packs) si la operación dio resultado: si falló o no devolvió
+ * nada, quedan con cobrado = false y no cuentan para el alumno.
+ */
+async function usar(ctx: Ctx, proyectoId: string, llamadas: { uso: Any; ok: boolean }[], accion: string, cobrar = true) {
   const c = ctx.cfg ?? {};
   const precios = { entrada: Number(c.precio_entrada ?? 2), salida: Number(c.precio_salida ?? 10), cache_escritura: Number(c.precio_cache_escritura ?? 2.5), cache_lectura: Number(c.precio_cache_lectura ?? 0.1) };
   let total = 0;
@@ -151,11 +156,12 @@ async function usar(ctx: Ctx, proyectoId: string, llamadas: { uso: Any; ok: bool
       user_id: ctx.userId, proyecto_id: proyectoId, accion, modelo: ctx.modelo,
       input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens,
       cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens,
-      coste_usd: coste, ok: l.ok
+      coste_usd: coste, ok: l.ok, cobrado: cobrar && l.ok
     });
   }
-  if (!ctx.esAdmin) await descontarSaldo(ctx.supa, ctx.alumno ?? null, ctx.userId, total);
-  return Math.round(total * 10000) / 10000;
+  const cobrado = cobrar ? llamadas.filter((l) => l.ok).reduce((s, l) => s + costeUsd(l.uso, precios), 0) : 0;
+  if (!ctx.esAdmin && cobrado > 0) await descontarSaldo(ctx.supa, ctx.alumno ?? null, ctx.userId, cobrado);
+  return Math.round(cobrado * 10000) / 10000;
 }
 
 export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Response> {
@@ -503,9 +509,9 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
         adjuntos.push({ tipo: mime as Adjunto['tipo'], base64: ctx.base64(u8), nombre: x.nombre });
       }
       if (!adjuntos.length) return json({ error: 'Ninguno de los documentos se puede leer (PDF o foto).' }, 400);
-      const r = await proponerPartidas({ clave: ctx.clave, modelo: ctx.modelo, adjuntos });
-      await usar(ctx, proyectoId, r.llamadas, 'partidas');
-      if (!r.partidas?.length && !partidas.length) return json({ error: 'Claude no ha podido proponer partidas con esos documentos. Prueba con otros o empieza en blanco.' }, 502);
+      const r = await proponerPartidas({ clave: ctx.clave, modelo: ctx.modelo, adjuntos }).catch((e) => ({ partidas: null, llamadas: [], error: String(e) }));
+      await usar(ctx, proyectoId, r.llamadas, 'partidas', !!r.partidas?.length);
+      if (!r.partidas?.length && !partidas.length) return json({ error: 'Claude no ha podido proponer partidas con esos documentos, no se te ha cobrado. Prueba con otros o empieza en blanco.', no_cobrado: true }, 502);
       r.partidas = r.partidas ?? [];
       const libres = r.partidas.map((x, i) => partidaLibre({ n: i + 1, titulo: x.titulo, descripcion: x.descripcion, cantidad: x.cantidad, precio: x.precio_unitario, dto: tarifa.descuento_pct ?? 0 }));
       d = { ...cabecera(numero), version: usadas[0] ?? (proyecto.version_actual || 0), versiones: usadas.length ? usadas : undefined, partidas: [...partidas, ...libres] };
@@ -528,13 +534,28 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     if (!blob) return json({ error: 'No se ha podido leer el plano.' }, 500);
     const u8 = new Uint8Array(await blob.arrayBuffer());
     if (u8.length > 18 * 1024 * 1024) return json({ error: 'El plano pesa más de 18 MB.' }, 400);
-    const r = await leerPlano({ clave: ctx.clave, modelo: ctx.modelo, adjunto: { tipo: f.mime as AdjuntoPlano['tipo'], base64: ctx.base64(u8), nombre: f.nombre } });
-    const coste = await usar(ctx, proyectoId, r.llamadas, 'plano');
-    if (!r.lectura) return json({ error: `Claude no ha podido leer el plano (${r.error ?? 'sin datos'}).`, coste_usd: coste }, 502);
-    const puntos = { ...puntosMuebleBase(), ...(tarifa.puntos ?? {}) };
-    const partidas = r.lectura.muebles.map((m, i) => partidaPlano({ mueble: m, n: i + 1, lectura: r.lectura!, puntos, precioPunto: tarifa.precio_punto ?? null, dto: tarifa.descuento_pct ?? 0, plano: { fichero_id: f.id, nombre: f.nombre } }));
-    const d: DocPresupuesto = { ...cabecera(numero), version: proyecto.version_actual || 0, partidas };
-    await crear(d);
+    const r = await leerPlano({ clave: ctx.clave, modelo: ctx.modelo, adjunto: { tipo: f.mime as AdjuntoPlano['tipo'], base64: ctx.base64(u8), nombre: f.nombre } })
+      .catch((e) => ({ lectura: null, llamadas: [], error: String(e) }));
+    // Prueba (solo admin): simular que la lectura no da resultado después de llamar a Claude
+    const fallo = !r.lectura || (esAdmin && body?.prueba_fallo === true);
+    if (fallo) {
+      await usar(ctx, proyectoId, r.llamadas, 'plano', false);
+      console.error('estudio-ia: plano sin lectura', r.error ?? 'prueba_fallo');
+      return json({ error: 'No se ha podido leer el plano, no se te ha cobrado.', no_cobrado: true }, 502);
+    }
+    let d: DocPresupuesto, partidas: ReturnType<typeof partidaPlano>[];
+    try {
+      const puntos = { ...puntosMuebleBase(), ...(tarifa.puntos ?? {}) };
+      partidas = r.lectura!.muebles.map((m, i) => partidaPlano({ mueble: m, n: i + 1, lectura: r.lectura!, puntos, precioPunto: tarifa.precio_punto ?? null, dto: tarifa.descuento_pct ?? 0, plano: { fichero_id: f.id, nombre: f.nombre } }));
+      d = { ...cabecera(numero), version: proyecto.version_actual || 0, partidas };
+      await crear(d);
+    } catch (e) {
+      // Algo falló después de leer: no se cobra la lectura
+      await usar(ctx, proyectoId, r.llamadas, 'plano', false);
+      console.error('estudio-ia: plano leído pero no guardado', e);
+      return json({ error: 'No se ha podido leer el plano, no se te ha cobrado.', no_cobrado: true }, 502);
+    }
+    const coste = await usar(ctx, proyectoId, r.llamadas, 'plano', true);
     return json({ ...respuesta(d), lectura: r.lectura, coste_usd: coste, uso: r.llamadas[0]?.uso, cuerpos: partidas.map((p) => ({ titulo: p.titulo, puntos: p.puntos, cuerpos: p.cuerpos_puntos })) });
   }
 
@@ -769,9 +790,9 @@ export async function accionPresupuesto(action: string, ctx: Ctx): Promise<Respo
     for (const [n, ps] of porVersion) {
       const v = await versionDatos(n);
       if (!v) continue;
-      const r = await redactarTextos({ clave: ctx.clave, modelo: ctx.modelo, proyecto: v.datos, partidas: ps });
-      coste += await usar(ctx, proyectoId, r.llamadas, 'textos');
-      if (!r.textos) return json({ error: 'La IA no ha podido redactar los textos. Inténtalo de nuevo.', detalle: esAdmin ? r.error : undefined }, 502);
+      const r = await redactarTextos({ clave: ctx.clave, modelo: ctx.modelo, proyecto: v.datos, partidas: ps }).catch((e) => ({ textos: null, llamadas: [], error: String(e) }));
+      coste += await usar(ctx, proyectoId, r.llamadas, 'textos', !!r.textos);
+      if (!r.textos) return json({ error: 'La IA no ha podido redactar los textos, no se te ha cobrado. Inténtalo de nuevo.', no_cobrado: true, detalle: esAdmin ? r.error : undefined }, 502);
       for (const p of ps) { const t = r.textos.find((x) => x.codigo === p.codigo); if (t) { p.subtitulo = t.subtitulo || p.subtitulo; p.intro = t.intro; } }
     }
     await guardar(d);

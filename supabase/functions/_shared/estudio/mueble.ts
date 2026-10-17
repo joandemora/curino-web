@@ -61,7 +61,7 @@ export function elementosMueble(m: Mueble): MueblePlano {
     return { nombre: nombreCuerpo(m, i), ancho: c.ancho, alto, fondo: m.fondo, elementos: el, seguro: true };
   });
   if (m.costados_vistos) cuerpos[0].elementos.push({ tipo: 'costado', cantidad: m.costados_vistos, seguro: true });
-  if (m.tapa) cuerpos[0].elementos.push({ tipo: 'otro', cantidad: 1, detalle: `${m.tapa.tipo === 'encimera' ? 'Encimera' : 'Tapa superior'} ${cmTxt(m.tapa.grosor)} cm · ${cmTxt(anchoMueble(m))} × ${cmTxt(m.fondo)}`, seguro: true });
+  if (m.tapa) cuerpos[0].elementos.push({ tipo: 'tapa', cantidad: 1, ancho: anchoMueble(m), alto: m.fondo, detalle: `${m.tapa.tipo === 'encimera' ? 'Encimera' : 'Tapa superior'} de ${cmTxt(m.tapa.grosor)} cm`, seguro: true });
   return { nombre: m.titulo, vistas: [], ancho: anchoMueble(m), alto, fondo: m.fondo, medidas_seguras: true, materiales: m.materiales ?? {}, cuerpos, revisar: m.revisar ?? [] };
 }
 
