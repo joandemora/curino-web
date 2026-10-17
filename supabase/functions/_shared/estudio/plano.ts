@@ -22,7 +22,7 @@ import type { Llamada, Uso } from './ia.ts';
 
 // ── Lo que lee Claude ───────────────────────────────────────────────
 export type TipoElemento = 'puerta' | 'cajon' | 'estante' | 'estante_vidrio' | 'balda_extraible' | 'cubertero' | 'hueco_abierto'
-  | 'fondo_espejo' | 'iluminacion' | 'zocalo' | 'remate' | 'division' | 'costado' | 'otro';
+  | 'fondo_espejo' | 'iluminacion' | 'zocalo' | 'tapa' | 'remate' | 'division' | 'costado' | 'otro';
 export interface ElementoPlano {
   tipo: TipoElemento; cantidad: number; ancho?: number | null; alto?: number | null; detalle?: string | null;
   apertura?: 'abatible' | 'corredera' | null; arco?: boolean; vitrina?: boolean; push?: boolean; tirador?: boolean; material?: string | null;
@@ -88,7 +88,7 @@ export const HERRAMIENTA_PLANO = {
                     items: {
                       type: 'object', additionalProperties: false, required: ['tipo', 'cantidad', 'seguro'],
                       properties: {
-                        tipo: { enum: ['puerta', 'cajon', 'estante', 'estante_vidrio', 'balda_extraible', 'cubertero', 'hueco_abierto', 'fondo_espejo', 'iluminacion', 'zocalo', 'remate', 'division', 'otro'] },
+                        tipo: { enum: ['puerta', 'cajon', 'estante', 'estante_vidrio', 'balda_extraible', 'cubertero', 'hueco_abierto', 'fondo_espejo', 'iluminacion', 'zocalo', 'tapa', 'remate', 'division', 'otro'], description: 'tapa = tapa o encimera rotulada o acotada fuera de la cadena de alturas (ancho y fondo si se leen).' },
                         cantidad: { type: 'integer', minimum: 1 },
                         ancho: num('cm de cada unidad, si se lee'), alto: num('cm de cada unidad, si se lee'),
                         detalle: { type: ['string', 'null'], description: 'Lo que pone el plano («Cajón servilletas», «Balda extraíble manteles»).' },
@@ -118,6 +118,7 @@ Reglas:
 - Un mueble = un elemento de «muebles», aunque aparezca en varias vistas (alzado exterior, alzado interior, sección): junta lo que se ve en todas.
 - Medidas en cm, solo de las cotas del plano. Si una medida no tiene cota, pon null y explícalo en «revisar». Nunca la calcules a ojo ni la inventes.
 - Ancho total: si no hay cota total, súmalo en cadena con las cotas parciales del propio mueble (cuerpos y montantes, p. ej. 4 + 100 + 4 + 150 + 4 + 100 + 4 = 366) y ponlas en cotas_ancho. Eso no es medir sobre plano. No cuentes huecos ajenos al mueble (cortinas, paredes, pasos). Si dudas de alguna, «revisar».
+- Tableros: las cotas de 2–4 cm que entran en la cadena de alturas (arriba, abajo o entre zonas) son tableros del propio mueble (techo, base, baldas), no zócalo ni tapa aparte. Solo hay zócalo o tapa / encimera si el plano los rotula o los acota fuera de esa cadena.
 - Estantes: cuéntalos por las cotas del plano. Cada cota de 2–3 cm entre dos huecos es un estante (p. ej. 32 · 2 · 32 = dos huecos y 1 estante; 30 · 3 · 30 · 3 · 40 = 2 estantes de 3 cm). Pon su grosor en grosor. Las etiquetas («Estantes para vajilla», «Estante») dicen qué es, no cuántos hay. Si una cota no está clara, seguro = false y «revisar».
 - Cubertero: es siempre un cajón con su inserto. Ponlo como tipo «cubertero» (una entrada por cubertero) y no lo cuentes además como «cajon».
 - Compartimentos: si un cuerpo tiene varios compartimentos separados por una división vertical (p. ej. dos rotulados «Estantes para vajilla»), cuenta los estantes de cada compartimento por separado, cada uno con su ancho (ancho del compartimento) y la división como tipo «division». Si no está claro, seguro = false y «revisar».
@@ -169,7 +170,11 @@ export const EXTRAS_MUEBLE: Record<string, { nombre: string; unidad: 'ud' | 'm' 
   mueble_espejo_m2: { nombre: 'Fondo de espejo (m²)', unidad: 'm²', puntos: 160, referencia: 'costado visto con espejo 292 / 1,82 m²' },
   mueble_led_m: { nombre: 'Iluminación LED (metro)', unidad: 'm', puntos: 40, referencia: '—' },
   mueble_estante_vidrio: { nombre: 'Estante de vidrio', unidad: 'ud', puntos: 25, referencia: 'estante 19 mm 11–27' },
-  mueble_zocalo_m: { nombre: 'Zócalo (metro)', unidad: 'm', puntos: 15, referencia: 'zócalo de cocinas' }
+  mueble_zocalo_m: { nombre: 'Zócalo (metro)', unidad: 'm', puntos: 15, referencia: 'zócalo de cocinas' },
+  // Para que ningún elemento quede a 0 puntos (2026-10-17)
+  mueble_tapa_m2: { nombre: 'Tapa o encimera de mueble (m²)', unidad: 'm²', puntos: 80, referencia: 'costado visto melamina 89 / 1,82 m² = 49, más grueso' },
+  mueble_remate_m: { nombre: 'Remate o moldura (metro)', unidad: 'm', puntos: 30, referencia: '≈ 2 × zócalo' },
+  mueble_otro: { nombre: 'Elemento sin concepto propio (unidad)', unidad: 'ud', puntos: 50, referencia: 'valor de partida para lo que no encaja en otro concepto' }
 };
 export const AVISO_EXTRA_MUEBLE = 'concepto nuevo «Extras de mueble»: revisar';
 export const puntosMuebleBase = (): Record<string, number> => ({ ...puntosBase(), ...Object.fromEntries(Object.entries(EXTRAS_MUEBLE).map(([k, v]) => [k, v.puntos])) });
@@ -196,7 +201,10 @@ export function puntosMueble(m: MueblePlano, puntos: Record<string, number>): { 
       const b = porAncho(serieDe(puntos, 'm6'), mm);
       add('cuerpo', `Cuerpo ${cmTxt(c.ancho!)} cm · módulo OTG ${b.tramo} mm (tabla de armarios)`, 1, b.puntos,
         'tabla de armarios 2600 × 550: revisar', b.fuera && 'fuera de tabla, valor extrapolado: revisar', !c.seguro && 'medidas del cuerpo no seguras: revisar');
-    } else add('cuerpo', 'Cuerpo sin ancho legible', 1, 0, 'falta el ancho en el plano: revisar');
+    } else {
+      const b = porAncho(serieDe(puntos, 'm6'), ANCHOS[ANCHOS.length - 1]);
+      add('cuerpo', `Cuerpo sin ancho legible · módulo OTG ${b.tramo} mm (tabla de armarios)`, 1, b.puntos, 'falta el ancho en el plano: se toma 1000 mm, revisar');
+    }
     const anchoMm = mm ?? ANCHOS[ANCHOS.length - 1];
     const porAnchoExtra = (k: string) => porAncho(serieDe(puntos, k), anchoMm).puntos;
     for (const e of c.elementos) {
@@ -241,24 +249,36 @@ export function puntosMueble(m: MueblePlano, puntos: Record<string, number>): { 
           break;
         case 'division': add('division', `${SUELTOS.division.nombre}${det}`, n, puntos.division, dudoso(e)); break;
         case 'fondo_espejo': {
-          const an = e.ancho ?? c.ancho, al = e.alto;
-          const m2 = an && al ? Math.round((an * al) / 100) / 100 : null;
-          if (m2) add('espejo', `${EXTRAS_MUEBLE.mueble_espejo_m2.nombre} · ${cmTxt(an!)} × ${cmTxt(al!)} cm`, r1(m2 * n * 100) / 100, puntos.mueble_espejo_m2, AVISO_EXTRA_MUEBLE, dudoso(e));
-          else add('espejo', `${EXTRAS_MUEBLE.mueble_espejo_m2.nombre}${det}`, n, 0, 'faltan las medidas del espejo en el plano: revisar');
+          // Sin medidas: se estima con el ancho y el alto del cuerpo («revisar»)
+          const an = e.ancho ?? c.ancho ?? 100, al = e.alto ?? c.alto ?? 100, estimada = !(e.ancho ?? c.ancho) || !e.alto;
+          const m2 = Math.round((an * al) / 100) / 100;
+          add('espejo', `${EXTRAS_MUEBLE.mueble_espejo_m2.nombre} · ${cmTxt(an)} × ${cmTxt(al)} cm`, r1(m2 * n * 100) / 100, puntos.mueble_espejo_m2, AVISO_EXTRA_MUEBLE, dudoso(e), estimada && 'medida estimada con el cuerpo: revisar');
           break;
         }
         case 'iluminacion': {
-          const metros = (e.ancho ?? c.ancho) ? Math.round(((e.ancho ?? c.ancho)! / 100) * n * 100) / 100 : null;
-          add('led', `${EXTRAS_MUEBLE.mueble_led_m.nombre}${det}`, metros ?? n, metros ? puntos.mueble_led_m : 0, AVISO_EXTRA_MUEBLE, !metros && 'falta la longitud: revisar');
+          const metros = (e.ancho ?? c.ancho) ? Math.round(((e.ancho ?? c.ancho)! / 100) * n * 100) / 100 : n;
+          add('led', `${EXTRAS_MUEBLE.mueble_led_m.nombre}${det}`, metros, puntos.mueble_led_m, AVISO_EXTRA_MUEBLE, !(e.ancho ?? c.ancho) && 'sin longitud: 1 m por unidad, revisar');
           break;
         }
         case 'zocalo': {
-          const metros = (e.ancho ?? c.ancho) ? Math.round(((e.ancho ?? c.ancho)! / 100) * 100) / 100 : null;
-          add('zocalo', `${EXTRAS_MUEBLE.mueble_zocalo_m.nombre}${det}`, metros ?? 1, metros ? puntos.mueble_zocalo_m : 0, AVISO_EXTRA_MUEBLE, !metros && 'falta la longitud: revisar');
+          const metros = (e.ancho ?? c.ancho) ? Math.round(((e.ancho ?? c.ancho)! / 100) * 100) / 100 : 1;
+          add('zocalo', `${EXTRAS_MUEBLE.mueble_zocalo_m.nombre}${det}`, metros, puntos.mueble_zocalo_m, AVISO_EXTRA_MUEBLE, !(e.ancho ?? c.ancho) && 'sin longitud: 1 m, revisar');
           break;
         }
         case 'hueco_abierto': break;   // sin coste propio (va en el cuerpo)
-        default: add('otro', `${e.detalle || (e.tipo === 'remate' ? 'Remate' : 'Elemento')} (sin línea en la tarifa)`, n, 0, 'sin línea en la tarifa: revisar');
+        case 'tapa': {
+          const an = e.ancho ?? c.ancho ?? 100, fo = e.alto ?? c.fondo ?? 60;   // en una tapa, «alto» del elemento = su fondo
+          const m2 = Math.round((an * fo) / 100) / 100;
+          add('tapa', `${EXTRAS_MUEBLE.mueble_tapa_m2.nombre} · ${cmTxt(an)} × ${cmTxt(fo)} cm${det}`, r1(m2 * n * 100) / 100, puntos.mueble_tapa_m2, AVISO_EXTRA_MUEBLE, dudoso(e));
+          break;
+        }
+        case 'remate': {
+          const metros = Math.round(((e.ancho ?? c.ancho ?? 100) / 100) * n * 100) / 100;
+          add('remate', `${EXTRAS_MUEBLE.mueble_remate_m.nombre}${det}`, metros, puntos.mueble_remate_m, AVISO_EXTRA_MUEBLE, dudoso(e));
+          break;
+        }
+        // Nada a 0 puntos: lo que no encaja en ningún concepto va a «Elemento sin concepto propio»
+        default: add('otro', `${EXTRAS_MUEBLE.mueble_otro.nombre} · ${e.detalle || 'Elemento'}`, n, puntos.mueble_otro, 'sin concepto propio en la tarifa: revisar');
       }
     }
     return { nombre: c.nombre, ancho: c.ancho, lineas: L, puntos: L.reduce((s, l) => s + puntosLinea(l.puntos, l.cantidad), 0) };

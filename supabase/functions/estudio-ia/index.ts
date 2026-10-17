@@ -250,7 +250,19 @@ Deno.serve(async (req) => {
       await supa.from('estudio_disenos').update({ updated_at: new Date().toISOString() }).eq('id', diseno.id);
 
       const mensajes = construirMensajes({ historial: (hist ?? []) as MensajeChat[], adjuntos, actual, peticion: texto });
-      const { resultado, llamadas } = await pedirAClaude({ clave, modelo, mensajes });
+      let res: Awaited<ReturnType<typeof pedirAClaude>>;
+      try { res = await pedirAClaude({ clave, modelo, mensajes }); }
+      catch (e) {
+        if (msgUsuario?.id) await supa.from('estudio_mensajes').delete().eq('id', msgUsuario.id);
+        console.error('estudio-ia: fallo al llamar a Claude', e);
+        return json({ tipo: 'error', mensaje: `${adjuntos.length ? 'No se ha podido leer el plano' : 'No se ha podido procesar el mensaje'}, no se te ha cobrado.`, no_cobrado: true }, 502);
+      }
+      const { llamadas } = res;
+      let { resultado } = res;
+      // Prueba (solo admin): simular que la respuesta no sirve después de llamar a Claude
+      if (esAdmin && body?.prueba_fallo === true) resultado = { tipo: 'error', mensaje: 'prueba', detalle: 'prueba_fallo' } as typeof resultado;
+      // Solo se cobra si hay versión nueva o pregunta; si falla, el coste queda registrado como no cobrado
+      const exito = resultado.tipo === 'proyecto' || resultado.tipo === 'pregunta';
 
       const precios = {
         entrada: Number(cfg?.precio_entrada ?? 2), salida: Number(cfg?.precio_salida ?? 10),
@@ -260,12 +272,12 @@ Deno.serve(async (req) => {
       const alFinal = () => descontarSaldo(supa, alumno, userId, coste);
       for (const l of llamadas) {
         const c = costeUsd(l.uso, precios);
-        coste += c;
+        if (exito && l.ok) coste += c;
         await supa.from('estudio_uso').insert({
           user_id: userId, proyecto_id: proyectoId, accion: actual ? 'cambio' : 'propuesta', modelo,
           input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens,
           cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens,
-          coste_usd: c, ok: l.ok
+          coste_usd: c, ok: l.ok, cobrado: exito && l.ok
         });
       }
       const tokens = llamadas.reduce((s, l) => ({
@@ -273,7 +285,7 @@ Deno.serve(async (req) => {
         cache_escritura: s.cache_escritura + l.uso.cache_creation_input_tokens, cache_lectura: s.cache_lectura + l.uso.cache_read_input_tokens
       }), { entrada: 0, salida: 0, cache_escritura: 0, cache_lectura: 0 });
       const uso = { llamadas: llamadas.length, tokens, coste_usd: Math.round(coste * 10000) / 10000 };
-      if (!esAdmin) await alFinal();
+      if (!esAdmin && coste > 0) await alFinal();
 
       if (resultado.tipo === 'proyecto') {
         const numero = await nuevaVersion(resultado.proyecto, 'ia', texto.slice(0, 200) || null);
@@ -289,7 +301,8 @@ Deno.serve(async (req) => {
       if (msgUsuario?.id) await supa.from('estudio_mensajes').delete().eq('id', msgUsuario.id);
       console.error('estudio-ia: sin proyecto válido', resultado.detalle ?? '', JSON.stringify(resultado.errores ?? []).slice(0, 2000));
       // El detalle técnico solo se devuelve a admin.
-      return json({ tipo: 'error', mensaje: resultado.mensaje, detalle: esAdmin ? resultado.detalle ?? resultado.errores ?? null : null, uso }, 502);
+      const sinCobro = `${adjuntos.length ? 'No se ha podido leer el plano' : 'No se ha podido procesar el mensaje'}, no se te ha cobrado.`;
+      return json({ tipo: 'error', mensaje: resultado.mensaje && resultado.mensaje !== 'prueba' ? `${resultado.mensaje} ${sinCobro}` : sinCobro, no_cobrado: true, detalle: esAdmin ? resultado.detalle ?? resultado.errores ?? null : null, uso }, 502);
     }
 
     if (action === 'importar') {

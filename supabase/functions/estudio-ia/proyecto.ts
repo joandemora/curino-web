@@ -251,8 +251,9 @@ export async function accionProyecto(action: string, ctx: {
     let coste = 0;
     for (const l of r.llamadas) {
       const c = costeUsd(l.uso, precios); coste += c;
-      await supa.from('estudio_uso').insert({ user_id: userId, proyecto_id: null, accion: 'leer_paginas', modelo: ctx.modelo, input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens, cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens, coste_usd: c, ok: l.ok });
+      await supa.from('estudio_uso').insert({ user_id: userId, proyecto_id: null, accion: 'leer_paginas', modelo: ctx.modelo, input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens, cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens, coste_usd: c, ok: l.ok, cobrado: !!r.datos && l.ok });
     }
+    if (!r.datos) return json({ datos: null, error: 'No se ha podido leer el documento, no se te ha cobrado.', no_cobrado: true, creditos: 0 });
     return json({ datos: r.datos, error: r.error ?? null, creditos: Math.max(1, Math.round(coste * 100)) });
   }
   if (action === 'fichero_leer_ia') {
@@ -270,10 +271,11 @@ export async function accionProyecto(action: string, ctx: {
     let coste = 0;
     for (const l of r.llamadas) {
       const c = costeUsd(l.uso, precios); coste += c;
-      await supa.from('estudio_uso').insert({ user_id: userId, proyecto_id: f.proyecto_id, accion: 'leer_factura', modelo: ctx.modelo, input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens, cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens, coste_usd: c, ok: l.ok });
+      await supa.from('estudio_uso').insert({ user_id: userId, proyecto_id: f.proyecto_id, accion: 'leer_factura', modelo: ctx.modelo, input_tokens: l.uso.input_tokens, output_tokens: l.uso.output_tokens, cache_escritura_tokens: l.uso.cache_creation_input_tokens, cache_lectura_tokens: l.uso.cache_read_input_tokens, coste_usd: c, ok: l.ok, cobrado: !!r.datos && l.ok });
     }
+    // Sin datos: no se cobra
+    if (!r.datos) return json({ error: 'No se ha podido leer el documento, no se te ha cobrado. Rellena los datos a mano.', no_cobrado: true, creditos: 0 }, 502);
     if (!esAdmin) await descontarSaldo(supa, ctx.alumno, userId, coste);
-    if (!r.datos) return json({ error: 'No he podido leer el documento. Rellena los datos a mano.', creditos: Math.round(coste * 100) }, 502);
     const d = r.datos;
     const fila: Any = { leido_ia: true };
     if (TIPOS_F.includes(String(d.tipo)) && f.tipo === 'otro') fila.tipo = d.tipo;

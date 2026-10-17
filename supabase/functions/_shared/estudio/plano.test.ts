@@ -62,3 +62,15 @@ test('recorte: la caja vista se pasa a coordenadas sin girar y se dibuja derecha
   for (const rot of [0, 90, 180]) assert.ok(recorteGirado(rot, 600, 400, c).w > 0);
   assert.deepEqual(cajaUnion([c, { ...c, x0: 0.6, x1: 0.7 }], 0), { pagina: 1, x0: 0, y0: 0, x1: 0.7, y1: 0.3 });
 });
+
+test('ningún elemento queda a 0 puntos: sin línea en la tarifa → «Extras de mueble» con «revisar»', () => {
+  const tipos = ['puerta', 'cajon', 'estante', 'estante_vidrio', 'balda_extraible', 'cubertero', 'hueco_abierto', 'fondo_espejo', 'iluminacion', 'zocalo', 'tapa', 'remate', 'division', 'costado', 'otro'] as const;
+  const m: MueblePlano = { nombre: 'X', vistas: [], ancho: null, alto: null, fondo: null, medidas_seguras: false, materiales: {}, revisar: [], cuerpos: [
+    { nombre: 'Sin medidas', ancho: null, alto: null, fondo: null, seguro: false, elementos: tipos.map((tipo) => ({ tipo, cantidad: 1, seguro: false })) }
+  ] };
+  const l = puntosMueble(m, puntosMuebleBase()).cuerpos[0].lineas;
+  assert.ok(l.length >= tipos.length - 1);
+  for (const x of l) assert.ok(x.puntos > 0, `${x.nombre}: ${x.puntos}`);
+  assert.ok(l.some((x) => /Tapa o encimera/.test(x.nombre)) && l.some((x) => /Remate/.test(x.nombre)) && l.some((x) => /sin concepto propio/i.test(x.nombre)));
+  assert.ok(l.find((x) => /Cuerpo sin ancho/.test(x.nombre))!.aviso!.includes('revisar'));
+});
