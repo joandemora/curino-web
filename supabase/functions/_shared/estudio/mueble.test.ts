@@ -10,7 +10,8 @@ import { laminasProyecto, laminasPresupuesto, dibujoLamina, escalasPorGrupo } fr
 // El MC_C de la prueba: tres cuerpos, montantes de 4, zona baja 74 y alta 166
 const mcC = () => ({ version: 1, armarios: [], muebles: [{ codigo: 'M.01', titulo: 'MUEBLE COMEDOR C', fondo: 40, montante: 4, vistas: ['lateral'], cuerpos: [
   { ancho: 100, zonas: [{ alto: 74, tipo: 'puertas', puertas: { n: 2, agarre: 'push' }, interior: { cajones: 1, baldas_extraibles: 2, etiquetas: ['Cajón servilletas', 'Balda extraíble manteles'] } }, { alto: 166, tipo: 'puertas', puertas: { n: 2, arco: true, radio: 50, vitrina: true, agarre: 'tirador' }, interior: { estantes: 3, grosor_estantes: 3 } }] },
-  { ancho: 150, zonas: [{ alto: 74, tipo: 'puertas', puertas: { n: 3, agarre: 'push' }, interior: { estantes: 2, etiquetas: ['Estantes para vajilla'] } }, { alto: 166, tipo: 'abierta', fondo: 'espejo' }] },
+  // Estantes por cotas: 32 · 2 · 32 = 1 estante entre dos huecos
+  { ancho: 150, zonas: [{ alto: 74, tipo: 'puertas', puertas: { n: 3, agarre: 'push' }, interior: { estantes: 1, etiquetas: ['Estantes para vajilla'] } }, { alto: 166, tipo: 'abierta', fondo: 'espejo' }] },
   { ancho: 100, zonas: [{ alto: 74, tipo: 'puertas', puertas: { n: 2, agarre: 'push' }, interior: { cuberteros: 2, estantes: 2, etiquetas: ['Cubertero'] } }, { alto: 166, tipo: 'puertas', puertas: { n: 2, arco: true, radio: 50, vitrina: true, agarre: 'tirador' }, interior: { estantes: 3, grosor_estantes: 3 } }] }
 ] }] });
 
@@ -26,13 +27,15 @@ test('mueble: valida, ancho = cuerpos + montantes, alto = zonas', () => {
   assert.equal(validarProyecto(otro).ok, false);
 });
 
-test('mueble: mismo desglose que el presupuesto directo desde plano (MC_C = 6.939 pt)', () => {
+test('mueble: mismo cálculo que el presupuesto desde plano; MC_C con estantes por cotas y cubertero = cajón + inserto (6.984 pt)', () => {
   const v = validarProyecto(mcC()); const m = v.ok ? v.proyecto.muebles![0] : null!;
   const p = partidaMueble(m, { version: 1, puntos: puntosMuebleBase(), precioPunto: 2, dto: 0 });
-  assert.equal(p.puntos, 6939);
-  assert.deepEqual(p.cuerpos_puntos, [{ nombre: 'Cuerpo izquierdo', puntos: 2492 }, { nombre: 'Cuerpo central', puntos: 1963 }, { nombre: 'Cuerpo derecho', puntos: 2484 }]);
+  assert.equal(p.puntos, 6984);
+  assert.deepEqual(p.cuerpos_puntos, [{ nombre: 'Cuerpo izquierdo', puntos: 2492 }, { nombre: 'Cuerpo central', puntos: 1924 }, { nombre: 'Cuerpo derecho', puntos: 2568 }]);
+  // Cada cubertero: un cajón (42) + su inserto (35)
+  assert.ok(p.desglose.some((l) => /Cajón con cubertero/.test(l.nombre) && l.cantidad === 2 && l.puntos === 42));
   // Por construcción: el mismo cálculo que el plano
-  assert.equal(puntosMueble(elementosMueble(m), puntosMuebleBase()).cuerpos.reduce((s, c) => s + c.puntos, 0), 6939);
+  assert.equal(puntosMueble(elementosMueble(m), puntosMuebleBase()).cuerpos.reduce((s, c) => s + c.puntos, 0), 6984);
   assert.equal(p.tipo, 'mueble'); assert.equal(p.dibujo, 'M.01'); assert.equal(p.subtitulo, 'Mueble comedor C a medida de 366 cm');
   assert.match(p.tecnico, /^Medidas: 3660 x 2400 x 400 mm/); assert.match(p.tecnico, /1 cajón interior/);
   assert.match(p.materiales, /Exterior: puertas lisas lacadas \(supuesto\)/);
@@ -47,4 +50,13 @@ test('mueble: interior + exterior, sección; en el presupuesto, misma escala', (
   const filas = ls.map((l) => ({ ...dibujoLamina(l), codigo: 'v1:M.01' }));
   const ks = escalasPorGrupo(filas);
   assert.equal(ks.get(filas[0]), ks.get(filas[1]));
+});
+
+test('zona de cajones con cubertero: el cajón con cubertero no se cuenta dos veces', () => {
+  const m = { codigo: 'M.01', titulo: 'APARADOR', fondo: 45, cuerpos: [{ ancho: 60, zonas: [{ alto: 60, tipo: 'cajones', cajones: { alturas: [15, 20, 25], cubertero: 1, agarre: 'tirador' } }] }] };
+  const el = elementosMueble(m as never).cuerpos[0].elementos;
+  assert.deepEqual(el.map((e) => [e.tipo, e.cantidad]), [['cajon', 2], ['cubertero', 1]]);
+  const l = puntosMueble(elementosMueble(m as never), puntosMuebleBase()).cuerpos[0].lineas;
+  assert.equal(l.filter((x) => /^Cajón/.test(x.nombre)).reduce((s, x) => s + x.cantidad, 0), 3);   // 2 cajones + 1 cajón con cubertero
+  assert.equal(l.filter((x) => /Tirador/.test(x.nombre)).reduce((s, x) => s + x.cantidad, 0), 3);   // un tirador por cajón, también el del cubertero
 });

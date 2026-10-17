@@ -36,8 +36,11 @@ export function elementosMueble(m: Mueble): MueblePlano {
       if (z.tipo === 'puertas' && p) el.push({ tipo: 'puerta', cantidad: p.n, ancho: Math.round((c.ancho / p.n) * 100) / 100, alto: z.alto, apertura: p.apertura ?? 'abatible', arco: !!p.arco, vitrina: !!p.vitrina,
         push: p.agarre === 'push', tirador: p.agarre === 'tirador', unero: p.agarre === 'unero', ninguno: p.agarre === 'ninguno', material: p.material ?? null, seguro: true });
       if (z.tipo === 'cajones' && z.cajones) {
-        el.push({ tipo: 'cajon', cantidad: z.cajones.alturas.length, detalle: z.cajones.etiqueta ?? null, push: z.cajones.agarre === 'push', tirador: z.cajones.agarre === 'tirador', unero: z.cajones.agarre === 'unero', seguro: true });
-        if (z.cajones.cubertero) el.push({ tipo: 'cubertero', cantidad: z.cajones.cubertero, seguro: true });
+        // Los cajones con cubertero se cuentan como cubertero (cajón + inserto), no además como cajón
+        const conCub = Math.min(z.cajones.cubertero ?? 0, z.cajones.alturas.length), sinCub = z.cajones.alturas.length - conCub;
+        const ag = { push: z.cajones.agarre === 'push', tirador: z.cajones.agarre === 'tirador', unero: z.cajones.agarre === 'unero' };
+        if (sinCub) el.push({ tipo: 'cajon', cantidad: sinCub, detalle: z.cajones.etiqueta ?? null, ...ag, seguro: true });
+        if (conCub) el.push({ tipo: 'cubertero', cantidad: conCub, ...ag, seguro: true });
       }
       if (z.tipo === 'abierta' && z.fondo === 'espejo') el.push({ tipo: 'fondo_espejo', cantidad: 1, ancho: c.ancho, alto: z.alto, detalle: 'Fondo de espejo', seguro: true });
       const it = z.interior;
@@ -54,7 +57,7 @@ export function elementosMueble(m: Mueble): MueblePlano {
   });
   if (m.costados_vistos) cuerpos[0].elementos.push({ tipo: 'costado', cantidad: m.costados_vistos, seguro: true });
   if (m.tapa) cuerpos[0].elementos.push({ tipo: 'otro', cantidad: 1, detalle: `${m.tapa.tipo === 'encimera' ? 'Encimera' : 'Tapa superior'} ${cmTxt(m.tapa.grosor)} cm · ${cmTxt(anchoMueble(m))} × ${cmTxt(m.fondo)}`, seguro: true });
-  return { nombre: m.titulo, vistas: [], ancho: anchoMueble(m), alto, fondo: m.fondo, medidas_seguras: true, materiales: m.materiales ?? {}, cuerpos, revisar: [] };
+  return { nombre: m.titulo, vistas: [], ancho: anchoMueble(m), alto, fondo: m.fondo, medidas_seguras: true, materiales: m.materiales ?? {}, cuerpos, revisar: m.revisar ?? [] };
 }
 
 /** «MUEBLE COMEDOR C» → «Mueble comedor C» (las letras sueltas, como códigos, se quedan en mayúscula). */
@@ -91,7 +94,7 @@ export function partidaMueble(m: Mueble, o: { version: number; puntos: Record<st
     codigo: m.codigo, version: o.version, clave: `v${o.version}:${m.codigo}`, tipo: 'mueble', dibujo: m.codigo, cantidad: 1,
     titulo: `${m.codigo} ${m.titulo}`.toUpperCase(), subtitulo: `${frase(m.titulo)} a medida de ${cmTxt(anchoMueble(m))} cm`, intro: '',
     tecnico, materiales, precio: pp === null ? null : Math.round(desglose.reduce((s, l) => s + (l.importe ?? 0), 0) * 100) / 100, precio_manual: false,
-    dto_pct: o.dto, desglose, pendientes: pp === null ? ['Precio del punto'] : [], puntos: total, avisos: pm.avisos,
+    dto_pct: o.dto, desglose, pendientes: pp === null ? ['Precio del punto'] : [], puntos: total, avisos: [...(m.revisar ?? []).map((x) => `Revisar: ${x}`), ...pm.avisos],
     cuerpos_puntos: pm.cuerpos.map((c) => ({ nombre: c.nombre, puntos: c.puntos }))
   };
 }
