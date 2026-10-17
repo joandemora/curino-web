@@ -15,18 +15,19 @@
 //   («Medidas leídas del plano: …», «no medir sobre plano») y el recorte del
 //   plano (página + recuadro) para dibujarlo bajo la partida.
 
-import { ANCHOS, EXTRAS, HERRAJES, PUERTAS, SUELTOS, porAncho, serieDe, puntosBase, type LineaPuntos } from './puntos.ts';
+import { ANCHOS, COSTADOS, EXTRAS, HERRAJES, PUERTAS, SUELTOS, porAncho, serieDe, puntosBase, type LineaPuntos } from './puntos.ts';
 import { puntosLinea, type LineaDesglose } from './tarifa.ts';
 import type { Partida } from './presupuesto.ts';
 import type { Llamada, Uso } from './ia.ts';
 
 // ── Lo que lee Claude ───────────────────────────────────────────────
 export type TipoElemento = 'puerta' | 'cajon' | 'estante' | 'estante_vidrio' | 'balda_extraible' | 'cubertero' | 'hueco_abierto'
-  | 'fondo_espejo' | 'iluminacion' | 'zocalo' | 'remate' | 'division' | 'otro';
+  | 'fondo_espejo' | 'iluminacion' | 'zocalo' | 'remate' | 'division' | 'costado' | 'otro';
 export interface ElementoPlano {
   tipo: TipoElemento; cantidad: number; ancho?: number | null; alto?: number | null; detalle?: string | null;
   apertura?: 'abatible' | 'corredera' | null; arco?: boolean; vitrina?: boolean; push?: boolean; tirador?: boolean; material?: string | null;
   grosor?: number | null;   // estantes: grosor en cm si tiene cota («3» → estante de 30 mm)
+  unero?: boolean; ninguno?: boolean;   // agarre (diseño de mueble): uñero sustituye al tirador; «ninguno», sin línea de agarre
   seguro: boolean;
 }
 export interface CuerpoPlano { nombre: string; ancho: number | null; alto: number | null; fondo: number | null; elementos: ElementoPlano[]; seguro: boolean }
@@ -202,18 +203,22 @@ export function puntosMueble(m: MueblePlano, puntos: Record<string, number>): { 
         case 'puerta': {
           const mat = (e.material && MAT_PUERTA.find(([re]) => re.test(e.material!))?.[1]) || null;
           if (e.vitrina) add('vitrina', `${EXTRAS_MUEBLE.mueble_puerta_vitrina.nombre}${det}`, n, puntos.mueble_puerta_vitrina, AVISO_EXTRA_MUEBLE, dudoso(e));
-          else add('puerta', `${PUERTAS[mat ?? PUERTA_SUPUESTA].nombre}${mat ? '' : ' (supuesto)'}${det}`, n, puntos[`puerta_${mat ?? PUERTA_SUPUESTA}`], !mat && 'supuesto: el plano no indica el material (puerta lisa lacada)', dudoso(e));
+          else add('puerta', `${PUERTAS[mat ?? PUERTA_SUPUESTA].nombre}${mat ? '' : ' (supuesto)'}${det}`, n, puntos[`puerta_${mat ?? PUERTA_SUPUESTA}`], !mat && 'supuesto: no se indica el material (puerta lisa lacada)', dudoso(e));
           if (e.arco) add('arco', EXTRAS_MUEBLE.mueble_puerta_arco.nombre, n, puntos.mueble_puerta_arco, AVISO_EXTRA_MUEBLE);
           if (e.apertura === 'corredera') add('corredera', HERRAJES.corredera.nombre, n, puntos.corredera);
           else add('bisagras', HERRAJES.bisagras.nombre, n, puntos.bisagras);
           if (e.push) add('push', EXTRAS_MUEBLE.mueble_push.nombre, n, puntos.mueble_push, AVISO_EXTRA_MUEBLE);
-          else add('tirador', HERRAJES.tirador.nombre, n, puntos.tirador, !e.tirador && 'agarre a definir: revisar');
+          else if (e.unero) add('unero', HERRAJES.unero_dm.nombre, n, puntos.unero_dm);
+          else if (!e.ninguno) add('tirador', HERRAJES.tirador.nombre, n, puntos.tirador, !e.tirador && 'agarre a definir: revisar');
           break;
         }
         case 'cajon':
           add('cajon', `${EXTRAS.cajon.nombre}${det}`, n, porAnchoExtra('cajon'), dudoso(e));
           if (e.push) add('push', EXTRAS_MUEBLE.mueble_push.nombre, n, puntos.mueble_push, AVISO_EXTRA_MUEBLE);
+          else if (e.unero) add('unero', HERRAJES.unero_dm.nombre, n, puntos.unero_dm);
+          else if (e.tirador) add('tirador', HERRAJES.tirador.nombre, n, puntos.tirador);
           break;
+        case 'costado': add('costado', `${COSTADOS.melamina.nombre}${det}`, n, puntos.costado_melamina, 'material a definir (costado visto en melamina): revisar'); break;
         case 'estante': {
           // Con cota de grosor: 25 / 30 mm (puntos completos: aquí cada estante se suma entero)
           const g = e.grosor ?? null, k = g && g > 2.55 ? 'estante30' : g && g > 2.05 ? 'estante25' : 'estante';

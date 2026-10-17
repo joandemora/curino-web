@@ -24,6 +24,8 @@ import { eur, importeLinea, precioArmario } from './tarifa.ts';
 import type { LineaDesglose, Tarifa } from './tarifa.ts';
 import type { ModuloAsignado, OpcionesPuntos } from './puntos.ts';
 import { cocinasDe, preciosCocina, puntosCocinaDe, textosTramo } from './cocina-presupuesto.ts';
+import { partidaMueble } from './mueble.ts';
+import { puntosMuebleBase } from './plano.ts';
 
 // ── Tipos ───────────────────────────────────────────────────────────
 export interface Partida {
@@ -46,7 +48,7 @@ export interface Partida {
   puntos?: number;             // total de puntos del armario
   modulos?: ModuloAsignado[];  // modelo de interior asignado a cada módulo
   avisos?: string[];           // altura/remate fuera de tabla…
-  tipo?: 'cocina' | 'plano';   // tramo de cocina (tarifa de cocinas) o mueble leído de un plano
+  tipo?: 'cocina' | 'plano' | 'mueble';   // tramo de cocina, mueble leído de un plano o mueble a medida del diseño
   dibujo?: string;             // código de la lámina que va debajo (cocina: solo en el primer tramo)
   // Partida leída de un plano: debajo va el recorte del propio plano (página + recuadro en fracciones)
   plano?: { fichero_id: string; nombre: string; cajas: { pagina: number; x0: number; y0: number; x1: number; y1: number }[]; escala?: string | null; aviso_plano?: string | null; lectura?: unknown };
@@ -444,7 +446,7 @@ export const precioTxt = (n: number | null) => (n === null ? 'PENDIENTE' : eur(n
 export function generarPresupuesto(o: {
   proyecto: Proyecto; version: number; tarifa: Tarifa; plantilla: Plantilla;
   nombre: string; referencia?: string | null; hoy: string; previo?: DocPresupuesto | null;
-  armarios?: string[];     // códigos que entran, armarios y cocinas (por defecto, todos)
+  armarios?: string[];     // códigos que entran: armarios, cocinas y muebles (por defecto, todos)
 }): DocPresupuesto {
   const prev = o.previo;
   const elegidos = o.armarios?.length ? o.proyecto.armarios.filter((a) => o.armarios!.includes(a.codigo)) : o.proyecto.armarios;
@@ -495,6 +497,14 @@ export function generarPresupuesto(o: {
         desglose: pr.desglose, pendientes: pr.pendientes, puntos: pr.puntos_total, avisos: pr.avisos
       });
     });
+  }
+  // Muebles a medida: una partida por mueble con su dibujo; desglose como el presupuesto desde plano
+  const muebles = (o.proyecto.muebles ?? []).filter((m) => !o.armarios?.length || o.armarios.includes(m.codigo));
+  const puntosM = { ...puntosMuebleBase(), ...(o.tarifa.puntos ?? {}) };
+  for (const m of muebles) {
+    const f = partidaMueble(m, { version: o.version, puntos: puntosM, precioPunto: o.tarifa.precio_punto ?? null, dto: o.tarifa.descuento_pct ?? 0 });
+    const ant = prev?.partidas.find((x) => x.clave === f.clave) ?? prev?.partidas.find((x) => !x.libre && x.codigo === m.codigo);
+    partidas.push(ant ? { ...f, cantidad: ant.cantidad, dto_pct: ant.dto_pct, subtitulo: ant.subtitulo || f.subtitulo, intro: ant.intro ?? '', materiales: ant.materiales && !esMaterialesEjemplo(ant.materiales) ? ant.materiales : f.materiales, precio_manual: !!ant.precio_manual, precio: ant.precio_manual ? ant.precio : f.precio } : f);
   }
   return {
     forma_pago: prev?.forma_pago ?? formaPagoInicial(o.plantilla),

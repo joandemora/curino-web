@@ -18,6 +18,7 @@ import {
   repartoZonas, ZOCALO_DEF, GROSOR_DEF, SEPARACION_SUELO_DEF, materialPieza, agarrePuerta, fmtMm, huecoMano, tapetasCajonera
 } from './esquema.ts';
 import { laminasCocina, laminasCocinaPresupuesto } from './cocina-alzado.ts';
+import { laminasMueble, laminasMueblePresupuesto } from './mueble-alzado.ts';
 
 // ── Primitivas ──────────────────────────────────────────────────────
 export type Prim =
@@ -340,7 +341,7 @@ function escala(a: Armario, o: Composicion, formato: Hoja): number {
 
 // ── Lámina ──────────────────────────────────────────────────────────
 export function laminasProyecto(p: Proyecto, medir: Medir = medirAprox): Lamina[] {
-  return [...p.armarios.flatMap((a) => laminasArmario(a, p, medir)), ...(p.cocinas ?? []).flatMap((c) => laminasCocina(c, p, medir))];
+  return [...p.armarios.flatMap((a) => laminasArmario(a, p, medir)), ...(p.cocinas ?? []).flatMap((c) => laminasCocina(c, p, medir)), ...(p.muebles ?? []).flatMap((m) => laminasMueble(m, p, medir))];
 }
 
 
@@ -360,7 +361,7 @@ export function laminasPresupuesto(p: Proyecto, medir: Medir = medirAprox): Lami
     if (lateral || planta) filas.push(laminaArmario(a, p, medir, extra, true, s));
     return filas.map((l) => ({ ...l, grupo: a.codigo }));
   });
-  return [...armarios, ...(p.cocinas ?? []).flatMap((c) => laminasCocinaPresupuesto(c, p, medir, true))];
+  return [...armarios, ...(p.cocinas ?? []).flatMap((c) => laminasCocinaPresupuesto(c, p, medir, true)), ...(p.muebles ?? []).flatMap((m) => laminasMueblePresupuesto(m, p, medir))];
 }
 /** Tamaño de una fila de dibujo en el presupuesto: a todo el ancho, sin pasar del alto máximo, en proporción. */
 export function escalaFila(caja: { w: number; h: number }): number {
@@ -377,7 +378,7 @@ export function escalasPorGrupo<T extends { caja: { w: number; h: number }; grup
 }
 /** Grupo de una fila por la clave de su partida: «v2:A.01» → «v2:A.01»; tramos de cocina «v1:C.01.2» → «v1:C.01». */
 export function grupoDibujo(f: { grupo?: string; codigo: string }): string {
-  return f.grupo ?? f.codigo.replace(/^((?:v\d+:)?[AC]\.\d+).*$/, '$1');
+  return f.grupo ?? f.codigo.replace(/^((?:v\d+:)?[ACM]\.\d+).*$/, '$1');
 }
 
 /** Láminas de un armario: una, o dos si la sección / planta no caben con el alzado. */
